@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Laptop, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function ReservaPublica() {
   const [step, setStep] = useState(1);
@@ -53,6 +55,60 @@ export default function ReservaPublica() {
       }
     },
   });
+
+  // Função para verificar se um notebook está em uso agora
+  const getNotebookStatus = (notebookId) => {
+    const agora = new Date();
+    
+    const reservaAtiva = reservasExistentes.find(reserva => {
+      if (reserva.equipamento_id !== notebookId || reserva.status === "Cancelada" || reserva.status === "Concluída") {
+        return false;
+      }
+
+      const inicioReserva = new Date(`${reserva.data_inicio}T${reserva.hora_inicio}`);
+      const fimReserva = new Date(`${reserva.data_fim}T${reserva.hora_fim}`);
+
+      // Verifica se a reserva está ativa agora
+      return agora >= inicioReserva && agora < fimReserva;
+    });
+
+    if (reservaAtiva) {
+      return {
+        emUso: true,
+        disponivelEm: new Date(`${reservaAtiva.data_fim}T${reservaAtiva.hora_fim}`),
+        reservaAtual: reservaAtiva
+      };
+    }
+
+    return { emUso: false, disponivelEm: null, reservaAtual: null };
+  };
+
+  // Função para obter a próxima disponibilidade de um notebook
+  const getProximaDisponibilidade = (notebookId) => {
+    const agora = new Date();
+    
+    // Busca todas as reservas futuras ou ativas deste notebook
+    const reservasFuturas = reservasExistentes
+      .filter(reserva => {
+        if (reserva.equipamento_id !== notebookId || reserva.status === "Cancelada" || reserva.status === "Concluída") {
+          return false;
+        }
+        const fimReserva = new Date(`${reserva.data_fim}T${reserva.hora_fim}`);
+        return fimReserva > agora;
+      })
+      .sort((a, b) => {
+        const fimA = new Date(`${a.data_fim}T${a.hora_fim}`);
+        const fimB = new Date(`${b.data_fim}T${b.hora_fim}`);
+        return fimA - fimB;
+      });
+
+    if (reservasFuturas.length > 0) {
+      const ultimaReserva = reservasFuturas[reservasFuturas.length - 1];
+      return new Date(`${ultimaReserva.data_fim}T${ultimaReserva.hora_fim}`);
+    }
+
+    return null;
+  };
 
   const checkConflict = (equipamentoId, dataInicio, horaInicio, dataFim, horaFim) => {
     const inicioSolicitado = new Date(`${dataInicio}T${horaInicio}`);
@@ -232,42 +288,86 @@ export default function ReservaPublica() {
               ) : (
                 <>
                   <div className="grid md:grid-cols-2 gap-4 mb-6">
-                    {notebooks.map((notebook) => (
-                      <Card
-                        key={notebook.id}
-                        className={`cursor-pointer transition-all ${
-                          selectedEquipamento?.id === notebook.id
-                            ? 'ring-2 ring-purple-600 shadow-lg'
-                            : 'hover:shadow-md'
-                        }`}
-                        onClick={() => setSelectedEquipamento(notebook)}
-                      >
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-lg">{notebook.marca}</CardTitle>
-                              <p className="text-sm text-gray-600 mt-1">{notebook.modelo}</p>
+                    {notebooks.map((notebook) => {
+                      const status = getNotebookStatus(notebook.id);
+                      const proximaDisponibilidade = getProximaDisponibilidade(notebook.id);
+                      
+                      return (
+                        <Card
+                          key={notebook.id}
+                          className={`cursor-pointer transition-all ${
+                            selectedEquipamento?.id === notebook.id
+                              ? 'ring-2 ring-purple-600 shadow-lg'
+                              : 'hover:shadow-md'
+                          }`}
+                          onClick={() => setSelectedEquipamento(notebook)}
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{notebook.marca}</CardTitle>
+                                <p className="text-sm text-gray-600 mt-1">{notebook.modelo}</p>
+                              </div>
+                              <Laptop className="w-8 h-8 text-purple-600" />
                             </div>
-                            <Laptop className="w-8 h-8 text-purple-600" />
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Processador:</span>
-                              <span className="font-medium">{notebook.processador || "-"}</span>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Processador:</span>
+                                <span className="font-medium">{notebook.processador || "-"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Etiqueta:</span>
+                                <span className="font-medium">{notebook.etiqueta_interna || "-"}</span>
+                              </div>
+                              
+                              <div className="mt-3 space-y-2">
+                                {status.emUso ? (
+                                  <>
+                                    <Badge className="bg-orange-100 text-orange-800">
+                                      Em Uso
+                                    </Badge>
+                                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-2">
+                                      <p className="text-xs font-semibold text-orange-900 mb-1">
+                                        Disponível em:
+                                      </p>
+                                      <p className="text-xs text-orange-700">
+                                        {format(status.disponivelEm, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                      </p>
+                                      <p className="text-xs text-orange-600 mt-2">
+                                        Reserve para depois deste horário
+                                      </p>
+                                    </div>
+                                  </>
+                                ) : proximaDisponibilidade ? (
+                                  <>
+                                    <Badge className="bg-yellow-100 text-yellow-800">
+                                      Reservado (Futuro)
+                                    </Badge>
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
+                                      <p className="text-xs font-semibold text-yellow-900 mb-1">
+                                        Próxima disponibilidade:
+                                      </p>
+                                      <p className="text-xs text-yellow-700">
+                                        {format(proximaDisponibilidade, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                      </p>
+                                      <p className="text-xs text-yellow-600 mt-2">
+                                        Disponível agora, mas tem reservas futuras
+                                      </p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-800">
+                                    Disponível
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Etiqueta:</span>
-                              <span className="font-medium">{notebook.etiqueta_interna || "-"}</span>
-                            </div>
-                            <Badge className="bg-green-100 text-green-800 mt-2">
-                              Disponível
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
 
                   {selectedEquipamento && (
@@ -293,6 +393,21 @@ export default function ReservaPublica() {
               <p className="text-sm text-gray-600 mt-1">
                 Notebook selecionado: {selectedEquipamento.marca} {selectedEquipamento.modelo}
               </p>
+              {(() => {
+                const status = getNotebookStatus(selectedEquipamento.id);
+                if (status.emUso) {
+                  return (
+                    <Alert className="mt-3 bg-orange-50 border-orange-200">
+                      <AlertCircle className="w-4 h-4 text-orange-600" />
+                      <AlertDescription className="text-orange-800">
+                        <strong>Atenção:</strong> Este notebook está em uso até{" "}
+                        {format(status.disponivelEm, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}.
+                        Sua reserva deve começar após este horário.
+                      </AlertDescription>
+                    </Alert>
+                  );
+                }
+              })()}
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="pt-6 space-y-4">
