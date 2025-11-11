@@ -257,6 +257,8 @@ export default function Importar() {
   const parseData = (text) => {
     const lines = text.split("\n").filter(line => line.trim());
     
+    if (lines.length === 0) return [];
+    
     // Detecta separador (tab ou vírgula)
     const separator = lines[0].includes("\t") ? "\t" : ",";
     
@@ -266,98 +268,107 @@ export default function Importar() {
 
     const mapping = columnMapping[selectedEntity] || {};
 
+    // Começar do índice 1 para pular o cabeçalho
     for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue; // Pula linhas vazias
+      
       const values = lines[i].split(separator);
-      if (values.length === headers.length) {
-        const obj = {};
-        let tempUsuarioAtual = null;
-        let tempStatusOriginal = null;
+      
+      // Verifica se a linha tem o número correto de colunas
+      if (values.length !== headers.length) {
+        console.warn(`Linha ${i + 1} tem ${values.length} colunas, esperado ${headers.length}. Pulando.`);
+        continue;
+      }
+      
+      const obj = {};
+      let tempUsuarioAtual = null;
+      let tempStatusOriginal = null;
+      
+      headers.forEach((header, index) => {
+        let value = values[index].trim();
         
-        headers.forEach((header, index) => {
-          let value = values[index].trim();
-          
-          // Mapeia o nome da coluna
-          const fieldName = mapping[header] || header.toLowerCase().replace(/ /g, "_");
-          
-          // Conversões específicas
-          if (fieldName === "data_aquisicao" || fieldName === "data_formatacao") {
-            value = convertDateToISO(value);
-          } else if (fieldName === "tempo_uso") {
-            value = value || "";
-          } else if (fieldName === "uso_anos") {
-            const parsed = parseFloat(value);
-            value = isNaN(parsed) ? 0 : parsed;
-          } else if (fieldName === "quantidade") {
-            const parsed = parseInt(value);
-            value = isNaN(parsed) ? 0 : parsed;
-          } else if (fieldName === "valor") {
-            // Remove pontos e vírgulas e converte para número
-            const cleanValue = value.replace(/\./g, "").replace(",", ".");
-            const parsed = parseFloat(cleanValue);
-            value = isNaN(parsed) ? 0 : parsed;
-          } else if (fieldName === "usuario_anterior" && value) {
-            obj.usuarios_anteriores = [{
-              nome: value,
-              data_inicio: obj.data_aquisicao || "",
-              data_fim: ""
-            }];
-            return;
-          } else if (fieldName === "usuario_atual") {
-            tempUsuarioAtual = value;
-          } else if (fieldName === "status_original") {
-            tempStatusOriginal = value;
-          } else if (fieldName === "tipo") {
-            value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-          } else if (fieldName === "antivirus") {
-            if (value.toLowerCase() === "sim" || value.toLowerCase() === "s") {
-              value = "Sim";
-            } else if (value.toLowerCase() === "não" || value.toLowerCase() === "nao" || value.toLowerCase() === "n") {
-              value = "Não";
-            } else if (value.toLowerCase() === "n/a" || value === "") {
-              value = "Não se aplica";
-            }
-          }
-          
-          if (value !== null && value !== "" && fieldName !== "status_original") {
-            obj[fieldName] = value;
-          }
-        });
+        // Mapeia o nome da coluna
+        const fieldName = mapping[header] || header.toLowerCase().replace(/ /g, "_");
         
-        // Define o status automaticamente baseado no usuário atual
-        // Prioridade: se tem status original válido no Excel, usa ele
-        // Senão, define automaticamente baseado no usuário
-        if (tempStatusOriginal && tempStatusOriginal.trim() !== "") { // Added .trim() here for consistency
-          obj.status = tempStatusOriginal.trim();
+        // Conversões específicas
+        if (fieldName === "data_aquisicao" || fieldName === "data_formatacao") {
+          value = convertDateToISO(value);
+        } else if (fieldName === "tempo_uso") {
+          value = value || "";
+        } else if (fieldName === "uso_anos") {
+          const parsed = parseFloat(value);
+          value = isNaN(parsed) ? 0 : parsed;
+        } else if (fieldName === "quantidade") {
+          const parsed = parseInt(value);
+          value = isNaN(parsed) ? 0 : parsed;
+        } else if (fieldName === "valor") {
+          // Remove pontos e vírgulas e converte para número
+          const cleanValue = value.replace(/\./g, "").replace(",", ".");
+          const parsed = parseFloat(cleanValue);
+          value = isNaN(parsed) ? 0 : parsed;
+        } else if (fieldName === "usuario_anterior" && value) {
+          obj.usuarios_anteriores = [{
+            nome: value,
+            data_inicio: obj.data_aquisicao || "",
+            data_fim: ""
+          }];
+          return;
+        } else if (fieldName === "usuario_atual") {
+          tempUsuarioAtual = value;
+        } else if (fieldName === "status_original") {
+          tempStatusOriginal = value;
+        } else if (fieldName === "tipo") {
+          value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+        } else if (fieldName === "antivirus") {
+          if (value.toLowerCase() === "sim" || value.toLowerCase() === "s") {
+            value = "Sim";
+          } else if (value.toLowerCase() === "não" || value.toLowerCase() === "nao" || value.toLowerCase() === "n") {
+            value = "Não";
+          } else if (value.toLowerCase() === "n/a" || value === "") {
+            value = "Não se aplica";
+          }
         }
         
-        // Processa o usuário atual e ajusta status se necessário
-        if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") { // Added .trim() here for consistency
-          const usuarioUpper = tempUsuarioAtual.trim().toUpperCase(); // Added .trim() here for consistency
-          if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
-            obj.usuario_atual = "";
-            if (!obj.status) { // Only set if not already set by tempStatusOriginal
-              obj.status = "Disponível";
-            }
-          } else {
-            obj.usuario_atual = tempUsuarioAtual.trim(); // Added .trim() here for consistency
-            if (!obj.status) { // Only set if not already set by tempStatusOriginal
-              obj.status = "Em uso";
-            }
-          }
-        } else { // No tempUsuarioAtual or it was empty
-          obj.usuario_atual = ""; // Ensure it's empty if no user was provided or it was empty
+        if (value !== null && value !== "" && fieldName !== "status_original") {
+          obj[fieldName] = value;
+        }
+      });
+      
+      // Define o status automaticamente baseado no usuário atual
+      // Prioridade: se tem status original válido no Excel, usa ele
+      // Senão, define automaticamente baseado no usuário
+      if (tempStatusOriginal && tempStatusOriginal.trim() !== "") { // Added .trim() here for consistency
+        obj.status = tempStatusOriginal.trim();
+      }
+      
+      // Processa o usuário atual e ajusta status se necessário
+      if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") { // Added .trim() here for consistency
+        const usuarioUpper = tempUsuarioAtual.trim().toUpperCase(); // Added .trim() here for consistency
+        if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+          obj.usuario_atual = "";
           if (!obj.status) { // Only set if not already set by tempStatusOriginal
             obj.status = "Disponível";
           }
+        } else {
+          obj.usuario_atual = tempUsuarioAtual.trim(); // Added .trim() here for consistency
+          if (!obj.status) { // Only set if not already set by tempStatusOriginal
+            obj.status = "Em uso";
+          }
         }
-
-        // Final fallback to ensure status is always set if none of the above conditions applied
-        if (!obj.status) {
+      } else { // No tempUsuarioAtual or it was empty
+        obj.usuario_atual = ""; // Ensure it's empty if no user was provided or it was empty
+        if (!obj.status) { // Only set if not already set by tempStatusOriginal
           obj.status = "Disponível";
         }
-        
-        data.push(obj);
       }
+
+      // Final fallback to ensure status is always set if none of the above conditions applied
+      if (!obj.status) {
+        obj.status = "Disponível";
+      }
+      
+      data.push(obj);
     }
 
     return data;
