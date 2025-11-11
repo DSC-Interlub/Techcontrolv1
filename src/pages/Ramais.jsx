@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Phone, Plus, Pencil, Trash2, Search, UserPlus, UserMinus, ArrowRightLeft, X } from "lucide-react";
+import { Phone, Plus, Pencil, Trash2, Search, UserPlus, UserMinus, ArrowRightLeft, X, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +64,35 @@ export default function Ramais() {
       queryClient.invalidateQueries({ queryKey: ['ramais'] });
     },
   });
+
+  const handleExportarExcel = () => {
+    // Criar cabeçalho
+    const header = "USUÁRIO\tRAMAL\tÁREA\tSTATUS\tDATA_ATRIBUIÇÃO\tOBSERVAÇÕES\n";
+    
+    // Criar linhas
+    const rows = ramais.map(ramal => {
+      return [
+        ramal.usuario_atual || "",
+        ramal.ramal || "",
+        ramal.area || "",
+        ramal.status || "",
+        ramal.data_atribuicao || "",
+        ramal.observacoes || ""
+      ].join("\t");
+    }).join("\n");
+
+    // Combinar tudo
+    const csvContent = header + rows;
+
+    // Criar arquivo e baixar
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ramais_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -223,17 +253,27 @@ export default function Ramais() {
               <p className="text-gray-500 mt-1">Gerenciar ramais telefônicos da empresa</p>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              setEditingRamal(null);
-              setFormData({});
-              setShowForm(true);
-            }}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Ramal
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleExportarExcel}
+              variant="outline"
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Exportar Excel
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingRamal(null);
+                setFormData({});
+                setShowForm(true);
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Ramal
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

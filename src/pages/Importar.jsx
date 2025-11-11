@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"; // Added Input component
 
 export default function Importar() {
   const [selectedEntity, setSelectedEntity] = useState("");
+  const [file, setFile] = useState(null); // Added this state variable
   const [pastedData, setPastedData] = useState("");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null); // Renamed from 'result'
@@ -30,51 +31,40 @@ export default function Importar() {
     { value: "Ramais", label: "Ramais" }, // Added new entity
   ];
 
-  // Removed columnMapping object as it's replaced by mapColumns function
-
   const handleDownloadTemplate = () => {
     let template = "";
     let filename = "";
 
     switch (selectedEntity) {
       case "PCs_Internos":
-        template = "DATA_AQUISICAO\tTEMPO_USO\tTIPO\tMARCA\tNOTA_FISCAL\tMODELO\tPROCESSADOR\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tOFFICE\tANTIVIRUS\tSTATUS\tCONDICAO\tDATA_FORMATACAO\tOBSERVACOES\n" +
-                   "18/05/2021\t4 anos\tDesktop\tDell\t3061217\tOptiPlex 7090\tIntel i7\tIL-DKP-001\tABC123\tJoão Silva\tTI\tOffice 2021\tSim\tEm uso\tRápido\t10/01/2023\tObservação PC";
+        template = "DATA_AQUISICAO\tTEMPO_USO\tTIPO\tMARCA\tNOTA_FISCAL\tMODELO\tPROCESSADOR\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tOFFICE\tANTIVIRUS\tSTATUS\tCONDICAO\tDATA_FORMATACAO\tOBSERVACOES\n";
         filename = "template_pcs_internos.txt";
         break;
       case "Notebooks_Externos":
-        template = "DATA_AQUISICAO\tTEMPO_USO\tTIPO\tMARCA\tNOTA_FISCAL\tMODELO\tPROCESSADOR\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tUF\tOFFICE\tANTIVIRUS\tSTATUS\tCONDICAO\tDATA_FORMATACAO\tDISPONIVEL_PARA_RESERVA\tOBSERVACOES\n" +
-                   "18/05/2021\t2 anos\tNotebook\tDell\t3061217\tLatitude 5520\tIntel i5\tIL-NBK-001\tABC123\tPedro Costa\tSP\tOffice 2021\tSim\tDisponível\tNormal\t\tNão\tObservação Notebook";
+        template = "DATA_AQUISICAO\tTEMPO_USO\tTIPO\tMARCA\tNOTA_FISCAL\tMODELO\tPROCESSADOR\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tUF\tOFFICE\tANTIVIRUS\tSTATUS\tCONDICAO\tDATA_FORMATACAO\tDISPONIVEL_PARA_RESERVA\tOBSERVACOES\n";
         filename = "template_notebooks_externos.txt";
         break;
       case "Smartphones":
-        template = "DATA_AQUISICAO\tUSO_ANOS\tOPERADORA\tLINHA_CELULAR\tQUANTIDADE\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tVALOR\tMODELO\tCOR\tIMEI\tUSUARIO_ATUAL\tSTATUS\tOBSERVACOES\n" +
-                   "18/05/2021\t1\tVivo\t(11) 99999-9999\t1\tSamsung\t3061217\tTech Store\t2500,00\tGalaxy S23\tPreto\t123456789012345\tAna Lima\tEm uso\tObservação Smartphone";
+        template = "DATA_AQUISICAO\tUSO_ANOS\tOPERADORA\tLINHA_CELULAR\tQUANTIDADE\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tVALOR\tMODELO\tCOR\tIMEI\tUSUARIO_ATUAL\tSTATUS\tOBSERVACOES\n";
         filename = "template_smartphones.txt";
         break;
       case "Cameras":
-        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tUSUARIO_DESDE\tAREA\tSTATUS\tOBSERVACOES\n" +
-                   "1\t06/07/2023\tFLIR\t381\tMOICA COMERCIO\tCamera Termografica\tIL-CAM-001\t894071849\tMárcio Rossetto\t28/10/2025\tEngenharia\tEm uso\tObservação Câmera";
+        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tUSUARIO_DESDE\tAREA\tSTATUS\tOBSERVACOES\n";
         filename = "template_cameras.txt";
         break;
       case "Coletores":
-        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tTIPO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tSTATUS\tOBSERVACOES\n" +
-                   "COL001\t18/05/2021\tColetor de dados\tZebra\t3061217\tTech Distribuidor\tMC3300\tCOL001\tABC123\tFernanda Reis\tLogística\tEm uso\tObservação Coletor";
+        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tTIPO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tSTATUS\tOBSERVACOES\n";
         filename = "template_coletores.txt";
         break;
       case "Canetas_Vibracao":
-        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tTIPO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tSTATUS\tOBSERVACOES\n" +
-                   "CAN001\t18/05/2021\tCaneta Vibratória\tWacom\t3061217\tArt Supplies\tIntuos Pro\tCAN001\tABC123\tLucas Oliveira\tDesign\tEm uso\tObservação Caneta";
+        template = "NUMERO_SEQUENCIAL\tDATA_AQUISICAO\tTIPO\tMARCA\tNOTA_FISCAL\tFORNECEDOR\tMODELO\tETIQUETA_INTERNA\tSERVICE_TAG\tUSUARIO_ATUAL\tAREA\tSTATUS\tOBSERVACOES\n";
         filename = "template_canetas_vibracao.txt";
         break;
       case "Ramais": // Added new entity template
-        template = "USUARIO\tRAMAL\tAREA\n" +
-                   "Maria Silva\t3001\tComercial\n" +
-                   "João Pereira\t3002\tFinanceiro";
+        template = "USUARIO\tRAMAL\tAREA\n";
         filename = "template_ramais.txt";
         break;
       default:
-        alert("Selecione um tipo de equipamento primeiro para baixar o template.");
         return;
     }
 
@@ -83,22 +73,18 @@ export default function Importar() {
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a); // Append to body to make it clickable
     a.click();
-    document.body.removeChild(a); // Clean up
     URL.revokeObjectURL(url); // Release object URL
   };
 
   const parseDate = (dateStr) => {
     if (!dateStr || dateStr.trim() === "") return null;
     
-    // Check if it's already an ISO-like format (yyyy-mm-dd)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-
-    // Regex for dd/mm/yyyy, dd-mm-yyyy, yyyy/mm/dd, yyyy-mm-dd
     const formats = [
-      /^(\d{2})[/-](\d{2})[/-](\d{4})$/, // dd/mm/yyyy or dd-mm-yyyy
-      /^(\d{4})[/-](\d{2})[/-](\d{2})$/, // yyyy/mm/dd or yyyy-mm-dd
+      /^(\d{2})\/(\d{2})\/(\d{4})$/, // dd/mm/yyyy
+      /^(\d{2})-(\d{2})-(\d{4})$/, // dd-mm-yyyy
+      /^(\d{4})-(\d{2})-(\d{2})$/, // yyyy-mm-dd
+      /^(\d{4})\/(\d{2})\/(\d{2})$/, // yyyy/mm/dd
     ];
 
     for (let format of formats) {
@@ -116,22 +102,33 @@ export default function Importar() {
     return null;
   };
 
+  const normalizeColumnName = (col) => {
+    if (!col) return "";
+    return col
+      .toUpperCase()
+      .trim()
+      .normalize('NFD') // Decompose combined diacritics
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+      .replace(/\s+/g, '_'); // Replace spaces with underscores
+  };
+
   const mapColumns = (header, row, entity) => {
     const data = {};
     
     if (entity === "Ramais") {
       header.forEach((col, index) => {
         const value = row[index]?.trim() || "";
-        const colUpper = col.toUpperCase();
+        const colNormalized = normalizeColumnName(col);
         
-        if (colUpper === "USUARIO" || colUpper === "USUÁRIO") {
-          data.usuario = value; // Changed from usuario_atual to usuario for Ramais
+        if (colNormalized === "USUARIO" || colNormalized === "NOME" || colNormalized === "NOME_USUARIO") {
+          data.usuario_atual = value; // Changed from data.usuario
+          data.status = value ? "Em uso" : "Disponível"; // Added status inference
           if (value) {
             data.data_atribuicao = new Date().toISOString().split('T')[0];
           }
-        } else if (colUpper === "RAMAL") {
+        } else if (colNormalized === "RAMAL" || colNormalized === "NUMERO_RAMAL") {
           data.ramal = value;
-        } else if (colUpper === "AREA" || colUpper === "ÁREA") {
+        } else if (colNormalized === "AREA" || colNormalized === "DEPARTAMENTO" || colNormalized === "SETOR") {
           data.area = value;
         }
       });
@@ -170,15 +167,7 @@ export default function Importar() {
         } else if (colUpper === "OFFICE") {
           data.office = value;
         } else if (colUpper === "ANTIVIRUS" || colUpper === "ANTIVÍRUS") {
-          if (value.toLowerCase() === "sim" || value.toLowerCase() === "s") {
-            data.antivirus = "Sim";
-          } else if (value.toLowerCase() === "não" || value.toLowerCase() === "nao" || value.toLowerCase() === "n") {
-            data.antivirus = "Não";
-          } else if (value.toLowerCase() === "n/a" || value === "") {
-            data.antivirus = "Não se aplica";
-          } else {
-            data.antivirus = value;
-          }
+          data.antivirus = value;
         } else if (colUpper === "STATUS") {
           data.status = value;
         } else if (colUpper === "CONDICAO" || colUpper === "CONDIÇÃO") {
@@ -222,7 +211,7 @@ export default function Importar() {
         } else if (colUpper === "FORNECEDOR") {
           data.fornecedor = value;
         } else if (colUpper === "VALOR") {
-          data.valor = value ? parseFloat(value.replace(/\./g, "").replace(",", ".")) : null;
+          data.valor = value ? parseFloat(value.replace(/[^\d,.-]/g, '').replace(',', '.')) : null;
         } else if (colUpper === "MODELO") {
           data.modelo = value;
         } else if (colUpper === "COR") {
