@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -187,6 +188,24 @@ export default function ChamadoPublico() {
     setEquipamentosUsuario(equipamentos);
   };
 
+  const getTipoCompleto = (data) => {
+    let detalhes = data.tipo_solicitacao || "";
+    
+    if (data.tipo_solicitacao === "Sistema") {
+      if (data.sistema_tipo) detalhes += ` - ${data.sistema_tipo}`;
+      if (data.sistema_subtipo) detalhes += ` (${data.sistema_subtipo})`;
+    } else if (data.tipo_solicitacao === "Impressora") {
+      if (data.impressora_subtipo) detalhes += ` - ${data.impressora_subtipo}`;
+    } else if (data.tipo_solicitacao === "Equipamento") {
+      if (data.equipamento_subtipo) detalhes += ` - ${data.equipamento_subtipo}`;
+      if (data.equipamento_selecionado) detalhes += `<br><small>Equipamento: ${data.equipamento_selecionado}</small>`;
+    } else if (data.tipo_solicitacao === "Servidor") {
+      if (data.servidor_subtipo) detalhes += ` - ${data.servidor_subtipo}`;
+    }
+    
+    return detalhes;
+  };
+
   const createChamadoMutation = useMutation({
     mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
@@ -203,57 +222,130 @@ export default function ChamadoPublico() {
       // Enviar email com o número do chamado
       try {
         await base44.integrations.Core.SendEmail({
+          from_name: "TechControl - Suporte",
           to: data.solicitante_email,
-          subject: `Chamado ${numeroChamado} - Aberto com Sucesso`,
+          subject: `✅ Chamado ${numeroChamado} Aberto com Sucesso`,
           body: `
+            <!DOCTYPE html>
             <html>
-              <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 8px;">
-                  <h2 style="color: #ff6b35; text-align: center;">Chamado Aberto com Sucesso!</h2>
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              </head>
+              <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+                <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                   
-                  <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <p><strong>Olá, ${data.solicitante_nome}!</strong></p>
+                  <!-- Header -->
+                  <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8c61 100%); padding: 30px 20px; text-align: center;">
+                    <div style="background-color: white; width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                      <span style="font-size: 30px;">✅</span>
+                    </div>
+                    <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600;">Chamado Aberto com Sucesso!</h1>
+                  </div>
+                  
+                  <!-- Content -->
+                  <div style="padding: 30px 25px;">
+                    <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                      Olá, <strong>${data.solicitante_nome}</strong>!
+                    </p>
                     
-                    <p>Seu chamado foi registrado com sucesso em nosso sistema.</p>
+                    <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+                      Seu chamado foi registrado com sucesso em nosso sistema de suporte.
+                    </p>
                     
-                    <div style="background-color: #fff3cd; border-left: 4px solid #ff6b35; padding: 15px; margin: 20px 0;">
-                      <h3 style="margin-top: 0; color: #ff6b35;">Número do Chamado</h3>
-                      <p style="font-size: 24px; font-weight: bold; margin: 0; color: #333;">${numeroChamado}</p>
+                    <!-- Número do Chamado -->
+                    <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe8a3 100%); border-left: 4px solid #ff6b35; padding: 20px; margin: 25px 0; border-radius: 8px;">
+                      <p style="color: #856404; font-size: 13px; font-weight: 600; text-transform: uppercase; margin: 0 0 8px 0; letter-spacing: 1px;">
+                        📋 Número do Chamado
+                      </p>
+                      <p style="color: #333; font-size: 28px; font-weight: bold; margin: 0; font-family: 'Courier New', monospace;">
+                        ${numeroChamado}
+                      </p>
                     </div>
                     
-                    <h3>Detalhes da Solicitação:</h3>
-                    <ul style="list-style: none; padding: 0;">
-                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                        <strong>Tipo:</strong> ${data.tipo_solicitacao}
-                      </li>
-                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                        <strong>Urgência:</strong> ${data.urgencia}
-                      </li>
-                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                        <strong>Área:</strong> ${data.solicitante_area}
-                      </li>
-                      <li style="padding: 8px 0;">
-                        <strong>Data de Abertura:</strong> ${new Date().toLocaleDateString('pt-BR')}
-                      </li>
-                    </ul>
+                    <!-- Detalhes -->
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h3 style="color: #333; font-size: 16px; margin: 0 0 15px 0; font-weight: 600;">📊 Detalhes da Solicitação</h3>
+                      
+                      <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                            <span style="color: #666; font-size: 14px;">Tipo:</span>
+                          </td>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                            <span style="color: #333; font-size: 14px; font-weight: 600;">${getTipoCompleto(data)}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                            <span style="color: #666; font-size: 14px;">Urgência:</span>
+                          </td>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                            <span style="color: ${data.urgencia === 'Urgente' ? '#dc3545' : data.urgencia === 'Alta' ? '#fd7e14' : data.urgencia === 'Média' ? '#ffc107' : '#17a2b8'}; font-size: 14px; font-weight: 600;">
+                              ${data.urgencia}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                            <span style="color: #666; font-size: 14px;">Área:</span>
+                          </td>
+                          <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
+                            <span style="color: #333; font-size: 14px; font-weight: 600;">${data.solicitante_area}</span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 10px 0;">
+                            <span style="color: #666; font-size: 14px;">Data de Abertura:</span>
+                          </td>
+                          <td style="padding: 10px 0; text-align: right;">
+                            <span style="color: #333; font-size: 14px; font-weight: 600;">${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
                     
-                    <p style="margin-top: 20px;">Nossa equipe técnica analisará sua solicitação e entrará em contato em breve.</p>
+                    ${data.descricao_problema ? `
+                    <div style="margin: 20px 0;">
+                      <h3 style="color: #333; font-size: 16px; margin: 0 0 10px 0; font-weight: 600;">📝 Descrição</h3>
+                      <p style="color: #666; font-size: 14px; line-height: 1.6; background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 0;">
+                        ${data.descricao_problema}
+                      </p>
+                    </div>
+                    ` : ''}
                     
-                    <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                      <em>Este é um email automático, por favor não responda. Em caso de dúvidas, entre em contato com o suporte.</em>
+                    <!-- Info Box -->
+                    <div style="background-color: #e7f3ff; border-left: 4px solid #0066cc; padding: 15px; margin: 25px 0; border-radius: 6px;">
+                      <p style="color: #004085; font-size: 14px; line-height: 1.6; margin: 0;">
+                        <strong>⏱️ Próximos Passos:</strong><br>
+                        Nossa equipe técnica analisará sua solicitação e entrará em contato em até 24 horas úteis. 
+                        Você receberá atualizações por email sempre que houver mudanças no status do chamado.
+                      </p>
+                    </div>
+                    
+                    <p style="color: #999; font-size: 13px; line-height: 1.6; margin: 25px 0 0 0; text-align: center;">
+                      Este é um email automático do sistema TechControl.<br>
+                      Por favor, não responda diretamente a este email.
                     </p>
                   </div>
                   
-                  <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-                    <p>TechControl - Sistema de Gestão de Equipamentos</p>
+                  <!-- Footer -->
+                  <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                      <strong>TechControl</strong> - Sistema de Gestão de Equipamentos<br>
+                      © ${new Date().getFullYear()} Todos os direitos reservados
+                    </p>
                   </div>
+                  
                 </div>
               </body>
             </html>
           `
         });
+        
+        console.log('✅ Email de abertura enviado com sucesso para:', data.solicitante_email);
       } catch (emailError) {
-        console.error('Erro ao enviar email:', emailError);
+        console.error('❌ Erro ao enviar email de abertura:', emailError);
         // Não bloqueia a criação do chamado se o email falhar
       }
 
