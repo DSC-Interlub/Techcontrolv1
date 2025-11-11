@@ -114,6 +114,7 @@ export default function Importar() {
       "STATUS": "status_original"
     },
     Cameras: {
+      "#": "numero_sequencial",
       "Nº SEQ": "numero_sequencial",
       "N SEQ": "numero_sequencial",
       "AQUISIÇÃO": "data_aquisicao",
@@ -123,9 +124,15 @@ export default function Importar() {
       "FORNECEDOR": "fornecedor",
       "MODELO": "modelo",
       "ETIQUETA INTERNA": "etiqueta_interna",
+      "SERVICE TAG/ SERIAL NUMBER": "service_tag",
       "SERVICE TAG": "service_tag",
+      "SERIAL NUMBER": "service_tag",
       "USUÁRIO": "usuario_atual",
       "USUARIO": "usuario_atual",
+      "USUÁRIO ANTERIOR": "usuario_anterior",
+      "USUARIO ANTERIOR": "usuario_anterior",
+      "USUÁRIO DESDE": "usuario_desde",
+      "USUARIO DESDE": "usuario_desde",
       "ÁREA": "area",
       "AREA": "area",
       "STATUS": "status_original"
@@ -180,8 +187,8 @@ export default function Importar() {
         "AQUISIÇÃO\tUSO EM ANOS\tOPERADORA\tLINHA CELULAR\tQUANTIDADE\tMARCA\tNF\tFORNECEDOR\tVALOR\tMODELO\tCOR\tIMEI\tUSUÁRIO\tSTATUS\n" +
         "18/05/2021\t1\tVivo\t(11) 99999-9999\t1\tSamsung\t3061217\tTech Store\t2500\tGalaxy S23\tPreto\t123456789012345\tAna Lima\tEm uso",
       Cameras:
-        "Nº SEQ\tAQUISIÇÃO\tMARCA\tNF\tFORNECEDOR\tMODELO\tETIQUETA INTERNA\tSERVICE TAG\tUSUÁRIO\tÁREA\tSTATUS\n" +
-        "CAM001\t18/05/2021\tCanon\t3061217\tPhoto Store\tEOS R6\tCAM001\tABC123\tCarlos Souza\tMarketing\tEm uso",
+        "#\tAQUISIÇÃO\tMARCA\tNF\tFORNECEDOR\tMODELO\tETIQUETA INTERNA\tSERVICE TAG/ SERIAL NUMBER\tUSUÁRIO\tUSUÁRIO ANTERIOR\tUSUÁRIO DESDE\n" +
+        "1\t06/07/2023\tFLIR\t381\tMOICA COMERCIO DE BENS DE CONSUMO LTDA\tCamera Termografica Compacta 19.200 Pixels Ignite Flir C5\tIL-CAM-001\t894071849\tMárcio Rossetto\tEduardo Lacera Fermino\t28/10/2025",
       Coletores:
         "Nº SEQ\tAQUISIÇÃO\tTIPO\tMARCA\tNF\tFORNECEDOR\tMODELO\tETIQUETA INTERNA\tSERVICE TAG\tUSUÁRIO\tÁREA\tSTATUS\n" +
         "COL001\t18/05/2021\tColetor de dados\tZebra\t3061217\tTech Distribuidor\tMC3300\tCOL001\tABC123\tFernanda Reis\tLogística\tEm uso",
@@ -334,7 +341,7 @@ export default function Importar() {
         const fieldName = mapping[header] || header.toLowerCase().replace(/ /g, "_");
         
         // Conversões específicas
-        if (fieldName === "data_aquisicao" || fieldName === "data_formatacao") {
+        if (fieldName === "data_aquisicao" || fieldName === "data_formatacao" || fieldName === "usuario_desde") {
           value = convertDateToISO(value);
         } else if (fieldName === "tempo_uso") {
           value = value || "";
@@ -350,12 +357,20 @@ export default function Importar() {
           const parsed = parseFloat(cleanValue);
           value = isNaN(parsed) ? 0 : parsed;
         } else if (fieldName === "usuario_anterior" && value) {
-          obj.usuarios_anteriores = [{
+          // If usuario_anterior exists, it might be stored differently in the entity.
+          // For simplicity, we'll just add it as a string for now, but a more complex
+          // scenario might involve a separate handling or a relational structure.
+          // The current structure `usuarios_anteriores` suggests an array of objects.
+          // So if we have a single user_anterior, we can model it this way.
+          if (!obj.usuarios_anteriores) {
+            obj.usuarios_anteriores = [];
+          }
+          obj.usuarios_anteriores.push({
             nome: value,
-            data_inicio: obj.data_aquisicao || "",
-            data_fim: ""
-          }];
-          return;
+            data_inicio: obj.data_aquisicao || null, // Assuming data_aquisicao might be related, or needs a specific 'since' date
+            data_fim: null // Assuming this is the most recent previous user
+          });
+          return; // Skip setting directly to obj[fieldName]
         } else if (fieldName === "usuario_atual") {
           tempUsuarioAtual = value;
         } else if (fieldName === "status_original") {
