@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import UsuariosAnteriores from "../components/equipamentos/UsuariosAnteriores";
 
 export default function Cameras() {
   const [showForm, setShowForm] = useState(false);
@@ -94,7 +95,7 @@ export default function Cameras() {
       if (equipment.usuario_atual) {
         usuariosAnteriores.push({
           nome: equipment.usuario_atual,
-          data_inicio: equipment.data_aquisicao || "", // Assuming data_aquisicao is when it was first assigned to this user
+          data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "", // Use usuario_desde if available
           data_fim: new Date().toISOString().split('T')[0]
         });
       }
@@ -103,6 +104,7 @@ export default function Cameras() {
         id: equipment.id,
         data: {
           usuario_atual: null, // Set to null instead of empty string for clarity in DB
+          usuario_desde: null, // Also set usuario_desde to null
           status: "Disponível",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -117,7 +119,7 @@ export default function Cameras() {
     if (equipmentToTransfer.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipmentToTransfer.usuario_atual,
-        data_inicio: equipmentToTransfer.data_aquisicao || "",
+        data_inicio: equipmentToTransfer.usuario_desde || equipmentToTransfer.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -126,6 +128,7 @@ export default function Cameras() {
       id: equipmentToTransfer.id,
       data: {
         usuario_atual: newUserName,
+        usuario_desde: new Date().toISOString().split('T')[0], // Set current date as usuario_desde
         status: "Em uso",
         usuarios_anteriores: usuariosAnteriores
       }
@@ -142,7 +145,7 @@ export default function Cameras() {
     if (equipment.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipment.usuario_atual,
-        data_inicio: equipment.data_aquisicao || "",
+        data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -151,6 +154,7 @@ export default function Cameras() {
       id: selectedAvailableEquipment,
       data: {
         usuario_atual: selectedUser,
+        usuario_desde: new Date().toISOString().split('T')[0], // Set current date as usuario_desde
         status: "Em uso",
         usuarios_anteriores: usuariosAnteriores
       }
@@ -311,16 +315,25 @@ export default function Cameras() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Usuário Atual</Label>
                     <Input placeholder="Nome do usuário" value={formData.usuario_atual || ""} onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Usuário Desde</Label>
+                    <Input type="date" value={formData.usuario_desde || ""} onChange={(e) => setFormData({ ...formData, usuario_desde: e.target.value })} />
                   </div>
                   <div>
                     <Label>Área</Label>
                     <Input placeholder="Departamento" value={formData.area || ""} onChange={(e) => setFormData({ ...formData, area: e.target.value })} />
                   </div>
                 </div>
+
+                <UsuariosAnteriores
+                  usuarios={formData.usuarios_anteriores || []}
+                  onChange={(usuarios) => setFormData({ ...formData, usuarios_anteriores: usuarios })}
+                />
 
                 <div>
                   <Label>Status</Label>
