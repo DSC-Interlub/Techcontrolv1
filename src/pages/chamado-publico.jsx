@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Headset, CheckCircle, Loader2, Laptop } from "lucide-react";
+import { Headset, CheckCircle, Loader2, Laptop, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ChamadoPublico() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,7 @@ export default function ChamadoPublico() {
     sistema_subtipo: "",
     impressora_subtipo: "",
     equipamento_subtipo: "",
+    equipamento_selecionado: "",
     equipamento_outros_detalhes: "",
     melhorias_detalhes: "",
     desenvolvimento_detalhes: "",
@@ -30,6 +32,7 @@ export default function ChamadoPublico() {
     urgencia: "Média",
   });
   const [success, setSuccess] = useState(false);
+  const [numeroChamado, setNumeroChamado] = useState("");
   const [searchNome, setSearchNome] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [usuariosSugeridos, setUsuariosSugeridos] = useState([]);
@@ -152,30 +155,32 @@ export default function ChamadoPublico() {
   const buscarEquipamentosUsuario = (nomeUsuario) => {
     const equipamentos = [];
 
-    const addEquipamento = (eq, tipo) => {
+    const addEquipamento = (eq, tipo, entityId) => {
       if (eq.usuario_atual && normalizeString(eq.usuario_atual) === normalizeString(nomeUsuario)) {
         equipamentos.push({
+          id: entityId,
           tipo: tipo,
           marca: eq.marca || "",
           modelo: eq.modelo || "",
-          etiqueta: eq.etiqueta_interna || eq.numero_sequencial || ""
+          etiqueta: eq.etiqueta_interna || eq.numero_sequencial || "",
+          displayName: `${tipo} - ${eq.marca} ${eq.modelo}${eq.etiqueta_interna ? ` (${eq.etiqueta_interna})` : ''}`
         });
       }
     };
 
-    pcsInternos.forEach(eq => addEquipamento(eq, eq.tipo || "PC"));
-    notebooksExternos.forEach(eq => addEquipamento(eq, "Notebook Externo"));
-    smartphones.forEach(eq => addEquipamento(eq, "Smartphone"));
-    cameras.forEach(eq => addEquipamento(eq, "Câmera"));
-    coletores.forEach(eq => addEquipamento(eq, "Coletor"));
-    canetasVibracao.forEach(eq => addEquipamento(eq, "Caneta Vibração"));
+    pcsInternos.forEach(eq => addEquipamento(eq, eq.tipo || "PC", eq.id));
+    notebooksExternos.forEach(eq => addEquipamento(eq, "Notebook Externo", eq.id));
+    smartphones.forEach(eq => addEquipamento(eq, "Smartphone", eq.id));
+    cameras.forEach(eq => addEquipamento(eq, "Câmera", eq.id));
+    coletores.forEach(eq => addEquipamento(eq, "Coletor", eq.id));
+    canetasVibracao.forEach(eq => addEquipamento(eq, "Caneta Vibração", eq.id));
 
     return equipamentos;
   };
 
   const handleSelectUsuario = (nome) => {
     setSearchNome(nome);
-    setFormData({ ...formData, solicitante_nome: nome });
+    setFormData({ ...formData, solicitante_nome: nome, equipamento_selecionado: "" });
     setShowSuggestions(false);
     
     const equipamentos = buscarEquipamentosUsuario(nome);
@@ -185,24 +190,88 @@ export default function ChamadoPublico() {
   const createChamadoMutation = useMutation({
     mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
-      return await base44.entities.Chamados.create({
+      
+      // Criar o chamado
+      const chamado = await base44.entities.Chamados.create({
         ...data,
         numero_chamado: numeroChamado,
         status: "Aberto",
         data_abertura: new Date().toISOString().split('T')[0],
         equipamentos_usuario: equipamentosUsuario,
       });
+
+      // Enviar email com o número do chamado
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: data.solicitante_email,
+          subject: `Chamado ${numeroChamado} - Aberto com Sucesso`,
+          body: `
+            <html>
+              <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 8px;">
+                  <h2 style="color: #ff6b35; text-align: center;">Chamado Aberto com Sucesso!</h2>
+                  
+                  <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Olá, ${data.solicitante_nome}!</strong></p>
+                    
+                    <p>Seu chamado foi registrado com sucesso em nosso sistema.</p>
+                    
+                    <div style="background-color: #fff3cd; border-left: 4px solid #ff6b35; padding: 15px; margin: 20px 0;">
+                      <h3 style="margin-top: 0; color: #ff6b35;">Número do Chamado</h3>
+                      <p style="font-size: 24px; font-weight: bold; margin: 0; color: #333;">${numeroChamado}</p>
+                    </div>
+                    
+                    <h3>Detalhes da Solicitação:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <strong>Tipo:</strong> ${data.tipo_solicitacao}
+                      </li>
+                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <strong>Urgência:</strong> ${data.urgencia}
+                      </li>
+                      <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <strong>Área:</strong> ${data.solicitante_area}
+                      </li>
+                      <li style="padding: 8px 0;">
+                        <strong>Data de Abertura:</strong> ${new Date().toLocaleDateString('pt-BR')}
+                      </li>
+                    </ul>
+                    
+                    <p style="margin-top: 20px;">Nossa equipe técnica analisará sua solicitação e entrará em contato em breve.</p>
+                    
+                    <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                      <em>Este é um email automático, por favor não responda. Em caso de dúvidas, entre em contato com o suporte.</em>
+                    </p>
+                  </div>
+                  
+                  <div style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+                    <p>TechControl - Sistema de Gestão de Equipamentos</p>
+                  </div>
+                </div>
+              </body>
+            </html>
+          `
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar email:', emailError);
+        // Não bloqueia a criação do chamado se o email falhar
+      }
+
+      return { chamado, numeroChamado };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setNumeroChamado(data.numeroChamado);
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
+        setNumeroChamado("");
         setFormData({
           tipo_solicitacao: "",
           sistema_tipo: "",
           sistema_subtipo: "",
           impressora_subtipo: "",
           equipamento_subtipo: "",
+          equipamento_selecionado: "",
           equipamento_outros_detalhes: "",
           melhorias_detalhes: "",
           desenvolvimento_detalhes: "",
@@ -217,7 +286,7 @@ export default function ChamadoPublico() {
         });
         setSearchNome("");
         setEquipamentosUsuario([]);
-      }, 3000);
+      }, 5000);
     },
   });
 
@@ -235,6 +304,7 @@ export default function ChamadoPublico() {
       sistema_subtipo: "",
       impressora_subtipo: "",
       equipamento_subtipo: "",
+      equipamento_selecionado: "",
       equipamento_outros_detalhes: "",
       melhorias_detalhes: "",
       desenvolvimento_detalhes: "",
@@ -251,8 +321,17 @@ export default function ChamadoPublico() {
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Chamado Aberto!</h2>
-            <p className="text-gray-600">
-              Seu chamado foi registrado com sucesso. Nossa equipe entrará em contato em breve.
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 my-4">
+              <p className="text-sm text-yellow-800 mb-2">
+                <strong>Número do Chamado:</strong>
+              </p>
+              <p className="text-2xl font-bold text-yellow-900">{numeroChamado}</p>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Seu chamado foi registrado com sucesso.
+            </p>
+            <p className="text-sm text-gray-500">
+              Um email de confirmação com o número do chamado foi enviado para <strong>{formData.solicitante_email}</strong>
             </p>
           </CardContent>
         </Card>
@@ -542,6 +621,47 @@ export default function ChamadoPublico() {
                 </div>
               )}
 
+              {/* Seleção de Equipamento quando tipo = Equipamento */}
+              {formData.tipo_solicitacao === "Equipamento" && equipamentosUsuario.length > 0 && (
+                <div>
+                  <Label>Selecione o Equipamento com Problema *</Label>
+                  <Select
+                    required
+                    value={formData.equipamento_selecionado}
+                    onValueChange={(value) => setFormData({ ...formData, equipamento_selecionado: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione qual equipamento está com problema" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equipamentosUsuario.map((eq) => (
+                        <SelectItem key={eq.id} value={eq.displayName}>
+                          {eq.displayName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!formData.equipamento_selecionado && formData.equipamento_subtipo && (
+                    <Alert className="mt-2 bg-yellow-50 border-yellow-200">
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Por favor, selecione qual equipamento está com problema
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+              {formData.tipo_solicitacao === "Equipamento" && equipamentosUsuario.length === 0 && formData.solicitante_nome && (
+                <Alert className="bg-orange-50 border-orange-200">
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800">
+                    <strong>Nenhum equipamento cadastrado</strong> em seu nome. 
+                    Você pode descrever o equipamento no campo "Equipamento Atual" abaixo.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div>
                 <Label>Equipamento Atual (opcional)</Label>
                 <Input
@@ -549,6 +669,9 @@ export default function ChamadoPublico() {
                   value={formData.equipamento_atual}
                   onChange={(e) => setFormData({ ...formData, equipamento_atual: e.target.value })}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Se o equipamento não estiver na lista acima, descreva aqui
+                </p>
               </div>
 
               <div>
@@ -583,7 +706,7 @@ export default function ChamadoPublico() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Importante:</strong> Após enviar, você receberá um número de chamado por email. 
+                  <strong>Importante:</strong> Após enviar, você receberá um email de confirmação com o número do chamado. 
                   Nossa equipe analisará sua solicitação e entrará em contato em até 24 horas.
                 </p>
               </div>
