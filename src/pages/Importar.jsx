@@ -33,6 +33,7 @@ export default function Importar() {
   const columnMapping = {
     PCs_Internos: {
       "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
       "USO EM ANOS": "tempo_uso",
       "TIPO": "tipo",
       "MARCA": "marca",
@@ -41,18 +42,29 @@ export default function Importar() {
       "PROCESSADOR": "processador",
       "ETIQUETA INTERNA": "etiqueta_interna",
       "SERVICE TAG DELL / SERIAL NUMBER": "service_tag",
+      "SERVICE TAG": "service_tag",
+      "SERIAL NUMBER": "service_tag",
       "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "USUÁRIO ATUAL": "usuario_atual",
       "USUÁRIO ANTERIOR": "usuario_anterior",
+      "USUARIO ANTERIOR": "usuario_anterior",
       "ÁREA": "area",
+      "AREA": "area",
       "OFFICE": "office",
       "STATUS": "status",
       "CONDIÇÃO": "condicao",
+      "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
+      "ANTIVIRUS": "antivirus",
       "DATA FORMATAÇÃO": "data_formatacao",
-      "OBSERVAÇÕES": "observacoes"
+      "DATA FORMATACAO": "data_formatacao",
+      "OBSERVAÇÕES": "observacoes",
+      "OBSERVACOES": "observacoes"
     },
     Notebooks_Externos: {
       "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
       "USO EM ANOS": "tempo_uso",
       "TIPO": "tipo",
       "MARCA": "marca",
@@ -61,18 +73,30 @@ export default function Importar() {
       "PROCESSADOR": "processador",
       "ETIQUETA INTERNA": "etiqueta_interna",
       "SERVICE TAG DELL / SERIAL NUMBER": "service_tag",
+      "SERVICE TAG": "service_tag",
+      "SERIAL NUMBER": "service_tag",
       "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "USUÁRIO ATUAL": "usuario_atual",
       "USUÁRIO ANTERIOR": "usuario_anterior",
+      "USUARIO ANTERIOR": "usuario_anterior",
       "UF": "uf",
+      "ÁREA": "area",
+      "AREA": "area",
       "OFFICE": "office",
       "STATUS": "status",
       "CONDIÇÃO": "condicao",
+      "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
+      "ANTIVIRUS": "antivirus",
       "DATA FORMATAÇÃO": "data_formatacao",
-      "OBSERVAÇÕES": "observacoes"
+      "DATA FORMATACAO": "data_formatacao",
+      "OBSERVAÇÕES": "observacoes",
+      "OBSERVACOES": "observacoes"
     },
     Smartphones: {
       "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
       "USO EM ANOS": "uso_anos",
       "OPERADORA": "operadora",
       "LINHA CELULAR": "linha_celular",
@@ -85,6 +109,57 @@ export default function Importar() {
       "COR": "cor",
       "IMEI": "imei",
       "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "STATUS": "status"
+    },
+    Cameras: {
+      "Nº SEQ": "numero_sequencial",
+      "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
+      "MARCA": "marca",
+      "NF": "nota_fiscal",
+      "FORNECEDOR": "fornecedor",
+      "MODELO": "modelo",
+      "ETIQUETA INTERNA": "etiqueta_interna",
+      "SERVICE TAG": "service_tag",
+      "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "ÁREA": "area",
+      "AREA": "area",
+      "STATUS": "status"
+    },
+    Coletores: {
+      "Nº SEQ": "numero_sequencial",
+      "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
+      "TIPO": "tipo",
+      "MARCA": "marca",
+      "NF": "nota_fiscal",
+      "FORNECEDOR": "fornecedor",
+      "MODELO": "modelo",
+      "ETIQUETA INTERNA": "etiqueta_interna",
+      "SERVICE TAG": "service_tag",
+      "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "ÁREA": "area",
+      "AREA": "area",
+      "STATUS": "status"
+    },
+    Canetas_Vibracao: {
+      "Nº SEQ": "numero_sequencial",
+      "AQUISIÇÃO": "data_aquisicao",
+      "AQUISICAO": "data_aquisicao",
+      "TIPO": "tipo",
+      "MARCA": "marca",
+      "NF": "nota_fiscal",
+      "FORNECEDOR": "fornecedor",
+      "MODELO": "modelo",
+      "ETIQUETA INTERNA": "etiqueta_interna",
+      "SERVICE TAG": "service_tag",
+      "USUÁRIO": "usuario_atual",
+      "USUARIO": "usuario_atual",
+      "ÁREA": "area",
+      "AREA": "area",
       "STATUS": "status"
     }
   };
@@ -194,6 +269,7 @@ export default function Importar() {
       const values = lines[i].split(separator);
       if (values.length === headers.length) {
         const obj = {};
+        let tempUsuarioAtual = null;
         
         headers.forEach((header, index) => {
           let value = values[index].trim();
@@ -219,6 +295,9 @@ export default function Importar() {
               data_fim: ""
             }];
             return; // Não adiciona o campo original
+          } else if (fieldName === "usuario_atual") {
+            // Guarda temporariamente para definir status depois
+            tempUsuarioAtual = value;
           } else if (fieldName === "tipo") {
             // Normaliza o tipo
             value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -231,14 +310,27 @@ export default function Importar() {
             } else if (value.toLowerCase() === "n/a" || value === "") {
               value = "Não se aplica";
             }
-          } else if (fieldName === "status" && !value) {
-            value = "Disponível";
           }
           
           if (value !== null && value !== "") {
             obj[fieldName] = value;
           }
         });
+        
+        // Define o status automaticamente baseado no usuário atual
+        if (tempUsuarioAtual) {
+          const usuarioUpper = tempUsuarioAtual.toUpperCase();
+          if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+            obj.status = "Disponível";
+            obj.usuario_atual = ""; // Limpa o usuário se for "Disponível" ou "Reserva"
+          } else {
+            obj.usuario_atual = tempUsuarioAtual;
+            obj.status = "Em uso";
+          }
+        } else {
+          // Se não tem usuário atual, status é Disponível
+          obj.status = "Disponível";
+        }
         
         data.push(obj);
       }
@@ -391,6 +483,7 @@ export default function Importar() {
                         <li>Clique em "Importar Dados"</li>
                       </ol>
                       <p className="mt-2"><strong>Formato de data:</strong> dd/mm/yyyy (exemplo: 18/05/2021)</p>
+                      <p className="mt-1"><strong>Status automático:</strong> Se o campo USUÁRIO tiver valor, o status será "Em uso". Se estiver vazio, "Disponível" ou "RESERVA", o status será "Disponível".</p>
                     </AlertDescription>
                   </Alert>
 
