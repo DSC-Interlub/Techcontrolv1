@@ -71,6 +71,10 @@ export default function Chamados() {
       if (chamado.equipamento_subtipo) {
         detalhes += ` - ${chamado.equipamento_subtipo}`;
       }
+    } else if (chamado.tipo_solicitacao === "Servidor") {
+      if (chamado.servidor_subtipo) {
+        detalhes += ` - ${chamado.servidor_subtipo}`;
+      }
     }
     
     return detalhes;
@@ -329,6 +333,13 @@ export default function Chamados() {
                   <div>
                     <Label>Detalhes da Melhoria</Label>
                     <p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.melhorias_detalhes}</p>
+                  </div>
+                )}
+
+                {selectedChamado.desenvolvimento_detalhes && (
+                  <div>
+                    <Label>Detalhes do Desenvolvimento</Label>
+                    <p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.desenvolvimento_detalhes}</p>
                   </div>
                 )}
 

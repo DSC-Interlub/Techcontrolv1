@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Headset, CheckCircle, Loader2, ChevronDown } from "lucide-react";
+import { Headset, CheckCircle, Loader2, Laptop } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export default function ChamadoPublico() {
@@ -19,6 +19,8 @@ export default function ChamadoPublico() {
     equipamento_subtipo: "",
     equipamento_outros_detalhes: "",
     melhorias_detalhes: "",
+    desenvolvimento_detalhes: "",
+    servidor_subtipo: "",
     solicitante_nome: "",
     solicitante_email: "",
     solicitante_area: "",
@@ -203,6 +205,8 @@ export default function ChamadoPublico() {
           equipamento_subtipo: "",
           equipamento_outros_detalhes: "",
           melhorias_detalhes: "",
+          desenvolvimento_detalhes: "",
+          servidor_subtipo: "",
           solicitante_nome: "",
           solicitante_email: "",
           solicitante_area: "",
@@ -233,6 +237,8 @@ export default function ChamadoPublico() {
       equipamento_subtipo: "",
       equipamento_outros_detalhes: "",
       melhorias_detalhes: "",
+      desenvolvimento_detalhes: "",
+      servidor_subtipo: "",
     });
   };
 
@@ -291,6 +297,8 @@ export default function ChamadoPublico() {
                     <SelectItem value="Impressora">Impressora</SelectItem>
                     <SelectItem value="Equipamento">Equipamento</SelectItem>
                     <SelectItem value="Melhorias">Melhorias</SelectItem>
+                    <SelectItem value="Desenvolvimento">Desenvolvimento</SelectItem>
+                    <SelectItem value="Servidor">Servidor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -351,7 +359,7 @@ export default function ChamadoPublico() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Troca de Cartucho ou Toner">Troca de Cartucho ou Toner</SelectItem>
-                      <SelectItem value="Problemas na Impressora">Problemas na Impressora</SelectItem>
+                      <SelectItem value="Problema na Impressora">Problema na Impressora</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -372,8 +380,8 @@ export default function ChamadoPublico() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Lentidão no Computador">Lentidão no Computador</SelectItem>
-                        <SelectItem value="Problemas no Monitor, Mouse ou Teclado">Problemas no Monitor, Mouse ou Teclado</SelectItem>
-                        <SelectItem value="Problemas na Máquina">Problemas na Máquina</SelectItem>
+                        <SelectItem value="Problema no Monitor, Mouse ou Teclado">Problema no Monitor, Mouse ou Teclado</SelectItem>
+                        <SelectItem value="Problema na Máquina">Problema na Máquina</SelectItem>
                         <SelectItem value="Formatação">Formatação</SelectItem>
                         <SelectItem value="Solicitar Troca de Equipamento">Solicitar Troca de Equipamento</SelectItem>
                         <SelectItem value="Outros">Outros</SelectItem>
@@ -407,6 +415,40 @@ export default function ChamadoPublico() {
                     onChange={(e) => setFormData({ ...formData, melhorias_detalhes: e.target.value })}
                     rows={4}
                   />
+                </div>
+              )}
+
+              {/* Campo para DESENVOLVIMENTO */}
+              {formData.tipo_solicitacao === "Desenvolvimento" && (
+                <div>
+                  <Label>Descreva o Desenvolvimento Necessário *</Label>
+                  <Textarea
+                    required
+                    placeholder="Descreva detalhadamente o desenvolvimento ou funcionalidade que você precisa..."
+                    value={formData.desenvolvimento_detalhes}
+                    onChange={(e) => setFormData({ ...formData, desenvolvimento_detalhes: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+              )}
+
+              {/* Sub-opções para SERVIDOR */}
+              {formData.tipo_solicitacao === "Servidor" && (
+                <div>
+                  <Label>Problema com Servidor *</Label>
+                  <Select
+                    required
+                    value={formData.servidor_subtipo}
+                    onValueChange={(value) => setFormData({ ...formData, servidor_subtipo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o problema" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Rede">Rede</SelectItem>
+                      <SelectItem value="Internet">Internet</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
