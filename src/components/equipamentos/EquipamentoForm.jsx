@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
+import UsuariosAnteriores from "./UsuariosAnteriores";
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
-  const [formData, setFormData] = useState(equipamento || {});
+  const [formData, setFormData] = useState(equipamento || {
+    usuarios_anteriores: []
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -145,7 +148,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               />
             </div>
             <div>
-              <Label>Área</Label>
+              <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
               <Input
                 placeholder="Departamento ou área"
                 value={formData.area || entityType === "Notebooks_Externos" ? formData.uf || "" : ""}
@@ -154,7 +157,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Status</Label>
               <Select
@@ -191,6 +194,22 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               </Select>
             </div>
             <div>
+              <Label>Antivírus</Label>
+              <Select
+                value={formData.antivirus || "Não"}
+                onValueChange={(value) => handleChange("antivirus", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sim">Sim</SelectItem>
+                  <SelectItem value="Não">Não</SelectItem>
+                  <SelectItem value="Não se aplica">Não se aplica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Data de Formatação</Label>
               <Input
                 type="date"
@@ -199,6 +218,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               />
             </div>
           </div>
+
+          <UsuariosAnteriores
+            usuarios={formData.usuarios_anteriores || []}
+            onChange={(usuarios) => handleChange("usuarios_anteriores", usuarios)}
+          />
 
           <div>
             <Label>Observações</Label>

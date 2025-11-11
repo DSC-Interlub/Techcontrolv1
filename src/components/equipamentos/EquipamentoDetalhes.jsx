@@ -2,6 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Shield, ShieldOff } from "lucide-react";
 
 export default function EquipamentoDetalhes({ equipamento, onClose }) {
   return (
@@ -89,6 +90,31 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">Office</p>
+              <p className="font-medium">{equipamento.office || "-"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Antivírus</p>
+              <div className="flex items-center gap-2">
+                {equipamento.antivirus === "Sim" ? (
+                  <>
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span className="font-medium text-green-600">Instalado</span>
+                  </>
+                ) : equipamento.antivirus === "Não" ? (
+                  <>
+                    <ShieldOff className="w-4 h-4 text-red-600" />
+                    <span className="font-medium text-red-600">Não instalado</span>
+                  </>
+                ) : (
+                  <span className="font-medium text-gray-500">Não se aplica</span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {equipamento.data_formatacao && (
             <div>
               <p className="text-sm text-gray-500">Última Formatação</p>
@@ -106,15 +132,24 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
           )}
 
           {equipamento.usuarios_anteriores && equipamento.usuarios_anteriores.length > 0 && (
-            <div>
-              <p className="text-sm text-gray-500 mb-2">Histórico de Usuários</p>
+            <div className="pt-4 border-t">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Histórico de Usuários Anteriores</p>
               <div className="space-y-2">
                 {equipamento.usuarios_anteriores.map((usuario, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium">{usuario.nome}</p>
-                    <p className="text-sm text-gray-600">
-                      {usuario.data_inicio && format(new Date(usuario.data_inicio), "dd/MM/yyyy")} - 
-                      {usuario.data_fim ? format(new Date(usuario.data_fim), "dd/MM/yyyy") : "Atual"}
+                  <div key={index} className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-gray-900">{usuario.nome}</p>
+                      <Badge variant="outline" className="bg-white">
+                        #{index + 1}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <span className="font-medium">Período:</span>{" "}
+                      {usuario.data_inicio && format(new Date(usuario.data_inicio), "dd/MM/yyyy")}
+                      {" → "}
+                      {usuario.data_fim 
+                        ? format(new Date(usuario.data_fim), "dd/MM/yyyy")
+                        : <span className="text-blue-600 font-medium">Atual</span>}
                     </p>
                   </div>
                 ))}
