@@ -96,7 +96,8 @@ export default function Layout({ children }) {
 
   // Detecta páginas públicas pelo pathname
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
-                       location.pathname.includes('/reserva-publica');
+                       location.pathname.includes('/reserva-publica') ||
+                       location.pathname.includes('/acompanhar-chamado');
 
   // Se for página pública, renderiza apenas o conteúdo sem layout
   if (isPublicPage) {
