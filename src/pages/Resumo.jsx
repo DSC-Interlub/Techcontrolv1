@@ -26,37 +26,41 @@ export default function Resumo() {
 
     // Processar PCs Internos
     pcsInternos.forEach(pc => {
-      if (pc.usuario_atual) {
+      if (pc.usuario_atual && pc.usuario_atual.trim() !== "") {
         if (!userMap.has(pc.usuario_atual)) {
           userMap.set(pc.usuario_atual, {
             usuario: pc.usuario_atual,
             area: pc.area || "-",
-            desktop: [],
-            monitor: [],
-            notebook: [],
+            desktops: [],
+            monitores: [],
+            notebooks: [],
           });
         }
         const user = userMap.get(pc.usuario_atual);
-        if (pc.tipo === "Desktop") user.desktop.push(pc);
-        else if (pc.tipo === "Monitor") user.monitor.push(pc);
-        else if (pc.tipo === "Notebook") user.notebook.push(pc);
+        if (pc.tipo === "Desktop") {
+          user.desktops.push(pc);
+        } else if (pc.tipo === "Monitor") {
+          user.monitores.push(pc);
+        } else if (pc.tipo === "Notebook") {
+          user.notebooks.push(pc);
+        }
       }
     });
 
     // Processar Notebooks Externos
     notebooksExternos.forEach(nb => {
-      if (nb.usuario_atual) {
+      if (nb.usuario_atual && nb.usuario_atual.trim() !== "") {
         if (!userMap.has(nb.usuario_atual)) {
           userMap.set(nb.usuario_atual, {
             usuario: nb.usuario_atual,
             area: nb.uf || nb.area || "-",
-            desktop: [],
-            monitor: [],
-            notebook: [],
+            desktops: [],
+            monitores: [],
+            notebooks: [],
           });
         }
         const user = userMap.get(nb.usuario_atual);
-        user.notebook.push(nb);
+        user.notebooks.push(nb);
       }
     });
 
@@ -72,9 +76,9 @@ export default function Resumo() {
 
   const stats = {
     totalUsuarios: userEquipments.length,
-    comDesktop: userEquipments.filter(u => u.desktop.length > 0).length,
-    comNotebook: userEquipments.filter(u => u.notebook.length > 0).length,
-    comMonitor: userEquipments.filter(u => u.monitor.length > 0).length,
+    comDesktop: userEquipments.filter(u => u.desktops.length > 0).length,
+    comNotebook: userEquipments.filter(u => u.notebooks.length > 0).length,
+    comMonitor: userEquipments.filter(u => u.monitores.length > 0).length,
   };
 
   return (
@@ -148,16 +152,15 @@ export default function Resumo() {
                     <TableHead>#</TableHead>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Área</TableHead>
-                    <TableHead>Desktop</TableHead>
-                    <TableHead>Monitor</TableHead>
-                    <TableHead>Monitor 2</TableHead>
-                    <TableHead>Notebook</TableHead>
+                    <TableHead>Desktops</TableHead>
+                    <TableHead>Monitores</TableHead>
+                    <TableHead>Notebooks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -173,44 +176,54 @@ export default function Resumo() {
                         </TableCell>
                         <TableCell>{user.area}</TableCell>
                         <TableCell>
-                          {user.desktop.length > 0 ? (
-                            <div>
-                              <Badge variant="outline" className="text-xs">
-                                {user.desktop[0].modelo || user.desktop[0].marca}
-                              </Badge>
+                          {user.desktops.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {user.desktops.map((desktop, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs w-fit">
+                                  {desktop.modelo || desktop.marca}
+                                </Badge>
+                              ))}
+                              {user.desktops.length > 1 && (
+                                <span className="text-xs text-blue-600 font-medium">
+                                  ({user.desktops.length} desktops)
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.monitor.length > 0 ? (
-                            <div>
-                              <Badge variant="outline" className="text-xs">
-                                {user.monitor[0].modelo || user.monitor[0].marca}
-                              </Badge>
+                          {user.monitores.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {user.monitores.map((monitor, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs w-fit">
+                                  {monitor.modelo || monitor.marca}
+                                </Badge>
+                              ))}
+                              {user.monitores.length > 1 && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  ({user.monitores.length} monitores)
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.monitor.length > 1 ? (
-                            <div>
-                              <Badge variant="outline" className="text-xs">
-                                {user.monitor[1].modelo || user.monitor[1].marca}
-                              </Badge>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {user.notebook.length > 0 ? (
-                            <div>
-                              <Badge variant="outline" className="text-xs">
-                                {user.notebook[0].modelo || user.notebook[0].marca}
-                              </Badge>
+                          {user.notebooks.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {user.notebooks.map((notebook, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs w-fit">
+                                  {notebook.modelo || notebook.marca}
+                                </Badge>
+                              ))}
+                              {user.notebooks.length > 1 && (
+                                <span className="text-xs text-purple-600 font-medium">
+                                  ({user.notebooks.length} notebooks)
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>
