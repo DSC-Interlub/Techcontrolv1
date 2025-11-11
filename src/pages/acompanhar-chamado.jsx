@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Clock, CheckCircle, AlertCircle, XCircle, Laptop, Calendar, User } from "lucide-react";
+import { Search, Clock, CheckCircle, AlertCircle, XCircle, Laptop, Calendar, User, History } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -87,6 +87,25 @@ export default function AcompanharChamado() {
     }
     
     return detalhes;
+  };
+
+  const getTipoDescricao = (tipo) => {
+    const tipos = {
+      status: "Status",
+      observacao: "Observação",
+      solucao: "Solução",
+      responsavel: "Responsável"
+    };
+    return tipos[tipo] || tipo;
+  };
+
+  const formatarDataHora = (isoString) => {
+    try {
+      const data = new Date(isoString);
+      return format(data, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    } catch {
+      return isoString;
+    }
   };
 
   return (
@@ -303,10 +322,72 @@ export default function AcompanharChamado() {
                   </div>
                 )}
 
+                {chamado.historico && chamado.historico.length > 0 && (
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <History className="w-5 h-5 text-purple-700" />
+                      <h3 className="font-bold text-purple-900 text-lg">Histórico de Alterações</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {chamado.historico
+                        .sort((a, b) => new Date(b.data_hora) - new Date(a.data_hora))
+                        .map((item, idx) => (
+                        <div key={idx} className="bg-white border border-purple-200 rounded-lg p-4 shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                item.tipo === 'status' ? 'bg-blue-100' :
+                                item.tipo === 'solucao' ? 'bg-green-100' :
+                                item.tipo === 'observacao' ? 'bg-yellow-100' :
+                                'bg-purple-100'
+                              }`}>
+                                {item.tipo === 'status' && <AlertCircle className="w-4 h-4 text-blue-600" />}
+                                {item.tipo === 'solucao' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                                {item.tipo === 'observacao' && <Clock className="w-4 h-4 text-yellow-600" />}
+                                {item.tipo === 'responsavel' && <User className="w-4 h-4 text-purple-600" />}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-gray-900">
+                                  {getTipoDescricao(item.tipo)}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {formatarDataHora(item.data_hora)}
+                                </span>
+                              </div>
+                              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                                <div className="text-sm">
+                                  <span className="text-gray-600">De:</span>
+                                  <span className="ml-2 font-medium text-red-700">
+                                    {item.valor_anterior === "" || !item.valor_anterior ? "(Vazio)" : item.valor_anterior}
+                                  </span>
+                                </div>
+                                <div className="text-sm">
+                                  <span className="text-gray-600">Para:</span>
+                                  <span className="ml-2 font-medium text-green-700">
+                                    {item.valor_novo === "" || !item.valor_novo ? "(Vazio)" : item.valor_novo}
+                                  </span>
+                                </div>
+                              </div>
+                              {item.usuario && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Alterado por: {item.usuario}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Alert>
                   <AlertCircle className="w-4 h-4" />
                   <AlertDescription>
-                    <strong>Dica:</strong> Guarde o número do seu chamado ({chamado.numero_chamado}) para consultas futuras.
+                    <strong>Dica:</strong> Guarde o número do seu chamado ({chamado.numero_chamado}) para consultas futuras. 
+                    Você pode voltar a esta página sempre que quiser ver o status atualizado.
                   </AlertDescription>
                 </Alert>
               </CardContent>

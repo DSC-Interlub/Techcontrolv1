@@ -12,10 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Chamados() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedChamado, setSelectedChamado] = useState(null);
+  const [originalChamado, setOriginalChamado] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
@@ -33,6 +35,7 @@ export default function Chamados() {
       queryClient.invalidateQueries({ queryKey: ['chamados'] });
       setShowDetails(false);
       setSelectedChamado(null);
+      setOriginalChamado(null);
     },
   });
 
@@ -44,7 +47,64 @@ export default function Chamados() {
 
   const handleOpenDetails = (chamado) => {
     setSelectedChamado(chamado);
+    setOriginalChamado(JSON.parse(JSON.stringify(chamado)));
     setShowDetails(true);
+  };
+
+  const handleSaveChanges = () => {
+    if (!selectedChamado || !originalChamado) return;
+
+    const historico = selectedChamado.historico || [];
+    const dataHora = new Date().toISOString();
+
+    // Detectar mudanças e adicionar ao histórico
+    if (selectedChamado.status !== originalChamado.status) {
+      historico.push({
+        data_hora: dataHora,
+        tipo: "status",
+        valor_anterior: originalChamado.status || "Nenhum",
+        valor_novo: selectedChamado.status,
+        usuario: "Admin"
+      });
+    }
+
+    if (selectedChamado.observacoes !== originalChamado.observacoes) {
+      historico.push({
+        data_hora: dataHora,
+        tipo: "observacao",
+        valor_anterior: originalChamado.observacoes || "Nenhuma",
+        valor_novo: selectedChamado.observacoes || "Nenhuma",
+        usuario: "Admin"
+      });
+    }
+
+    if (selectedChamado.solucao !== originalChamado.solucao) {
+      historico.push({
+        data_hora: dataHora,
+        tipo: "solucao",
+        valor_anterior: originalChamado.solucao || "Nenhuma",
+        valor_novo: selectedChamado.solucao || "Nenhuma",
+        usuario: "Admin"
+      });
+    }
+
+    if (selectedChamado.responsavel !== originalChamado.responsavel) {
+      historico.push({
+        data_hora: dataHora,
+        tipo: "responsavel",
+        valor_anterior: originalChamado.responsavel || "Nenhum",
+        valor_novo: selectedChamado.responsavel || "Nenhum",
+        usuario: "Admin"
+      });
+    }
+
+    updateChamadoMutation.mutate({ 
+      id: selectedChamado.id, 
+      data: {
+        ...selectedChamado,
+        historico: historico
+      }
+    });
   };
 
   const filteredChamados = filterStatus === "all" 
@@ -73,6 +133,16 @@ export default function Chamados() {
     }
     
     return detalhes;
+  };
+
+  const getTipoDescricao = (tipo) => {
+    const tipos = {
+      status: "Status alterado",
+      observacao: "Observação adicionada/alterada",
+      solucao: "Solução registrada/alterada",
+      responsavel: "Responsável alterado"
+    };
+    return tipos[tipo] || tipo;
   };
 
   return (
@@ -253,6 +323,12 @@ export default function Chamados() {
             </DialogHeader>
             {selectedChamado && (
               <div className="space-y-4">
+                <Alert className="bg-blue-50 border-blue-200">
+                  <AlertDescription className="text-blue-800 text-sm">
+                    <strong>Dica:</strong> Todas as alterações que você fizer serão registradas no histórico e ficarão visíveis para o solicitante.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Número do Chamado</Label>
@@ -383,10 +459,7 @@ export default function Chamados() {
                     Cancelar
                   </Button>
                   <Button 
-                    onClick={() => updateChamadoMutation.mutate({ 
-                      id: selectedChamado.id, 
-                      data: selectedChamado 
-                    })}
+                    onClick={handleSaveChanges}
                     className="bg-orange-600 hover:bg-orange-700"
                   >
                     Salvar Alterações
