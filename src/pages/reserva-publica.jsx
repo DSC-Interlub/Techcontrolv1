@@ -25,6 +25,7 @@ export default function ReservaPublica() {
   });
   const [success, setSuccess] = useState(false);
   const [conflictError, setConflictError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -41,7 +42,7 @@ export default function ReservaPublica() {
     },
   });
 
-  const { data: reservasExistentes = [] } = useQuery({
+  const { data: reservasExistentes = [], refetch: refetchReservas } = useQuery({
     queryKey: ['reservas_existentes'],
     queryFn: async () => {
       try {
@@ -80,6 +81,7 @@ export default function ReservaPublica() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notebooks_disponiveis'] });
       queryClient.invalidateQueries({ queryKey: ['reservas_existentes'] });
+      setIsSubmitting(false);
       setSuccess(true);
       setTimeout(() => {
         setStep(1);
@@ -97,45 +99,73 @@ export default function ReservaPublica() {
         setSuccess(false);
       }, 3000);
     },
-  });
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const hasConflict = checkConflict(
-      selectedEquipamento.id,
-      formData.data_inicio,
-      formData.hora_inicio,
-      formData.data_fim,
-      formData.hora_fim
-    );
-
-    if (hasConflict) {
+    onError: () => {
+      setIsSubmitting(false);
       setConflictError(true);
       setTimeout(() => setConflictError(false), 5000);
+    },
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Previne múltiplas submissões
+    if (isSubmitting) {
       return;
     }
 
-    const agora = new Date();
-    const inicioReserva = new Date(`${formData.data_inicio}T${formData.hora_inicio}`);
-    const fimReserva = new Date(`${formData.data_fim}T${formData.hora_fim}`);
+    setIsSubmitting(true);
+    setConflictError(false);
 
-    let statusInicial = "Confirmada";
-    if (inicioReserva <= agora && fimReserva > agora) {
-      statusInicial = "Em Andamento";
-    } else if (fimReserva <= agora) {
-      statusInicial = "Concluída";
+    try {
+      // Recarrega as reservas existentes para ter os dados mais recentes
+      await refetchReservas();
+      
+      // Aguarda um momento para garantir que os dados foram atualizados
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Verifica conflito com dados atualizados
+      const hasConflict = checkConflict(
+        selectedEquipamento.id,
+        formData.data_inicio,
+        formData.hora_inicio,
+        formData.data_fim,
+        formData.hora_fim
+      );
+
+      if (hasConflict) {
+        setConflictError(true);
+        setIsSubmitting(false);
+        setTimeout(() => setConflictError(false), 5000);
+        return;
+      }
+
+      const agora = new Date();
+      const inicioReserva = new Date(`${formData.data_inicio}T${formData.hora_inicio}`);
+      const fimReserva = new Date(`${formData.data_fim}T${formData.hora_fim}`);
+
+      let statusInicial = "Confirmada";
+      if (inicioReserva <= agora && fimReserva > agora) {
+        statusInicial = "Em Andamento";
+      } else if (fimReserva <= agora) {
+        statusInicial = "Concluída";
+      }
+
+      const reservaData = {
+        equipamento_id: selectedEquipamento.id,
+        equipamento_tipo: "Notebooks_Externos",
+        equipamento_nome: `${selectedEquipamento.marca} ${selectedEquipamento.modelo}`,
+        ...formData,
+        status: statusInicial
+      };
+
+      createReservaMutation.mutate(reservaData);
+    } catch (error) {
+      console.error('Erro ao processar reserva:', error);
+      setIsSubmitting(false);
+      setConflictError(true);
+      setTimeout(() => setConflictError(false), 5000);
     }
-
-    const reservaData = {
-      equipamento_id: selectedEquipamento.id,
-      equipamento_tipo: "Notebooks_Externos",
-      equipamento_nome: `${selectedEquipamento.marca} ${selectedEquipamento.modelo}`,
-      ...formData,
-      status: statusInicial
-    };
-
-    createReservaMutation.mutate(reservaData);
   };
 
   if (success) {
@@ -271,7 +301,7 @@ export default function ReservaPublica() {
                     <AlertCircle className="w-4 h-4 text-red-600" />
                     <AlertDescription className="text-red-800">
                       <strong>Conflito de horário!</strong> Já existe uma reserva para este notebook no período selecionado. 
-                      Por favor, escolha outro horário.
+                      Por favor, escolha outro horário ou notebook.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -284,6 +314,7 @@ export default function ReservaPublica() {
                       placeholder="Seu nome"
                       value={formData.solicitante_nome}
                       onChange={(e) => setFormData({ ...formData, solicitante_nome: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -294,6 +325,7 @@ export default function ReservaPublica() {
                       placeholder="seu.email@empresa.com"
                       value={formData.solicitante_email}
                       onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -305,6 +337,7 @@ export default function ReservaPublica() {
                     placeholder="Ex: Financeiro, TI, Vendas"
                     value={formData.solicitante_area}
                     onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
+                    disabled={isSubmitting}
                   />
                 </div>
 
@@ -317,6 +350,7 @@ export default function ReservaPublica() {
                       value={formData.data_inicio}
                       onChange={(e) => setFormData({ ...formData, data_inicio: e.target.value })}
                       min={new Date().toISOString().split('T')[0]}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -326,6 +360,7 @@ export default function ReservaPublica() {
                       type="time"
                       value={formData.hora_inicio}
                       onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -339,6 +374,7 @@ export default function ReservaPublica() {
                       value={formData.data_fim}
                       onChange={(e) => setFormData({ ...formData, data_fim: e.target.value })}
                       min={formData.data_inicio || new Date().toISOString().split('T')[0]}
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div>
@@ -348,6 +384,7 @@ export default function ReservaPublica() {
                       type="time"
                       value={formData.hora_fim}
                       onChange={(e) => setFormData({ ...formData, hora_fim: e.target.value })}
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -360,13 +397,18 @@ export default function ReservaPublica() {
                     value={formData.motivo}
                     onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                     rows={3}
+                    disabled={isSubmitting}
                   />
                 </div>
 
                 <Alert>
                   <Clock className="w-4 h-4" />
                   <AlertDescription>
-                    Sua reserva será confirmada automaticamente. O notebook estará disponível no horário agendado.
+                    {isSubmitting ? (
+                      <strong className="text-blue-600">Processando sua reserva... Por favor, aguarde.</strong>
+                    ) : (
+                      "Sua reserva será confirmada automaticamente. O notebook estará disponível no horário agendado."
+                    )}
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -376,18 +418,19 @@ export default function ReservaPublica() {
                   type="button"
                   variant="outline"
                   onClick={() => setStep(1)}
+                  disabled={isSubmitting}
                 >
                   Voltar
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-purple-600 hover:bg-purple-700"
-                  disabled={createReservaMutation.isLoading}
+                  className="bg-purple-600 hover:bg-purple-700 min-w-[160px]"
+                  disabled={isSubmitting || createReservaMutation.isLoading}
                 >
-                  {createReservaMutation.isLoading ? (
+                  {isSubmitting || createReservaMutation.isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Enviando...
+                      Processando...
                     </>
                   ) : (
                     "Confirmar Reserva"
