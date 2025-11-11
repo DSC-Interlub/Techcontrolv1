@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ export default function Importar() {
       "ÁREA": "area",
       "AREA": "area",
       "OFFICE": "office",
-      "STATUS": "status",
+      "STATUS": "status_original",  // Changed to capture original status
       "CONDIÇÃO": "condicao",
       "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
@@ -84,7 +85,7 @@ export default function Importar() {
       "ÁREA": "area",
       "AREA": "area",
       "OFFICE": "office",
-      "STATUS": "status",
+      "STATUS": "status_original",  // Changed to capture original status
       "CONDIÇÃO": "condicao",
       "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
@@ -110,7 +111,7 @@ export default function Importar() {
       "IMEI": "imei",
       "USUÁRIO": "usuario_atual",
       "USUARIO": "usuario_atual",
-      "STATUS": "status"
+      "STATUS": "status_original"
     },
     Cameras: {
       "Nº SEQ": "numero_sequencial",
@@ -126,7 +127,7 @@ export default function Importar() {
       "USUARIO": "usuario_atual",
       "ÁREA": "area",
       "AREA": "area",
-      "STATUS": "status"
+      "STATUS": "status_original"
     },
     Coletores: {
       "Nº SEQ": "numero_sequencial",
@@ -143,7 +144,7 @@ export default function Importar() {
       "USUARIO": "usuario_atual",
       "ÁREA": "area",
       "AREA": "area",
-      "STATUS": "status"
+      "STATUS": "status_original"
     },
     Canetas_Vibracao: {
       "Nº SEQ": "numero_sequencial",
@@ -160,7 +161,7 @@ export default function Importar() {
       "USUARIO": "usuario_atual",
       "ÁREA": "area",
       "AREA": "area",
-      "STATUS": "status"
+      "STATUS": "status_original"
     }
   };
 
@@ -270,6 +271,7 @@ export default function Importar() {
       if (values.length === headers.length) {
         const obj = {};
         let tempUsuarioAtual = null;
+        let tempStatusOriginalValue = null; // Variable to hold the raw status value from Excel
         
         headers.forEach((header, index) => {
           let value = values[index].trim();
@@ -281,28 +283,25 @@ export default function Importar() {
           if (fieldName === "data_aquisicao" || fieldName === "data_formatacao") {
             value = convertDateToISO(value);
           } else if (fieldName === "tempo_uso") {
-            // Mantém como string mas limpa
             value = value || "";
           } else if (fieldName === "uso_anos") {
             value = parseFloat(value) || 0;
           } else if (fieldName === "quantidade" || fieldName === "valor") {
             value = parseFloat(value) || 0;
           } else if (fieldName === "usuario_anterior" && value) {
-            // Converte usuário anterior em array de objetos
             obj.usuarios_anteriores = [{
               nome: value,
               data_inicio: obj.data_aquisicao || "",
               data_fim: ""
             }];
-            return; // Não adiciona o campo original
+            return; // Do not add the original field
           } else if (fieldName === "usuario_atual") {
-            // Guarda temporariamente para definir status depois
-            tempUsuarioAtual = value;
+            tempUsuarioAtual = value; // Capture usuario_atual for later processing
+          } else if (fieldName === "status_original") { // Capture original status value
+            tempStatusOriginalValue = value;
           } else if (fieldName === "tipo") {
-            // Normaliza o tipo
             value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
           } else if (fieldName === "antivirus") {
-            // Normaliza antivírus
             if (value.toLowerCase() === "sim" || value.toLowerCase() === "s") {
               value = "Sim";
             } else if (value.toLowerCase() === "não" || value.toLowerCase() === "nao" || value.toLowerCase() === "n") {
@@ -312,24 +311,41 @@ export default function Importar() {
             }
           }
           
-          if (value !== null && value !== "") {
+          // Add other fields to the object, excluding the temporary status_original field
+          if (value !== null && value !== "" && fieldName !== "status_original") {
             obj[fieldName] = value;
           }
         });
         
-        // Define o status automaticamente baseado no usuário atual
-        if (tempUsuarioAtual) {
-          const usuarioUpper = tempUsuarioAtual.toUpperCase();
-          if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
-            obj.status = "Disponível";
-            obj.usuario_atual = ""; // Limpa o usuário se for "Disponível" ou "Reserva"
-          } else {
-            obj.usuario_atual = tempUsuarioAtual;
-            obj.status = "Em uso";
-          }
+        // --- Determine the 'status' field ---
+        if (tempStatusOriginalValue && tempStatusOriginalValue.trim() !== "") {
+          // If status was provided in Excel, use it directly
+          obj.status = tempStatusOriginalValue.trim();
         } else {
-          // Se não tem usuário atual, status é Disponível
-          obj.status = "Disponível";
+          // Otherwise, infer status from 'usuario_atual'
+          if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") {
+            const usuarioUpper = tempUsuarioAtual.toUpperCase();
+            if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+              obj.status = "Disponível";
+            } else {
+              obj.status = "Em uso";
+            }
+          } else {
+            // If no user and no status provided, default to Available
+            obj.status = "Disponível";
+          }
+        }
+
+        // --- Determine the 'usuario_atual' field ---
+        if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") {
+            const usuarioUpper = tempUsuarioAtual.toUpperCase();
+            if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+                obj.usuario_atual = ""; // Clear user if it indicated availability
+            } else {
+                obj.usuario_atual = tempUsuarioAtual;
+            }
+        } else {
+            obj.usuario_atual = ""; // Ensure it's an empty string if no user was provided
         }
         
         data.push(obj);
@@ -483,7 +499,9 @@ export default function Importar() {
                         <li>Clique em "Importar Dados"</li>
                       </ol>
                       <p className="mt-2"><strong>Formato de data:</strong> dd/mm/yyyy (exemplo: 18/05/2021)</p>
-                      <p className="mt-1"><strong>Status automático:</strong> Se o campo USUÁRIO tiver valor, o status será "Em uso". Se estiver vazio, "Disponível" ou "RESERVA", o status será "Disponível".</p>
+                      <p className="mt-1">
+                        <strong>Precedência de Status:</strong> Se a coluna "STATUS" for preenchida, esse valor será usado. Caso contrário, o status será inferido a partir da coluna "USUÁRIO": "Em uso" se houver usuário, "Disponível" se o usuário for vazio ou indicar disponibilidade.
+                      </p>
                     </AlertDescription>
                   </Alert>
 
