@@ -91,8 +91,17 @@ const managementItems = [
   },
 ];
 
-export default function Layout({ children }) {
+export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+
+  // Páginas públicas que não devem ter sidebar
+  const publicPages = ['chamado-publico', 'reserva-publica'];
+  const isPublicPage = publicPages.includes(currentPageName);
+
+  // Se for página pública, renderiza apenas o conteúdo sem layout
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
 
   return (
     <SidebarProvider>

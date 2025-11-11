@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, ExternalLink, Eye } from "lucide-react";
+import { Headset, Copy, Check, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,7 +17,10 @@ export default function Chamados() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedChamado, setSelectedChamado] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
+
+  const publicUrl = `${window.location.origin}/chamado-publico`;
 
   const { data: chamados = [], isLoading } = useQuery({
     queryKey: ['chamados'],
@@ -33,6 +36,12 @@ export default function Chamados() {
     },
   });
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const filteredChamados = filterStatus === "all" 
     ? chamados 
     : chamados.filter(c => c.status === filterStatus);
@@ -42,19 +51,6 @@ export default function Chamados() {
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
-  };
-
-  const handleUpdateStatus = (status) => {
-    if (selectedChamado) {
-      const updateData = { status };
-      if (status === "Resolvido") {
-        updateData.data_conclusao = new Date().toISOString().split('T')[0];
-      }
-      updateChamadoMutation.mutate({ 
-        id: selectedChamado.id, 
-        data: { ...selectedChamado, ...updateData }
-      });
-    }
   };
 
   return (
@@ -70,12 +66,24 @@ export default function Chamados() {
               <p className="text-gray-500 mt-1">Gerenciar solicitações de suporte</p>
             </div>
           </div>
-          <a href="/chamado-publico" target="_blank" rel="noopener noreferrer">
-            <Button className="bg-orange-600 hover:bg-orange-700">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Link Público de Chamados
-            </Button>
-          </a>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <span className="text-sm text-gray-600 font-mono truncate max-w-xs">{publicUrl}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCopyLink}
+                className="flex-shrink-0"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 text-center">Link público para abrir chamados</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

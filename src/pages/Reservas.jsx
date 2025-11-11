@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isSameMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,7 +21,10 @@ export default function Reservas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
+  const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
+
+  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/reserva-publica` : '';
 
   const { data: reservas = [], isLoading: loadingReservas } = useQuery({
     queryKey: ['reservas'],
@@ -87,6 +91,14 @@ export default function Reservas() {
     });
   };
 
+  const handleCopyLink = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const filteredReservas = filterStatus === "all" 
     ? reservas 
     : reservas.filter(r => r.status === filterStatus);
@@ -111,6 +123,10 @@ export default function Reservas() {
       const dataInicio = parseISO(reserva.data_inicio);
       const dataFim = parseISO(reserva.data_fim);
       
+      // Ensure the date is within the reservation period
+      // For a date, we care if any part of the reservation spans that date.
+      // So, the reservation must start on or before the date, and end on or after the date.
+      // Also, considering whole days for calendar display, we compare dates without time.
       return date >= dataInicio && date <= dataFim;
     });
   };
@@ -136,7 +152,7 @@ export default function Reservas() {
               <p className="text-gray-500 mt-1">Gerenciar solicitações de reserva</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2">
             <Button
               onClick={() => setShowConfigModal(true)}
               variant="outline"
@@ -145,12 +161,22 @@ export default function Reservas() {
               <Settings className="w-4 h-4" />
               Configurar Notebooks
             </Button>
-            <a href="/reserva-publica" target="_blank" rel="noopener noreferrer">
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Link Público
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <span className="text-sm text-gray-600 font-mono truncate max-w-xs">{publicUrl}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCopyLink}
+                className="flex-shrink-0"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
               </Button>
-            </a>
+            </div>
+            <p className="text-xs text-gray-500 text-center">Link público para reservar notebooks</p>
           </div>
         </div>
 
