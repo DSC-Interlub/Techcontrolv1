@@ -7,6 +7,29 @@ import { FileSpreadsheet, Search, User } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+// Função para normalizar nomes de usuários
+const normalizeUserName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .replace(/[^a-z0-9\s]/g, '') // Remove caracteres especiais
+    .replace(/\s+/g, ' ') // Normaliza espaços
+    .trim();
+};
+
+// Função para encontrar o nome original mais completo
+const findBestUserName = (names) => {
+  if (!names || names.length === 0) return '';
+  
+  // Retorna o nome mais longo (geralmente o mais completo)
+  return names.reduce((best, current) => {
+    return current.length > best.length ? current : best;
+  }, names[0]);
+};
+
 export default function Resumo() {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -20,47 +43,102 @@ export default function Resumo() {
     queryFn: () => base44.entities.Notebooks_Externos.list(),
   });
 
-  // Agrupar equipamentos por usuário
+  const { data: smartphones = [] } = useQuery({
+    queryKey: ['smartphones'],
+    queryFn: () => base44.entities.Smartphones.list(),
+  });
+
+  const { data: cameras = [] } = useQuery({
+    queryKey: ['cameras'],
+    queryFn: () => base44.entities.Cameras.list(),
+  });
+
+  const { data: coletores = [] } = useQuery({
+    queryKey: ['coletores'],
+    queryFn: () => base44.entities.Coletores.list(),
+  });
+
+  const { data: canetasVibracao = [] } = useQuery({
+    queryKey: ['canetas_vibracao'],
+    queryFn: () => base44.entities.Canetas_Vibracao.list(),
+  });
+
+  // Agrupar equipamentos por usuário (com normalização de nomes)
   const getUserEquipments = () => {
     const userMap = new Map();
+    const normalizedToOriginal = new Map(); // Mapeia nome normalizado para nomes originais
 
-    // Processar PCs Internos
-    pcsInternos.forEach(pc => {
-      if (pc.usuario_atual && pc.usuario_atual.trim() !== "") {
-        if (!userMap.has(pc.usuario_atual)) {
-          userMap.set(pc.usuario_atual, {
-            usuario: pc.usuario_atual,
-            area: pc.area || "-",
-            desktops: [],
-            monitores: [],
-            notebooks: [],
-          });
-        }
-        const user = userMap.get(pc.usuario_atual);
-        if (pc.tipo === "Desktop") {
-          user.desktops.push(pc);
-        } else if (pc.tipo === "Monitor") {
-          user.monitores.push(pc);
-        } else if (pc.tipo === "Notebook") {
-          user.notebooks.push(pc);
-        }
+    const addEquipment = (equipment, type) => {
+      if (!equipment.usuario_atual || equipment.usuario_atual.trim() === "") return;
+      
+      const originalName = equipment.usuario_atual.trim();
+      const normalizedName = normalizeUserName(originalName);
+      
+      if (!normalizedName) return;
+
+      // Mapeia nome normalizado para original
+      if (!normalizedToOriginal.has(normalizedName)) {
+        normalizedToOriginal.set(normalizedName, []);
       }
-    });
+      normalizedToOriginal.get(normalizedName).push(originalName);
 
-    // Processar Notebooks Externos
-    notebooksExternos.forEach(nb => {
-      if (nb.usuario_atual && nb.usuario_atual.trim() !== "") {
-        if (!userMap.has(nb.usuario_atual)) {
-          userMap.set(nb.usuario_atual, {
-            usuario: nb.usuario_atual,
-            area: nb.uf || nb.area || "-",
-            desktops: [],
-            monitores: [],
-            notebooks: [],
-          });
+      if (!userMap.has(normalizedName)) {
+        userMap.set(normalizedName, {
+          usuario: originalName, // Será atualizado depois com o melhor nome
+          area: equipment.area || equipment.uf || "-",
+          desktops: [],
+          monitores: [],
+          notebooks: [],
+          smartphones: [],
+          cameras: [],
+          coletores: [],
+          canetas: [],
+          valorSmartphones: 0
+        });
+      }
+      const user = userMap.get(normalizedName);
+
+      // Adiciona o equipamento ao tipo correto
+      if (type === 'pc_interno') {
+        if (equipment.tipo === "Desktop") {
+          user.desktops.push(equipment);
+        } else if (equipment.tipo === "Monitor") {
+          user.monitores.push(equipment);
+        } else if (equipment.tipo === "Notebook") {
+          user.notebooks.push(equipment);
         }
-        const user = userMap.get(nb.usuario_atual);
-        user.notebooks.push(nb);
+      } else if (type === 'notebook_externo') {
+        user.notebooks.push(equipment);
+      } else if (type === 'smartphone') {
+        user.smartphones.push(equipment);
+        user.valorSmartphones += equipment.valor || 0;
+      } else if (type === 'camera') {
+        user.cameras.push(equipment);
+      } else if (type === 'coletor') {
+        user.coletores.push(equipment);
+      } else if (type === 'caneta') {
+        user.canetas.push(equipment);
+      }
+
+      // Atualiza a área se não estava definida
+      if (user.area === "-" && (equipment.area || equipment.uf)) {
+        user.area = equipment.area || equipment.uf;
+      }
+    };
+
+    // Processar todos os equipamentos
+    pcsInternos.forEach(pc => addEquipment(pc, 'pc_interno'));
+    notebooksExternos.forEach(nb => addEquipment(nb, 'notebook_externo'));
+    smartphones.forEach(sm => addEquipment(sm, 'smartphone'));
+    cameras.forEach(cam => addEquipment(cam, 'camera'));
+    coletores.forEach(col => addEquipment(col, 'coletor'));
+    canetasVibracao.forEach(can => addEquipment(can, 'caneta'));
+
+    // Atualizar com o melhor nome original para cada usuário normalizado
+    normalizedToOriginal.forEach((originalNames, normalizedName) => {
+      if (userMap.has(normalizedName)) {
+        const user = userMap.get(normalizedName);
+        user.usuario = findBestUserName([...new Set(originalNames)]); // Remove duplicatas
       }
     });
 
@@ -70,8 +148,8 @@ export default function Resumo() {
   const userEquipments = getUserEquipments();
 
   const filteredUsers = userEquipments.filter(user =>
-    user.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.area.toLowerCase().includes(searchTerm.toLowerCase())
+    normalizeUserName(user.usuario).includes(normalizeUserName(searchTerm)) ||
+    normalizeUserName(user.area).includes(normalizeUserName(searchTerm))
   );
 
   const stats = {
@@ -79,26 +157,49 @@ export default function Resumo() {
     comDesktop: userEquipments.filter(u => u.desktops.length > 0).length,
     comNotebook: userEquipments.filter(u => u.notebooks.length > 0).length,
     comMonitor: userEquipments.filter(u => u.monitores.length > 0).length,
+    comSmartphone: userEquipments.filter(u => u.smartphones.length > 0).length,
+    comCamera: userEquipments.filter(u => u.cameras.length > 0).length,
+    comColetor: userEquipments.filter(u => u.coletores.length > 0).length,
+    comCaneta: userEquipments.filter(u => u.canetas.length > 0).length,
+  };
+
+  const renderEquipmentBadges = (equipments, label, color = "outline") => {
+    if (equipments.length === 0) return <span className="text-gray-400">-</span>;
+    
+    return (
+      <div className="flex flex-col gap-1">
+        {equipments.map((eq, idx) => (
+          <Badge key={idx} variant={color} className="text-xs w-fit">
+            {eq.modelo || eq.marca}
+          </Badge>
+        ))}
+        {equipments.length > 1 && (
+          <span className="text-xs text-blue-600 font-medium">
+            ({equipments.length} {label})
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
             <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Resumo por Usuário</h1>
-            <p className="text-gray-500 mt-1">Equipamentos alocados para cada usuário interno</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Resumo Completo por Usuário</h1>
+            <p className="text-gray-500 mt-1">Todos os equipamentos alocados para cada usuário</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Total de Usuários</p>
+                <p className="text-sm text-gray-600">Usuários</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalUsuarios}</p>
               </div>
             </CardContent>
@@ -106,7 +207,7 @@ export default function Resumo() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Com Desktop</p>
+                <p className="text-sm text-gray-600">Desktops</p>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{stats.comDesktop}</p>
               </div>
             </CardContent>
@@ -114,7 +215,7 @@ export default function Resumo() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Com Notebook</p>
+                <p className="text-sm text-gray-600">Notebooks</p>
                 <p className="text-3xl font-bold text-purple-600 mt-1">{stats.comNotebook}</p>
               </div>
             </CardContent>
@@ -122,8 +223,40 @@ export default function Resumo() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Com Monitor</p>
+                <p className="text-sm text-gray-600">Monitores</p>
                 <p className="text-3xl font-bold text-green-600 mt-1">{stats.comMonitor}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Smartphones</p>
+                <p className="text-3xl font-bold text-pink-600 mt-1">{stats.comSmartphone}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Câmeras</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.comCamera}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Coletores</p>
+                <p className="text-3xl font-bold text-cyan-600 mt-1">{stats.comColetor}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Canetas</p>
+                <p className="text-3xl font-bold text-rose-600 mt-1">{stats.comCaneta}</p>
               </div>
             </CardContent>
           </Card>
@@ -149,18 +282,22 @@ export default function Resumo() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Usuário</TableHead>
+                    <TableHead className="w-12">#</TableHead>
+                    <TableHead className="min-w-[150px]">Usuário</TableHead>
                     <TableHead>Área</TableHead>
                     <TableHead>Desktops</TableHead>
                     <TableHead>Monitores</TableHead>
                     <TableHead>Notebooks</TableHead>
+                    <TableHead>Smartphones</TableHead>
+                    <TableHead>Câmeras</TableHead>
+                    <TableHead>Coletores</TableHead>
+                    <TableHead>Canetas</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -176,16 +313,30 @@ export default function Resumo() {
                         </TableCell>
                         <TableCell>{user.area}</TableCell>
                         <TableCell>
-                          {user.desktops.length > 0 ? (
+                          {renderEquipmentBadges(user.desktops, "desktops")}
+                        </TableCell>
+                        <TableCell>
+                          {renderEquipmentBadges(user.monitores, "monitores")}
+                        </TableCell>
+                        <TableCell>
+                          {renderEquipmentBadges(user.notebooks, "notebooks")}
+                        </TableCell>
+                        <TableCell>
+                          {user.smartphones.length > 0 ? (
                             <div className="flex flex-col gap-1">
-                              {user.desktops.map((desktop, idx) => (
+                              {user.smartphones.map((sm, idx) => (
                                 <Badge key={idx} variant="outline" className="text-xs w-fit">
-                                  {desktop.modelo || desktop.marca}
+                                  {sm.modelo || sm.marca}
                                 </Badge>
                               ))}
-                              {user.desktops.length > 1 && (
-                                <span className="text-xs text-blue-600 font-medium">
-                                  ({user.desktops.length} desktops)
+                              {user.smartphones.length > 1 && (
+                                <span className="text-xs text-pink-600 font-medium">
+                                  ({user.smartphones.length} smartphones)
+                                </span>
+                              )}
+                              {user.valorSmartphones > 0 && (
+                                <span className="text-xs text-purple-600 font-semibold">
+                                  R$ {user.valorSmartphones.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </span>
                               )}
                             </div>
@@ -194,40 +345,13 @@ export default function Resumo() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.monitores.length > 0 ? (
-                            <div className="flex flex-col gap-1">
-                              {user.monitores.map((monitor, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs w-fit">
-                                  {monitor.modelo || monitor.marca}
-                                </Badge>
-                              ))}
-                              {user.monitores.length > 1 && (
-                                <span className="text-xs text-green-600 font-medium">
-                                  ({user.monitores.length} monitores)
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          {renderEquipmentBadges(user.cameras, "câmeras")}
                         </TableCell>
                         <TableCell>
-                          {user.notebooks.length > 0 ? (
-                            <div className="flex flex-col gap-1">
-                              {user.notebooks.map((notebook, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs w-fit">
-                                  {notebook.modelo || notebook.marca}
-                                </Badge>
-                              ))}
-                              {user.notebooks.length > 1 && (
-                                <span className="text-xs text-purple-600 font-medium">
-                                  ({user.notebooks.length} notebooks)
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          {renderEquipmentBadges(user.coletores, "coletores")}
+                        </TableCell>
+                        <TableCell>
+                          {renderEquipmentBadges(user.canetas, "canetas")}
                         </TableCell>
                       </TableRow>
                     ))
