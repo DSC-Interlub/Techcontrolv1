@@ -6,6 +6,11 @@ import chamadoPublico from './pages/Chamado_Publico';
 import Reservas from './pages/Reservas';
 import Chamados from './pages/Chamados';
 import Smartphones from './pages/Smartphones';
+import Cameras from './pages/Cameras';
+import Coletores from './pages/Coletores';
+import canetasVibracao from './pages/Canetas_Vibracao';
+import Resumo from './pages/Resumo';
+import Importar from './pages/Importar';
 import Layout from './Layout.jsx';
 
 
@@ -18,6 +23,11 @@ export const PAGES = {
     "Reservas": Reservas,
     "Chamados": Chamados,
     "Smartphones": Smartphones,
+    "Cameras": Cameras,
+    "Coletores": Coletores,
+    "Canetas_Vibracao": canetasVibracao,
+    "Resumo": Resumo,
+    "Importar": Importar,
 }
 
 export const pagesConfig = {
