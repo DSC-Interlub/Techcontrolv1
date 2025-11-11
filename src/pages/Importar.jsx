@@ -115,7 +115,7 @@ export default function Importar() {
     },
     Cameras: {
       "Nº SEQ": "numero_sequencial",
-      "N SEQ": "numero_sequencial", // Added this line
+      "N SEQ": "numero_sequencial",
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "MARCA": "marca",
@@ -132,7 +132,7 @@ export default function Importar() {
     },
     Coletores: {
       "Nº SEQ": "numero_sequencial",
-      "N SEQ": "numero_sequencial", // Added this line
+      "N SEQ": "numero_sequencial",
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "TIPO": "tipo",
@@ -150,7 +150,7 @@ export default function Importar() {
     },
     Canetas_Vibracao: {
       "Nº SEQ": "numero_sequencial",
-      "N SEQ": "numero_sequencial", // Added this line
+      "N SEQ": "numero_sequencial",
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "TIPO": "tipo",
@@ -247,10 +247,32 @@ export default function Importar() {
     setResult(null);
     
     if (value.trim()) {
-      const lines = value.split("\n").filter(line => line.trim());
+      const lines = value.split("\n");
+      
+      // Filtra linhas válidas: não vazias E que tenham pelo menos uma tabulação ou vírgula
+      const validLines = lines.filter(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return false;
+        // Verifica se a linha tem pelo menos um separador (tab ou vírgula)
+        return trimmed.includes("\t") || trimmed.includes(",");
+      });
+      
+      // Detecta o separador da primeira linha
+      const separator = validLines[0]?.includes("\t") ? "\t" : ",";
+      
+      // Conta quantas colunas o cabeçalho tem
+      const headerColumnCount = validLines[0]?.split(separator).length || 0;
+      
+      // Filtra apenas linhas que tenham o mesmo número de colunas do cabeçalho
+      const consistentLines = validLines.filter((line, index) => {
+        if (index === 0) return true; // Sempre inclui o cabeçalho
+        const columnCount = line.split(separator).length;
+        return columnCount === headerColumnCount;
+      });
+      
       setPreview({
-        totalLines: lines.length,
-        firstLines: lines.slice(0, 3)
+        totalLines: consistentLines.length -1, // Subtract 1 for header
+        firstLines: consistentLines.slice(0, 3)
       });
     } else {
       setPreview(null);
@@ -258,29 +280,46 @@ export default function Importar() {
   };
 
   const parseData = (text) => {
-    const lines = text.split("\n").filter(line => line.trim());
+    // Divide por quebras de linha
+    const allLines = text.split("\n");
     
-    if (lines.length === 0) return [];
+    // Filtra linhas válidas: não vazias E que tenham pelo menos uma tabulação ou vírgula
+    const validLines = allLines.filter(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      // Verifica se a linha tem pelo menos um separador (tab ou vírgula)
+      return trimmed.includes("\t") || trimmed.includes(",");
+    });
+    
+    if (validLines.length === 0) return [];
     
     // Detecta separador (tab ou vírgula)
-    const separator = lines[0].includes("\t") ? "\t" : ",";
+    const separator = validLines[0].includes("\t") ? "\t" : ",";
     
     // Primeira linha são os headers
-    const headers = lines[0].split(separator).map(h => h.trim().toUpperCase());
+    const headers = validLines[0].split(separator).map(h => h.trim().toUpperCase());
+    const headerColumnCount = headers.length;
     const data = [];
 
     const mapping = columnMapping[selectedEntity] || {};
 
     // Começar do índice 1 para pular o cabeçalho
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
+    for (let i = 1; i < validLines.length; i++) {
+      const line = validLines[i].trim();
       if (!line) continue; // Pula linhas vazias
       
-      const values = lines[i].split(separator);
+      const values = validLines[i].split(separator);
       
-      // Verifica se a linha tem o número correto de colunas
-      if (values.length !== headers.length) {
-        console.warn(`Linha ${i + 1} tem ${values.length} colunas, esperado ${headers.length}. Pulando.`);
+      // IMPORTANTE: Verifica se a linha tem o número correto de colunas
+      if (values.length !== headerColumnCount) {
+        console.warn(`Linha ${i + 1} tem ${values.length} colunas, esperado ${headerColumnCount}. Pulando.`);
+        continue;
+      }
+      
+      // Verifica se a linha não é apenas valores vazios
+      const hasData = values.some(v => v.trim() !== "");
+      if (!hasData) {
+        console.warn(`Linha ${i + 1} não tem dados. Pulando.`);
         continue;
       }
       
@@ -539,7 +578,7 @@ export default function Importar() {
                     {preview && (
                       <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-700 font-medium">
-                          ✓ {preview.totalLines - 1} registros detectados
+                          ✓ {preview.totalLines} registros detectados
                         </p>
                         <p className="text-xs text-gray-600 mt-1">
                           Primeira linha (cabeçalho): {preview.firstLines[0]?.substring(0, 80)}...
@@ -580,7 +619,7 @@ export default function Importar() {
                           ✓ Arquivo: {file.name}
                         </p>
                         <p className="text-xs text-gray-600 mt-1">
-                          {preview.totalLines - 1} registros detectados
+                          {preview.totalLines -1} registros detectados
                         </p>
                       </div>
                     )}
