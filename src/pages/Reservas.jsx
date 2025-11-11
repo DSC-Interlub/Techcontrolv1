@@ -1,24 +1,25 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, ExternalLink, CheckCircle, XCircle, Clock, Settings, Search } from "lucide-react";
+import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isSameMonth, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 
 export default function Reservas() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("reservas");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: reservas = [], isLoading: loadingReservas } = useQuery({
@@ -31,13 +32,6 @@ export default function Reservas() {
     queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
   });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Reservas.update(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reservas'] });
-    },
-  });
-
   const updateNotebookMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Notebooks_Externos.update(id, data),
     onSuccess: () => {
@@ -45,9 +39,44 @@ export default function Reservas() {
     },
   });
 
-  const handleStatusChange = (reserva, newStatus) => {
-    updateStatusMutation.mutate({ id: reserva.id, status: newStatus });
-  };
+  const updateReservaMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Reservas.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservas'] });
+    },
+  });
+
+  // Atualizar status das reservas automaticamente baseado na data/hora
+  useEffect(() => {
+    const updateReservasStatus = () => {
+      const agora = new Date();
+      
+      reservas.forEach(reserva => {
+        const inicioReserva = new Date(`${reserva.data_inicio}T${reserva.hora_inicio}`);
+        const fimReserva = new Date(`${reserva.data_fim}T${reserva.hora_fim}`);
+        
+        let novoStatus = reserva.status;
+        
+        if (reserva.status === "Confirmada" && inicioReserva <= agora && fimReserva > agora) {
+          novoStatus = "Em Andamento";
+        } else if ((reserva.status === "Em Andamento" || reserva.status === "Confirmada") && fimReserva <= agora) {
+          novoStatus = "Concluída";
+        }
+        
+        if (novoStatus !== reserva.status) {
+          updateReservaMutation.mutate({
+            id: reserva.id,
+            data: { ...reserva, status: novoStatus }
+          });
+        }
+      });
+    };
+
+    updateReservasStatus();
+    const interval = setInterval(updateReservasStatus, 60000); // Verifica a cada 1 minuto
+    
+    return () => clearInterval(interval);
+  }, [reservas]);
 
   const handleToggleReserva = (notebook) => {
     updateNotebookMutation.mutate({
@@ -70,11 +99,27 @@ export default function Reservas() {
 
   const notebooksDisponiveis = notebooks.filter(n => n.disponivel_para_reserva);
 
+  // Calendario
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+  const getReservasForDate = (date) => {
+    return reservas.filter(reserva => {
+      if (reserva.status === "Cancelada") return false;
+      
+      const dataInicio = parseISO(reserva.data_inicio);
+      const dataFim = parseISO(reserva.data_fim);
+      
+      return date >= dataInicio && date <= dataFim;
+    });
+  };
+
   const stats = {
     total: reservas.length,
-    pendentes: reservas.filter(r => r.status === "Pendente").length,
     confirmadas: reservas.filter(r => r.status === "Confirmada").length,
     emAndamento: reservas.filter(r => r.status === "Em Andamento").length,
+    concluidas: reservas.filter(r => r.status === "Concluída").length,
     notebooksReserva: notebooksDisponiveis.length,
   };
 
@@ -121,14 +166,6 @@ export default function Reservas() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Pendentes</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-1">{stats.pendentes}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
                 <p className="text-sm text-gray-600">Confirmadas</p>
                 <p className="text-3xl font-bold text-green-600 mt-1">{stats.confirmadas}</p>
               </div>
@@ -145,6 +182,14 @@ export default function Reservas() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
+                <p className="text-sm text-gray-600">Concluídas</p>
+                <p className="text-3xl font-bold text-gray-600 mt-1">{stats.concluidas}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
                 <p className="text-sm text-gray-600">Notebooks p/ Reserva</p>
                 <p className="text-3xl font-bold text-purple-600 mt-1">{stats.notebooksReserva}</p>
               </div>
@@ -152,6 +197,94 @@ export default function Reservas() {
           </Card>
         </div>
 
+        {/* Calendário */}
+        <Card className="mb-6">
+          <CardHeader className="border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle>Calendário de Reservas</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-lg font-semibold min-w-[200px] text-center">
+                  {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-7 gap-2">
+              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                <div key={day} className="text-center font-semibold text-sm text-gray-600 p-2">
+                  {day}
+                </div>
+              ))}
+              
+              {/* Dias vazios antes do início do mês */}
+              {Array.from({ length: monthStart.getDay() }).map((_, idx) => (
+                <div key={`empty-${idx}`} className="p-2" />
+              ))}
+              
+              {/* Dias do mês */}
+              {daysInMonth.map(day => {
+                const reservasNoDia = getReservasForDate(day);
+                const isToday = isSameDay(day, new Date());
+                
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={`
+                      relative p-2 border rounded-lg cursor-pointer transition-all
+                      ${isToday ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}
+                      ${reservasNoDia.length > 0 ? 'hover:bg-purple-100' : 'hover:bg-gray-50'}
+                    `}
+                    onClick={() => setSelectedDate(day)}
+                  >
+                    <div className="text-center">
+                      <span className={`text-sm ${isToday ? 'font-bold text-purple-600' : 'text-gray-700'}`}>
+                        {format(day, 'd')}
+                      </span>
+                    </div>
+                    {reservasNoDia.length > 0 && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        {reservasNoDia.slice(0, 2).map((reserva, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-xs px-1 py-0.5 rounded truncate ${
+                              reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
+                              reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                              "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {reserva.solicitante_nome.split(' ')[0]}
+                          </div>
+                        ))}
+                        {reservasNoDia.length > 2 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{reservasNoDia.length - 2}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lista de Reservas */}
         <Card>
           <CardHeader className="border-b">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -162,7 +295,6 @@ export default function Reservas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="Pendente">Pendente</SelectItem>
                   <SelectItem value="Confirmada">Confirmada</SelectItem>
                   <SelectItem value="Em Andamento">Em Andamento</SelectItem>
                   <SelectItem value="Concluída">Concluída</SelectItem>
@@ -181,19 +313,18 @@ export default function Reservas() {
                     <TableHead>Período</TableHead>
                     <TableHead>Área</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loadingReservas ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredReservas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Nenhuma reserva encontrada
                       </TableCell>
                     </TableRow>
@@ -216,7 +347,6 @@ export default function Reservas() {
                         <TableCell>{reserva.solicitante_area}</TableCell>
                         <TableCell>
                           <Badge className={
-                            reserva.status === "Pendente" ? "bg-yellow-100 text-yellow-800" :
                             reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
                             reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
                             reserva.status === "Cancelada" ? "bg-red-100 text-red-800" :
@@ -224,54 +354,6 @@ export default function Reservas() {
                           }>
                             {reserva.status}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {reserva.status === "Pendente" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleStatusChange(reserva, "Confirmada")}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Confirmar
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleStatusChange(reserva, "Cancelada")}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Cancelar
-                                </Button>
-                              </>
-                            )}
-                            {reserva.status === "Confirmada" && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleStatusChange(reserva, "Em Andamento")}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                <Clock className="w-4 h-4 mr-1" />
-                                Iniciar
-                              </Button>
-                            )}
-                            {reserva.status === "Em Andamento" && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleStatusChange(reserva, "Concluída")}
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Concluir
-                              </Button>
-                            )}
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -281,6 +363,47 @@ export default function Reservas() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Detalhes do Dia */}
+        {selectedDate && (
+          <Dialog open={!!selectedDate} onOpenChange={() => setSelectedDate(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  Reservas de {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {getReservasForDate(selectedDate).length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">Nenhuma reserva neste dia</p>
+                ) : (
+                  getReservasForDate(selectedDate).map(reserva => (
+                    <Card key={reserva.id}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{reserva.solicitante_nome}</p>
+                            <p className="text-sm text-gray-600">{reserva.equipamento_nome}</p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {reserva.hora_inicio} - {reserva.hora_fim}
+                            </p>
+                          </div>
+                          <Badge className={
+                            reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
+                            reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                            "bg-gray-100 text-gray-800"
+                          }>
+                            {reserva.status}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* Modal de Configuração */}
         <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>

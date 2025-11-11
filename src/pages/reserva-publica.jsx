@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Laptop, CheckCircle, Clock } from "lucide-react";
+import { Calendar, Laptop, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ReservaPublica() {
@@ -24,6 +24,7 @@ export default function ReservaPublica() {
     motivo: "",
   });
   const [success, setSuccess] = useState(false);
+  const [conflictError, setConflictError] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -35,10 +36,36 @@ export default function ReservaPublica() {
     },
   });
 
+  const { data: reservasExistentes = [] } = useQuery({
+    queryKey: ['reservas_existentes'],
+    queryFn: () => base44.entities.Reservas.list(),
+  });
+
+  const checkConflict = (equipamentoId, dataInicio, horaInicio, dataFim, horaFim) => {
+    const inicioSolicitado = new Date(`${dataInicio}T${horaInicio}`);
+    const fimSolicitado = new Date(`${dataFim}T${horaFim}`);
+
+    return reservasExistentes.some(reserva => {
+      if (reserva.equipamento_id !== equipamentoId || reserva.status === "Cancelada" || reserva.status === "Concluída") {
+        return false;
+      }
+
+      const inicioReserva = new Date(`${reserva.data_inicio}T${reserva.hora_inicio}`);
+      const fimReserva = new Date(`${reserva.data_fim}T${reserva.hora_fim}`);
+
+      return (
+        (inicioSolicitado >= inicioReserva && inicioSolicitado < fimReserva) ||
+        (fimSolicitado > inicioReserva && fimSolicitado <= fimReserva) ||
+        (inicioSolicitado <= inicioReserva && fimSolicitado >= fimReserva)
+      );
+    });
+  };
+
   const createReservaMutation = useMutation({
     mutationFn: (data) => base44.entities.Reservas.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notebooks_disponiveis'] });
+      queryClient.invalidateQueries({ queryKey: ['reservas_existentes'] });
       setSuccess(true);
       setTimeout(() => {
         setStep(1);
@@ -61,12 +88,37 @@ export default function ReservaPublica() {
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    const hasConflict = checkConflict(
+      selectedEquipamento.id,
+      formData.data_inicio,
+      formData.hora_inicio,
+      formData.data_fim,
+      formData.hora_fim
+    );
+
+    if (hasConflict) {
+      setConflictError(true);
+      setTimeout(() => setConflictError(false), 5000);
+      return;
+    }
+
+    const agora = new Date();
+    const inicioReserva = new Date(`${formData.data_inicio}T${formData.hora_inicio}`);
+    const fimReserva = new Date(`${formData.data_fim}T${formData.hora_fim}`);
+
+    let statusInicial = "Confirmada";
+    if (inicioReserva <= agora && fimReserva > agora) {
+      statusInicial = "Em Andamento";
+    } else if (fimReserva <= agora) {
+      statusInicial = "Concluída";
+    }
+
     const reservaData = {
       equipamento_id: selectedEquipamento.id,
       equipamento_tipo: "Notebooks_Externos",
       equipamento_nome: `${selectedEquipamento.marca} ${selectedEquipamento.modelo}`,
       ...formData,
-      status: "Pendente"
+      status: statusInicial
     };
 
     createReservaMutation.mutate(reservaData);
@@ -80,9 +132,9 @@ export default function ReservaPublica() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Reserva Solicitada!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Reserva Confirmada!</h2>
             <p className="text-gray-600">
-              Sua solicitação foi enviada com sucesso. Aguarde a confirmação da equipe de TI.
+              Sua reserva foi confirmada com sucesso. O notebook estará disponível no horário agendado.
             </p>
           </CardContent>
         </Card>
@@ -118,67 +170,71 @@ export default function ReservaPublica() {
         </div>
 
         {step === 1 && (
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Escolha um Notebook</h2>
-            {notebooks.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
+          <Card>
+            <CardHeader className="border-b">
+              <h2 className="text-xl font-bold text-gray-900">Escolha um Notebook</h2>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {notebooks.length === 0 ? (
+                <div className="py-12 text-center">
                   <Laptop className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">Nenhum notebook disponível no momento</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {notebooks.map((notebook) => (
-                  <Card
-                    key={notebook.id}
-                    className={`cursor-pointer transition-all ${
-                      selectedEquipamento?.id === notebook.id
-                        ? 'ring-2 ring-purple-600 shadow-lg'
-                        : 'hover:shadow-md'
-                    }`}
-                    onClick={() => setSelectedEquipamento(notebook)}
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{notebook.marca}</CardTitle>
-                          <p className="text-sm text-gray-600 mt-1">{notebook.modelo}</p>
-                        </div>
-                        <Laptop className="w-8 h-8 text-purple-600" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Processador:</span>
-                          <span className="font-medium">{notebook.processador || "-"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Etiqueta:</span>
-                          <span className="font-medium">{notebook.etiqueta_interna || "-"}</span>
-                        </div>
-                        <Badge className="bg-green-100 text-green-800 mt-2">
-                          Disponível
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                </div>
+              ) : (
+                <>
+                  <div className="grid md:grid-cols-2 gap-4 mb-6">
+                    {notebooks.map((notebook) => (
+                      <Card
+                        key={notebook.id}
+                        className={`cursor-pointer transition-all ${
+                          selectedEquipamento?.id === notebook.id
+                            ? 'ring-2 ring-purple-600 shadow-lg'
+                            : 'hover:shadow-md'
+                        }`}
+                        onClick={() => setSelectedEquipamento(notebook)}
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-lg">{notebook.marca}</CardTitle>
+                              <p className="text-sm text-gray-600 mt-1">{notebook.modelo}</p>
+                            </div>
+                            <Laptop className="w-8 h-8 text-purple-600" />
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Processador:</span>
+                              <span className="font-medium">{notebook.processador || "-"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Etiqueta:</span>
+                              <span className="font-medium">{notebook.etiqueta_interna || "-"}</span>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800 mt-2">
+                              Disponível
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-            {selectedEquipamento && (
-              <div className="mt-6 flex justify-end">
-                <Button
-                  onClick={() => setStep(2)}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  Continuar
-                </Button>
-              </div>
-            )}
-          </div>
+                  {selectedEquipamento && (
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => setStep(2)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        Continuar
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {step === 2 && (
@@ -191,6 +247,16 @@ export default function ReservaPublica() {
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="pt-6 space-y-4">
+                {conflictError && (
+                  <Alert className="bg-red-50 border-red-200">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
+                    <AlertDescription className="text-red-800">
+                      <strong>Conflito de horário!</strong> Já existe uma reserva para este notebook no período selecionado. 
+                      Por favor, escolha outro horário.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label>Nome Completo *</Label>
@@ -281,7 +347,7 @@ export default function ReservaPublica() {
                 <Alert>
                   <Clock className="w-4 h-4" />
                   <AlertDescription>
-                    Sua reserva será enviada para aprovação. Você receberá uma confirmação por email.
+                    Sua reserva será confirmada automaticamente. O notebook estará disponível no horário agendado.
                   </AlertDescription>
                 </Alert>
               </CardContent>
@@ -299,7 +365,7 @@ export default function ReservaPublica() {
                   className="bg-purple-600 hover:bg-purple-700"
                   disabled={createReservaMutation.isLoading}
                 >
-                  {createReservaMutation.isLoading ? "Enviando..." : "Solicitar Reserva"}
+                  {createReservaMutation.isLoading ? "Enviando..." : "Confirmar Reserva"}
                 </Button>
               </div>
             </form>
