@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, Copy, Check, Eye } from "lucide-react";
+import { Headset, Copy, Check, Eye, Laptop } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -51,6 +51,29 @@ export default function Chamados() {
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
+  };
+
+  const getTipoCompleto = (chamado) => {
+    let detalhes = chamado.tipo_solicitacao || "";
+    
+    if (chamado.tipo_solicitacao === "Sistema") {
+      if (chamado.sistema_tipo) {
+        detalhes += ` - ${chamado.sistema_tipo}`;
+      }
+      if (chamado.sistema_subtipo) {
+        detalhes += ` (${chamado.sistema_subtipo})`;
+      }
+    } else if (chamado.tipo_solicitacao === "Impressora") {
+      if (chamado.impressora_subtipo) {
+        detalhes += ` - ${chamado.impressora_subtipo}`;
+      }
+    } else if (chamado.tipo_solicitacao === "Equipamento") {
+      if (chamado.equipamento_subtipo) {
+        detalhes += ` - ${chamado.equipamento_subtipo}`;
+      }
+    }
+    
+    return detalhes;
   };
 
   return (
@@ -178,7 +201,11 @@ export default function Chamados() {
                             <p className="text-sm text-gray-500">{chamado.solicitante_area}</p>
                           </div>
                         </TableCell>
-                        <TableCell>{chamado.tipo_solicitacao}</TableCell>
+                        <TableCell>
+                          <div className="max-w-[200px]">
+                            <p className="text-sm truncate">{getTipoCompleto(chamado)}</p>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge className={
                             chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" :
@@ -224,7 +251,7 @@ export default function Chamados() {
         </Card>
 
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalhes do Chamado</DialogTitle>
             </DialogHeader>
@@ -256,6 +283,11 @@ export default function Chamados() {
                   </div>
                 </div>
 
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Tipo de Solicitação</h3>
+                  <p className="text-sm text-blue-800">{getTipoCompleto(selectedChamado)}</p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Solicitante</Label>
@@ -263,15 +295,49 @@ export default function Chamados() {
                     <p className="text-sm text-gray-600">{selectedChamado.solicitante_email}</p>
                   </div>
                   <div>
-                    <Label>Tipo de Solicitação</Label>
-                    <p className="font-medium">{selectedChamado.tipo_solicitacao}</p>
+                    <Label>Área/Departamento</Label>
+                    <p className="font-medium">{selectedChamado.solicitante_area}</p>
                   </div>
                 </div>
+
+                {selectedChamado.equipamentos_usuario && selectedChamado.equipamentos_usuario.length > 0 && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <Laptop className="w-4 h-4" />
+                      Equipamentos do Usuário
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {selectedChamado.equipamentos_usuario.map((eq, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-gray-100">
+                          <Badge variant="outline" className="text-xs mb-1">{eq.tipo}</Badge>
+                          <p className="text-sm font-medium">{eq.marca} {eq.modelo}</p>
+                          {eq.etiqueta && (
+                            <p className="text-xs text-gray-500 mt-1">Etiqueta: {eq.etiqueta}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <Label>Descrição do Problema</Label>
                   <p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.descricao_problema}</p>
                 </div>
+
+                {selectedChamado.melhorias_detalhes && (
+                  <div>
+                    <Label>Detalhes da Melhoria</Label>
+                    <p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.melhorias_detalhes}</p>
+                  </div>
+                )}
+
+                {selectedChamado.equipamento_outros_detalhes && (
+                  <div>
+                    <Label>Outros Detalhes</Label>
+                    <p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.equipamento_outros_detalhes}</p>
+                  </div>
+                )}
 
                 <div>
                   <Label>Responsável</Label>
