@@ -2,20 +2,33 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, ExternalLink, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Calendar, ExternalLink, CheckCircle, XCircle, Clock, Settings, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 
 export default function Reservas() {
   const [filterStatus, setFilterStatus] = useState("all");
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("reservas");
   const queryClient = useQueryClient();
 
-  const { data: reservas = [], isLoading } = useQuery({
+  const { data: reservas = [], isLoading: loadingReservas } = useQuery({
     queryKey: ['reservas'],
     queryFn: () => base44.entities.Reservas.list('-created_date'),
+  });
+
+  const { data: notebooks = [], isLoading: loadingNotebooks } = useQuery({
+    queryKey: ['notebooks_externos'],
+    queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
   });
 
   const updateStatusMutation = useMutation({
@@ -25,19 +38,44 @@ export default function Reservas() {
     },
   });
 
+  const updateNotebookMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Notebooks_Externos.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+    },
+  });
+
   const handleStatusChange = (reserva, newStatus) => {
     updateStatusMutation.mutate({ id: reserva.id, status: newStatus });
+  };
+
+  const handleToggleReserva = (notebook) => {
+    updateNotebookMutation.mutate({
+      id: notebook.id,
+      data: {
+        disponivel_para_reserva: !notebook.disponivel_para_reserva
+      }
+    });
   };
 
   const filteredReservas = filterStatus === "all" 
     ? reservas 
     : reservas.filter(r => r.status === filterStatus);
 
+  const filteredNotebooks = notebooks.filter(nb =>
+    nb.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    nb.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    nb.etiqueta_interna?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const notebooksDisponiveis = notebooks.filter(n => n.disponivel_para_reserva);
+
   const stats = {
     total: reservas.length,
     pendentes: reservas.filter(r => r.status === "Pendente").length,
     confirmadas: reservas.filter(r => r.status === "Confirmada").length,
     emAndamento: reservas.filter(r => r.status === "Em Andamento").length,
+    notebooksReserva: notebooksDisponiveis.length,
   };
 
   return (
@@ -53,15 +91,25 @@ export default function Reservas() {
               <p className="text-gray-500 mt-1">Gerenciar solicitações de reserva</p>
             </div>
           </div>
-          <a href="/reserva-publica" target="_blank" rel="noopener noreferrer">
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Link Público de Reserva
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setShowConfigModal(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Configurar Notebooks
             </Button>
-          </a>
+            <a href="/reserva-publica" target="_blank" rel="noopener noreferrer">
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Link Público
+              </Button>
+            </a>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -91,6 +139,14 @@ export default function Reservas() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Em Andamento</p>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{stats.emAndamento}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Notebooks p/ Reserva</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.notebooksReserva}</p>
               </div>
             </CardContent>
           </Card>
@@ -129,7 +185,7 @@ export default function Reservas() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {loadingReservas ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Carregando...
@@ -225,6 +281,105 @@ export default function Reservas() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Configuração */}
+        <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Configurar Notebooks para Reserva</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Instruções:</strong> Ative os notebooks que deseja disponibilizar para reserva pública. 
+                  Os notebooks marcados aparecerão no formulário de reserva externa.
+                </p>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar notebook..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Marca/Modelo</TableHead>
+                      <TableHead>Etiqueta</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Disponível p/ Reserva</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loadingNotebooks ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          Carregando...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredNotebooks.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          Nenhum notebook encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredNotebooks.map((notebook) => (
+                        <TableRow key={notebook.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{notebook.marca}</p>
+                              <p className="text-sm text-gray-500">{notebook.modelo}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell>{notebook.etiqueta_interna || "-"}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              notebook.status === "Disponível" ? "bg-green-100 text-green-800" :
+                              notebook.status === "Reservado" ? "bg-purple-100 text-purple-800" :
+                              notebook.status === "Em uso" ? "bg-blue-100 text-blue-800" :
+                              "bg-orange-100 text-orange-800"
+                            }>
+                              {notebook.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Switch
+                                checked={notebook.disponivel_para_reserva || false}
+                                onCheckedChange={() => handleToggleReserva(notebook)}
+                              />
+                              <span className="text-sm text-gray-600">
+                                {notebook.disponivel_para_reserva ? "Sim" : "Não"}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800">
+                  <strong>{stats.notebooksReserva} notebooks</strong> estão atualmente disponíveis para reserva.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowConfigModal(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
