@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -188,16 +187,17 @@ export default function Resumo() {
     eq._type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // CORRIGIDO: Contar TODOS os equipamentos, não apenas os que têm usuário
   const stats = {
     totalUsuarios: userEquipments.length,
     totalDisponiveis: availableEquipments.length,
-    comDesktop: userEquipments.filter(u => u.desktops.length > 0).length,
-    comNotebook: userEquipments.filter(u => u.notebooks.length > 0).length,
-    comMonitor: userEquipments.filter(u => u.monitores.length > 0).length,
-    comSmartphone: userEquipments.filter(u => u.smartphones.length > 0).length,
-    comCamera: userEquipments.filter(u => u.cameras.length > 0).length,
-    comColetor: userEquipments.filter(u => u.coletores.length > 0).length,
-    comCaneta: userEquipments.filter(u => u.canetas.length > 0).length,
+    totalDesktops: pcsInternos.filter(pc => pc.tipo === "Desktop").length,
+    totalNotebooks: [...pcsInternos.filter(pc => pc.tipo === "Notebook"), ...notebooksExternos].length,
+    totalMonitores: pcsInternos.filter(pc => pc.tipo === "Monitor").length,
+    totalSmartphones: smartphones.length,
+    totalCameras: cameras.length,
+    totalColetores: coletores.length,
+    totalCanetas: canetasVibracao.length,
   };
 
   const renderEquipmentBadges = (equipments, label) => {
@@ -240,75 +240,75 @@ export default function Resumo() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-9 gap-4 mb-6">
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Usuários</p>
+                <p className="text-xs text-gray-600 truncate">Usuários</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalUsuarios}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Disponíveis</p>
+                <p className="text-xs text-gray-600 truncate">Disponíveis</p>
                 <p className="text-3xl font-bold text-green-600 mt-1">{stats.totalDisponiveis}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Desktops</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.comDesktop}</p>
+                <p className="text-xs text-gray-600 truncate">Desktops</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.totalDesktops}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Notebooks</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.comNotebook}</p>
+                <p className="text-xs text-gray-600 truncate">Notebooks</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalNotebooks}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Monitores</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{stats.comMonitor}</p>
+                <p className="text-xs text-gray-600 truncate">Monitores</p>
+                <p className="text-3xl font-bold text-green-600 mt-1">{stats.totalMonitores}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Smartphones</p>
-                <p className="text-3xl font-bold text-pink-600 mt-1">{stats.comSmartphone}</p>
+                <p className="text-xs text-gray-600 truncate">Smartphones</p>
+                <p className="text-3xl font-bold text-pink-600 mt-1">{stats.totalSmartphones}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Câmeras</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.comCamera}</p>
+                <p className="text-xs text-gray-600 truncate">Câmeras</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.totalCameras}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Coletores</p>
-                <p className="text-3xl font-bold text-cyan-600 mt-1">{stats.comColetor}</p>
+                <p className="text-xs text-gray-600 truncate">Coletores</p>
+                <p className="text-3xl font-bold text-cyan-600 mt-1">{stats.totalColetores}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Canetas</p>
-                <p className="text-3xl font-bold text-rose-600 mt-1">{stats.comCaneta}</p>
+                <p className="text-xs text-gray-600 truncate">Canetas</p>
+                <p className="text-3xl font-bold text-rose-600 mt-1">{stats.totalCanetas}</p>
               </div>
             </CardContent>
           </Card>

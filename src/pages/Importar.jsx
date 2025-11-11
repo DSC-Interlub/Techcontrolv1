@@ -53,7 +53,7 @@ export default function Importar() {
       "ÁREA": "area",
       "AREA": "area",
       "OFFICE": "office",
-      "STATUS": "status_original",  // Changed to capture original status
+      "STATUS": "status_original",
       "CONDIÇÃO": "condicao",
       "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
@@ -85,7 +85,7 @@ export default function Importar() {
       "ÁREA": "area",
       "AREA": "area",
       "OFFICE": "office",
-      "STATUS": "status_original",  // Changed to capture original status
+      "STATUS": "status_original",
       "CONDIÇÃO": "condicao",
       "CONDICAO": "condicao",
       "ANTIVÍRUS": "antivirus",
@@ -115,6 +115,7 @@ export default function Importar() {
     },
     Cameras: {
       "Nº SEQ": "numero_sequencial",
+      "N SEQ": "numero_sequencial", // Added this line
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "MARCA": "marca",
@@ -131,6 +132,7 @@ export default function Importar() {
     },
     Coletores: {
       "Nº SEQ": "numero_sequencial",
+      "N SEQ": "numero_sequencial", // Added this line
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "TIPO": "tipo",
@@ -148,6 +150,7 @@ export default function Importar() {
     },
     Canetas_Vibracao: {
       "Nº SEQ": "numero_sequencial",
+      "N SEQ": "numero_sequencial", // Added this line
       "AQUISIÇÃO": "data_aquisicao",
       "AQUISICAO": "data_aquisicao",
       "TIPO": "tipo",
@@ -167,7 +170,7 @@ export default function Importar() {
 
   const downloadTemplate = () => {
     const templates = {
-      PCs_Internos: 
+      PCs_Internos:
         "AQUISIÇÃO\tUSO EM ANOS\tTIPO\tMARCA\tNF\tMODELO\tPROCESSADOR\tETIQUETA INTERNA\tSERVICE TAG DELL / SERIAL NUMBER\tUSUÁRIO\tUSUÁRIO ANTERIOR\tÁREA\tOFFICE\tSTATUS\tCONDIÇÃO\tANTIVÍRUS\n" +
         "18/05/2021\t4 anos\tDesktop\tDell\t3061217\tOptiPlex 7090\tIntel i7\tIL-DKP-001\tABC123\tJoão Silva\tMaria Santos\tTI\tOffice 2021\tEm uso\tRápido\tSim",
       Notebooks_Externos:
@@ -338,27 +341,27 @@ export default function Importar() {
       // Define o status automaticamente baseado no usuário atual
       // Prioridade: se tem status original válido no Excel, usa ele
       // Senão, define automaticamente baseado no usuário
-      if (tempStatusOriginal && tempStatusOriginal.trim() !== "") { // Added .trim() here for consistency
+      if (tempStatusOriginal && tempStatusOriginal.trim() !== "") {
         obj.status = tempStatusOriginal.trim();
       }
       
       // Processa o usuário atual e ajusta status se necessário
-      if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") { // Added .trim() here for consistency
-        const usuarioUpper = tempUsuarioAtual.trim().toUpperCase(); // Added .trim() here for consistency
+      if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") {
+        const usuarioUpper = tempUsuarioAtual.trim().toUpperCase();
         if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
           obj.usuario_atual = "";
-          if (!obj.status) { // Only set if not already set by tempStatusOriginal
+          if (!obj.status) {
             obj.status = "Disponível";
           }
         } else {
-          obj.usuario_atual = tempUsuarioAtual.trim(); // Added .trim() here for consistency
-          if (!obj.status) { // Only set if not already set by tempStatusOriginal
+          obj.usuario_atual = tempUsuarioAtual.trim();
+          if (!obj.status) {
             obj.status = "Em uso";
           }
         }
-      } else { // No tempUsuarioAtual or it was empty
-        obj.usuario_atual = ""; // Ensure it's empty if no user was provided or it was empty
-        if (!obj.status) { // Only set if not already set by tempStatusOriginal
+      } else {
+        obj.usuario_atual = "";
+        if (!obj.status) {
           obj.status = "Disponível";
         }
       }
