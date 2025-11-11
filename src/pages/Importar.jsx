@@ -3,14 +3,17 @@ import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, FileText } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Clipboard } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Importar() {
   const [selectedEntity, setSelectedEntity] = useState("");
   const [file, setFile] = useState(null);
+  const [pastedData, setPastedData] = useState("");
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -67,6 +70,22 @@ export default function Importar() {
       "ANTIVÍRUS": "antivirus",
       "DATA FORMATAÇÃO": "data_formatacao",
       "OBSERVAÇÕES": "observacoes"
+    },
+    Smartphones: {
+      "AQUISIÇÃO": "data_aquisicao",
+      "USO EM ANOS": "uso_anos",
+      "OPERADORA": "operadora",
+      "LINHA CELULAR": "linha_celular",
+      "QUANTIDADE": "quantidade",
+      "MARCA": "marca",
+      "NF": "nota_fiscal",
+      "FORNECEDOR": "fornecedor",
+      "VALOR": "valor",
+      "MODELO": "modelo",
+      "COR": "cor",
+      "IMEI": "imei",
+      "USUÁRIO": "usuario_atual",
+      "STATUS": "status"
     }
   };
 
@@ -144,7 +163,22 @@ export default function Importar() {
     }
   };
 
-  const parseFile = (text) => {
+  const handlePastedDataChange = (value) => {
+    setPastedData(value);
+    setResult(null);
+    
+    if (value.trim()) {
+      const lines = value.split("\n").filter(line => line.trim());
+      setPreview({
+        totalLines: lines.length,
+        firstLines: lines.slice(0, 3)
+      });
+    } else {
+      setPreview(null);
+    }
+  };
+
+  const parseData = (text) => {
     const lines = text.split("\n").filter(line => line.trim());
     
     // Detecta separador (tab ou vírgula)
@@ -213,51 +247,64 @@ export default function Importar() {
     return data;
   };
 
-  const handleImport = async () => {
+  const handleImportFromPaste = async () => {
+    if (!pastedData || !selectedEntity) {
+      alert("Selecione um tipo de equipamento e cole os dados");
+      return;
+    }
+
+    await processImport(pastedData);
+  };
+
+  const handleImportFromFile = async () => {
     if (!file || !selectedEntity) {
       alert("Selecione um tipo de equipamento e um arquivo");
       return;
     }
 
-    setImporting(true);
-    setResult(null);
-
     const reader = new FileReader();
     reader.onload = async (e) => {
       const text = e.target.result;
-      const data = parseFile(text);
-
-      let successCount = 0;
-      let errorCount = 0;
-      const errors = [];
-
-      for (const item of data) {
-        try {
-          await base44.entities[selectedEntity].create(item);
-          successCount++;
-        } catch (error) {
-          console.error("Erro ao importar item:", error);
-          errorCount++;
-          errors.push({
-            item: item.etiqueta_interna || item.modelo || "Item",
-            error: error.message
-          });
-        }
-      }
-
-      queryClient.invalidateQueries();
-      setResult({ 
-        success: successCount, 
-        error: errorCount, 
-        total: data.length,
-        errors: errors.slice(0, 5) // Mostra apenas os 5 primeiros erros
-      });
-      setImporting(false);
-      setFile(null);
-      setPreview(null);
+      await processImport(text);
     };
-
     reader.readAsText(file);
+  };
+
+  const processImport = async (text) => {
+    setImporting(true);
+    setResult(null);
+
+    const data = parseData(text);
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const item of data) {
+      try {
+        await base44.entities[selectedEntity].create(item);
+        successCount++;
+      } catch (error) {
+        console.error("Erro ao importar item:", error);
+        errorCount++;
+        errors.push({
+          item: item.etiqueta_interna || item.modelo || "Item",
+          error: error.message
+        });
+      }
+    }
+
+    queryClient.invalidateQueries();
+    setResult({ 
+      success: successCount, 
+      error: errorCount, 
+      total: data.length,
+      errors: errors.slice(0, 5) // Mostra apenas os 5 primeiros erros
+    });
+    setImporting(false);
+    setFile(null);
+    setPastedData("");
+    setPreview(null);
   };
 
   return (
@@ -271,7 +318,7 @@ export default function Importar() {
             Importar Dados
           </h1>
           <p className="text-gray-600">
-            Importe seus equipamentos do Excel ou arquivo de texto
+            Cole os dados do Excel ou faça upload de arquivo
           </p>
         </div>
 
@@ -280,12 +327,12 @@ export default function Importar() {
             <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
               <CardTitle className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5" />
-                Passo 1: Baixar Template (Opcional)
+                Passo 1: Selecione o Tipo de Equipamento
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div>
-                <Label>Tipo de Equipamento</Label>
+                <Label>Tipo de Equipamento *</Label>
                 <Select value={selectedEntity} onValueChange={setSelectedEntity}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de equipamento" />
@@ -300,23 +347,14 @@ export default function Importar() {
                 </Select>
               </div>
 
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertCircle className="w-4 h-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>Formatos aceitos:</strong> Arquivo de texto (.txt), Excel copiado e colado, ou CSV. 
-                  As colunas podem ser separadas por tabulação ou vírgula.
-                  <br /><br />
-                  <strong>Datas:</strong> Use o formato dd/mm/yyyy (exemplo: 18/05/2021)
-                </AlertDescription>
-              </Alert>
-
               <Button
                 onClick={downloadTemplate}
                 disabled={!selectedEntity}
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                variant="outline"
+                className="w-full"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Baixar Template com Exemplo
+                Baixar Template de Exemplo (Opcional)
               </Button>
             </CardContent>
           </Card>
@@ -324,58 +362,107 @@ export default function Importar() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
               <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Passo 2: Enviar Arquivo
+                <Clipboard className="w-5 h-5" />
+                Passo 2: Importar Dados
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div>
-                <Label>Arquivo (.txt, .csv, ou cole do Excel)</Label>
-                <div className="mt-2">
-                  <input
-                    type="file"
-                    accept=".txt,.csv,.tsv"
-                    onChange={handleFileChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                  />
-                </div>
-                {file && (
-                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-700 font-medium">
-                      ✓ Arquivo selecionado: {file.name}
-                    </p>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="paste" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="paste">
+                    <Clipboard className="w-4 h-4 mr-2" />
+                    Colar do Excel
+                  </TabsTrigger>
+                  <TabsTrigger value="file">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload de Arquivo
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="paste" className="space-y-4">
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <AlertCircle className="w-4 h-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      <strong>Como usar:</strong>
+                      <ol className="list-decimal ml-4 mt-2 space-y-1">
+                        <li>Selecione as células no Excel (incluindo o cabeçalho)</li>
+                        <li>Copie (Ctrl+C ou Cmd+C)</li>
+                        <li>Cole aqui (Ctrl+V ou Cmd+V)</li>
+                        <li>Clique em "Importar Dados"</li>
+                      </ol>
+                      <p className="mt-2"><strong>Formato de data:</strong> dd/mm/yyyy (exemplo: 18/05/2021)</p>
+                    </AlertDescription>
+                  </Alert>
+
+                  <div>
+                    <Label>Cole os dados do Excel aqui:</Label>
+                    <Textarea
+                      placeholder="Cole aqui os dados copiados do Excel (Ctrl+V)&#10;&#10;Exemplo:&#10;AQUISIÇÃO    USO EM ANOS    TIPO    MARCA    NF    MODELO...&#10;18/05/2021    4 anos    Desktop    Dell    3061217    OptiPlex 7090..."
+                      value={pastedData}
+                      onChange={(e) => handlePastedDataChange(e.target.value)}
+                      rows={12}
+                      className="font-mono text-sm"
+                    />
                     {preview && (
-                      <div className="mt-2 text-xs text-gray-600">
-                        <p>Total de linhas: {preview.totalLines} (incluindo cabeçalho)</p>
-                        <p className="mt-1 font-mono bg-white p-2 rounded">
-                          {preview.firstLines[0]?.substring(0, 100)}...
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✓ {preview.totalLines - 1} registros detectados
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Primeira linha (cabeçalho): {preview.firstLines[0]?.substring(0, 80)}...
                         </p>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              <Alert>
-                <AlertCircle className="w-4 h-4" />
-                <AlertDescription>
-                  <strong>Como usar:</strong>
-                  <ol className="list-decimal ml-4 mt-2 space-y-1">
-                    <li>Copie os dados do seu Excel (incluindo o cabeçalho)</li>
-                    <li>Cole em um arquivo de texto (.txt)</li>
-                    <li>Ou salve seu Excel como CSV</li>
-                    <li>Faça upload do arquivo aqui</li>
-                  </ol>
-                </AlertDescription>
-              </Alert>
+                  <Button
+                    onClick={handleImportFromPaste}
+                    disabled={!pastedData || !selectedEntity || importing}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="lg"
+                  >
+                    {importing ? "Importando..." : "Importar Dados"}
+                  </Button>
+                </TabsContent>
 
-              <Button
-                onClick={handleImport}
-                disabled={!file || !selectedEntity || importing}
-                className="w-full bg-purple-600 hover:bg-purple-700"
-              >
-                {importing ? "Importando..." : "Importar Dados"}
-              </Button>
+                <TabsContent value="file" className="space-y-4">
+                  <Alert>
+                    <AlertCircle className="w-4 h-4" />
+                    <AlertDescription>
+                      Aceita arquivos .txt, .csv ou .tsv com dados separados por tabulação ou vírgula.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div>
+                    <Label>Selecione o arquivo:</Label>
+                    <input
+                      type="file"
+                      accept=".txt,.csv,.tsv"
+                      onChange={handleFileChange}
+                      className="block w-full mt-2 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                    />
+                    {file && preview && (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✓ Arquivo: {file.name}
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {preview.totalLines - 1} registros detectados
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={handleImportFromFile}
+                    disabled={!file || !selectedEntity || importing}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="lg"
+                  >
+                    {importing ? "Importando..." : "Importar Dados"}
+                  </Button>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
 
