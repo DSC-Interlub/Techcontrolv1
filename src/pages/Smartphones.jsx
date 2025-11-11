@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +33,56 @@ export default function Smartphones() {
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list('-created_date'),
   });
+
+  // Buscar todos os usuários de todos os equipamentos
+  const { data: pcsInternos = [] } = useQuery({
+    queryKey: ['pcs_internos'],
+    queryFn: () => base44.entities.PCs_Internos.list(),
+  });
+
+  const { data: notebooksExternos = [] } = useQuery({
+    queryKey: ['notebooks_externos'],
+    queryFn: () => base44.entities.Notebooks_Externos.list(),
+  });
+
+  const { data: cameras = [] } = useQuery({
+    queryKey: ['cameras'],
+    queryFn: () => base44.entities.Cameras.list(),
+  });
+
+  const { data: coletores = [] } = useQuery({
+    queryKey: ['coletores'],
+    queryFn: () => base44.entities.Coletores.list(),
+  });
+
+  const { data: canetasVibracao = [] } = useQuery({
+    queryKey: ['canetas_vibracao'],
+    queryFn: () => base44.entities.Canetas_Vibracao.list(),
+  });
+
+  // Obter lista única de todos os usuários do sistema
+  const getAllUsers = () => {
+    const usersSet = new Set();
+    
+    const addUsers = (equipments) => {
+      equipments.forEach(eq => {
+        if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
+          usersSet.add(eq.usuario_atual.trim());
+        }
+      });
+    };
+
+    addUsers(equipamentos);
+    addUsers(pcsInternos);
+    addUsers(notebooksExternos);
+    addUsers(cameras);
+    addUsers(coletores);
+    addUsers(canetasVibracao);
+
+    return Array.from(usersSet).sort();
+  };
+
+  const allUsers = getAllUsers();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Smartphones.create(data),
@@ -77,11 +128,13 @@ export default function Smartphones() {
   const handleTransferEquipment = (equipment, currentUser) => {
     setEquipmentToTransfer(equipment);
     setSelectedUser(currentUser);
+    setNewUserName(""); // Reset new user name
     setShowTransferModal(true);
   };
 
   const handleAssignEquipment = (userName) => {
     setSelectedUser(userName);
+    setSelectedAvailableEquipment(""); // Reset selected equipment
     setShowAssignModal(true);
   };
 
@@ -109,20 +162,34 @@ export default function Smartphones() {
     if (!newUserName || !equipmentToTransfer) return;
 
     const usuariosAnteriores = equipmentToTransfer.usuarios_anteriores || [];
-    usuariosAnteriores.push({
-      nome: equipmentToTransfer.usuario_atual,
-      data_inicio: equipmentToTransfer.data_aquisicao || "",
-      data_fim: new Date().toISOString().split('T')[0]
-    });
+    
+    if (equipmentToTransfer.usuario_atual) {
+      usuariosAnteriores.push({
+        nome: equipmentToTransfer.usuario_atual,
+        data_inicio: equipmentToTransfer.data_aquisicao || "",
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+    }
 
-    updateMutation.mutate({
-      id: equipmentToTransfer.id,
-      data: {
-        usuario_atual: newUserName,
-        status: "Em uso",
-        usuarios_anteriores: usuariosAnteriores
-      }
-    });
+    if (newUserName === "Disponível") {
+      updateMutation.mutate({
+        id: equipmentToTransfer.id,
+        data: {
+          usuario_atual: "",
+          status: "Disponível",
+          usuarios_anteriores: usuariosAnteriores
+        }
+      });
+    } else {
+      updateMutation.mutate({
+        id: equipmentToTransfer.id,
+        data: {
+          usuario_atual: newUserName,
+          status: "Em uso",
+          usuarios_anteriores: usuariosAnteriores
+        }
+      });
+    }
   };
 
   const executeAssign = () => {
@@ -540,7 +607,7 @@ export default function Smartphones() {
         <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Transferir ou Remover Smartphone</DialogTitle>
+              <DialogTitle>Transferir ou Tornar Disponível</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -553,13 +620,33 @@ export default function Smartphones() {
               </div>
               <div className="space-y-2">
                 <Label>Transferir para:</Label>
-                <Input
-                  placeholder="Digite o nome do novo usuário ou deixe vazio para remover"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                />
+                <Select value={newUserName} onValueChange={setNewUserName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um usuário ou Disponível" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Disponível">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="font-medium">Disponível</span>
+                      </div>
+                    </SelectItem>
+                    {allUsers.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                          USUÁRIOS CADASTRADOS
+                        </div>
+                        {allUsers.map((user) => (
+                          <SelectItem key={user} value={user}>
+                            {user}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-gray-500">
-                  Deixe vazio para apenas remover o smartphone do usuário atual
+                  Selecione "Disponível" para liberar o equipamento ou escolha um usuário para transferir.
                 </p>
               </div>
             </div>
@@ -567,18 +654,13 @@ export default function Smartphones() {
               <Button variant="outline" onClick={() => setShowTransferModal(false)}>
                 Cancelar
               </Button>
-              {newUserName ? (
-                <Button onClick={executeTransfer} className="bg-blue-600">
-                  Transferir
-                </Button>
-              ) : (
-                <Button onClick={() => {
-                  handleRemoveFromUser(equipmentToTransfer);
-                  setShowTransferModal(false);
-                }} className="bg-orange-600">
-                  Remover do Usuário
-                </Button>
-              )}
+              <Button 
+                onClick={executeTransfer}
+                disabled={!newUserName}
+                className={newUserName === "Disponível" ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"}
+              >
+                {newUserName === "Disponível" ? "Tornar Disponível" : "Transferir"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
