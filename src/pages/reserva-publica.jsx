@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Laptop, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Calendar, Laptop, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ReservaPublica() {
@@ -28,17 +28,29 @@ export default function ReservaPublica() {
 
   const queryClient = useQueryClient();
 
-  const { data: notebooks = [] } = useQuery({
+  const { data: notebooks = [], isLoading: loadingNotebooks } = useQuery({
     queryKey: ['notebooks_disponiveis'],
     queryFn: async () => {
-      const allNotebooks = await base44.entities.Notebooks_Externos.list();
-      return allNotebooks.filter(nb => nb.disponivel_para_reserva === true);
+      try {
+        const allNotebooks = await base44.entities.Notebooks_Externos.list();
+        return allNotebooks.filter(nb => nb.disponivel_para_reserva === true);
+      } catch (error) {
+        console.error('Erro ao carregar notebooks:', error);
+        return [];
+      }
     },
   });
 
   const { data: reservasExistentes = [] } = useQuery({
     queryKey: ['reservas_existentes'],
-    queryFn: () => base44.entities.Reservas.list(),
+    queryFn: async () => {
+      try {
+        return await base44.entities.Reservas.list();
+      } catch (error) {
+        console.error('Erro ao carregar reservas:', error);
+        return [];
+      }
+    },
   });
 
   const checkConflict = (equipamentoId, dataInicio, horaInicio, dataFim, horaFim) => {
@@ -62,7 +74,9 @@ export default function ReservaPublica() {
   };
 
   const createReservaMutation = useMutation({
-    mutationFn: (data) => base44.entities.Reservas.create(data),
+    mutationFn: async (data) => {
+      return await base44.entities.Reservas.create(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notebooks_disponiveis'] });
       queryClient.invalidateQueries({ queryKey: ['reservas_existentes'] });
@@ -175,7 +189,12 @@ export default function ReservaPublica() {
               <h2 className="text-xl font-bold text-gray-900">Escolha um Notebook</h2>
             </CardHeader>
             <CardContent className="pt-6">
-              {notebooks.length === 0 ? (
+              {loadingNotebooks ? (
+                <div className="py-12 text-center">
+                  <Loader2 className="w-12 h-12 text-purple-600 mx-auto mb-3 animate-spin" />
+                  <p className="text-gray-600">Carregando notebooks disponíveis...</p>
+                </div>
+              ) : notebooks.length === 0 ? (
                 <div className="py-12 text-center">
                   <Laptop className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">Nenhum notebook disponível no momento</p>
@@ -365,7 +384,14 @@ export default function ReservaPublica() {
                   className="bg-purple-600 hover:bg-purple-700"
                   disabled={createReservaMutation.isLoading}
                 >
-                  {createReservaMutation.isLoading ? "Enviando..." : "Confirmar Reserva"}
+                  {createReservaMutation.isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    "Confirmar Reserva"
+                  )}
                 </Button>
               </div>
             </form>

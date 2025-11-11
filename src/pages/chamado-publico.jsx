@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Headset, CheckCircle } from "lucide-react";
+import { Headset, CheckCircle, Loader2 } from "lucide-react";
 
 export default function ChamadoPublico() {
   const [formData, setFormData] = useState({
@@ -23,9 +23,9 @@ export default function ChamadoPublico() {
   const [success, setSuccess] = useState(false);
 
   const createChamadoMutation = useMutation({
-    mutationFn: (data) => {
+    mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
-      return base44.entities.Chamados.create({
+      return await base44.entities.Chamados.create({
         ...data,
         numero_chamado: numeroChamado,
         status: "Aberto",
@@ -210,7 +210,14 @@ export default function ChamadoPublico() {
                 className="bg-orange-600 hover:bg-orange-700"
                 disabled={createChamadoMutation.isLoading}
               >
-                {createChamadoMutation.isLoading ? "Enviando..." : "Abrir Chamado"}
+                {createChamadoMutation.isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  "Abrir Chamado"
+                )}
               </Button>
             </div>
           </form>
