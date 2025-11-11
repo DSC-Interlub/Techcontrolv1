@@ -11,6 +11,7 @@ import Resumo from './pages/Resumo';
 import Importar from './pages/Importar';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
+import acompanharChamado from './pages/acompanhar-chamado';
 import Layout from './Layout.jsx';
 
 
@@ -28,6 +29,7 @@ export const PAGES = {
     "Importar": Importar,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
+    "acompanhar-chamado": acompanharChamado,
 }
 
 export const pagesConfig = {

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +16,6 @@ import { Input } from "@/components/ui/input";
 export default function Chamados() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedChamado, setSelectedChamado] = useState(null);
-  const [originalChamado, setOriginalChamado] = useState(null); // New state to store original data
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
@@ -29,221 +27,12 @@ export default function Chamados() {
     queryFn: () => base44.entities.Chamados.list('-created_date'),
   });
 
-  const getTipoCompleto = (chamado) => {
-    let detalhes = chamado.tipo_solicitacao || "";
-    
-    if (chamado.tipo_solicitacao === "Sistema") {
-      if (chamado.sistema_tipo) {
-        detalhes += ` - ${chamado.sistema_tipo}`;
-      }
-      if (chamado.sistema_subtipo) {
-        detalhes += ` (${chamado.sistema_subtipo})`;
-      }
-    } else if (chamado.tipo_solicitacao === "Impressora") {
-      if (chamado.impressora_subtipo) {
-        detalhes += ` - ${chamado.impressora_subtipo}`;
-      }
-    } else if (chamado.tipo_solicitacao === "Equipamento") {
-      if (chamado.equipamento_subtipo) {
-        detalhes += ` - ${chamado.equipamento_subtipo}`;
-      }
-    } else if (chamado.tipo_solicitacao === "Servidor") {
-      if (chamado.servidor_subtipo) {
-        detalhes += ` - ${chamado.servidor_subtipo}`;
-      }
-    }
-    
-    return detalhes;
-  };
-
-  const enviarEmailAtualizacao = async (chamado, mudancas) => {
-    if (!chamado.solicitante_email) {
-      console.warn('❌ Não foi possível enviar email de atualização: solicitante_email não encontrado.');
-      return;
-    }
-    try {
-      await base44.integrations.Core.SendEmail({
-        from_name: "TechControl - Suporte",
-        to: chamado.solicitante_email,
-        subject: `🔔 Atualização do Chamado ${chamado.numero_chamado}`,
-        body: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Atualização do Chamado ${chamado.numero_chamado}</title>
-            </head>
-            <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
-              <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #0066cc 0%, #0052a3 100%); padding: 30px 20px; text-align: center;">
-                  <div style="background-color: white; width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
-                    <span style="font-size: 30px;">🔔</span>
-                  </div>
-                  <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 600;">Atualização do Chamado</h1>
-                </div>
-                
-                <!-- Content -->
-                <div style="padding: 30px 25px;">
-                  <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                    Olá, <strong>${chamado.solicitante_nome}</strong>!
-                  </p>
-                  
-                  <p style="color: #666; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
-                    Houve uma atualização no seu chamado de suporte.
-                  </p>
-                  
-                  <!-- Número do Chamado -->
-                  <div style="background-color: #f0f8ff; border-left: 4px solid #0066cc; padding: 15px; margin: 20px 0; border-radius: 8px;">
-                    <p style="color: #004085; font-size: 13px; font-weight: 600; text-transform: uppercase; margin: 0 0 5px 0;">
-                      📋 Chamado
-                    </p>
-                    <p style="color: #333; font-size: 20px; font-weight: bold; margin: 0; font-family: 'Courier New', monospace;">
-                      ${chamado.numero_chamado}
-                    </p>
-                  </div>
-                  
-                  <!-- Mudanças -->
-                  <div style="background-color: #fff8e1; border-left: 4px solid #ffa726; padding: 20px; margin: 25px 0; border-radius: 8px;">
-                    <h3 style="color: #e65100; font-size: 16px; margin: 0 0 15px 0; font-weight: 600;">📝 O que mudou?</h3>
-                    <div style="color: #666; font-size: 14px; line-height: 1.8;">
-                      ${mudancas.map(m => `
-                        <div style="margin-bottom: 12px; padding: 10px; background-color: white; border-radius: 6px; border: 1px solid #fbd38d;">
-                          <strong style="color: #333;">${m.campo}:</strong><br>
-                          ${m.antes ? `<span style="color: #999; text-decoration: line-through;">${m.antes}</span><br>` : ''}
-                          <span style="color: #4caf50; font-weight: 600;">${m.antes ? '→ ' : ''}${m.depois || 'Vazio'}</span>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                  
-                  <!-- Status Atual -->
-                  <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="color: #333; font-size: 16px; margin: 0 0 15px 0; font-weight: 600;">📊 Status Atual do Chamado</h3>
-                    
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
-                          <span style="color: #666; font-size: 14px;">Status:</span>
-                        </td>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
-                          <span style="color: ${
-                            chamado.status === 'Resolvido' ? '#28a745' : 
-                            chamado.status === 'Em Andamento' ? '#0066cc' : 
-                            chamado.status === 'Aberto' ? '#dc3545' : '#6c757d'
-                          }; font-size: 14px; font-weight: 600; background-color: ${
-                            chamado.status === 'Resolvido' ? '#d4edda' : 
-                            chamado.status === 'Em Andamento' ? '#cfe2ff' : 
-                            chamado.status === 'Aberto' ? '#f8d7da' : '#e2e3e5'
-                          }; padding: 4px 12px; border-radius: 12px;">
-                            ${chamado.status}
-                          </span>
-                        </td>
-                      </tr>
-                      ${chamado.responsavel ? `
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
-                          <span style="color: #666; font-size: 14px;">Responsável:</span>
-                        </td>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #e0e0e0; text-align: right;">
-                          <span style="color: #333; font-size: 14px; font-weight: 600;">${chamado.responsavel}</span>
-                        </td>
-                      </tr>
-                      ` : ''}
-                      <tr>
-                        <td style="padding: 10px 0;">
-                          <span style="color: #666; font-size: 14px;">Data da Atualização:</span>
-                        </td>
-                        <td style="padding: 10px 0; text-align: right;">
-                          <span style="color: #333; font-size: 14px; font-weight: 600;">${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </div>
-                  
-                  ${chamado.solucao ? `
-                  <div style="background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 6px;">
-                    <h4 style="color: #155724; font-size: 15px; margin: 0 0 8px 0; font-weight: 600;">✅ Solução Aplicada</h4>
-                    <p style="color: #155724; font-size: 14px; line-height: 1.6; margin: 0;">
-                      ${chamado.solucao}
-                    </p>
-                  </div>
-                  ` : ''}
-                  
-                  ${chamado.observacoes ? `
-                  <div style="margin: 20px 0;">
-                    <h4 style="color: #333; font-size: 15px; margin: 0 0 10px 0; font-weight: 600;">💬 Observações</h4>
-                    <p style="color: #666; font-size: 14px; line-height: 1.6; background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 0;">
-                      ${chamado.observacoes}
-                    </p>
-                  </div>
-                  ` : ''}
-                  
-                  <p style="color: #999; font-size: 13px; line-height: 1.6; margin: 25px 0 0 0; text-align: center;">
-                    Este é um email automático do sistema TechControl.<br>
-                    Por favor, não responda diretamente a este email.
-                  </p>
-                </div>
-                
-                <!-- Footer -->
-                <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
-                  <p style="color: #999; font-size: 12px; margin: 0;">
-                    <strong>TechControl</strong> - Sistema de Gestão de Equipamentos<br>
-                    © ${new Date().getFullYear()} Todos os direitos reservados
-                  </p>
-                </div>
-                
-              </div>
-            </body>
-          </html>
-        `
-      });
-      
-      console.log('✅ Email de atualização enviado para:', chamado.solicitante_email);
-    } catch (error) {
-      console.error('❌ Erro ao enviar email de atualização:', error);
-    }
-  };
-
   const updateChamadoMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Chamados.update(id, data),
-    onSuccess: async (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados'] });
-      
-      // Detectar mudanças
-      const mudancas = [];
-      const camposMonitorados = {
-        status: 'Status',
-        responsavel: 'Responsável',
-        solucao: 'Solução',
-        observacoes: 'Observações'
-      };
-
-      if (originalChamado) { // Ensure originalChamado exists for comparison
-        Object.keys(camposMonitorados).forEach(campo => {
-          const antes = originalChamado[campo];
-          const depois = variables.data[campo];
-          
-          if (String(antes || '') !== String(depois || '')) { // Compare as strings to handle null/undefined consistency
-            mudancas.push({
-              campo: camposMonitorados[campo],
-              antes: antes || 'Não informado',
-              depois: depois || 'Não informado'
-            });
-          }
-        });
-      }
-      
-      // Enviar email se houver mudanças e se o chamado tiver email do solicitante
-      if (mudancas.length > 0) {
-        await enviarEmailAtualizacao(variables.data, mudancas);
-      }
-      
       setShowDetails(false);
       setSelectedChamado(null);
-      setOriginalChamado(null); // Clear originalChamado after saving
     },
   });
 
@@ -253,10 +42,8 @@ export default function Chamados() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Function to handle opening details and saving the original state
   const handleOpenDetails = (chamado) => {
-    setSelectedChamado({ ...chamado }); // Create a mutable copy for editing
-    setOriginalChamado({ ...chamado }); // Save a deep copy of the original for comparison
+    setSelectedChamado(chamado);
     setShowDetails(true);
   };
 
@@ -269,6 +56,23 @@ export default function Chamados() {
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
+  };
+
+  const getTipoCompleto = (chamado) => {
+    let detalhes = chamado.tipo_solicitacao || "";
+    
+    if (chamado.tipo_solicitacao === "Sistema") {
+      if (chamado.sistema_tipo) detalhes += ` - ${chamado.sistema_tipo}`;
+      if (chamado.sistema_subtipo) detalhes += ` (${chamado.sistema_subtipo})`;
+    } else if (chamado.tipo_solicitacao === "Impressora") {
+      if (chamado.impressora_subtipo) detalhes += ` - ${chamado.impressora_subtipo}`;
+    } else if (chamado.tipo_solicitacao === "Equipamento") {
+      if (chamado.equipamento_subtipo) detalhes += ` - ${chamado.equipamento_subtipo}`;
+    } else if (chamado.tipo_solicitacao === "Servidor") {
+      if (chamado.servidor_subtipo) detalhes += ` - ${chamado.servidor_subtipo}`;
+    }
+    
+    return detalhes;
   };
 
   return (
@@ -512,7 +316,6 @@ export default function Chamados() {
                   </div>
                 )}
 
-                {/* New: Display selected equipment if available */}
                 {selectedChamado.equipamento_selecionado && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <Label className="text-yellow-900">Equipamento com Problema</Label>
@@ -573,13 +376,6 @@ export default function Chamados() {
                     placeholder="Observações adicionais..."
                     rows={2}
                   />
-                </div>
-
-                {/* New: Email notification tip */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>💡 Dica:</strong> Ao salvar alterações, o usuário receberá automaticamente um email com as atualizações do chamado.
-                  </p>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
