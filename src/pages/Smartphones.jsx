@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Smartphone, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Smartphone, Search, Users, List, UserPlus, UserMinus, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +10,21 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function Smartphones() {
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({});
+  const [viewMode, setViewMode] = useState("grouped");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [equipmentToTransfer, setEquipmentToTransfer] = useState(null);
+  const [newUserName, setNewUserName] = useState("");
+  const [selectedAvailableEquipment, setSelectedAvailableEquipment] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -41,6 +49,12 @@ export default function Smartphones() {
       setShowForm(false);
       setEditingEquipamento(null);
       setFormData({});
+      setShowTransferModal(false);
+      setShowAssignModal(false);
+      setEquipmentToTransfer(null);
+      setSelectedUser(null);
+      setNewUserName("");
+      setSelectedAvailableEquipment("");
     },
   });
 
@@ -60,24 +74,122 @@ export default function Smartphones() {
     }
   };
 
-  const handleEdit = (equipamento) => {
-    setEditingEquipamento(equipamento);
-    setFormData(equipamento);
-    setShowForm(true);
+  const handleTransferEquipment = (equipment, currentUser) => {
+    setEquipmentToTransfer(equipment);
+    setSelectedUser(currentUser);
+    setShowTransferModal(true);
   };
+
+  const handleAssignEquipment = (userName) => {
+    setSelectedUser(userName);
+    setShowAssignModal(true);
+  };
+
+  const handleRemoveFromUser = (equipment) => {
+    if (confirm(`Remover ${equipment.modelo} de ${equipment.usuario_atual}?`)) {
+      const usuariosAnteriores = equipment.usuarios_anteriores || [];
+      usuariosAnteriores.push({
+        nome: equipment.usuario_atual,
+        data_inicio: equipment.data_aquisicao || "",
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+      
+      updateMutation.mutate({
+        id: equipment.id,
+        data: {
+          usuario_atual: "",
+          status: "Disponível",
+          usuarios_anteriores: usuariosAnteriores
+        }
+      });
+    }
+  };
+
+  const executeTransfer = () => {
+    if (!newUserName || !equipmentToTransfer) return;
+
+    const usuariosAnteriores = equipmentToTransfer.usuarios_anteriores || [];
+    usuariosAnteriores.push({
+      nome: equipmentToTransfer.usuario_atual,
+      data_inicio: equipmentToTransfer.data_aquisicao || "",
+      data_fim: new Date().toISOString().split('T')[0]
+    });
+
+    updateMutation.mutate({
+      id: equipmentToTransfer.id,
+      data: {
+        usuario_atual: newUserName,
+        status: "Em uso",
+        usuarios_anteriores: usuariosAnteriores
+      }
+    });
+  };
+
+  const executeAssign = () => {
+    if (!selectedAvailableEquipment || !selectedUser) return;
+
+    const equipment = equipamentos.find(e => e.id === selectedAvailableEquipment);
+    if (!equipment) return;
+
+    const usuariosAnteriores = equipment.usuarios_anteriores || [];
+    if (equipment.usuario_atual) {
+      usuariosAnteriores.push({
+        nome: equipment.usuario_atual,
+        data_inicio: equipment.data_aquisicao || "",
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+    }
+
+    updateMutation.mutate({
+      id: selectedAvailableEquipment,
+      data: {
+        usuario_atual: selectedUser,
+        status: "Em uso",
+        usuarios_anteriores: usuariosAnteriores
+      }
+    });
+  };
+
+  const getUserGroups = () => {
+    const groups = new Map();
+    
+    equipamentos.forEach(eq => {
+      if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
+        if (!groups.has(eq.usuario_atual)) {
+          groups.set(eq.usuario_atual, {
+            usuario: eq.usuario_atual,
+            smartphones: [],
+            totalValor: 0
+          });
+        }
+        const group = groups.get(eq.usuario_atual);
+        group.smartphones.push(eq);
+        group.totalValor += eq.valor || 0;
+      }
+    });
+
+    return Array.from(groups.values());
+  };
+
+  const userGroups = getUserGroups();
+  const availableEquipments = equipamentos.filter(e => !e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível");
 
   const filteredEquipamentos = equipamentos.filter(eq =>
     eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    eq.linha_celular?.toLowerCase().includes(searchTerm.toLowerCase())
+    eq.imei?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredUserGroups = userGroups.filter(group =>
+    group.usuario.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const stats = {
     total: equipamentos.length,
-    disponiveis: equipamentos.filter(e => e.status === "Disponível").length,
-    emUso: equipamentos.filter(e => e.status === "Em uso").length,
-    valorTotal: equipamentos.reduce((sum, e) => sum + (e.valor || 0), 0),
+    disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
+    emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
+    valorTotal: equipamentos.reduce((sum, e) => sum + (e.valor || 0), 0)
   };
 
   return (
@@ -135,7 +247,9 @@ export default function Smartphones() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Valor Total</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">R$ {stats.valorTotal.toLocaleString('pt-BR')}</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">
+                  R$ {stats.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -159,12 +273,23 @@ export default function Smartphones() {
                     <Input type="date" value={formData.data_aquisicao || ""} onChange={(e) => setFormData({ ...formData, data_aquisicao: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Uso em Anos</Label>
-                    <Input type="number" step="0.1" placeholder="Ex: 2.5" value={formData.uso_anos || ""} onChange={(e) => setFormData({ ...formData, uso_anos: parseFloat(e.target.value) })} />
+                    <Label>Uso (anos)</Label>
+                    <Input type="number" value={formData.uso_anos || ""} onChange={(e) => setFormData({ ...formData, uso_anos: parseFloat(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label>Operadora</Label>
+                    <Input placeholder="Ex: Vivo, Claro" value={formData.operadora || ""} onChange={(e) => setFormData({ ...formData, operadora: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Linha Celular</Label>
+                    <Input placeholder="(11) 99999-9999" value={formData.linha_celular || ""} onChange={(e) => setFormData({ ...formData, linha_celular: e.target.value })} />
                   </div>
                   <div>
                     <Label>Quantidade</Label>
-                    <Input type="number" placeholder="1" value={formData.quantidade || ""} onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) })} />
+                    <Input type="number" value={formData.quantidade || ""} onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) })} />
                   </div>
                 </div>
 
@@ -175,22 +300,7 @@ export default function Smartphones() {
                   </div>
                   <div>
                     <Label>Modelo</Label>
-                    <Input placeholder="Ex: Galaxy S23, iPhone 14" value={formData.modelo || ""} onChange={(e) => setFormData({ ...formData, modelo: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Operadora</Label>
-                    <Input placeholder="Ex: Vivo, Tim, Claro" value={formData.operadora || ""} onChange={(e) => setFormData({ ...formData, operadora: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Linha Celular</Label>
-                    <Input placeholder="(00) 00000-0000" value={formData.linha_celular || ""} onChange={(e) => setFormData({ ...formData, linha_celular: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Cor</Label>
-                    <Input placeholder="Ex: Preto, Branco" value={formData.cor || ""} onChange={(e) => setFormData({ ...formData, cor: e.target.value })} />
+                    <Input placeholder="Ex: Galaxy S23" value={formData.modelo || ""} onChange={(e) => setFormData({ ...formData, modelo: e.target.value })} />
                   </div>
                 </div>
 
@@ -204,34 +314,40 @@ export default function Smartphones() {
                     <Input placeholder="Nome do fornecedor" value={formData.fornecedor || ""} onChange={(e) => setFormData({ ...formData, fornecedor: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Valor</Label>
-                    <Input type="number" step="0.01" placeholder="R$ 0,00" value={formData.valor || ""} onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) })} />
+                    <Label>Valor (R$)</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" value={formData.valor || ""} onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) })} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>IMEI</Label>
-                    <Input placeholder="Código IMEI" value={formData.imei || ""} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} />
+                    <Label>Cor</Label>
+                    <Input placeholder="Ex: Preto, Branco" value={formData.cor || ""} onChange={(e) => setFormData({ ...formData, cor: e.target.value })} />
                   </div>
+                  <div>
+                    <Label>IMEI</Label>
+                    <Input placeholder="IMEI do aparelho" value={formData.imei || ""} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Usuário Atual</Label>
                     <Input placeholder="Nome do usuário" value={formData.usuario_atual || ""} onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })} />
                   </div>
-                </div>
-
-                <div>
-                  <Label>Status</Label>
-                  <Select value={formData.status || "Disponível"} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Disponível">Disponível</SelectItem>
-                      <SelectItem value="Em uso">Em uso</SelectItem>
-                      <SelectItem value="Manutenção">Manutenção</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Label>Status</Label>
+                    <Select value={formData.status || "Disponível"} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Disponível">Disponível</SelectItem>
+                        <SelectItem value="Em uso">Em uso</SelectItem>
+                        <SelectItem value="Manutenção">Manutenção</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div>
@@ -249,77 +365,270 @@ export default function Smartphones() {
 
         <Card>
           <CardHeader className="border-b">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Lista de Smartphones ({filteredEquipamentos.length})</CardTitle>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input placeholder="Buscar smartphone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <CardTitle>Smartphones</CardTitle>
+                  <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
+                    <TabsList>
+                      <TabsTrigger value="grouped" className="gap-2">
+                        <Users className="w-4 h-4" />
+                        Por Usuário
+                      </TabsTrigger>
+                      <TabsTrigger value="individual" className="gap-2">
+                        <List className="w-4 h-4" />
+                        Individual
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder={viewMode === "grouped" ? "Buscar usuário..." : "Buscar smartphone..."}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Marca/Modelo</TableHead>
-                    <TableHead>Linha</TableHead>
-                    <TableHead>Operadora</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
+              {viewMode === "grouped" ? (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">Carregando...</TableCell>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Smartphones</TableHead>
+                      <TableHead>Valor Total</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ) : filteredEquipamentos.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">Nenhum smartphone encontrado</TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredEquipamentos.map((equipamento) => (
-                      <TableRow key={equipamento.id} className="hover:bg-gray-50">
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{equipamento.marca}</p>
-                            <p className="text-sm text-gray-500">{equipamento.modelo}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{equipamento.linha_celular || "-"}</TableCell>
-                        <TableCell>{equipamento.operadora || "-"}</TableCell>
-                        <TableCell>{equipamento.usuario_atual || "-"}</TableCell>
-                        <TableCell>R$ {equipamento.valor?.toLocaleString('pt-BR') || "0"}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            equipamento.status === "Disponível" ? "bg-green-100 text-green-800" :
-                            equipamento.status === "Em uso" ? "bg-blue-100 text-blue-800" :
-                            "bg-orange-100 text-orange-800"
-                          }>
-                            {equipamento.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(equipamento)}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tem certeza?")) deleteMutation.mutate(equipamento.id); }}>
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Carregando...</TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : filteredUserGroups.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhum usuário encontrado</TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUserGroups.map((group, index) => (
+                        <TableRow key={index} className="hover:bg-gray-50">
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">{group.usuario}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              {group.smartphones.map((smartphone, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {smartphone.marca} {smartphone.modelo}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => handleTransferEquipment(smartphone, group.usuario)}
+                                  >
+                                    <UserMinus className="w-3 h-3 text-orange-600" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {group.smartphones.length > 1 && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  ({group.smartphones.length} smartphones)
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-purple-600">
+                              R$ {group.totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAssignEquipment(group.usuario)}
+                              className="gap-2"
+                            >
+                              <UserPlus className="w-4 h-4" />
+                              Atribuir
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Marca/Modelo</TableHead>
+                      <TableHead>IMEI</TableHead>
+                      <TableHead>Linha</TableHead>
+                      <TableHead>Usuário</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">Carregando...</TableCell>
+                      </TableRow>
+                    ) : filteredEquipamentos.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">Nenhum smartphone encontrado</TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredEquipamentos.map((equipamento) => (
+                        <TableRow key={equipamento.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{equipamento.marca}</p>
+                              <p className="text-sm text-gray-500">{equipamento.modelo}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{equipamento.imei || "-"}</TableCell>
+                          <TableCell>{equipamento.linha_celular || "-"}</TableCell>
+                          <TableCell>{equipamento.usuario_atual || "-"}</TableCell>
+                          <TableCell>
+                            {equipamento.valor ? (
+                              <span className="font-semibold">R$ {equipamento.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            ) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={
+                              equipamento.status === "Disponível" ? "bg-green-100 text-green-800" :
+                              equipamento.status === "Em uso" ? "bg-blue-100 text-blue-800" :
+                              "bg-orange-100 text-orange-800"
+                            }>
+                              {equipamento.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingEquipamento(equipamento); setFormData(equipamento); setShowForm(true); }}>
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => { if (confirm("Tem certeza?")) deleteMutation.mutate(equipamento.id); }}>
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Modal de Transferência */}
+        <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Transferir ou Remover Smartphone</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  <strong>Smartphone:</strong> {equipmentToTransfer?.marca} {equipmentToTransfer?.modelo}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Usuário atual:</strong> {selectedUser}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Transferir para:</Label>
+                <Input
+                  placeholder="Digite o nome do novo usuário ou deixe vazio para remover"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                />
+                <p className="text-xs text-gray-500">
+                  Deixe vazio para apenas remover o smartphone do usuário atual
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTransferModal(false)}>
+                Cancelar
+              </Button>
+              {newUserName ? (
+                <Button onClick={executeTransfer} className="bg-blue-600">
+                  Transferir
+                </Button>
+              ) : (
+                <Button onClick={() => {
+                  handleRemoveFromUser(equipmentToTransfer);
+                  setShowTransferModal(false);
+                }} className="bg-orange-600">
+                  Remover do Usuário
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Atribuição */}
+        <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Atribuir Smartphone Disponível</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  <strong>Atribuir para:</strong> {selectedUser}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Selecione o smartphone disponível:</Label>
+                <Select value={selectedAvailableEquipment} onValueChange={setSelectedAvailableEquipment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um smartphone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEquipments.length === 0 ? (
+                      <SelectItem value="none" disabled>Nenhum smartphone disponível</SelectItem>
+                    ) : (
+                      availableEquipments.map((eq) => (
+                        <SelectItem key={eq.id} value={eq.id}>
+                          {eq.marca} {eq.modelo} - {eq.imei || "Sem IMEI"}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAssignModal(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={executeAssign} 
+                disabled={!selectedAvailableEquipment}
+                className="bg-green-600"
+              >
+                Atribuir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

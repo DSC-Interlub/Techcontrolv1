@@ -271,7 +271,7 @@ export default function Importar() {
       if (values.length === headers.length) {
         const obj = {};
         let tempUsuarioAtual = null;
-        let tempStatusOriginalValue = null; // Variable to hold the raw status value from Excel
+        let tempStatusOriginal = null;
         
         headers.forEach((header, index) => {
           let value = values[index].trim();
@@ -285,20 +285,27 @@ export default function Importar() {
           } else if (fieldName === "tempo_uso") {
             value = value || "";
           } else if (fieldName === "uso_anos") {
-            value = parseFloat(value) || 0;
-          } else if (fieldName === "quantidade" || fieldName === "valor") {
-            value = parseFloat(value) || 0;
+            const parsed = parseFloat(value);
+            value = isNaN(parsed) ? 0 : parsed;
+          } else if (fieldName === "quantidade") {
+            const parsed = parseInt(value);
+            value = isNaN(parsed) ? 0 : parsed;
+          } else if (fieldName === "valor") {
+            // Remove pontos e vírgulas e converte para número
+            const cleanValue = value.replace(/\./g, "").replace(",", ".");
+            const parsed = parseFloat(cleanValue);
+            value = isNaN(parsed) ? 0 : parsed;
           } else if (fieldName === "usuario_anterior" && value) {
             obj.usuarios_anteriores = [{
               nome: value,
               data_inicio: obj.data_aquisicao || "",
               data_fim: ""
             }];
-            return; // Do not add the original field
+            return;
           } else if (fieldName === "usuario_atual") {
-            tempUsuarioAtual = value; // Capture usuario_atual for later processing
-          } else if (fieldName === "status_original") { // Capture original status value
-            tempStatusOriginalValue = value;
+            tempUsuarioAtual = value;
+          } else if (fieldName === "status_original") {
+            tempStatusOriginal = value;
           } else if (fieldName === "tipo") {
             value = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
           } else if (fieldName === "antivirus") {
@@ -311,41 +318,42 @@ export default function Importar() {
             }
           }
           
-          // Add other fields to the object, excluding the temporary status_original field
           if (value !== null && value !== "" && fieldName !== "status_original") {
             obj[fieldName] = value;
           }
         });
         
-        // --- Determine the 'status' field ---
-        if (tempStatusOriginalValue && tempStatusOriginalValue.trim() !== "") {
-          // If status was provided in Excel, use it directly
-          obj.status = tempStatusOriginalValue.trim();
-        } else {
-          // Otherwise, infer status from 'usuario_atual'
-          if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") {
-            const usuarioUpper = tempUsuarioAtual.toUpperCase();
-            if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+        // Define o status automaticamente baseado no usuário atual
+        // Prioridade: se tem status original válido no Excel, usa ele
+        // Senão, define automaticamente baseado no usuário
+        if (tempStatusOriginal && tempStatusOriginal.trim() !== "") { // Added .trim() here for consistency
+          obj.status = tempStatusOriginal.trim();
+        }
+        
+        // Processa o usuário atual e ajusta status se necessário
+        if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") { // Added .trim() here for consistency
+          const usuarioUpper = tempUsuarioAtual.trim().toUpperCase(); // Added .trim() here for consistency
+          if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
+            obj.usuario_atual = "";
+            if (!obj.status) { // Only set if not already set by tempStatusOriginal
               obj.status = "Disponível";
-            } else {
-              obj.status = "Em uso";
             }
           } else {
-            // If no user and no status provided, default to Available
+            obj.usuario_atual = tempUsuarioAtual.trim(); // Added .trim() here for consistency
+            if (!obj.status) { // Only set if not already set by tempStatusOriginal
+              obj.status = "Em uso";
+            }
+          }
+        } else { // No tempUsuarioAtual or it was empty
+          obj.usuario_atual = ""; // Ensure it's empty if no user was provided or it was empty
+          if (!obj.status) { // Only set if not already set by tempStatusOriginal
             obj.status = "Disponível";
           }
         }
 
-        // --- Determine the 'usuario_atual' field ---
-        if (tempUsuarioAtual && tempUsuarioAtual.trim() !== "") {
-            const usuarioUpper = tempUsuarioAtual.toUpperCase();
-            if (usuarioUpper === "DISPONÍVEL" || usuarioUpper === "DISPONIVEL" || usuarioUpper === "RESERVA") {
-                obj.usuario_atual = ""; // Clear user if it indicated availability
-            } else {
-                obj.usuario_atual = tempUsuarioAtual;
-            }
-        } else {
-            obj.usuario_atual = ""; // Ensure it's an empty string if no user was provided
+        // Final fallback to ensure status is always set if none of the above conditions applied
+        if (!obj.status) {
+          obj.status = "Disponível";
         }
         
         data.push(obj);
