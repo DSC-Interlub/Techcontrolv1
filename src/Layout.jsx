@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -13,7 +14,8 @@ import {
   Headset,
   Upload,
   FileSpreadsheet,
-  Settings
+  Settings,
+  Phone // Added Phone icon import
 } from "lucide-react";
 import {
   Sidebar,
@@ -78,6 +80,11 @@ const managementItems = [
     title: "Chamados",
     url: createPageUrl("Chamados"),
     icon: Headset,
+  },
+  {
+    title: "Ramais", // Added Ramais item
+    url: createPageUrl("Ramais"),
+    icon: Phone,
   },
   {
     title: "Importar Dados",

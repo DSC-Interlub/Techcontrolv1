@@ -12,6 +12,7 @@ import Importar from './pages/Importar';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
 import acompanharChamado from './pages/acompanhar-chamado';
+import Ramais from './pages/Ramais';
 import Layout from './Layout.jsx';
 
 
@@ -30,6 +31,7 @@ export const PAGES = {
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
     "acompanhar-chamado": acompanharChamado,
+    "Ramais": Ramais,
 }
 
 export const pagesConfig = {
