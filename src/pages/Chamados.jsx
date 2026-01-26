@@ -22,7 +22,7 @@ export default function Chamados() {
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
 
-  const publicUrl = `${window.location.origin}/chamado-publico`;
+  const publicUrl = `${window.location.origin}${createPageUrl("chamado-publico")}`;
 
   const { data: chamados = [], isLoading } = useQuery({
     queryKey: ['chamados'],
@@ -56,6 +56,7 @@ export default function Chamados() {
 
     const historico = selectedChamado.historico || [];
     const dataHora = new Date().toISOString();
+    let updateData = { ...selectedChamado, historico };
 
     // Detectar mudanças e adicionar ao histórico
     if (selectedChamado.status !== originalChamado.status) {
@@ -66,6 +67,17 @@ export default function Chamados() {
         valor_novo: selectedChamado.status,
         usuario: "Admin"
       });
+
+      // Se mudou para Resolvido, calcular tempo de resolução
+      if (selectedChamado.status === "Resolvido" && !selectedChamado.data_conclusao) {
+        updateData.data_conclusao = new Date().toISOString().split('T')[0];
+        if (selectedChamado.data_abertura) {
+          const abertura = new Date(selectedChamado.data_abertura);
+          const conclusao = new Date();
+          const diffMs = conclusao - abertura;
+          updateData.tempo_resolucao_horas = Math.round(diffMs / (1000 * 60 * 60));
+        }
+      }
     }
 
     if (selectedChamado.observacoes !== originalChamado.observacoes) {
@@ -100,10 +112,7 @@ export default function Chamados() {
 
     updateChamadoMutation.mutate({ 
       id: selectedChamado.id, 
-      data: {
-        ...selectedChamado,
-        historico: historico
-      }
+      data: updateData
     });
   };
 
@@ -111,11 +120,25 @@ export default function Chamados() {
     ? chamados 
     : chamados.filter(c => c.status === filterStatus);
 
+  const calcularTempoAberto = (chamado) => {
+    if (!chamado.data_abertura) return 0;
+    const abertura = new Date(chamado.data_abertura);
+    const fim = chamado.data_conclusao ? new Date(chamado.data_conclusao) : new Date();
+    const diffMs = fim - abertura;
+    return Math.round(diffMs / (1000 * 60 * 60)); // horas
+  };
+
   const stats = {
     total: chamados.length,
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
+    tempoMedioResolucao: chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas)
+      .reduce((acc, c) => acc + c.tempo_resolucao_horas, 0) / 
+      (chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas).length || 1),
+    avaliacaoMedia: chamados.filter(c => c.avaliacao_nota)
+      .reduce((acc, c) => acc + c.avaliacao_nota, 0) / 
+      (chamados.filter(c => c.avaliacao_nota).length || 1),
   };
 
   const getTipoCompleto = (chamado) => {
@@ -178,7 +201,7 @@ export default function Chamados() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -208,6 +231,26 @@ export default function Chamados() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Resolvidos</p>
                 <p className="text-3xl font-bold text-green-600 mt-1">{stats.resolvidos}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Tempo Médio</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">
+                  {stats.tempoMedioResolucao.toFixed(0)}h
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Avaliação</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-1">
+                  {stats.avaliacaoMedia > 0 ? stats.avaliacaoMedia.toFixed(1) : "-"}⭐
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -242,8 +285,9 @@ export default function Chamados() {
                     <TableHead>Solicitante</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Urgência</TableHead>
-                    <TableHead>Data Abertura</TableHead>
+                    <TableHead>Tempo Aberto</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Avaliação</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -261,7 +305,9 @@ export default function Chamados() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredChamados.map((chamado) => (
+                    filteredChamados.map((chamado) => {
+                      const tempoAberto = calcularTempoAberto(chamado);
+                      return (
                       <TableRow key={chamado.id}>
                         <TableCell className="font-mono text-sm">{chamado.numero_chamado}</TableCell>
                         <TableCell>
@@ -286,7 +332,13 @@ export default function Chamados() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {chamado.data_abertura && format(new Date(chamado.data_abertura), "dd/MM/yyyy")}
+                          <span className={`font-medium ${
+                            tempoAberto > 48 ? "text-red-600" : 
+                            tempoAberto > 24 ? "text-orange-600" : 
+                            "text-gray-900"
+                          }`}>
+                            {tempoAberto}h
+                          </span>
                         </TableCell>
                         <TableCell>
                           <Badge className={
@@ -298,6 +350,16 @@ export default function Chamados() {
                             {chamado.status}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          {chamado.avaliacao_nota ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-600 font-medium">{chamado.avaliacao_nota}</span>
+                              <span className="text-yellow-500">⭐</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="sm"
@@ -308,7 +370,8 @@ export default function Chamados() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))
+                    );
+                    })
                   )}
                 </TableBody>
               </Table>

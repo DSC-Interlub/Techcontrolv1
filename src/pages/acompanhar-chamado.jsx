@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Clock, CheckCircle, AlertCircle, XCircle, Laptop, Calendar, User, History } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Clock, CheckCircle, AlertCircle, XCircle, Laptop, Calendar, User, History, Star } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,6 +17,9 @@ import { createPageUrl } from "@/utils";
 export default function AcompanharChamado() {
   const [numeroChamado, setNumeroChamado] = useState("");
   const [buscarChamado, setBuscarChamado] = useState(false);
+  const [showAvaliacao, setShowAvaliacao] = useState(false);
+  const [avaliacao, setAvaliacao] = useState({ nota: 0, comentario: "" });
+  const queryClient = useQueryClient();
 
   const { data: chamados = [], isLoading, error } = useQuery({
     queryKey: ['chamados_acompanhamento', numeroChamado],
@@ -33,6 +37,27 @@ export default function AcompanharChamado() {
   };
 
   const chamado = chamados.length > 0 ? chamados[0] : null;
+
+  const avaliacaoMutation = useMutation({
+    mutationFn: async ({ id, avaliacao }) => {
+      return await base44.entities.Chamados.update(id, {
+        avaliacao_nota: avaliacao.nota,
+        avaliacao_comentario: avaliacao.comentario,
+        avaliacao_data: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chamados_acompanhamento'] });
+      setShowAvaliacao(false);
+      setAvaliacao({ nota: 0, comentario: "" });
+    },
+  });
+
+  const handleAvaliar = () => {
+    if (avaliacao.nota > 0) {
+      avaliacaoMutation.mutate({ id: chamado.id, avaliacao });
+    }
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -390,6 +415,94 @@ export default function AcompanharChamado() {
                     Você pode voltar a esta página sempre que quiser ver o status atualizado.
                   </AlertDescription>
                 </Alert>
+
+                {chamado.status === "Resolvido" && !chamado.avaliacao_nota && (
+                  <Card className="border-2 border-yellow-300 bg-yellow-50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg text-yellow-900 flex items-center gap-2">
+                        <Star className="w-5 h-5" />
+                        Avalie nosso atendimento
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {!showAvaliacao ? (
+                        <Button 
+                          onClick={() => setShowAvaliacao(true)}
+                          className="bg-yellow-600 hover:bg-yellow-700 w-full"
+                        >
+                          Avaliar Atendimento
+                        </Button>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-yellow-900">Como você avalia nosso atendimento?</Label>
+                            <div className="flex gap-2 mt-2">
+                              {[1, 2, 3, 4, 5].map((nota) => (
+                                <button
+                                  key={nota}
+                                  type="button"
+                                  onClick={() => setAvaliacao({ ...avaliacao, nota })}
+                                  className={`text-3xl transition-all ${
+                                    avaliacao.nota >= nota ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  }`}
+                                >
+                                  ⭐
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-yellow-900">Comentário (opcional)</Label>
+                            <Textarea
+                              placeholder="Deixe seu comentário sobre o atendimento..."
+                              value={avaliacao.comentario}
+                              onChange={(e) => setAvaliacao({ ...avaliacao, comentario: e.target.value })}
+                              rows={3}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setShowAvaliacao(false);
+                                setAvaliacao({ nota: 0, comentario: "" });
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              onClick={handleAvaliar}
+                              disabled={avaliacao.nota === 0 || avaliacaoMutation.isLoading}
+                              className="bg-yellow-600 hover:bg-yellow-700 flex-1"
+                            >
+                              Enviar Avaliação
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {chamado.avaliacao_nota && (
+                  <Card className="border-2 border-green-300 bg-green-50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                        <div>
+                          <p className="font-semibold text-green-900">Obrigado pela sua avaliação!</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-yellow-600 font-bold text-lg">{chamado.avaliacao_nota}</span>
+                            <span className="text-yellow-500 text-lg">⭐</span>
+                          </div>
+                          {chamado.avaliacao_comentario && (
+                            <p className="text-sm text-green-800 mt-2">{chamado.avaliacao_comentario}</p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
             </Card>
 
