@@ -464,16 +464,20 @@ export default function AcompanharChamado() {
                             <Label className="text-yellow-900 font-semibold">Tempo de Resolução</Label>
                             <p className="text-xs text-yellow-700 mb-2">O problema foi resolvido dentro de um prazo adequado?</p>
                             <div className="flex gap-2 justify-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
+                              {[1, 2, 3, 4, 5].map((starNum) => (
                                 <button
-                                  key={star}
+                                  key={starNum}
                                   type="button"
-                                  onClick={() => setAvaliacao({ ...avaliacao, tempo_resolucao: star })}
-                                  className={`text-3xl transition-all hover:scale-125 ${
-                                    star <= avaliacao.tempo_resolucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  }`}
+                                  onClick={() => setAvaliacao({ ...avaliacao, tempo_resolucao: starNum })}
+                                  className="transition-all hover:scale-125"
                                 >
-                                  ⭐
+                                  <Star 
+                                    className={`w-8 h-8 ${
+                                      starNum <= avaliacao.tempo_resolucao 
+                                        ? 'fill-yellow-500 text-yellow-500' 
+                                        : 'fill-none text-gray-300'
+                                    }`}
+                                  />
                                 </button>
                               ))}
                             </div>
@@ -483,16 +487,20 @@ export default function AcompanharChamado() {
                             <Label className="text-yellow-900 font-semibold">Qualidade do Atendimento</Label>
                             <p className="text-xs text-yellow-700 mb-2">O técnico foi atencioso, profissional e prestativo?</p>
                             <div className="flex gap-2 justify-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
+                              {[1, 2, 3, 4, 5].map((starNum) => (
                                 <button
-                                  key={star}
+                                  key={starNum}
                                   type="button"
-                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_atendimento: star })}
-                                  className={`text-3xl transition-all hover:scale-125 ${
-                                    star <= avaliacao.qualidade_atendimento ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  }`}
+                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_atendimento: starNum })}
+                                  className="transition-all hover:scale-125"
                                 >
-                                  ⭐
+                                  <Star 
+                                    className={`w-8 h-8 ${
+                                      starNum <= avaliacao.qualidade_atendimento 
+                                        ? 'fill-yellow-500 text-yellow-500' 
+                                        : 'fill-none text-gray-300'
+                                    }`}
+                                  />
                                 </button>
                               ))}
                             </div>
@@ -502,16 +510,20 @@ export default function AcompanharChamado() {
                             <Label className="text-yellow-900 font-semibold">Qualidade da Solução</Label>
                             <p className="text-xs text-yellow-700 mb-2">O problema foi resolvido de forma eficiente e completa?</p>
                             <div className="flex gap-2 justify-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
+                              {[1, 2, 3, 4, 5].map((starNum) => (
                                 <button
-                                  key={star}
+                                  key={starNum}
                                   type="button"
-                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_solucao: star })}
-                                  className={`text-3xl transition-all hover:scale-125 ${
-                                    star <= avaliacao.qualidade_solucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  }`}
+                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_solucao: starNum })}
+                                  className="transition-all hover:scale-125"
                                 >
-                                  ⭐
+                                  <Star 
+                                    className={`w-8 h-8 ${
+                                      starNum <= avaliacao.qualidade_solucao 
+                                        ? 'fill-yellow-500 text-yellow-500' 
+                                        : 'fill-none text-gray-300'
+                                    }`}
+                                  />
                                 </button>
                               ))}
                             </div>
@@ -521,16 +533,20 @@ export default function AcompanharChamado() {
                             <Label className="text-yellow-900 font-semibold">Comunicação</Label>
                             <p className="text-xs text-yellow-700 mb-2">Você foi mantido informado sobre o andamento do chamado?</p>
                             <div className="flex gap-2 justify-center">
-                              {[1, 2, 3, 4, 5].map((star) => (
+                              {[1, 2, 3, 4, 5].map((starNum) => (
                                 <button
-                                  key={star}
+                                  key={starNum}
                                   type="button"
-                                  onClick={() => setAvaliacao({ ...avaliacao, comunicacao: star })}
-                                  className={`text-3xl transition-all hover:scale-125 ${
-                                    star <= avaliacao.comunicacao ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  }`}
+                                  onClick={() => setAvaliacao({ ...avaliacao, comunicacao: starNum })}
+                                  className="transition-all hover:scale-125"
                                 >
-                                  ⭐
+                                  <Star 
+                                    className={`w-8 h-8 ${
+                                      starNum <= avaliacao.comunicacao 
+                                        ? 'fill-yellow-500 text-yellow-500' 
+                                        : 'fill-none text-gray-300'
+                                    }`}
+                                  />
                                 </button>
                               ))}
                             </div>
