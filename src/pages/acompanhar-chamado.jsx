@@ -469,9 +469,9 @@ export default function AcompanharChamado() {
                                   key={star}
                                   type="button"
                                   onClick={() => setAvaliacao({ ...avaliacao, tempo_resolucao: star })}
-                                  className={`text-3xl transition-all ${
-                                    avaliacao.tempo_resolucao >= star ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  } hover:scale-125`}
+                                  className={`text-3xl transition-all hover:scale-125 ${
+                                    star <= avaliacao.tempo_resolucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  }`}
                                 >
                                   ⭐
                                 </button>
@@ -488,9 +488,9 @@ export default function AcompanharChamado() {
                                   key={star}
                                   type="button"
                                   onClick={() => setAvaliacao({ ...avaliacao, qualidade_atendimento: star })}
-                                  className={`text-3xl transition-all ${
-                                    avaliacao.qualidade_atendimento >= star ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  } hover:scale-125`}
+                                  className={`text-3xl transition-all hover:scale-125 ${
+                                    star <= avaliacao.qualidade_atendimento ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  }`}
                                 >
                                   ⭐
                                 </button>
@@ -507,9 +507,9 @@ export default function AcompanharChamado() {
                                   key={star}
                                   type="button"
                                   onClick={() => setAvaliacao({ ...avaliacao, qualidade_solucao: star })}
-                                  className={`text-3xl transition-all ${
-                                    avaliacao.qualidade_solucao >= star ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  } hover:scale-125`}
+                                  className={`text-3xl transition-all hover:scale-125 ${
+                                    star <= avaliacao.qualidade_solucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  }`}
                                 >
                                   ⭐
                                 </button>
@@ -526,9 +526,9 @@ export default function AcompanharChamado() {
                                   key={star}
                                   type="button"
                                   onClick={() => setAvaliacao({ ...avaliacao, comunicacao: star })}
-                                  className={`text-3xl transition-all ${
-                                    avaliacao.comunicacao >= star ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  } hover:scale-125`}
+                                  className={`text-3xl transition-all hover:scale-125 ${
+                                    star <= avaliacao.comunicacao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  }`}
                                 >
                                   ⭐
                                 </button>
