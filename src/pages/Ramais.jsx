@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -31,6 +31,11 @@ export default function Ramais() {
   const { data: ramais = [], isLoading } = useQuery({
     queryKey: ['ramais'],
     queryFn: () => base44.entities.Ramais.list(),
+  });
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
 
   const createMutation = useMutation({
@@ -345,10 +350,28 @@ export default function Ramais() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Usuário Atual</Label>
-                    <Input
-                      placeholder="Nome do usuário"
+                    <Combobox
                       value={formData.usuario_atual || ""}
-                      onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })}
+                      onValueChange={(value) => {
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({ 
+                          ...formData, 
+                          usuario_atual: value,
+                          area: colaborador ? colaborador.area : formData.area
+                        });
+                      }}
+                      options={[
+                        { value: "", label: "Nenhum (Disponível)" },
+                        ...colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map(c => ({
+                            value: c.nome_completo,
+                            label: `${c.nome_completo} - ${c.area}`
+                          }))
+                      ]}
+                      placeholder="Selecione o colaborador"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
                     />
                   </div>
                   <div>
@@ -528,11 +551,24 @@ export default function Ramais() {
 
               <div>
                 <Label>Nome do Usuário *</Label>
-                <Input
-                  required
-                  placeholder="Digite o nome completo"
+                <Combobox
                   value={novoUsuario}
-                  onChange={(e) => setNovoUsuario(e.target.value)}
+                  onValueChange={(value) => {
+                    setNovoUsuario(value);
+                    const colaborador = colaboradores.find(c => c.nome_completo === value);
+                    if (colaborador) {
+                      setNovaArea(colaborador.area);
+                    }
+                  }}
+                  options={colaboradores
+                    .filter(c => c.status === "Ativo")
+                    .map(c => ({
+                      value: c.nome_completo,
+                      label: `${c.nome_completo} - ${c.area}`
+                    }))}
+                  placeholder="Selecione o colaborador"
+                  searchPlaceholder="Buscar colaborador..."
+                  emptyText="Nenhum colaborador encontrado"
                 />
               </div>
 

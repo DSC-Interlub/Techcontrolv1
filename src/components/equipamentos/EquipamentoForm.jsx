@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { X } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 
@@ -22,10 +23,20 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
   // Para outros tipos de equipamento
   const renderUsuarioAtualField = () => {
+    const colaboradoresOptions = [
+      { value: "", label: "Nenhum (Disponível)" },
+      ...colaboradores
+        .filter(c => c.status === "Ativo")
+        .map(c => ({
+          value: c.nome_completo,
+          label: `${c.nome_completo} - ${c.area}`
+        }))
+    ];
+
     return (
       <div>
         <Label>Usuário Atual</Label>
-        <Select
+        <Combobox
           value={formData.usuario_atual || ""}
           onValueChange={(value) => {
             handleChange("usuario_atual", value);
@@ -34,19 +45,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               handleChange("area", colaborador.area);
             }
           }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o colaborador" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={null}>Nenhum (Disponível)</SelectItem>
-            {colaboradores.filter(c => c.status === "Ativo").map((colaborador) => (
-              <SelectItem key={colaborador.id} value={colaborador.nome_completo}>
-                {colaborador.nome_completo} - {colaborador.area}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={colaboradoresOptions}
+          placeholder="Selecione o colaborador"
+          searchPlaceholder="Buscar colaborador..."
+          emptyText="Nenhum colaborador encontrado"
+        />
       </div>
     );
   };
@@ -179,7 +182,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Usuário Atual</Label>
-              <Select
+              <Combobox
                 value={formData.usuario_atual || ""}
                 onValueChange={(value) => {
                   handleChange("usuario_atual", value);
@@ -188,19 +191,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                     handleChange("area", colaborador.area);
                   }
                 }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o colaborador" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={null}>Nenhum (Disponível)</SelectItem>
-                  {colaboradores.filter(c => c.status === "Ativo").map((colaborador) => (
-                    <SelectItem key={colaborador.id} value={colaborador.nome_completo}>
-                      {colaborador.nome_completo} - {colaborador.area}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "", label: "Nenhum (Disponível)" },
+                  ...colaboradores
+                    .filter(c => c.status === "Ativo")
+                    .map(c => ({
+                      value: c.nome_completo,
+                      label: `${c.nome_completo} - ${c.area}`
+                    }))
+                ]}
+                placeholder="Selecione o colaborador"
+                searchPlaceholder="Buscar colaborador..."
+                emptyText="Nenhum colaborador encontrado"
+              />
             </div>
             <div>
               <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
