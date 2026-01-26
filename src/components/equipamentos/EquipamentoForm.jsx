@@ -20,6 +20,37 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     queryFn: () => base44.entities.Colaboradores.list(),
   });
 
+  // Para outros tipos de equipamento
+  const renderUsuarioAtualField = () => {
+    return (
+      <div>
+        <Label>Usuário Atual</Label>
+        <Select
+          value={formData.usuario_atual || ""}
+          onValueChange={(value) => {
+            handleChange("usuario_atual", value);
+            const colaborador = colaboradores.find(c => c.nome_completo === value);
+            if (colaborador && !["Notebooks_Externos"].includes(entityType)) {
+              handleChange("area", colaborador.area);
+            }
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o colaborador" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={null}>Nenhum (Disponível)</SelectItem>
+            {colaboradores.filter(c => c.status === "Ativo").map((colaborador) => (
+              <SelectItem key={colaborador.id} value={colaborador.nome_completo}>
+                {colaborador.nome_completo} - {colaborador.area}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
@@ -246,12 +277,112 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           <UsuariosAnteriores
             usuarios={formData.usuarios_anteriores || []}
             onChange={(usuarios) => handleChange("usuarios_anteriores", usuarios)}
+            colaboradores={colaboradores}
           />
 
           <div>
             <Label>Observações</Label>
             <Textarea
               placeholder="Observações gerais sobre o equipamento"
+              value={formData.observacoes || ""}
+              onChange={(e) => handleChange("observacoes", e.target.value)}
+              rows={3}
+            />
+          </div>
+        </>
+      );
+    }
+
+    if (entityType === "Smartphones" || entityType === "Cameras" || entityType === "Coletores" || entityType === "Canetas_Vibracao") {
+      return (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Data de Aquisição</Label>
+              <Input
+                type="date"
+                value={formData.data_aquisicao || ""}
+                onChange={(e) => handleChange("data_aquisicao", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Marca</Label>
+              <Input
+                placeholder="Marca do equipamento"
+                value={formData.marca || ""}
+                onChange={(e) => handleChange("marca", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Modelo</Label>
+              <Input
+                placeholder="Modelo"
+                value={formData.modelo || ""}
+                onChange={(e) => handleChange("modelo", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Nota Fiscal</Label>
+              <Input
+                placeholder="Número da NF"
+                value={formData.nota_fiscal || ""}
+                onChange={(e) => handleChange("nota_fiscal", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {renderUsuarioAtualField()}
+            <div>
+              <Label>Área</Label>
+              <Input
+                placeholder="Departamento ou área"
+                value={formData.area || ""}
+                onChange={(e) => handleChange("area", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Status</Label>
+              <Select
+                value={formData.status || "Disponível"}
+                onValueChange={(value) => handleChange("status", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Disponível">Disponível</SelectItem>
+                  <SelectItem value="Em uso">Em uso</SelectItem>
+                  <SelectItem value="Manutenção">Manutenção</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Etiqueta Interna</Label>
+              <Input
+                placeholder="Código"
+                value={formData.etiqueta_interna || ""}
+                onChange={(e) => handleChange("etiqueta_interna", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <UsuariosAnteriores
+            usuarios={formData.usuarios_anteriores || []}
+            onChange={(usuarios) => handleChange("usuarios_anteriores", usuarios)}
+            colaboradores={colaboradores}
+          />
+
+          <div>
+            <Label>Observações</Label>
+            <Textarea
+              placeholder="Observações gerais"
               value={formData.observacoes || ""}
               onChange={(e) => handleChange("observacoes", e.target.value)}
               rows={3}

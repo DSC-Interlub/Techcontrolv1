@@ -1,42 +1,49 @@
-import Dashboard from './pages/Dashboard';
-import pcsInternos from './pages/PCs_Internos';
-import notebooksExternos from './pages/Notebooks_Externos';
-import Reservas from './pages/Reservas';
-import Chamados from './pages/Chamados';
-import Smartphones from './pages/Smartphones';
 import Cameras from './pages/Cameras';
-import Coletores from './pages/Coletores';
 import canetasVibracao from './pages/Canetas_Vibracao';
-import Resumo from './pages/Resumo';
+import chamadoPublico from './pages/Chamado_Publico';
+import Chamados from './pages/Chamados';
+import Coletores from './pages/Coletores';
+import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
 import Importar from './pages/Importar';
+import notebooksExternos from './pages/Notebooks_Externos';
+import pcsInternos from './pages/PCs_Internos';
 import Ramais from './pages/Ramais';
-import Colaboradores from './pages/Colaboradores';
+import reservaPublica from './pages/Reserva_Publica';
+import Reservas from './pages/Reservas';
+import Resumo from './pages/Resumo';
+import Smartphones from './pages/Smartphones';
+import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
-import acompanharChamado from './pages/acompanhar-chamado';
-import Layout from './Layout.jsx';
+import Colaboradores from './pages/Colaboradores';
+import __Layout from './Layout.jsx';
+
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "PCs_Internos": pcsInternos,
-    "Notebooks_Externos": notebooksExternos,
-    "Reservas": Reservas,
-    "Chamados": Chamados,
-    "Smartphones": Smartphones,
     "Cameras": Cameras,
-    "Coletores": Coletores,
     "Canetas_Vibracao": canetasVibracao,
-    "Resumo": Resumo,
+    "Chamado_Publico": chamadoPublico,
+    "Chamados": Chamados,
+    "Coletores": Coletores,
+    "Dashboard": Dashboard,
+    "Home": Home,
     "Importar": Importar,
+    "Notebooks_Externos": notebooksExternos,
+    "PCs_Internos": pcsInternos,
+    "Ramais": Ramais,
+    "Reserva_Publica": reservaPublica,
+    "Reservas": Reservas,
+    "Resumo": Resumo,
+    "Smartphones": Smartphones,
+    "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
-    "acompanhar-chamado": acompanharChamado,
-    "Ramais": Ramais,
     "Colaboradores": Colaboradores,
 }
 
 export const pagesConfig = {
     mainPage: "Dashboard",
     Pages: PAGES,
-    Layout: Layout,
+    Layout: __Layout,
 };

@@ -7,10 +7,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Laptop, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+const Combobox = ({ value, onChange, options, placeholder }) => {
+  const [search, setSearch] = useState("");
+  const filtered = options.filter(opt => 
+    opt.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <div className="p-2">
+          <Input
+            placeholder="Buscar..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mb-2"
+          />
+        </div>
+        {filtered.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+};
 
 export default function ReservaPublica() {
   const [step, setStep] = useState(1);
@@ -30,6 +61,11 @@ export default function ReservaPublica() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores_reserva'],
+    queryFn: () => base44.entities.Colaboradores.list(),
+  });
 
   const { data: notebooks = [], isLoading: loadingNotebooks } = useQuery({
     queryKey: ['notebooks_disponiveis'],
@@ -424,12 +460,22 @@ export default function ReservaPublica() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label>Nome Completo *</Label>
-                    <Input
-                      required
-                      placeholder="Seu nome"
+                    <Combobox
                       value={formData.solicitante_nome}
-                      onChange={(e) => setFormData({ ...formData, solicitante_nome: e.target.value })}
-                      disabled={isSubmitting}
+                      onChange={(value) => {
+                        const colab = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({
+                          ...formData,
+                          solicitante_nome: value,
+                          solicitante_email: colab?.email || "",
+                          solicitante_area: colab?.area || ""
+                        });
+                      }}
+                      options={colaboradores.filter(c => c.status === "Ativo").map(c => ({
+                        value: c.nome_completo,
+                        label: `${c.nome_completo} - ${c.area}`
+                      }))}
+                      placeholder="Selecione seu nome"
                     />
                   </div>
                   <div>
