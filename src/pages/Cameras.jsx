@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -33,6 +33,11 @@ export default function Cameras() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['cameras'],
     queryFn: () => base44.entities.Cameras.list('-created_date'),
+  });
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
 
   // Buscar todos os usuários de todos os equipamentos
@@ -388,7 +393,29 @@ export default function Cameras() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Usuário Atual</Label>
-                    <Input placeholder="Nome do usuário" value={formData.usuario_atual || ""} onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })} />
+                    <Combobox
+                      value={formData.usuario_atual || ""}
+                      onValueChange={(value) => {
+                        const colab = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({ 
+                          ...formData, 
+                          usuario_atual: value,
+                          area: colab?.area || formData.area || ""
+                        });
+                      }}
+                      options={[
+                        { value: "", label: "Nenhum (Disponível)" },
+                        ...colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map(c => ({
+                            value: c.nome_completo,
+                            label: `${c.nome_completo} - ${c.area}`
+                          }))
+                      ]}
+                      placeholder="Selecione o colaborador"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
+                    />
                   </div>
                   <div>
                     <Label>Usuário Desde</Label>

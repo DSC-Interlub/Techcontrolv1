@@ -428,53 +428,26 @@ export default function ReservaPublica() {
                   </Alert>
                 )}
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Nome Completo *</Label>
-                    <Combobox
-                      value={formData.solicitante_nome}
-                      onChange={(value) => {
-                        const colab = colaboradores.find(c => c.nome_completo === value);
-                        setFormData({
-                          ...formData,
-                          solicitante_nome: value,
-                          solicitante_email: colab?.email || "",
-                          solicitante_area: colab?.area || ""
-                        });
-                      }}
-                      options={colaboradores.filter(c => c.status === "Ativo").map(c => ({
-                        value: c.nome_completo,
-                        label: `${c.nome_completo} - ${c.area}`
-                      }))}
-                      placeholder="Selecione seu nome"
-                    />
-                  </div>
-                  <div>
-                    <Label>Email *</Label>
-                    <Input
-                      required
-                      type="email"
-                      placeholder="Preenchido automaticamente"
-                      value={formData.solicitante_email}
-                      onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
-                      disabled={isSubmitting}
-                      readOnly
-                      className="bg-gray-50"
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <Label>Área/Departamento *</Label>
-                  <Input
-                    required
-                    placeholder="Preenchido automaticamente"
-                    value={formData.solicitante_area}
-                    onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
-                    disabled={isSubmitting}
-                    readOnly
-                    className="bg-gray-50"
+                  <Label>Nome Completo *</Label>
+                  <Combobox
+                    value={formData.solicitante_nome}
+                    onChange={(value) => {
+                      const colab = colaboradores.find(c => c.nome_completo === value);
+                      setFormData({
+                        ...formData,
+                        solicitante_nome: value,
+                        solicitante_email: colab?.email || "",
+                        solicitante_area: colab?.area || ""
+                      });
+                    }}
+                    options={colaboradores.filter(c => c.status === "Ativo").map(c => ({
+                      value: c.nome_completo,
+                      label: `${c.nome_completo} - ${c.area}`
+                    }))}
+                    placeholder="Selecione seu nome"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Seus dados de contato serão preenchidos automaticamente</p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
