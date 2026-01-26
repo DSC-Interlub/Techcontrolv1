@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -15,7 +14,8 @@ import {
   Upload,
   FileSpreadsheet,
   Settings,
-  Phone // Added Phone icon import
+  Phone,
+  Users
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,6 +72,11 @@ const navigationItems = [
 
 const managementItems = [
   {
+    title: "Colaboradores",
+    url: createPageUrl("Colaboradores"),
+    icon: Users,
+  },
+  {
     title: "Reservas",
     url: createPageUrl("Reservas"),
     icon: Calendar,
@@ -82,7 +87,7 @@ const managementItems = [
     icon: Headset,
   },
   {
-    title: "Ramais", // Added Ramais item
+    title: "Ramais",
     url: createPageUrl("Ramais"),
     icon: Phone,
   },
