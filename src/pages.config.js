@@ -1,49 +1,42 @@
-import Cameras from './pages/Cameras';
-import canetasVibracao from './pages/Canetas_Vibracao';
-import chamadoPublico from './pages/Chamado_Publico';
-import Chamados from './pages/Chamados';
-import Coletores from './pages/Coletores';
 import Dashboard from './pages/Dashboard';
-import Home from './pages/Home';
-import Importar from './pages/Importar';
-import notebooksExternos from './pages/Notebooks_Externos';
 import pcsInternos from './pages/PCs_Internos';
-import Ramais from './pages/Ramais';
-import reservaPublica from './pages/Reserva_Publica';
+import notebooksExternos from './pages/Notebooks_Externos';
 import Reservas from './pages/Reservas';
-import Resumo from './pages/Resumo';
+import Chamados from './pages/Chamados';
 import Smartphones from './pages/Smartphones';
-import acompanharChamado from './pages/acompanhar-chamado';
+import Cameras from './pages/Cameras';
+import Coletores from './pages/Coletores';
+import canetasVibracao from './pages/Canetas_Vibracao';
+import Resumo from './pages/Resumo';
+import Importar from './pages/Importar';
+import Ramais from './pages/Ramais';
+import Colaboradores from './pages/Colaboradores';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
-import Colaboradores from './pages/Colaboradores';
-import __Layout from './Layout.jsx';
-
+import acompanharChamado from './pages/acompanhar-chamado';
+import Layout from './Layout.jsx';
 
 export const PAGES = {
-    "Cameras": Cameras,
-    "Canetas_Vibracao": canetasVibracao,
-    "Chamado_Publico": chamadoPublico,
-    "Chamados": Chamados,
-    "Coletores": Coletores,
     "Dashboard": Dashboard,
-    "Home": Home,
-    "Importar": Importar,
-    "Notebooks_Externos": notebooksExternos,
     "PCs_Internos": pcsInternos,
-    "Ramais": Ramais,
-    "Reserva_Publica": reservaPublica,
+    "Notebooks_Externos": notebooksExternos,
     "Reservas": Reservas,
-    "Resumo": Resumo,
+    "Chamados": Chamados,
     "Smartphones": Smartphones,
-    "acompanhar-chamado": acompanharChamado,
+    "Cameras": Cameras,
+    "Coletores": Coletores,
+    "Canetas_Vibracao": canetasVibracao,
+    "Resumo": Resumo,
+    "Importar": Importar,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
+    "acompanhar-chamado": acompanharChamado,
+    "Ramais": Ramais,
     "Colaboradores": Colaboradores,
 }
 
 export const pagesConfig = {
     mainPage: "Dashboard",
     Pages: PAGES,
-    Layout: __Layout,
+    Layout: Layout,
 };
