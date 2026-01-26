@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { createPageUrl } from "@/utils";
 
 export default function Reservas() {
   const [filterStatus, setFilterStatus] = useState("all");
@@ -24,7 +24,7 @@ export default function Reservas() {
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
 
-  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/reserva-publica` : '';
+  const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}${createPageUrl("reserva-publica")}` : '';
 
   const { data: reservas = [], isLoading: loadingReservas } = useQuery({
     queryKey: ['reservas'],
