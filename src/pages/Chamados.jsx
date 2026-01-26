@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, Copy, Check, Eye, Laptop } from "lucide-react";
+import { Headset, Copy, Check, Eye, Laptop, Star } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -129,17 +129,35 @@ export default function Chamados() {
     return Math.round(diffMs / (1000 * 60 * 60)); // horas
   };
 
+  const chamadosAvaliados = chamados.filter(c => c.avaliacao_data);
+  
+  const mediaAvaliacoes = {
+    geral: chamadosAvaliados.length > 0 
+      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliados.length 
+      : 0,
+    tempo_resolucao: chamadosAvaliados.length > 0
+      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_tempo_resolucao || 0), 0) / chamadosAvaliados.length
+      : 0,
+    qualidade_atendimento: chamadosAvaliados.length > 0
+      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_qualidade_atendimento || 0), 0) / chamadosAvaliados.length
+      : 0,
+    qualidade_solucao: chamadosAvaliados.length > 0
+      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_qualidade_solucao || 0), 0) / chamadosAvaliados.length
+      : 0,
+    comunicacao: chamadosAvaliados.length > 0
+      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_comunicacao || 0), 0) / chamadosAvaliados.length
+      : 0,
+  };
+
   const stats = {
     total: chamados.length,
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
+    avaliados: chamadosAvaliados.length,
     tempoMedioResolucao: chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas)
       .reduce((acc, c) => acc + c.tempo_resolucao_horas, 0) / 
       (chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas).length || 1),
-    avaliacaoMedia: chamados.filter(c => c.avaliacao_nota)
-      .reduce((acc, c) => acc + c.avaliacao_nota, 0) / 
-      (chamados.filter(c => c.avaliacao_nota).length || 1),
   };
 
   const getTipoCompleto = (chamado) => {
@@ -248,14 +266,65 @@ export default function Chamados() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Avaliação</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-1">
-                  {stats.avaliacaoMedia > 0 ? stats.avaliacaoMedia.toFixed(1) : "-"}⭐
-                </p>
+                <p className="text-sm text-gray-600">Avaliados</p>
+                <p className="text-3xl font-bold text-yellow-600 mt-1">{stats.avaliados}</p>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {chamadosAvaliados.length > 0 && (
+          <Card className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-yellow-900">
+                <Star className="w-5 h-5" />
+                Médias de Avaliação dos Atendimentos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
+                  <p className="text-xs text-gray-600 mb-1">Geral</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-2xl font-bold text-yellow-600">{mediaAvaliacoes.geral.toFixed(1)}</p>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
+                  <p className="text-xs text-gray-600 mb-1">Tempo</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-2xl font-bold text-blue-600">{mediaAvaliacoes.tempo_resolucao.toFixed(1)}</p>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
+                  <p className="text-xs text-gray-600 mb-1">Atendimento</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-2xl font-bold text-green-600">{mediaAvaliacoes.qualidade_atendimento.toFixed(1)}</p>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
+                  <p className="text-xs text-gray-600 mb-1">Solução</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-2xl font-bold text-purple-600">{mediaAvaliacoes.qualidade_solucao.toFixed(1)}</p>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 text-center border border-yellow-200">
+                  <p className="text-xs text-gray-600 mb-1">Comunicação</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-2xl font-bold text-indigo-600">{mediaAvaliacoes.comunicacao.toFixed(1)}</p>
+                    <span className="text-yellow-500">⭐</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-center text-yellow-700 mt-3">
+                Baseado em {chamadosAvaliados.length} {chamadosAvaliados.length === 1 ? 'avaliação' : 'avaliações'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="border-b">
@@ -295,13 +364,13 @@ export default function Chamados() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredChamados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         Nenhum chamado encontrado
                       </TableCell>
                     </TableRow>
@@ -352,9 +421,9 @@ export default function Chamados() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {chamado.avaliacao_nota ? (
+                          {chamado.avaliacao_nota_geral ? (
                             <div className="flex items-center gap-1">
-                              <span className="text-yellow-600 font-medium">{chamado.avaliacao_nota}</span>
+                              <span className="text-yellow-600 font-medium">{chamado.avaliacao_nota_geral.toFixed(1)}</span>
                               <span className="text-yellow-500">⭐</span>
                             </div>
                           ) : (
@@ -517,6 +586,52 @@ export default function Chamados() {
                     rows={2}
                   />
                 </div>
+
+                {selectedChamado.avaliacao_data && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+                      <Star className="w-4 h-4" />
+                      Avaliação do Usuário
+                    </h3>
+                    <div className="bg-white rounded-lg p-3 border border-green-200 mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-green-900">Nota Geral</p>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xl font-bold text-green-900">{selectedChamado.avaliacao_nota_geral?.toFixed(1)}</span>
+                          <span className="text-lg text-yellow-500">⭐</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700">Tempo de Resolução:</span>
+                          <span className="font-medium">{selectedChamado.avaliacao_tempo_resolucao} ⭐</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700">Qualidade do Atendimento:</span>
+                          <span className="font-medium">{selectedChamado.avaliacao_qualidade_atendimento} ⭐</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700">Qualidade da Solução:</span>
+                          <span className="font-medium">{selectedChamado.avaliacao_qualidade_solucao} ⭐</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700">Comunicação:</span>
+                          <span className="font-medium">{selectedChamado.avaliacao_comunicacao} ⭐</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {selectedChamado.avaliacao_comentario && (
+                      <div>
+                        <p className="text-sm text-green-700 mb-1 font-semibold">Comentário:</p>
+                        <p className="text-sm text-green-900 bg-white p-3 rounded-lg border border-green-200">
+                          {selectedChamado.avaliacao_comentario}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <Button variant="outline" onClick={() => setShowDetails(false)}>
