@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Headset, CheckCircle, Loader2, Laptop, AlertCircle, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -36,9 +37,6 @@ export default function ChamadoPublico() {
   const [success, setSuccess] = useState(false);
   const [numeroChamado, setNumeroChamado] = useState("");
   const [countdown, setCountdown] = useState(15);
-  const [searchNome, setSearchNome] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [usuariosSugeridos, setUsuariosSugeridos] = useState([]);
   const [equipamentosUsuario, setEquipamentosUsuario] = useState([]);
 
   // Countdown timer
@@ -69,10 +67,14 @@ export default function ChamadoPublico() {
         descricao_problema: "",
         urgencia: "Média",
       });
-      setSearchNome("");
       setEquipamentosUsuario([]);
     }
   }, [success, countdown]);
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores_chamado'],
+    queryFn: () => base44.entities.Colaboradores.list(),
+  });
 
   // Buscar todos os equipamentos
   const { data: pcsInternos = [] } = useQuery({
@@ -141,51 +143,11 @@ export default function ChamadoPublico() {
     },
   });
 
-  // Função para normalizar nomes
-  const normalizeString = (str) => {
-    if (!str) return '';
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-  };
-
-  // Buscar usuários únicos quando o nome for digitado
-  useEffect(() => {
-    if (searchNome.length < 2) {
-      setUsuariosSugeridos([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const todosEquipamentos = [
-      ...pcsInternos,
-      ...notebooksExternos,
-      ...smartphones,
-      ...cameras,
-      ...coletores,
-      ...canetasVibracao
-    ];
-
-    const nomesUnicos = new Set();
-    todosEquipamentos.forEach(eq => {
-      if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
-        nomesUnicos.add(eq.usuario_atual.trim());
-      }
-    });
-
-    const searchNormalized = normalizeString(searchNome);
-    const sugestoes = Array.from(nomesUnicos)
-      .filter(nome => normalizeString(nome).includes(searchNormalized))
-      .sort()
-      .slice(0, 5);
-
-    setUsuariosSugeridos(sugestoes);
-    setShowSuggestions(sugestoes.length > 0);
-  }, [searchNome, pcsInternos, notebooksExternos, smartphones, cameras, coletores, canetasVibracao]);
-
   const buscarEquipamentosUsuario = (nomeUsuario) => {
+    const normalizeString = (str) => {
+      if (!str) return '';
+      return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    };
     const equipamentos = [];
 
     const addEquipamento = (eq, tipo, entityId) => {
@@ -212,9 +174,15 @@ export default function ChamadoPublico() {
   };
 
   const handleSelectUsuario = (nome) => {
-    setSearchNome(nome);
-    setFormData({ ...formData, solicitante_nome: nome, equipamento_selecionado: "" });
-    setShowSuggestions(false);
+    const colab = colaboradores.find(c => c.nome_completo === nome);
+    setFormData({ 
+      ...formData, 
+      solicitante_nome: nome, 
+      solicitante_email: colab?.email || "",
+      solicitante_area: colab?.area || "",
+      solicitante_telefone: colab?.telefone || "",
+      equipamento_selecionado: "" 
+    });
     
     const equipamentos = buscarEquipamentosUsuario(nome);
     setEquipamentosUsuario(equipamentos);
@@ -465,32 +433,57 @@ export default function ChamadoPublico() {
               <div className="border-t pt-5 mt-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Seus Dados</h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="relative">
+                  <div>
                     <Label>Nome Completo *</Label>
-                    <Input required placeholder="Digite seu nome" value={searchNome} onChange={(e) => { setSearchNome(e.target.value); setFormData({ ...formData, solicitante_nome: e.target.value }); }} onFocus={() => searchNome.length >= 2 && setShowSuggestions(true)} />
-                    {showSuggestions && usuariosSugeridos.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                        {usuariosSugeridos.map((nome, idx) => (
-                          <div key={idx} className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors" onClick={() => handleSelectUsuario(nome)}>
-                            <p className="font-medium text-gray-900">{nome}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <Combobox
+                      value={formData.solicitante_nome}
+                      onValueChange={handleSelectUsuario}
+                      options={colaboradores
+                        .filter(c => c.status === "Ativo")
+                        .map(c => ({
+                          value: c.nome_completo,
+                          label: `${c.nome_completo} - ${c.area}`
+                        }))}
+                      placeholder="Selecione seu nome"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
+                    />
                   </div>
                   <div>
                     <Label>Email *</Label>
-                    <Input required type="email" placeholder="seu.email@empresa.com" value={formData.solicitante_email} onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })} />
+                    <Input 
+                      required 
+                      type="email" 
+                      placeholder="Preenchido automaticamente" 
+                      value={formData.solicitante_email} 
+                      onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
+                      readOnly
+                      className="bg-gray-50"
+                    />
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <Label>Área/Departamento *</Label>
-                    <Input required placeholder="Ex: Financeiro, TI, Vendas" value={formData.solicitante_area} onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })} />
+                    <Input 
+                      required 
+                      placeholder="Preenchido automaticamente" 
+                      value={formData.solicitante_area} 
+                      onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
+                      readOnly
+                      className="bg-gray-50"
+                    />
                   </div>
                   <div>
                     <Label>Telefone</Label>
-                    <Input type="tel" placeholder="(00) 00000-0000" value={formData.solicitante_telefone} onChange={(e) => setFormData({ ...formData, solicitante_telefone: e.target.value })} />
+                    <Input 
+                      type="tel" 
+                      placeholder="Preenchido automaticamente" 
+                      value={formData.solicitante_telefone} 
+                      onChange={(e) => setFormData({ ...formData, solicitante_telefone: e.target.value })}
+                      readOnly
+                      className="bg-gray-50"
+                    />
                   </div>
                 </div>
               </div>

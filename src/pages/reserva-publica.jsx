@@ -8,40 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Calendar, Laptop, CheckCircle, Clock, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
-const Combobox = ({ value, onChange, options, placeholder }) => {
-  const [search, setSearch] = useState("");
-  const filtered = options.filter(opt => 
-    opt.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <div className="p-2">
-          <Input
-            placeholder="Buscar..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mb-2"
-          />
-        </div>
-        {filtered.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-};
 
 export default function ReservaPublica() {
   const [step, setStep] = useState(1);
@@ -483,10 +454,12 @@ export default function ReservaPublica() {
                     <Input
                       required
                       type="email"
-                      placeholder="seu.email@empresa.com"
+                      placeholder="Preenchido automaticamente"
                       value={formData.solicitante_email}
                       onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
                       disabled={isSubmitting}
+                      readOnly
+                      className="bg-gray-50"
                     />
                   </div>
                 </div>
@@ -495,10 +468,12 @@ export default function ReservaPublica() {
                   <Label>Área/Departamento *</Label>
                   <Input
                     required
-                    placeholder="Ex: Financeiro, TI, Vendas"
+                    placeholder="Preenchido automaticamente"
                     value={formData.solicitante_area}
                     onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
                     disabled={isSubmitting}
+                    readOnly
+                    className="bg-gray-50"
                   />
                 </div>
 

@@ -1,6 +1,7 @@
 import Cameras from './pages/Cameras';
 import canetasVibracao from './pages/Canetas_Vibracao';
 import Chamados from './pages/Chamados';
+import Colaboradores from './pages/Colaboradores';
 import Coletores from './pages/Coletores';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
@@ -14,7 +15,6 @@ import Smartphones from './pages/Smartphones';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
-import Colaboradores from './pages/Colaboradores';
 import __Layout from './Layout.jsx';
 
 
@@ -22,6 +22,7 @@ export const PAGES = {
     "Cameras": Cameras,
     "Canetas_Vibracao": canetasVibracao,
     "Chamados": Chamados,
+    "Colaboradores": Colaboradores,
     "Coletores": Coletores,
     "Dashboard": Dashboard,
     "Home": Home,
@@ -35,7 +36,6 @@ export const PAGES = {
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
-    "Colaboradores": Colaboradores,
 }
 
 export const pagesConfig = {
