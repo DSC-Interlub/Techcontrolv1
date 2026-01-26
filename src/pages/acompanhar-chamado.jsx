@@ -18,7 +18,13 @@ export default function AcompanharChamado() {
   const [numeroChamado, setNumeroChamado] = useState("");
   const [buscarChamado, setBuscarChamado] = useState(false);
   const [showAvaliacao, setShowAvaliacao] = useState(false);
-  const [avaliacao, setAvaliacao] = useState({ nota: 0, comentario: "" });
+  const [avaliacao, setAvaliacao] = useState({
+    tempo_resolucao: 0,
+    qualidade_atendimento: 0,
+    qualidade_solucao: 0,
+    comunicacao: 0,
+    comentario: ""
+  });
   const queryClient = useQueryClient();
 
   const { data: chamados = [], isLoading, error } = useQuery({
@@ -40,8 +46,19 @@ export default function AcompanharChamado() {
 
   const avaliacaoMutation = useMutation({
     mutationFn: async ({ id, avaliacao }) => {
+      const notaGeral = (
+        avaliacao.tempo_resolucao + 
+        avaliacao.qualidade_atendimento + 
+        avaliacao.qualidade_solucao + 
+        avaliacao.comunicacao
+      ) / 4;
+      
       return await base44.entities.Chamados.update(id, {
-        avaliacao_nota: avaliacao.nota,
+        avaliacao_tempo_resolucao: avaliacao.tempo_resolucao,
+        avaliacao_qualidade_atendimento: avaliacao.qualidade_atendimento,
+        avaliacao_qualidade_solucao: avaliacao.qualidade_solucao,
+        avaliacao_comunicacao: avaliacao.comunicacao,
+        avaliacao_nota_geral: Math.round(notaGeral * 10) / 10,
         avaliacao_comentario: avaliacao.comentario,
         avaliacao_data: new Date().toISOString(),
       });
@@ -49,14 +66,23 @@ export default function AcompanharChamado() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados_acompanhamento'] });
       setShowAvaliacao(false);
-      setAvaliacao({ nota: 0, comentario: "" });
+      setAvaliacao({
+        tempo_resolucao: 0,
+        qualidade_atendimento: 0,
+        qualidade_solucao: 0,
+        comunicacao: 0,
+        comentario: ""
+      });
     },
   });
 
   const handleAvaliar = () => {
-    if (avaliacao.nota > 0) {
-      avaliacaoMutation.mutate({ id: chamado.id, avaliacao });
+    if (avaliacao.tempo_resolucao === 0 || avaliacao.qualidade_atendimento === 0 || 
+        avaliacao.qualidade_solucao === 0 || avaliacao.comunicacao === 0) {
+      alert("Por favor, avalie todos os critérios antes de enviar");
+      return;
     }
+    avaliacaoMutation.mutate({ id: chamado.id, avaliacao });
   };
 
   const getStatusIcon = (status) => {
@@ -416,7 +442,7 @@ export default function AcompanharChamado() {
                   </AlertDescription>
                 </Alert>
 
-                {chamado.status === "Resolvido" && !chamado.avaliacao_nota && (
+                {chamado.status === "Resolvido" && !chamado.avaliacao_data && (
                   <Card className="border-2 border-yellow-300 bg-yellow-50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg text-yellow-900 flex items-center gap-2">
@@ -433,49 +459,116 @@ export default function AcompanharChamado() {
                           Avaliar Atendimento
                         </Button>
                       ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-5">
                           <div>
-                            <Label className="text-yellow-900">Como você avalia nosso atendimento?</Label>
-                            <div className="flex gap-2 mt-2">
-                              {[1, 2, 3, 4, 5].map((nota) => (
+                            <Label className="text-yellow-900 font-semibold">Tempo de Resolução</Label>
+                            <p className="text-xs text-yellow-700 mb-2">O problema foi resolvido dentro de um prazo adequado?</p>
+                            <div className="flex gap-2 justify-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
                                 <button
-                                  key={nota}
+                                  key={star}
                                   type="button"
-                                  onClick={() => setAvaliacao({ ...avaliacao, nota })}
+                                  onClick={() => setAvaliacao({ ...avaliacao, tempo_resolucao: star })}
                                   className={`text-3xl transition-all ${
-                                    avaliacao.nota >= nota ? 'text-yellow-500 scale-110' : 'text-gray-300'
-                                  }`}
+                                    star <= avaliacao.tempo_resolucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  } hover:scale-125`}
                                 >
                                   ⭐
                                 </button>
                               ))}
                             </div>
                           </div>
+
                           <div>
-                            <Label className="text-yellow-900">Comentário (opcional)</Label>
+                            <Label className="text-yellow-900 font-semibold">Qualidade do Atendimento</Label>
+                            <p className="text-xs text-yellow-700 mb-2">O técnico foi atencioso, profissional e prestativo?</p>
+                            <div className="flex gap-2 justify-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_atendimento: star })}
+                                  className={`text-3xl transition-all ${
+                                    star <= avaliacao.qualidade_atendimento ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  } hover:scale-125`}
+                                >
+                                  ⭐
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-yellow-900 font-semibold">Qualidade da Solução</Label>
+                            <p className="text-xs text-yellow-700 mb-2">O problema foi resolvido de forma eficiente e completa?</p>
+                            <div className="flex gap-2 justify-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setAvaliacao({ ...avaliacao, qualidade_solucao: star })}
+                                  className={`text-3xl transition-all ${
+                                    star <= avaliacao.qualidade_solucao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  } hover:scale-125`}
+                                >
+                                  ⭐
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-yellow-900 font-semibold">Comunicação</Label>
+                            <p className="text-xs text-yellow-700 mb-2">Você foi mantido informado sobre o andamento do chamado?</p>
+                            <div className="flex gap-2 justify-center">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => setAvaliacao({ ...avaliacao, comunicacao: star })}
+                                  className={`text-3xl transition-all ${
+                                    star <= avaliacao.comunicacao ? 'text-yellow-500 scale-110' : 'text-gray-300'
+                                  } hover:scale-125`}
+                                >
+                                  ⭐
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-yellow-200 pt-4">
+                            <Label className="text-yellow-900">Comentários Adicionais (opcional)</Label>
                             <Textarea
-                              placeholder="Deixe seu comentário sobre o atendimento..."
+                              placeholder="Compartilhe mais detalhes sobre sua experiência..."
                               value={avaliacao.comentario}
                               onChange={(e) => setAvaliacao({ ...avaliacao, comentario: e.target.value })}
                               rows={3}
+                              className="mt-2"
                             />
                           </div>
+
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
                               onClick={() => {
                                 setShowAvaliacao(false);
-                                setAvaliacao({ nota: 0, comentario: "" });
+                                setAvaliacao({
+                                  tempo_resolucao: 0,
+                                  qualidade_atendimento: 0,
+                                  qualidade_solucao: 0,
+                                  comunicacao: 0,
+                                  comentario: ""
+                                });
                               }}
                             >
                               Cancelar
                             </Button>
                             <Button
                               onClick={handleAvaliar}
-                              disabled={avaliacao.nota === 0 || avaliacaoMutation.isLoading}
+                              disabled={avaliacaoMutation.isLoading}
                               className="bg-yellow-600 hover:bg-yellow-700 flex-1"
                             >
-                              Enviar Avaliação
+                              {avaliacaoMutation.isLoading ? "Enviando..." : "Enviar Avaliação"}
                             </Button>
                           </div>
                         </div>
@@ -484,21 +577,97 @@ export default function AcompanharChamado() {
                   </Card>
                 )}
 
-                {chamado.avaliacao_nota && (
+                {chamado.avaliacao_data && (
                   <Card className="border-2 border-green-300 bg-green-50">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle className="w-8 h-8 text-green-600" />
-                        <div>
-                          <p className="font-semibold text-green-900">Obrigado pela sua avaliação!</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className="text-yellow-600 font-bold text-lg">{chamado.avaliacao_nota}</span>
-                            <span className="text-yellow-500 text-lg">⭐</span>
+                    <CardHeader>
+                      <CardTitle className="text-green-900 flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5" />
+                        Obrigado pela sua avaliação!
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-semibold text-green-900">Nota Geral</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl font-bold text-green-900">{chamado.avaliacao_nota_geral?.toFixed(1)}</span>
+                              <span className="text-xl text-yellow-500">⭐</span>
+                            </div>
                           </div>
-                          {chamado.avaliacao_comentario && (
-                            <p className="text-sm text-green-800 mt-2">{chamado.avaliacao_comentario}</p>
-                          )}
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="text-green-700">Tempo de Resolução:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span
+                                    key={star}
+                                    className={`${
+                                      star <= chamado.avaliacao_tempo_resolucao ? 'text-yellow-500' : 'text-gray-300'
+                                    }`}
+                                  >
+                                    ⭐
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-green-700">Qualidade do Atendimento:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span
+                                    key={star}
+                                    className={`${
+                                      star <= chamado.avaliacao_qualidade_atendimento ? 'text-yellow-500' : 'text-gray-300'
+                                    }`}
+                                  >
+                                    ⭐
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-green-700">Qualidade da Solução:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span
+                                    key={star}
+                                    className={`${
+                                      star <= chamado.avaliacao_qualidade_solucao ? 'text-yellow-500' : 'text-gray-300'
+                                    }`}
+                                  >
+                                    ⭐
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-green-700">Comunicação:</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <span
+                                    key={star}
+                                    className={`${
+                                      star <= chamado.avaliacao_comunicacao ? 'text-yellow-500' : 'text-gray-300'
+                                    }`}
+                                  >
+                                    ⭐
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                        
+                        {chamado.avaliacao_comentario && (
+                          <div>
+                            <p className="text-sm text-green-700 mb-2 font-semibold">Comentário:</p>
+                            <p className="text-sm text-green-900 bg-white p-3 rounded-lg border border-green-200">
+                              {chamado.avaliacao_comentario}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
