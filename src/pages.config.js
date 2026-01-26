@@ -8,7 +8,6 @@ import Importar from './pages/Importar';
 import notebooksExternos from './pages/Notebooks_Externos';
 import pcsInternos from './pages/PCs_Internos';
 import Ramais from './pages/Ramais';
-import reservaPublica from './pages/Reserva_Publica';
 import Reservas from './pages/Reservas';
 import Resumo from './pages/Resumo';
 import Smartphones from './pages/Smartphones';
@@ -30,7 +29,6 @@ export const PAGES = {
     "Notebooks_Externos": notebooksExternos,
     "PCs_Internos": pcsInternos,
     "Ramais": Ramais,
-    "Reserva_Publica": reservaPublica,
     "Reservas": Reservas,
     "Resumo": Resumo,
     "Smartphones": Smartphones,
