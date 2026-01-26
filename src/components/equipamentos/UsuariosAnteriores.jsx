@@ -1,9 +1,12 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Trash2, Users, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
@@ -12,6 +15,12 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
     nome: "",
     data_inicio: "",
     data_fim: "",
+  });
+  const [modoEdicao, setModoEdicao] = useState(false);
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
 
   const adicionarUsuario = () => {
@@ -69,18 +78,48 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
 
         {/* Formulário para adicionar novo usuário */}
         <div className="space-y-3 pt-3 border-t">
-          <p className="text-sm font-medium text-gray-700">Adicionar Usuário Anterior</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">Adicionar Usuário Anterior</p>
+            <Button
+              type="button"
+              onClick={() => setModoEdicao(!modoEdicao)}
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+            >
+              <Edit2 className="w-3 h-3 mr-1" />
+              {modoEdicao ? "Selecionar" : "Editar Manualmente"}
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Nome do Usuário</Label>
-              <Input
-                placeholder="Nome completo"
-                value={novoUsuario.nome}
-                onChange={(e) =>
-                  setNovoUsuario({ ...novoUsuario, nome: e.target.value })
-                }
-                className="h-9"
-              />
+              {modoEdicao ? (
+                <Input
+                  placeholder="Nome completo"
+                  value={novoUsuario.nome}
+                  onChange={(e) =>
+                    setNovoUsuario({ ...novoUsuario, nome: e.target.value })
+                  }
+                  className="h-9"
+                />
+              ) : (
+                <Select
+                  value={novoUsuario.nome}
+                  onValueChange={(value) => setNovoUsuario({ ...novoUsuario, nome: value })}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione o colaborador" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {colaboradores.map((colaborador) => (
+                      <SelectItem key={colaborador.id} value={colaborador.nome_completo}>
+                        {colaborador.nome_completo} - {colaborador.area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label className="text-xs">Data Início</Label>

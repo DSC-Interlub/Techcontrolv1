@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +13,11 @@ import UsuariosAnteriores from "./UsuariosAnteriores";
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
+  });
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
 
   const handleSubmit = (e) => {
@@ -141,11 +148,28 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Usuário Atual</Label>
-              <Input
-                placeholder="Nome do usuário"
+              <Select
                 value={formData.usuario_atual || ""}
-                onChange={(e) => handleChange("usuario_atual", e.target.value)}
-              />
+                onValueChange={(value) => {
+                  handleChange("usuario_atual", value);
+                  const colaborador = colaboradores.find(c => c.nome_completo === value);
+                  if (colaborador && entityType !== "Notebooks_Externos") {
+                    handleChange("area", colaborador.area);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o colaborador" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>Nenhum (Disponível)</SelectItem>
+                  {colaboradores.filter(c => c.status === "Ativo").map((colaborador) => (
+                    <SelectItem key={colaborador.id} value={colaborador.nome_completo}>
+                      {colaborador.nome_completo} - {colaborador.area}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
