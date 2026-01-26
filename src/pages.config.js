@@ -1,6 +1,5 @@
 import Cameras from './pages/Cameras';
 import canetasVibracao from './pages/Canetas_Vibracao';
-import chamadoPublico from './pages/Chamado_Publico';
 import Chamados from './pages/Chamados';
 import Coletores from './pages/Coletores';
 import Dashboard from './pages/Dashboard';
@@ -23,7 +22,6 @@ import __Layout from './Layout.jsx';
 export const PAGES = {
     "Cameras": Cameras,
     "Canetas_Vibracao": canetasVibracao,
-    "Chamado_Publico": chamadoPublico,
     "Chamados": Chamados,
     "Coletores": Coletores,
     "Dashboard": Dashboard,
