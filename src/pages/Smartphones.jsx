@@ -148,7 +148,7 @@ export default function Smartphones() {
       const usuariosAnteriores = equipment.usuarios_anteriores || [];
       usuariosAnteriores.push({
         nome: equipment.usuario_atual,
-        data_inicio: equipment.data_aquisicao || "",
+        data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
       
@@ -156,6 +156,7 @@ export default function Smartphones() {
         id: equipment.id,
         data: {
           usuario_atual: "",
+          usuario_desde: "",
           status: "Disponível",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -171,7 +172,7 @@ export default function Smartphones() {
     if (equipmentToTransfer.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipmentToTransfer.usuario_atual,
-        data_inicio: equipmentToTransfer.data_aquisicao || "",
+        data_inicio: equipmentToTransfer.usuario_desde || equipmentToTransfer.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -181,6 +182,7 @@ export default function Smartphones() {
         id: equipmentToTransfer.id,
         data: {
           usuario_atual: "",
+          usuario_desde: "",
           status: "Disponível",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -190,6 +192,7 @@ export default function Smartphones() {
         id: equipmentToTransfer.id,
         data: {
           usuario_atual: newUserName,
+          usuario_desde: new Date().toISOString().split('T')[0],
           status: "Em uso",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -207,7 +210,7 @@ export default function Smartphones() {
     if (equipment.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipment.usuario_atual,
-        data_inicio: equipment.data_aquisicao || "",
+        data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -216,6 +219,7 @@ export default function Smartphones() {
       id: selectedAvailableEquipment,
       data: {
         usuario_atual: selectedUser,
+        usuario_desde: new Date().toISOString().split('T')[0],
         status: "Em uso",
         usuarios_anteriores: usuariosAnteriores
       }

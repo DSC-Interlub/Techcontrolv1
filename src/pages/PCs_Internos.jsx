@@ -142,8 +142,7 @@ export default function PCs_Internos() {
     if (equipmentToTransfer.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipmentToTransfer.usuario_atual,
-        // Assuming data_aquisicao is a reasonable start date if no specific assignment date is tracked
-        data_inicio: equipmentToTransfer.data_aquisicao || "", 
+        data_inicio: equipmentToTransfer.usuario_desde || equipmentToTransfer.data_aquisicao || "", 
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -154,6 +153,7 @@ export default function PCs_Internos() {
         id: equipmentToTransfer.id,
         data: {
           usuario_atual: "",
+          usuario_desde: "",
           status: "Disponível",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -164,6 +164,7 @@ export default function PCs_Internos() {
         id: equipmentToTransfer.id,
         data: {
           usuario_atual: newUserName,
+          usuario_desde: new Date().toISOString().split('T')[0],
           status: "Em uso",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -181,7 +182,7 @@ export default function PCs_Internos() {
     if (equipment.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipment.usuario_atual,
-        data_inicio: equipment.data_aquisicao || "",
+        data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -190,6 +191,7 @@ export default function PCs_Internos() {
       id: selectedAvailableEquipment,
       data: {
         usuario_atual: selectedUser,
+        usuario_desde: new Date().toISOString().split('T')[0],
         status: "Em uso",
         usuarios_anteriores: usuariosAnteriores
       }

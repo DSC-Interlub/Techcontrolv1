@@ -21,6 +21,30 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     queryFn: () => base44.entities.Colaboradores.list(),
   });
 
+  // Calcular tempo de uso automaticamente
+  const calculateTimeInUse = (acquisitionDate) => {
+    if (!acquisitionDate) return "";
+    
+    const today = new Date();
+    const acquisition = new Date(acquisitionDate);
+    const diffTime = Math.abs(today - acquisition);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return diffDays === 1 ? "1 dia" : `${diffDays} dias`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? "1 mês" : `${months} meses`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      const remainingMonths = Math.floor((diffDays % 365) / 30);
+      if (remainingMonths === 0) {
+        return years === 1 ? "1 ano" : `${years} anos`;
+      }
+      return `${years} ano${years > 1 ? 's' : ''} e ${remainingMonths} mês${remainingMonths > 1 ? 'es' : ''}`;
+    }
+  };
+
   // Para outros tipos de equipamento
   const renderUsuarioAtualField = () => {
     const colaboradoresOptions = [
@@ -73,15 +97,20 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               <Input
                 type="date"
                 value={formData.data_aquisicao || ""}
-                onChange={(e) => handleChange("data_aquisicao", e.target.value)}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  handleChange("data_aquisicao", newDate);
+                  handleChange("tempo_uso", calculateTimeInUse(newDate));
+                }}
               />
             </div>
             <div>
               <Label>Tempo de Uso</Label>
               <Input
-                placeholder="Ex: 2 anos"
+                placeholder="Calculado automaticamente"
                 value={formData.tempo_uso || ""}
-                onChange={(e) => handleChange("tempo_uso", e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
           </div>
@@ -183,26 +212,32 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             <div>
               <Label>Usuário Atual</Label>
               <Combobox
-                value={formData.usuario_atual || ""}
-                onValueChange={(value) => {
-                  handleChange("usuario_atual", value);
-                  const colaborador = colaboradores.find(c => c.nome_completo === value);
-                  if (colaborador && entityType !== "Notebooks_Externos") {
-                    handleChange("area", colaborador.area);
-                  }
-                }}
-                options={[
-                  { value: "", label: "Nenhum (Disponível)" },
-                  ...colaboradores
-                    .filter(c => c.status === "Ativo")
-                    .map(c => ({
-                      value: c.nome_completo,
-                      label: `${c.nome_completo} - ${c.area}`
-                    }))
-                ]}
-                placeholder="Selecione o colaborador"
-                searchPlaceholder="Buscar colaborador..."
-                emptyText="Nenhum colaborador encontrado"
+              value={formData.usuario_atual || ""}
+              onValueChange={(value) => {
+                handleChange("usuario_atual", value);
+                const colaborador = colaboradores.find(c => c.nome_completo === value);
+                if (colaborador && entityType !== "Notebooks_Externos") {
+                  handleChange("area", colaborador.area);
+                }
+                // Define data atual como usuario_desde quando atribuir usuário
+                if (value && !formData.usuario_desde) {
+                  handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                } else if (!value) {
+                  handleChange("usuario_desde", "");
+                }
+              }}
+              options={[
+                { value: "", label: "Nenhum (Disponível)" },
+                ...colaboradores
+                  .filter(c => c.status === "Ativo")
+                  .map(c => ({
+                    value: c.nome_completo,
+                    label: `${c.nome_completo} - ${c.area}`
+                  }))
+              ]}
+              placeholder="Selecione o colaborador"
+              searchPlaceholder="Buscar colaborador..."
+              emptyText="Nenhum colaborador encontrado"
               />
             </div>
             <div>
@@ -347,6 +382,20 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 onChange={(e) => handleChange("area", e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Usuário Desde</Label>
+              <Input
+                type="date"
+                value={formData.usuario_desde || ""}
+                onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                disabled={!formData.usuario_atual}
+                className={!formData.usuario_atual ? "bg-gray-50" : ""}
+              />
+            </div>
+            <div></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
