@@ -110,12 +110,19 @@ export default function ColaboradorForm({ colaborador, onClose }) {
                 />
               </div>
               <div>
-                <Label>Cargo</Label>
-                <Input
-                  placeholder="Ex: Analista, Coordenador"
-                  value={formData.cargo || ""}
-                  onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                />
+                <Label>Tipo de Funcionário *</Label>
+                <Select
+                  value={formData.tipo_funcionario || ""}
+                  onValueChange={(value) => setFormData({ ...formData, tipo_funcionario: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Interno">Interno</SelectItem>
+                    <SelectItem value="Externo">Externo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Telefone/Ramal</Label>

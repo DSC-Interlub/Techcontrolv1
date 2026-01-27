@@ -125,9 +125,18 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
                   </div>
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900">{colaborador.nome_completo}</h1>
-                    <p className="text-gray-600 mt-1">{colaborador.cargo || "Sem cargo definido"}</p>
+                    <p className="text-gray-600 mt-1">
+                      {colaborador.tipo_funcionario ? `Funcionário ${colaborador.tipo_funcionario}` : "Tipo não definido"}
+                    </p>
                     <div className="flex gap-2 mt-2">
                       <Badge className="bg-indigo-100 text-indigo-800">{colaborador.area}</Badge>
+                      {colaborador.tipo_funcionario && (
+                        <Badge className={
+                          colaborador.tipo_funcionario === "Interno" ? "bg-indigo-100 text-indigo-800" : "bg-purple-100 text-purple-800"
+                        }>
+                          {colaborador.tipo_funcionario}
+                        </Badge>
+                      )}
                       <Badge className={
                         colaborador.status === "Ativo" ? "bg-green-100 text-green-800" :
                         colaborador.status === "Férias" ? "bg-blue-100 text-blue-800" :
