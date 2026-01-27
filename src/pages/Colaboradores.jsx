@@ -32,12 +32,12 @@ export default function Colaboradores() {
   });
 
   const handleExportar = () => {
-    const header = "NOME_COMPLETO\tEMAIL\tAREA\tCARGO\tTELEFONE\tDATA_ADMISSAO\tSTATUS\n";
+    const header = "NOME_COMPLETO\tEMAIL\tAREA\tTIPO\tTELEFONE\tDATA_ADMISSAO\tSTATUS\n";
     const rows = colaboradores.map(c => [
       c.nome_completo || "",
       c.email || "",
       c.area || "",
-      c.cargo || "",
+      c.tipo_funcionario || "",
       c.telefone || "",
       c.data_admissao || "",
       c.status || ""
@@ -56,7 +56,7 @@ export default function Colaboradores() {
     const matchSearch = c.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        c.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        c.area?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       c.cargo?.toLowerCase().includes(searchTerm.toLowerCase());
+                       c.tipo_funcionario?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = filterStatus === "all" || c.status === filterStatus;
     return matchSearch && matchStatus;
   });
@@ -174,7 +174,7 @@ export default function Colaboradores() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Área</TableHead>
-                    <TableHead>Cargo</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -198,7 +198,15 @@ export default function Colaboradores() {
                         <TableCell className="font-medium">{colaborador.nome_completo}</TableCell>
                         <TableCell className="text-sm text-gray-600">{colaborador.email || "-"}</TableCell>
                         <TableCell>{colaborador.area}</TableCell>
-                        <TableCell>{colaborador.cargo || "-"}</TableCell>
+                        <TableCell>
+                          {colaborador.tipo_funcionario ? (
+                            <Badge className={
+                              colaborador.tipo_funcionario === "Interno" ? "bg-indigo-100 text-indigo-800" : "bg-purple-100 text-purple-800"
+                            }>
+                              {colaborador.tipo_funcionario}
+                            </Badge>
+                          ) : "-"}
+                        </TableCell>
                         <TableCell>
                           <Badge className={
                             colaborador.status === "Ativo" ? "bg-green-100 text-green-800" :
