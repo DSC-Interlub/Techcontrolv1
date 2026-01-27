@@ -282,6 +282,7 @@ export default function Cameras() {
     total: equipamentos.length,
     disponiveis: equipamentos.filter(e => !e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível").length,
     emUso: equipamentos.filter(e => e.usuario_atual && e.usuario_atual.trim() !== "" && e.status === "Em uso").length,
+    comProblema: equipamentos.filter(e => e.condicao === "Lento" || e.condicao === "Com Problema").length,
   };
 
   return (
@@ -310,7 +311,7 @@ export default function Cameras() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -332,6 +333,14 @@ export default function Cameras() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Em Uso</p>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{stats.emUso}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={stats.comProblema > 0 ? "border-red-300 bg-red-50" : ""}>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Com Problema</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.comProblema}</p>
               </div>
             </CardContent>
           </Card>
@@ -432,18 +441,34 @@ export default function Cameras() {
                   onChange={(usuarios) => setFormData({ ...formData, usuarios_anteriores: usuarios })}
                 />
 
-                <div>
-                  <Label>Status</Label>
-                  <Select value={formData.status || "Disponível"} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Disponível">Disponível</SelectItem>
-                      <SelectItem value="Em uso">Em uso</SelectItem>
-                      <SelectItem value="Manutenção">Manutenção</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Status</Label>
+                    <Select value={formData.status || "Disponível"} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Disponível">Disponível</SelectItem>
+                        <SelectItem value="Em uso">Em uso</SelectItem>
+                        <SelectItem value="Manutenção">Manutenção</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Condição</Label>
+                    <Select value={formData.condicao || ""} onValueChange={(value) => setFormData({ ...formData, condicao: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a condição" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Rápido">Rápido</SelectItem>
+                        <SelectItem value="Normal">Normal</SelectItem>
+                        <SelectItem value="Lento">Lento</SelectItem>
+                        <SelectItem value="Com Problema">Com Problema</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div>
@@ -570,6 +595,7 @@ export default function Cameras() {
                       <TableHead>Usuário</TableHead>
                       <TableHead>Área</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Condição</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -580,7 +606,7 @@ export default function Cameras() {
                       </TableRow>
                     ) : filteredEquipamentos.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">Nenhuma câmera encontrada</TableCell>
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">Nenhuma câmera encontrada</TableCell>
                       </TableRow>
                     ) : (
                       filteredEquipamentos.map((equipamento) => (
@@ -603,6 +629,18 @@ export default function Cameras() {
                             }>
                               {equipamento.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {equipamento.condicao ? (
+                              <Badge className={
+                                equipamento.condicao === "Rápido" ? "bg-green-100 text-green-800" :
+                                equipamento.condicao === "Normal" ? "bg-blue-100 text-blue-800" :
+                                equipamento.condicao === "Lento" ? "bg-yellow-100 text-yellow-800" :
+                                "bg-red-100 text-red-800"
+                              }>
+                                {equipamento.condicao}
+                              </Badge>
+                            ) : "-"}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
