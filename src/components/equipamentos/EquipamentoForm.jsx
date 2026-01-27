@@ -349,7 +349,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label>Status</Label>
               <Select
@@ -363,6 +363,23 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   <SelectItem value="Disponível">Disponível</SelectItem>
                   <SelectItem value="Em uso">Em uso</SelectItem>
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Condição</Label>
+              <Select
+                value={formData.condicao || ""}
+                onValueChange={(value) => handleChange("condicao", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Rápido">Rápido</SelectItem>
+                  <SelectItem value="Normal">Normal</SelectItem>
+                  <SelectItem value="Lento">Lento</SelectItem>
+                  <SelectItem value="Com Problema">Com Problema</SelectItem>
                 </SelectContent>
               </Select>
             </div>

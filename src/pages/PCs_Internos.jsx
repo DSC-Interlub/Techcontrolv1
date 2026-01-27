@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -242,6 +241,7 @@ export default function PCs_Internos() {
     disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
     emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
     manutencao: equipamentos.filter(e => e.status === "Manutenção").length,
+    comProblema: equipamentos.filter(e => e.condicao === "Com Problema").length,
   };
 
   return (
@@ -269,7 +269,7 @@ export default function PCs_Internos() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -278,7 +278,7 @@ export default function PCs_Internos() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-green-50 border-green-200">
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Disponíveis</p>
@@ -299,6 +299,14 @@ export default function PCs_Internos() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Manutenção</p>
                 <p className="text-3xl font-bold text-orange-600 mt-1">{stats.manutencao}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Com Problema</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.comProblema}</p>
               </div>
             </CardContent>
           </Card>
@@ -523,7 +531,14 @@ export default function PCs_Internos() {
                           </TableCell>
                           <TableCell>
                             {equipamento.condicao && (
-                              <Badge variant="secondary">{equipamento.condicao}</Badge>
+                              <Badge className={
+                                equipamento.condicao === "Com Problema" ? "bg-red-100 text-red-800" :
+                                equipamento.condicao === "Lento" ? "bg-yellow-100 text-yellow-800" :
+                                equipamento.condicao === "Rápido" ? "bg-green-100 text-green-800" :
+                                "bg-gray-100 text-gray-800"
+                              }>
+                                {equipamento.condicao}
+                              </Badge>
                             )}
                           </TableCell>
                           <TableCell className="text-right">

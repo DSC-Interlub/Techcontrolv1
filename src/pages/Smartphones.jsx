@@ -261,7 +261,8 @@ export default function Smartphones() {
     total: equipamentos.length,
     disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
     emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
-    valorTotal: equipamentos.reduce((sum, e) => sum + (e.valor || 0), 0)
+    valorTotal: equipamentos.reduce((sum, e) => sum + (e.valor || 0), 0),
+    comProblema: equipamentos.filter(e => e.condicao === "Com Problema").length,
   };
 
   return (
@@ -290,7 +291,7 @@ export default function Smartphones() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -299,7 +300,7 @@ export default function Smartphones() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-green-50 border-green-200">
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Disponíveis</p>
@@ -312,6 +313,14 @@ export default function Smartphones() {
               <div className="text-center">
                 <p className="text-sm text-gray-600">Em Uso</p>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{stats.emUso}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600">Com Problema</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.comProblema}</p>
               </div>
             </CardContent>
           </Card>
@@ -435,6 +444,24 @@ export default function Smartphones() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Condição</Label>
+                    <Select value={formData.condicao || ""} onValueChange={(value) => setFormData({ ...formData, condicao: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a condição" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Rápido">Rápido</SelectItem>
+                        <SelectItem value="Normal">Normal</SelectItem>
+                        <SelectItem value="Lento">Lento</SelectItem>
+                        <SelectItem value="Com Problema">Com Problema</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div></div>
                 </div>
 
                 <div>
@@ -565,17 +592,18 @@ export default function Smartphones() {
                       <TableHead>Usuário</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Condição</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">Carregando...</TableCell>
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">Carregando...</TableCell>
                       </TableRow>
                     ) : filteredEquipamentos.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">Nenhum smartphone encontrado</TableCell>
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">Nenhum smartphone encontrado</TableCell>
                       </TableRow>
                     ) : (
                       filteredEquipamentos.map((equipamento) => (
@@ -602,6 +630,18 @@ export default function Smartphones() {
                             }>
                               {equipamento.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {equipamento.condicao && (
+                              <Badge className={
+                                equipamento.condicao === "Com Problema" ? "bg-red-100 text-red-800" :
+                                equipamento.condicao === "Lento" ? "bg-yellow-100 text-yellow-800" :
+                                equipamento.condicao === "Rápido" ? "bg-green-100 text-green-800" :
+                                "bg-gray-100 text-gray-800"
+                              }>
+                                {equipamento.condicao}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
