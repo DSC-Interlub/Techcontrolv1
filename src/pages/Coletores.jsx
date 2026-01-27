@@ -380,11 +380,11 @@ export default function Coletores() {
                     <Combobox
                       value={formData.usuario_atual || ""}
                       onValueChange={(value) => {
-                        const colab = colaboradores.find(c => c.nome_completo === value);
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
                         setFormData({ 
                           ...formData, 
                           usuario_atual: value,
-                          area: colab?.area || formData.area || ""
+                          area: colaborador?.area || ""
                         });
                       }}
                       options={[

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +31,11 @@ export default function Canetas_Vibracao() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list('-created_date'),
+  });
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
 
   // Buscar todos os usuários de todos os equipamentos
@@ -370,7 +374,17 @@ export default function Canetas_Vibracao() {
                   </div>
                   <div>
                     <Label>Usuário Atual</Label>
-                    <Input placeholder="Nome do usuário" value={formData.usuario_atual || ""} onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })} />
+                    <Input 
+                      placeholder="Nome do usuário" 
+                      value={formData.usuario_atual || ""} 
+                      onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })}
+                      list="colaboradores-list"
+                    />
+                    <datalist id="colaboradores-list">
+                      {colaboradores.filter(c => c.status === "Ativo").map(c => (
+                        <option key={c.id} value={c.nome_completo} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 

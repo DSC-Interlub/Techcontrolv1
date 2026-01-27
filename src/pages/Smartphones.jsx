@@ -420,7 +420,14 @@ export default function Smartphones() {
                     <Label>Usuário Atual</Label>
                     <Combobox
                       value={formData.usuario_atual || ""}
-                      onValueChange={(value) => setFormData({ ...formData, usuario_atual: value })}
+                      onValueChange={(value) => {
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({ 
+                          ...formData, 
+                          usuario_atual: value,
+                          area: colaborador?.area || ""
+                        });
+                      }}
                       options={[
                         { value: "", label: "Nenhum (Disponível)" },
                         ...colaboradores
