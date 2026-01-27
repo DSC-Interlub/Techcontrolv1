@@ -405,11 +405,12 @@ export default function Cameras() {
                     <Combobox
                       value={formData.usuario_atual || ""}
                       onValueChange={(value) => {
-                        const colab = colaboradores.find(c => c.nome_completo === value);
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
                         setFormData({ 
                           ...formData, 
                           usuario_atual: value,
-                          area: colab?.area || formData.area || ""
+                          area: colaborador?.area || "",
+                          usuario_desde: value ? (formData.usuario_desde || new Date().toISOString().split('T')[0]) : ""
                         });
                       }}
                       options={[
@@ -428,11 +429,23 @@ export default function Cameras() {
                   </div>
                   <div>
                     <Label>Usuário Desde</Label>
-                    <Input type="date" value={formData.usuario_desde || ""} onChange={(e) => setFormData({ ...formData, usuario_desde: e.target.value })} />
+                    <Input 
+                      type="date" 
+                      value={formData.usuario_desde || ""} 
+                      onChange={(e) => setFormData({ ...formData, usuario_desde: e.target.value })}
+                      disabled={!formData.usuario_atual}
+                      className={!formData.usuario_atual ? "bg-gray-50" : ""}
+                    />
                   </div>
                   <div>
                     <Label>Área</Label>
-                    <Input placeholder="Departamento" value={formData.area || ""} onChange={(e) => setFormData({ ...formData, area: e.target.value })} />
+                    <Input 
+                      placeholder="Departamento" 
+                      value={formData.area || ""} 
+                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                      className="bg-gray-50"
+                      readOnly
+                    />
                   </div>
                 </div>
 

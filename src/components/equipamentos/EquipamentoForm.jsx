@@ -385,17 +385,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderUsuarioAtualField()}
             <div>
-              <Label>Área</Label>
-              <Input
-                placeholder="Departamento ou área"
-                value={formData.area || ""}
-                onChange={(e) => handleChange("area", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
               <Label>Usuário Desde</Label>
               <Input
                 type="date"
@@ -403,6 +392,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 onChange={(e) => handleChange("usuario_desde", e.target.value)}
                 disabled={!formData.usuario_atual}
                 className={!formData.usuario_atual ? "bg-gray-50" : ""}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Área</Label>
+              <Input
+                placeholder="Departamento ou área"
+                value={formData.area || ""}
+                onChange={(e) => handleChange("area", e.target.value)}
+                className="bg-gray-50"
+                readOnly
               />
             </div>
             <div></div>

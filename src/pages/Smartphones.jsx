@@ -425,7 +425,8 @@ export default function Smartphones() {
                         setFormData({ 
                           ...formData, 
                           usuario_atual: value,
-                          area: colaborador?.area || ""
+                          area: colaborador?.area || "",
+                          usuario_desde: value ? (formData.usuario_desde || new Date().toISOString().split('T')[0]) : ""
                         });
                       }}
                       options={[
@@ -473,6 +474,29 @@ export default function Smartphones() {
                     </Select>
                   </div>
                   <div></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Usuário Desde</Label>
+                    <Input 
+                      type="date" 
+                      value={formData.usuario_desde || ""} 
+                      onChange={(e) => setFormData({ ...formData, usuario_desde: e.target.value })}
+                      disabled={!formData.usuario_atual}
+                      className={!formData.usuario_atual ? "bg-gray-50" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label>Área</Label>
+                    <Input 
+                      placeholder="Departamento" 
+                      value={formData.area || ""} 
+                      onChange={(e) => setFormData({ ...formData, area: e.target.value })}
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
                 </div>
 
                 <div>

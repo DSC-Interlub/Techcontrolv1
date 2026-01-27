@@ -377,7 +377,16 @@ export default function Canetas_Vibracao() {
                     <Input 
                       placeholder="Nome do usuário" 
                       value={formData.usuario_atual || ""} 
-                      onChange={(e) => setFormData({ ...formData, usuario_atual: e.target.value })}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({ 
+                          ...formData, 
+                          usuario_atual: value,
+                          area: colaborador?.area || formData.area || "",
+                          usuario_desde: value ? (formData.usuario_desde || new Date().toISOString().split('T')[0]) : ""
+                        });
+                      }}
                       list="colaboradores-list"
                     />
                     <datalist id="colaboradores-list">
@@ -390,9 +399,27 @@ export default function Canetas_Vibracao() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Área</Label>
-                    <Input placeholder="Departamento" value={formData.area || ""} onChange={(e) => setFormData({ ...formData, area: e.target.value })} />
+                    <Label>Usuário Desde</Label>
+                    <Input 
+                      type="date" 
+                      value={formData.usuario_desde || ""} 
+                      onChange={(e) => setFormData({ ...formData, usuario_desde: e.target.value })}
+                      disabled={!formData.usuario_atual}
+                      className={!formData.usuario_atual ? "bg-gray-50" : ""}
+                    />
                   </div>
+                  <div>
+                    <Label>Área</Label>
+                    <Input 
+                      placeholder="Departamento" 
+                      value={formData.area || ""} 
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Status</Label>
                     <Select value={formData.status || "Disponível"} onValueChange={(value) => setFormData({ ...formData, status: value })}>
@@ -403,6 +430,20 @@ export default function Canetas_Vibracao() {
                         <SelectItem value="Disponível">Disponível</SelectItem>
                         <SelectItem value="Em uso">Em uso</SelectItem>
                         <SelectItem value="Manutenção">Manutenção</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Condição</Label>
+                    <Select value={formData.condicao || ""} onValueChange={(value) => setFormData({ ...formData, condicao: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a condição" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Rápido">Rápido</SelectItem>
+                        <SelectItem value="Normal">Normal</SelectItem>
+                        <SelectItem value="Lento">Lento</SelectItem>
+                        <SelectItem value="Com Problema">Com Problema</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
