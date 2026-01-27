@@ -223,11 +223,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   handleChange("usuario_atual", value);
                   const colaborador = colaboradores.find(c => c.nome_completo === value);
                   if (colaborador) {
-                    // Para PCs_Internos, preenche área normalmente
-                    if (entityType === "PCs_Internos") {
-                      handleChange("area", colaborador.area);
+                    handleChange("area", colaborador.area);
+                    if (entityType === "Notebooks_Externos") {
+                      handleChange("uf", colaborador.area);
                     }
-                    // Para Notebooks_Externos, não preenche área pois o campo é "uf"
                   }
                   // Define data atual como usuario_desde quando atribuir usuário
                   if (value && !formData.usuario_desde) {
@@ -254,8 +253,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
               <Input
                 placeholder="Departamento ou área"
-                value={formData.area || entityType === "Notebooks_Externos" ? formData.uf || "" : ""}
+                value={entityType === "Notebooks_Externos" ? formData.uf || "" : formData.area || ""}
                 onChange={(e) => handleChange(entityType === "Notebooks_Externos" ? "uf" : "area", e.target.value)}
+                className="bg-gray-50"
+                readOnly
               />
             </div>
           </div>
