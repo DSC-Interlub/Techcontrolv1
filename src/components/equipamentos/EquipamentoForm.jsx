@@ -65,8 +65,14 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           onValueChange={(value) => {
             handleChange("usuario_atual", value);
             const colaborador = colaboradores.find(c => c.nome_completo === value);
-            if (colaborador && !["Notebooks_Externos"].includes(entityType)) {
+            if (colaborador) {
               handleChange("area", colaborador.area);
+            }
+            // Define data atual como usuario_desde quando atribuir usuário
+            if (value && !formData.usuario_desde) {
+              handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+            } else if (!value) {
+              handleChange("usuario_desde", "");
             }
           }}
           options={colaboradoresOptions}
@@ -212,32 +218,36 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             <div>
               <Label>Usuário Atual</Label>
               <Combobox
-              value={formData.usuario_atual || ""}
-              onValueChange={(value) => {
-                handleChange("usuario_atual", value);
-                const colaborador = colaboradores.find(c => c.nome_completo === value);
-                if (colaborador && entityType !== "Notebooks_Externos") {
-                  handleChange("area", colaborador.area);
-                }
-                // Define data atual como usuario_desde quando atribuir usuário
-                if (value && !formData.usuario_desde) {
-                  handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
-                } else if (!value) {
-                  handleChange("usuario_desde", "");
-                }
-              }}
-              options={[
-                { value: "", label: "Nenhum (Disponível)" },
-                ...colaboradores
-                  .filter(c => c.status === "Ativo")
-                  .map(c => ({
-                    value: c.nome_completo,
-                    label: `${c.nome_completo} - ${c.area}`
-                  }))
-              ]}
-              placeholder="Selecione o colaborador"
-              searchPlaceholder="Buscar colaborador..."
-              emptyText="Nenhum colaborador encontrado"
+                value={formData.usuario_atual || ""}
+                onValueChange={(value) => {
+                  handleChange("usuario_atual", value);
+                  const colaborador = colaboradores.find(c => c.nome_completo === value);
+                  if (colaborador) {
+                    // Para PCs_Internos, preenche área normalmente
+                    if (entityType === "PCs_Internos") {
+                      handleChange("area", colaborador.area);
+                    }
+                    // Para Notebooks_Externos, não preenche área pois o campo é "uf"
+                  }
+                  // Define data atual como usuario_desde quando atribuir usuário
+                  if (value && !formData.usuario_desde) {
+                    handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                  } else if (!value) {
+                    handleChange("usuario_desde", "");
+                  }
+                }}
+                options={[
+                  { value: "", label: "Nenhum (Disponível)" },
+                  ...colaboradores
+                    .filter(c => c.status === "Ativo")
+                    .map(c => ({
+                      value: c.nome_completo,
+                      label: `${c.nome_completo} - ${c.area}`
+                    }))
+                ]}
+                placeholder="Selecione o colaborador"
+                searchPlaceholder="Buscar colaborador..."
+                emptyText="Nenhum colaborador encontrado"
               />
             </div>
             <div>
