@@ -152,97 +152,173 @@ export default function Colaboradores() {
         <Card>
           <CardHeader className="border-b">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Lista de Colaboradores ({filteredColaboradores.length})</CardTitle>
-              <div className="flex gap-2 w-full md:w-auto">
-                <div className="relative flex-1 md:flex-initial md:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+              <CardTitle>Lista de Colaboradores</CardTitle>
+              <div className="relative md:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Área</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredColaboradores.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        Nenhum colaborador encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredColaboradores.map((colaborador) => (
-                      <TableRow key={colaborador.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
-                        <TableCell className="font-medium">{colaborador.nome_completo}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{colaborador.email || "-"}</TableCell>
-                        <TableCell>{colaborador.area}</TableCell>
-                        <TableCell>
-                          {colaborador.tipo_funcionario ? (
-                            <Badge className={
-                              colaborador.tipo_funcionario === "Interno" ? "bg-indigo-100 text-indigo-800" : "bg-purple-100 text-purple-800"
-                            }>
-                              {colaborador.tipo_funcionario}
-                            </Badge>
-                          ) : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            colaborador.status === "Ativo" ? "bg-green-100 text-green-800" :
-                            colaborador.status === "Férias" ? "bg-blue-100 text-blue-800" :
-                            colaborador.status === "Afastado" ? "bg-orange-100 text-orange-800" :
-                            "bg-gray-100 text-gray-800"
-                          }>
-                            {colaborador.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => setSelectedColaborador(colaborador)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
-                                  deleteMutation.mutate(colaborador.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
+          <CardContent className="p-6">
+            <div className="space-y-6">
+              {/* Colaboradores Internos */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-lg font-semibold text-indigo-900">Colaboradores Internos</h3>
+                  <Badge className="bg-indigo-100 text-indigo-800">
+                    {filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").length}
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Área</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Carregando...
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Nenhum colaborador interno encontrado
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").map((colaborador) => (
+                          <TableRow key={colaborador.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
+                            <TableCell className="font-medium">{colaborador.nome_completo}</TableCell>
+                            <TableCell className="text-sm text-gray-600">{colaborador.email || "-"}</TableCell>
+                            <TableCell>{colaborador.area}</TableCell>
+                            <TableCell>
+                              <Badge className={
+                                colaborador.status === "Ativo" ? "bg-green-100 text-green-800" :
+                                colaborador.status === "Férias" ? "bg-blue-100 text-blue-800" :
+                                colaborador.status === "Afastado" ? "bg-orange-100 text-orange-800" :
+                                "bg-gray-100 text-gray-800"
+                              }>
+                                {colaborador.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="ghost" onClick={() => setSelectedColaborador(colaborador)}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
+                                      deleteMutation.mutate(colaborador.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Colaboradores Externos */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-lg font-semibold text-purple-900">Colaboradores Externos</h3>
+                  <Badge className="bg-purple-100 text-purple-800">
+                    {filteredColaboradores.filter(c => c.tipo_funcionario === "Externo").length}
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Área</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Carregando...
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredColaboradores.filter(c => c.tipo_funcionario === "Externo").length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Nenhum colaborador externo encontrado
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredColaboradores.filter(c => c.tipo_funcionario === "Externo").map((colaborador) => (
+                          <TableRow key={colaborador.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
+                            <TableCell className="font-medium">{colaborador.nome_completo}</TableCell>
+                            <TableCell className="text-sm text-gray-600">{colaborador.email || "-"}</TableCell>
+                            <TableCell>{colaborador.area}</TableCell>
+                            <TableCell>
+                              <Badge className={
+                                colaborador.status === "Ativo" ? "bg-green-100 text-green-800" :
+                                colaborador.status === "Férias" ? "bg-blue-100 text-blue-800" :
+                                colaborador.status === "Afastado" ? "bg-orange-100 text-orange-800" :
+                                "bg-gray-100 text-gray-800"
+                              }>
+                                {colaborador.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="ghost" onClick={() => setSelectedColaborador(colaborador)}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
+                                      deleteMutation.mutate(colaborador.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
