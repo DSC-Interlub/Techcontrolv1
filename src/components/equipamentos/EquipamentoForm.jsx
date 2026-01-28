@@ -262,6 +262,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               />
             </div>
             <div>
+              <Label>Usuário Desde</Label>
+              <Input
+                type="date"
+                value={formData.usuario_desde || ""}
+                onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                disabled={!formData.usuario_atual}
+                className={!formData.usuario_atual ? "bg-gray-50" : ""}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
               <Input
                 placeholder="Departamento ou área"
@@ -271,6 +284,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 readOnly
               />
             </div>
+            <div></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
