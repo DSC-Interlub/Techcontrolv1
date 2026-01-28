@@ -64,29 +64,7 @@ export default function Canetas_Vibracao() {
     queryFn: () => base44.entities.Coletores.list(),
   });
 
-  // Obter lista única de todos os usuários do sistema
-  const getAllUsers = () => {
-    const usersSet = new Set();
-    
-    const addUsers = (equipments) => {
-      equipments.forEach(eq => {
-        if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
-          usersSet.add(eq.usuario_atual.trim());
-        }
-      });
-    };
 
-    addUsers(equipamentos);
-    addUsers(pcsInternos);
-    addUsers(notebooksExternos);
-    addUsers(smartphones);
-    addUsers(cameras);
-    addUsers(coletores);
-
-    return Array.from(usersSet).sort();
-  };
-
-  const allUsers = getAllUsers();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Canetas_Vibracao.create(data),

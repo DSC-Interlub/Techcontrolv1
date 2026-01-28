@@ -34,55 +34,10 @@ export default function PCs_Internos() {
     queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
   });
 
-  // Buscar todos os usuários de todos os equipamentos
-  const { data: notebooksExternos = [] } = useQuery({
-    queryKey: ['notebooks_externos'],
-    queryFn: () => base44.entities.Notebooks_Externos.list(),
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
   });
-
-  const { data: smartphones = [] } = useQuery({
-    queryKey: ['smartphones'],
-    queryFn: () => base44.entities.Smartphones.list(),
-  });
-
-  const { data: cameras = [] } = useQuery({
-    queryKey: ['cameras'],
-    queryFn: () => base44.entities.Cameras.list(),
-  });
-
-  const { data: coletores = [] } = useQuery({
-    queryKey: ['coletores'],
-    queryFn: () => base44.entities.Coletores.list(),
-  });
-
-  const { data: canetasVibracao = [] } = useQuery({
-    queryKey: ['canetas_vibracao'],
-    queryFn: () => base44.entities.Canetas_Vibracao.list(),
-  });
-
-  // Obter lista única de todos os usuários do sistema
-  const getAllUsers = () => {
-    const usersSet = new Set();
-    
-    const addUsers = (equipments) => {
-      equipments.forEach(eq => {
-        if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
-          usersSet.add(eq.usuario_atual.trim());
-        }
-      });
-    };
-
-    addUsers(equipamentos);
-    addUsers(notebooksExternos);
-    addUsers(smartphones);
-    addUsers(cameras);
-    addUsers(coletores);
-    addUsers(canetasVibracao);
-
-    return Array.from(usersSet).sort();
-  };
-
-  const allUsers = getAllUsers();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.PCs_Internos.create(data),
@@ -625,16 +580,18 @@ export default function PCs_Internos() {
                         <span className="font-medium">Disponível</span>
                       </div>
                     </SelectItem>
-                    {allUsers.length > 0 && (
+                    {colaboradores.filter(c => c.status === "Ativo").length > 0 && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
-                          USUÁRIOS
+                          COLABORADORES ATIVOS
                         </div>
-                        {allUsers.map((user) => (
-                          <SelectItem key={user} value={user}>
-                            {user}
-                          </SelectItem>
-                        ))}
+                        {colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map((colab) => (
+                            <SelectItem key={colab.id} value={colab.nome_completo}>
+                              {colab.nome_completo} - {colab.area}
+                            </SelectItem>
+                          ))}
                       </>
                     )}
                   </SelectContent>

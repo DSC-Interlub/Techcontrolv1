@@ -66,29 +66,7 @@ export default function Cameras() {
     queryFn: () => base44.entities.Canetas_Vibracao.list(),
   });
 
-  // Obter lista única de todos os usuários do sistema
-  const getAllUsers = () => {
-    const usersSet = new Set();
-    
-    const addUsers = (equipments) => {
-      equipments.forEach(eq => {
-        if (eq.usuario_atual && eq.usuario_atual.trim() !== "") {
-          usersSet.add(eq.usuario_atual.trim());
-        }
-      });
-    };
 
-    addUsers(equipamentos);
-    addUsers(pcsInternos);
-    addUsers(notebooksExternos);
-    addUsers(smartphones);
-    addUsers(coletores);
-    addUsers(canetasVibracao);
-
-    return Array.from(usersSet).sort();
-  };
-
-  const allUsers = getAllUsers();
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Cameras.create(data),
@@ -703,16 +681,18 @@ export default function Cameras() {
                         <span className="font-medium">Disponível</span>
                       </div>
                     </SelectItem>
-                    {allUsers.length > 0 && (
+                    {colaboradores.filter(c => c.status === "Ativo").length > 0 && (
                       <>
                         <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
-                          USUÁRIOS CADASTRADOS
+                          COLABORADORES ATIVOS
                         </div>
-                        {allUsers.map((user) => (
-                          <SelectItem key={user} value={user}>
-                            {user}
-                          </SelectItem>
-                        ))}
+                        {colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map((colab) => (
+                            <SelectItem key={colab.id} value={colab.nome_completo}>
+                              {colab.nome_completo} - {colab.area}
+                            </SelectItem>
+                          ))}
                       </>
                     )}
                   </SelectContent>
