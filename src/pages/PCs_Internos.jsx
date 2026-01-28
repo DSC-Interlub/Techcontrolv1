@@ -84,10 +84,21 @@ export default function PCs_Internos() {
 
   const allUsers = getAllUsers();
 
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.PCs_Internos.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      setShowForm(false);
+      setEditingEquipamento(null);
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.PCs_Internos.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      setShowForm(false);
+      setEditingEquipamento(null);
       setShowTransferModal(false);
       setShowAssignModal(false);
       setEquipmentToTransfer(null);
@@ -107,6 +118,8 @@ export default function PCs_Internos() {
   const handleSubmit = (data) => {
     if (editingEquipamento) {
       updateMutation.mutate({ id: editingEquipamento.id, data });
+    } else {
+      createMutation.mutate(data);
     }
   };
 
