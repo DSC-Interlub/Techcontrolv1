@@ -24,7 +24,7 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
   });
 
   const adicionarUsuario = () => {
-    if (novoUsuario.nome && novoUsuario.data_inicio) {
+    if (novoUsuario.nome) {
       onChange([...usuarios, novoUsuario]);
       setNovoUsuario({ nome: "", data_inicio: "", data_fim: "" });
     }
@@ -55,11 +55,13 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
                 <div className="flex-1">
                   <p className="font-medium text-sm">{usuario.nome}</p>
                   <p className="text-xs text-gray-600">
-                    {usuario.data_inicio && format(new Date(usuario.data_inicio), "dd/MM/yyyy")}
+                    {usuario.data_inicio 
+                      ? format(new Date(usuario.data_inicio), "dd/MM/yyyy") 
+                      : "Sem data"}
                     {" → "}
                     {usuario.data_fim 
                       ? format(new Date(usuario.data_fim), "dd/MM/yyyy")
-                      : "Atual"}
+                      : "Sem data"}
                   </p>
                 </div>
                 <Button
@@ -150,7 +152,7 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
             variant="outline"
             size="sm"
             className="w-full"
-            disabled={!novoUsuario.nome || !novoUsuario.data_inicio}
+            disabled={!novoUsuario.nome}
           >
             <Plus className="w-4 h-4 mr-2" />
             Adicionar ao Histórico
