@@ -72,6 +72,16 @@ export default function PCs_Internos() {
 
   const handleSubmit = (data) => {
     if (editingEquipamento) {
+      // Verificar se o usuário mudou
+      if (editingEquipamento.usuario_atual && editingEquipamento.usuario_atual !== data.usuario_atual) {
+        const usuariosAnteriores = data.usuarios_anteriores || editingEquipamento.usuarios_anteriores || [];
+        usuariosAnteriores.push({
+          nome: editingEquipamento.usuario_atual,
+          data_inicio: editingEquipamento.usuario_desde || editingEquipamento.data_aquisicao || "",
+          data_fim: new Date().toISOString().split('T')[0]
+        });
+        data.usuarios_anteriores = usuariosAnteriores;
+      }
       updateMutation.mutate({ id: editingEquipamento.id, data });
     } else {
       createMutation.mutate(data);
@@ -122,17 +132,22 @@ export default function PCs_Internos() {
         data: {
           usuario_atual: "",
           usuario_desde: "",
+          area: "",
           status: "Disponível",
           usuarios_anteriores: usuariosAnteriores
         }
       });
     } else {
+      // Buscar área do novo usuário
+      const novoColaborador = colaboradores.find(c => c.nome_completo === newUserName);
+      
       // Transfere para novo usuário
       updateMutation.mutate({
         id: equipmentToTransfer.id,
         data: {
           usuario_atual: newUserName,
           usuario_desde: new Date().toISOString().split('T')[0],
+          area: novoColaborador?.area || "",
           status: "Em uso",
           usuarios_anteriores: usuariosAnteriores
         }
@@ -155,11 +170,15 @@ export default function PCs_Internos() {
       });
     }
 
+    // Buscar área do usuário
+    const colaborador = colaboradores.find(c => c.nome_completo === selectedUser);
+
     updateMutation.mutate({
       id: selectedAvailableEquipment,
       data: {
         usuario_atual: selectedUser,
         usuario_desde: new Date().toISOString().split('T')[0],
+        area: colaborador?.area || "",
         status: "Em uso",
         usuarios_anteriores: usuariosAnteriores
       }
@@ -513,6 +532,19 @@ export default function PCs_Internos() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
+                              {equipamento.usuario_atual && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTransferEquipment(equipamento, equipamento.usuario_atual);
+                                  }}
+                                  title="Transferir equipamento"
+                                >
+                                  <UserMinus className="w-4 h-4 text-orange-600" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"

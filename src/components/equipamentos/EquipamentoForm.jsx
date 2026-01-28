@@ -86,6 +86,18 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Se está editando e o usuário mudou, adicionar ao histórico
+    if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== formData.usuario_atual) {
+      const usuariosAnteriores = formData.usuarios_anteriores || equipamento.usuarios_anteriores || [];
+      usuariosAnteriores.push({
+        nome: equipamento.usuario_atual,
+        data_inicio: equipamento.usuario_desde || equipamento.data_aquisicao || "",
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+      formData.usuarios_anteriores = usuariosAnteriores;
+    }
+    
     onSubmit(formData);
   };
 
