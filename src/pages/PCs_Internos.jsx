@@ -72,16 +72,6 @@ export default function PCs_Internos() {
 
   const handleSubmit = (data) => {
     if (editingEquipamento) {
-      // Verificar se o usuário mudou
-      if (editingEquipamento.usuario_atual && editingEquipamento.usuario_atual !== data.usuario_atual) {
-        const usuariosAnteriores = data.usuarios_anteriores || editingEquipamento.usuarios_anteriores || [];
-        usuariosAnteriores.push({
-          nome: editingEquipamento.usuario_atual,
-          data_inicio: editingEquipamento.usuario_desde || editingEquipamento.data_aquisicao || "",
-          data_fim: new Date().toISOString().split('T')[0]
-        });
-        data.usuarios_anteriores = usuariosAnteriores;
-      }
       updateMutation.mutate({ id: editingEquipamento.id, data });
     } else {
       createMutation.mutate(data);
