@@ -224,6 +224,16 @@ export default function Coletores() {
   const userGroups = getUserGroups();
   const availableEquipments = equipamentos.filter(e => !e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível");
 
+  // Buscar todos os usuários de todos os equipamentos
+  const allUsers = Array.from(new Set([
+    ...pcsInternos.filter(e => e.usuario_atual).map(e => e.usuario_atual),
+    ...notebooksExternos.filter(e => e.usuario_atual).map(e => e.usuario_atual),
+    ...smartphones.filter(e => e.usuario_atual).map(e => e.usuario_atual),
+    ...cameras.filter(e => e.usuario_atual).map(e => e.usuario_atual),
+    ...canetasVibracao.filter(e => e.usuario_atual).map(e => e.usuario_atual),
+    ...equipamentos.filter(e => e.usuario_atual).map(e => e.usuario_atual)
+  ])).sort();
+
   const filteredEquipamentos = equipamentos.filter(eq =>
     eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
