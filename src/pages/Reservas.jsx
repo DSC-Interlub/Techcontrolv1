@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check, Eye, User, Mail, Briefcase, Clock, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isSameMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createPageUrl } from "@/utils";
 
 export default function Reservas() {
@@ -22,6 +23,10 @@ export default function Reservas() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [historicoSearch, setHistoricoSearch] = useState("");
+  const [historicoStatusFilter, setHistoricoStatusFilter] = useState("todos");
+  const [selectedReserva, setSelectedReserva] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const queryClient = useQueryClient();
 
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}${createPageUrl("reserva-publica")}` : '';
@@ -170,7 +175,32 @@ export default function Reservas() {
     confirmadas: reservas.filter(r => r.status === "Confirmada").length,
     emAndamento: reservas.filter(r => r.status === "Em Andamento").length,
     concluidas: reservas.filter(r => r.status === "Concluída").length,
+    canceladas: reservas.filter(r => r.status === "Cancelada").length,
     notebooksReserva: notebooksDisponiveis.length,
+  };
+
+  const filteredHistorico = reservas.filter(reserva => {
+    const matchesSearch = 
+      reserva.equipamento_nome?.toLowerCase().includes(historicoSearch.toLowerCase()) ||
+      reserva.solicitante_nome?.toLowerCase().includes(historicoSearch.toLowerCase()) ||
+      reserva.solicitante_area?.toLowerCase().includes(historicoSearch.toLowerCase());
+    
+    const matchesStatus = historicoStatusFilter === "todos" || reserva.status === historicoStatusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const statusColors = {
+    "Pendente": "bg-yellow-100 text-yellow-800",
+    "Confirmada": "bg-blue-100 text-blue-800",
+    "Em Andamento": "bg-green-100 text-green-800",
+    "Concluída": "bg-gray-100 text-gray-800",
+    "Cancelada": "bg-red-100 text-red-800"
+  };
+
+  const handleViewDetails = (reserva) => {
+    setSelectedReserva(reserva);
+    setShowDetailsModal(true);
   };
 
   return (
@@ -214,48 +244,55 @@ export default function Reservas() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Confirmadas</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{stats.confirmadas}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Em Andamento</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.emAndamento}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Concluídas</p>
-                <p className="text-3xl font-bold text-gray-600 mt-1">{stats.concluidas}</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Notebooks p/ Reserva</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.notebooksReserva}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Tabs defaultValue="ativas" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="ativas">Reservas Ativas</TabsTrigger>
+            <TabsTrigger value="historico">Histórico Completo</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ativas" className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Confirmadas</p>
+                    <p className="text-3xl font-bold text-green-600 mt-1">{stats.confirmadas}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Em Andamento</p>
+                    <p className="text-3xl font-bold text-blue-600 mt-1">{stats.emAndamento}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Concluídas</p>
+                    <p className="text-3xl font-bold text-gray-600 mt-1">{stats.concluidas}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Notebooks p/ Reserva</p>
+                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.notebooksReserva}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
         {/* Calendário */}
         <Card className="mb-6">
@@ -344,85 +381,224 @@ export default function Reservas() {
           </CardContent>
         </Card>
 
-        {/* Lista de Reservas */}
-        <Card>
-          <CardHeader className="border-b">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Lista de Reservas ({filteredReservas.length})</CardTitle>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="Confirmada">Confirmada</SelectItem>
-                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                  <SelectItem value="Concluída">Concluída</SelectItem>
-                  <SelectItem value="Cancelada">Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Solicitante</TableHead>
-                    <TableHead>Equipamento</TableHead>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Área</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingReservas ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredReservas.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        Nenhuma reserva encontrada
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredReservas.map((reserva) => (
-                      <TableRow key={reserva.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{reserva.solicitante_nome}</p>
-                            <p className="text-sm text-gray-500">{reserva.solicitante_email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{reserva.equipamento_nome}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p>{format(new Date(reserva.data_inicio), "dd/MM/yyyy")} - {reserva.hora_inicio}</p>
-                            <p className="text-gray-500">até {format(new Date(reserva.data_fim), "dd/MM/yyyy")} - {reserva.hora_fim}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{reserva.solicitante_area}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
-                            reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
-                            reserva.status === "Cancelada" ? "bg-red-100 text-red-800" :
-                            "bg-gray-100 text-gray-800"
-                          }>
-                            {reserva.status}
-                          </Badge>
-                        </TableCell>
+            {/* Lista de Reservas */}
+            <Card>
+              <CardHeader className="border-b">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <CardTitle>Lista de Reservas ({filteredReservas.length})</CardTitle>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os Status</SelectItem>
+                      <SelectItem value="Confirmada">Confirmada</SelectItem>
+                      <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                      <SelectItem value="Concluída">Concluída</SelectItem>
+                      <SelectItem value="Cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Solicitante</TableHead>
+                        <TableHead>Equipamento</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Área</TableHead>
+                        <TableHead>Status</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {loadingReservas ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Carregando...
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredReservas.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            Nenhuma reserva encontrada
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredReservas.map((reserva) => (
+                          <TableRow key={reserva.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{reserva.solicitante_nome}</p>
+                                <p className="text-sm text-gray-500">{reserva.solicitante_email}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{reserva.equipamento_nome}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p>{format(new Date(reserva.data_inicio), "dd/MM/yyyy")} - {reserva.hora_inicio}</p>
+                                <p className="text-gray-500">até {format(new Date(reserva.data_fim), "dd/MM/yyyy")} - {reserva.hora_fim}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{reserva.solicitante_area}</TableCell>
+                            <TableCell>
+                              <Badge className={
+                                reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
+                                reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                                reserva.status === "Cancelada" ? "bg-red-100 text-red-800" :
+                                "bg-gray-100 text-gray-800"
+                              }>
+                                {reserva.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="historico" className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                    <p className="text-sm text-gray-600">Total</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-600">{reservas.filter(r => r.status === "Pendente").length}</p>
+                    <p className="text-sm text-gray-600">Pendentes</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600">{stats.confirmadas}</p>
+                    <p className="text-sm text-gray-600">Confirmadas</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{stats.emAndamento}</p>
+                    <p className="text-sm text-gray-600">Em Andamento</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-600">{stats.concluidas}</p>
+                    <p className="text-sm text-gray-600">Concluídas</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">{stats.canceladas}</p>
+                    <p className="text-sm text-gray-600">Canceladas</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Input
+                      placeholder="Pesquisar por nome, equipamento ou área..."
+                      value={historicoSearch}
+                      onChange={(e) => setHistoricoSearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={historicoStatusFilter} onValueChange={setHistoricoStatusFilter}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Filtrar por status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os Status</SelectItem>
+                      <SelectItem value="Pendente">Pendente</SelectItem>
+                      <SelectItem value="Confirmada">Confirmada</SelectItem>
+                      <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                      <SelectItem value="Concluída">Concluída</SelectItem>
+                      <SelectItem value="Cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingReservas ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600">Carregando reservas...</p>
+                  </div>
+                ) : filteredHistorico.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600">Nenhuma reserva encontrada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredHistorico.map((reserva) => (
+                      <Card key={reserva.id} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-900">{reserva.equipamento_nome}</span>
+                                <Badge className={statusColors[reserva.status]}>
+                                  {reserva.status}
+                                </Badge>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <User className="w-4 h-4" />
+                                  {reserva.solicitante_nome}
+                                </div>
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Briefcase className="w-4 h-4" />
+                                  {reserva.solicitante_area}
+                                </div>
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Clock className="w-4 h-4" />
+                                  {format(new Date(reserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} - {format(new Date(reserva.data_fim), "dd/MM/yyyy", { locale: ptBR })}
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDetails(reserva)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver Detalhes
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Modal de Detalhes do Dia */}
         {selectedDate && (
@@ -464,6 +640,109 @@ export default function Reservas() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Modal de Detalhes */}
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detalhes da Reserva</DialogTitle>
+            </DialogHeader>
+            
+            {selectedReserva && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">{selectedReserva.equipamento_nome}</h3>
+                      <p className="text-sm text-gray-600">Tipo: {selectedReserva.equipamento_tipo}</p>
+                    </div>
+                  </div>
+                  <Badge className={statusColors[selectedReserva.status]}>
+                    {selectedReserva.status}
+                  </Badge>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Solicitante</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <User className="w-4 h-4 text-gray-400" />
+                        {selectedReserva.solicitante_nome}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Email</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        {selectedReserva.solicitante_email}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Área</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Briefcase className="w-4 h-4 text-gray-400" />
+                        {selectedReserva.solicitante_area}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Data e Hora de Início</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {format(new Date(selectedReserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} às {selectedReserva.hora_inicio}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Data e Hora de Término</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {format(new Date(selectedReserva.data_fim), "dd/MM/yyyy", { locale: ptBR })} às {selectedReserva.hora_fim}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Criado em</p>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        {format(new Date(selectedReserva.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedReserva.motivo && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Motivo da Reserva</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex gap-2">
+                        <FileText className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-gray-900 text-sm">{selectedReserva.motivo}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedReserva.observacoes && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">Observações</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-gray-900 text-sm">{selectedReserva.observacoes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Modal de Configuração */}
         <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
