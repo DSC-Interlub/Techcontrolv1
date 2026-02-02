@@ -87,11 +87,6 @@ const managementItems = [
     icon: Calendar,
   },
   {
-    title: "Histórico de Reservas",
-    url: createPageUrl("HistoricoReservas"),
-    icon: FileSpreadsheet,
-  },
-  {
     title: "Chamados",
     url: createPageUrl("Chamados"),
     icon: Headset,
