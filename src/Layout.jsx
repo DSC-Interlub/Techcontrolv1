@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { base44 } from "@/api/base44Client";
 import { 
   LayoutDashboard, 
   Monitor, 
@@ -15,8 +16,10 @@ import {
   FileSpreadsheet,
   Settings,
   Phone,
-  Users
+  Users,
+  LogOut
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -115,6 +118,25 @@ const managementItems = [
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const [currentUser, setCurrentUser] = React.useState(null);
+
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
+      }
+    };
+    loadUser();
+  }, []);
+
+  const handleLogout = () => {
+    if (window.confirm("Deseja realmente sair do sistema?")) {
+      base44.auth.logout();
+    }
+  };
 
   // Detecta páginas públicas pelo pathname
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
@@ -194,7 +216,35 @@ export default function Layout({ children }) {
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-gray-200 p-4 bg-gray-100">
+          <SidebarFooter className="border-t border-gray-200 p-4 bg-gray-50">
+            {currentUser && (
+              <div className="mb-3 pb-3 border-b border-gray-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-700 font-semibold text-sm">
+                      {currentUser.full_name?.charAt(0).toUpperCase() || "?"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {currentUser.full_name || "Usuário"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {currentUser.email}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                >
+                  <LogOut className="w-3 h-3 mr-2" />
+                  Sair do Sistema
+                </Button>
+              </div>
+            )}
             <div className="text-xs text-gray-600 text-center">
               <p className="font-semibold">Sistema TechControl</p>
               <p className="text-gray-500">v1.0.0</p>
