@@ -33,6 +33,18 @@ export default function ReservaPublica() {
 
   const queryClient = useQueryClient();
 
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores_reserva'],
+    queryFn: async () => {
+      try {
+        return await base44.entities.Colaboradores.list();
+      } catch (error) {
+        console.log('Não foi possível carregar colaboradores (esperado em página pública)');
+        return [];
+      }
+    },
+  });
+
 
 
   const { data: notebooks = [], isLoading: loadingNotebooks } = useQuery({
@@ -438,39 +450,65 @@ export default function ReservaPublica() {
                   </Alert>
                 )}
 
-                <div>
-                  <Label>Nome Completo *</Label>
-                  <Input
-                    required
-                    placeholder="Digite seu nome completo"
-                    value={formData.solicitante_nome}
-                    onChange={(e) => setFormData({ ...formData, solicitante_nome: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                {colaboradores.length > 0 ? (
+                  <div>
+                    <Label>Nome Completo *</Label>
+                    <Combobox
+                      value={formData.solicitante_nome}
+                      onValueChange={(value) => {
+                        const colab = colaboradores.find(c => c.nome_completo === value);
+                        setFormData({
+                          ...formData,
+                          solicitante_nome: value,
+                          solicitante_email: colab?.email || "",
+                          solicitante_area: colab?.area || ""
+                        });
+                      }}
+                      options={colaboradores.filter(c => c.status === "Ativo").map(c => ({
+                        value: c.nome_completo,
+                        label: `${c.nome_completo} - ${c.area}`
+                      }))}
+                      placeholder="Selecione seu nome"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Seus dados de contato serão preenchidos automaticamente</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label>Nome Completo *</Label>
+                      <Input
+                        required
+                        placeholder="Digite seu nome completo"
+                        value={formData.solicitante_nome}
+                        onChange={(e) => setFormData({ ...formData, solicitante_nome: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                    </div>
 
-                <div>
-                  <Label>Email *</Label>
-                  <Input
-                    required
-                    type="email"
-                    placeholder="seu.email@empresa.com"
-                    value={formData.solicitante_email}
-                    onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                    <div>
+                      <Label>Email *</Label>
+                      <Input
+                        required
+                        type="email"
+                        placeholder="seu.email@empresa.com"
+                        value={formData.solicitante_email}
+                        onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                    </div>
 
-                <div>
-                  <Label>Área/Departamento *</Label>
-                  <Input
-                    required
-                    placeholder="Ex: TI, Vendas, Logística"
-                    value={formData.solicitante_area}
-                    onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
-                    disabled={isSubmitting}
-                  />
-                </div>
+                    <div>
+                      <Label>Área/Departamento *</Label>
+                      <Input
+                        required
+                        placeholder="Ex: TI, Vendas, Logística"
+                        value={formData.solicitante_area}
+                        onChange={(e) => setFormData({ ...formData, solicitante_area: e.target.value })}
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
