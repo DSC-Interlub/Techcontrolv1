@@ -121,12 +121,68 @@ export default function Chamados() {
     ? chamados 
     : chamados.filter(c => c.status === filterStatus);
 
-  const calcularTempoAberto = (chamado) => {
-    if (!chamado.data_abertura) return 0;
-    const abertura = new Date(chamado.data_abertura);
+  const calcularTempoAtendimento = (chamado) => {
+    if (!chamado.data_inicio_atendimento) return null;
+    
+    const inicio = new Date(chamado.data_inicio_atendimento);
     const fim = chamado.data_conclusao ? new Date(chamado.data_conclusao) : new Date();
-    const diffMs = fim - abertura;
+    const diffMs = fim - inicio;
     return Math.round(diffMs / (1000 * 60 * 60)); // horas
+  };
+
+  const handleIniciarAtendimento = (chamado) => {
+    const agora = new Date().toISOString();
+    const historico = chamado.historico || [];
+    
+    historico.push({
+      data_hora: agora,
+      tipo: "inicio_atendimento",
+      valor_anterior: "Não iniciado",
+      valor_novo: "Atendimento iniciado",
+      usuario: "Admin"
+    });
+
+    updateChamadoMutation.mutate({
+      id: chamado.id,
+      data: {
+        ...chamado,
+        data_inicio_atendimento: agora,
+        status: "Em Andamento",
+        historico
+      }
+    });
+  };
+
+  const handleFinalizarAtendimento = (chamado) => {
+    const agora = new Date().toISOString();
+    const historico = chamado.historico || [];
+    
+    let tempo_resolucao_horas = null;
+    if (chamado.data_inicio_atendimento) {
+      const inicio = new Date(chamado.data_inicio_atendimento);
+      const fim = new Date(agora);
+      const diffMs = fim - inicio;
+      tempo_resolucao_horas = Math.round(diffMs / (1000 * 60 * 60));
+    }
+
+    historico.push({
+      data_hora: agora,
+      tipo: "conclusao",
+      valor_anterior: chamado.status,
+      valor_novo: "Resolvido",
+      usuario: "Admin"
+    });
+
+    updateChamadoMutation.mutate({
+      id: chamado.id,
+      data: {
+        ...chamado,
+        data_conclusao: agora,
+        status: "Resolvido",
+        tempo_resolucao_horas,
+        historico
+      }
+    });
   };
 
   const chamadosAvaliados = chamados.filter(c => c.avaliacao_data);
@@ -182,7 +238,9 @@ export default function Chamados() {
       status: "Status alterado",
       observacao: "Observação adicionada/alterada",
       solucao: "Solução registrada/alterada",
-      responsavel: "Responsável alterado"
+      responsavel: "Responsável alterado",
+      inicio_atendimento: "Atendimento iniciado",
+      conclusao: "Atendimento finalizado"
     };
     return tipos[tipo] || tipo;
   };
@@ -355,7 +413,7 @@ export default function Chamados() {
                     <TableHead>Solicitante</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Urgência</TableHead>
-                    <TableHead>Tempo Aberto</TableHead>
+                    <TableHead>Tempo Atendimento</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Avaliação</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -376,7 +434,7 @@ export default function Chamados() {
                     </TableRow>
                   ) : (
                     filteredChamados.map((chamado) => {
-                      const tempoAberto = calcularTempoAberto(chamado);
+                      const tempoAtendimento = calcularTempoAtendimento(chamado);
                       return (
                       <TableRow key={chamado.id}>
                         <TableCell className="font-mono text-sm">{chamado.numero_chamado}</TableCell>
@@ -402,13 +460,17 @@ export default function Chamados() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <span className={`font-medium ${
-                            tempoAberto > 48 ? "text-red-600" : 
-                            tempoAberto > 24 ? "text-orange-600" : 
-                            "text-gray-900"
-                          }`}>
-                            {tempoAberto}h
-                          </span>
+                          {tempoAtendimento !== null ? (
+                            <span className={`font-medium ${
+                              tempoAtendimento > 48 ? "text-red-600" : 
+                              tempoAtendimento > 24 ? "text-orange-600" : 
+                              "text-gray-900"
+                            }`}>
+                              {tempoAtendimento}h
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge className={
@@ -469,23 +531,48 @@ export default function Chamados() {
                   </div>
                   <div>
                     <Label>Status Atual</Label>
-                    <Select
-                      value={selectedChamado.status}
-                      onValueChange={(value) => setSelectedChamado({ ...selectedChamado, status: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Aberto">Aberto</SelectItem>
-                        <SelectItem value="Em Análise">Em Análise</SelectItem>
-                        <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                        <SelectItem value="Aguardando Peça">Aguardando Peça</SelectItem>
-                        <SelectItem value="Resolvido">Resolvido</SelectItem>
-                        <SelectItem value="Cancelado">Cancelado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Badge className={
+                      selectedChamado.status === "Aberto" ? "bg-red-100 text-red-800" :
+                      selectedChamado.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                      selectedChamado.status === "Resolvido" ? "bg-green-100 text-green-800" :
+                      "bg-gray-100 text-gray-800"
+                    }>
+                      {selectedChamado.status}
+                    </Badge>
                   </div>
+                </div>
+
+                {selectedChamado.data_inicio_atendimento && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <Label className="text-blue-900">Atendimento Iniciado em</Label>
+                    <p className="font-medium text-blue-800 mt-1">
+                      {format(new Date(selectedChamado.data_inicio_atendimento), "dd/MM/yyyy 'às' HH:mm")}
+                    </p>
+                    {calcularTempoAtendimento(selectedChamado) !== null && (
+                      <p className="text-sm text-blue-700 mt-1">
+                        Tempo de atendimento: {calcularTempoAtendimento(selectedChamado)}h
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  {!selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Resolvido" && (
+                    <Button
+                      onClick={() => handleIniciarAtendimento(selectedChamado)}
+                      className="bg-blue-600 hover:bg-blue-700 flex-1"
+                    >
+                      Iniciar Atendimento
+                    </Button>
+                  )}
+                  {selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Resolvido" && (
+                    <Button
+                      onClick={() => handleFinalizarAtendimento(selectedChamado)}
+                      className="bg-green-600 hover:bg-green-700 flex-1"
+                    >
+                      Finalizar Atendimento
+                    </Button>
+                  )}
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
