@@ -14,8 +14,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Usuarios() {
   const [showForm, setShowForm] = useState(false);
-  const [emailConvite, setEmailConvite] = useState("");
-  const [roleConvite, setRoleConvite] = useState("user");
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "user"
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [error, setError] = useState("");
@@ -27,22 +32,105 @@ export default function Usuarios() {
     queryFn: () => base44.entities.User.list('-created_date'),
   });
 
-  const handleInvite = async () => {
-    if (!emailConvite) {
-      setError("Por favor, insira um email");
+  const createUserMutation = useMutation({
+    mutationFn: (userData) => base44.entities.User.create(userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setSuccess("Usuário criado com sucesso!");
+      setShowForm(false);
+      resetForm();
+      setTimeout(() => setSuccess(""), 3000);
+    },
+    onError: (err) => {
+      setError(err.message || "Erro ao criar usuário");
+    }
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setSuccess("Usuário atualizado com sucesso!");
+      setShowForm(false);
+      resetForm();
+      setTimeout(() => setSuccess(""), 3000);
+    },
+    onError: (err) => {
+      setError(err.message || "Erro ao atualizar usuário");
+    }
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (id) => base44.entities.User.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setSuccess("Usuário excluído com sucesso!");
+      setTimeout(() => setSuccess(""), 3000);
+    },
+    onError: (err) => {
+      setError(err.message || "Erro ao excluir usuário");
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      full_name: "",
+      email: "",
+      password: "",
+      role: "user"
+    });
+    setEditingUser(null);
+    setError("");
+  };
+
+  const handleOpenForm = (user = null) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        full_name: user.full_name || "",
+        email: user.email || "",
+        password: "",
+        role: user.role || "user"
+      });
+    } else {
+      resetForm();
+    }
+    setShowForm(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.email || !formData.full_name) {
+      setError("Por favor, preencha nome e email");
       return;
     }
 
-    try {
-      setError("");
-      await base44.users.inviteUser(emailConvite, roleConvite);
-      setSuccess(`Convite enviado para ${emailConvite}`);
-      setEmailConvite("");
-      setShowForm(false);
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.message || "Erro ao enviar convite");
+    if (!editingUser && !formData.password) {
+      setError("Por favor, defina uma senha para o novo usuário");
+      return;
+    }
+
+    setError("");
+
+    const userData = {
+      full_name: formData.full_name,
+      email: formData.email,
+      role: formData.role
+    };
+
+    if (formData.password) {
+      userData.password = formData.password;
+    }
+
+    if (editingUser) {
+      updateUserMutation.mutate({ id: editingUser.id, data: userData });
+    } else {
+      createUserMutation.mutate(userData);
+    }
+  };
+
+  const handleDelete = (user) => {
+    if (window.confirm(`Tem certeza que deseja excluir o usuário ${user.full_name}?`)) {
+      deleteUserMutation.mutate(user.id);
     }
   };
 
@@ -76,11 +164,11 @@ export default function Usuarios() {
             </div>
           </div>
           <Button
-            onClick={() => setShowForm(true)}
+            onClick={() => handleOpenForm()}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Convidar Usuário
+            Novo Usuário
           </Button>
         </div>
 
@@ -150,18 +238,19 @@ export default function Usuarios() {
                     <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Data de Cadastro</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredUsuarios.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -196,6 +285,25 @@ export default function Usuarios() {
                         <TableCell className="text-gray-600">
                           {new Date(user.created_date).toLocaleDateString('pt-BR')}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenForm(user)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(user)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -205,10 +313,13 @@ export default function Usuarios() {
           </CardContent>
         </Card>
 
-        <Dialog open={showForm} onOpenChange={setShowForm}>
+        <Dialog open={showForm} onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) resetForm();
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Convidar Novo Usuário</DialogTitle>
+              <DialogTitle>{editingUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {error && (
@@ -218,18 +329,37 @@ export default function Usuarios() {
               )}
               
               <div>
-                <Label>Email do Usuário</Label>
+                <Label>Nome Completo</Label>
+                <Input
+                  placeholder="Nome do usuário"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Email</Label>
                 <Input
                   type="email"
                   placeholder="usuario@empresa.com"
-                  value={emailConvite}
-                  onChange={(e) => setEmailConvite(e.target.value)}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Senha {editingUser && "(deixe em branco para não alterar)"}</Label>
+                <Input
+                  type="password"
+                  placeholder={editingUser ? "••••••••" : "Digite a senha"}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
 
               <div>
                 <Label>Função no Sistema</Label>
-                <Select value={roleConvite} onValueChange={setRoleConvite}>
+                <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -239,19 +369,22 @@ export default function Usuarios() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-2">
-                  Administradores têm acesso completo ao sistema. Usuários têm acesso limitado.
+                  Administradores têm acesso completo ao sistema.
                 </p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
+              <Button variant="outline" onClick={() => {
+                setShowForm(false);
+                resetForm();
+              }}>
                 Cancelar
               </Button>
               <Button 
-                onClick={handleInvite}
+                onClick={handleSubmit}
                 className="bg-purple-600 hover:bg-purple-700"
               >
-                Enviar Convite
+                {editingUser ? "Atualizar" : "Criar"} Usuário
               </Button>
             </DialogFooter>
           </DialogContent>
