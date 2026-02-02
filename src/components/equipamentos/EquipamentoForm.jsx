@@ -106,7 +106,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   };
 
   const renderFieldsByType = () => {
-    if (entityType === "PCs_Internos" || entityType === "Notebooks_Externos") {
+    if (entityType === "PCs_Internos" || entityType === "Notebooks_Externos" || entityType === "Tablets") {
       return (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -150,6 +150,8 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                       <SelectItem value="Desktop">Desktop</SelectItem>
                       <SelectItem value="Notebook">Notebook</SelectItem>
                     </>
+                  ) : entityType === "Tablets" ? (
+                    <SelectItem value="Tablet">Tablet</SelectItem>
                   ) : (
                     <>
                       <SelectItem value="Notebook">Notebook</SelectItem>
@@ -236,7 +238,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   const colaborador = colaboradores.find(c => c.nome_completo === value);
                   if (colaborador) {
                     handleChange("area", colaborador.area);
-                    if (entityType === "Notebooks_Externos") {
+                    if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
                       handleChange("uf", colaborador.area);
                     }
                   }
@@ -275,11 +277,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Área {entityType === "Notebooks_Externos" ? "/ UF" : ""}</Label>
+              <Label>Área {(entityType === "Notebooks_Externos" || entityType === "Tablets") ? "/ UF" : ""}</Label>
               <Input
                 placeholder="Departamento ou área"
-                value={entityType === "Notebooks_Externos" ? formData.uf || "" : formData.area || ""}
-                onChange={(e) => handleChange(entityType === "Notebooks_Externos" ? "uf" : "area", e.target.value)}
+                value={(entityType === "Notebooks_Externos" || entityType === "Tablets") ? formData.uf || "" : formData.area || ""}
+                onChange={(e) => handleChange((entityType === "Notebooks_Externos" || entityType === "Tablets") ? "uf" : "area", e.target.value)}
                 className="bg-gray-50"
                 readOnly
               />
@@ -300,9 +302,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 <SelectContent>
                   <SelectItem value="Disponível">Disponível</SelectItem>
                   <SelectItem value="Em uso">Em uso</SelectItem>
-                  {entityType === "Notebooks_Externos" && <SelectItem value="Reservado">Reservado</SelectItem>}
+                  {(entityType === "Notebooks_Externos" || entityType === "Tablets") && <SelectItem value="Reservado">Reservado</SelectItem>}
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
                   <SelectItem value="Formatação">Formatação</SelectItem>
+                  <SelectItem value="Danificado">Danificado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -451,6 +454,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   <SelectItem value="Disponível">Disponível</SelectItem>
                   <SelectItem value="Em uso">Em uso</SelectItem>
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
+                  <SelectItem value="Danificado">Danificado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
