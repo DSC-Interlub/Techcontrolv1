@@ -42,8 +42,21 @@ export default function ReservaPublica() {
     queryKey: ['notebooks_disponiveis'],
     queryFn: async () => {
       try {
-        const allNotebooks = await base44.entities.Notebooks_Externos.list();
-        return allNotebooks.filter(nb => nb.disponivel_para_reserva === true);
+        // Busca notebooks de ambas as entidades
+        const [notebooksExternos, pcsInternos] = await Promise.all([
+          base44.entities.Notebooks_Externos.list(),
+          base44.entities.PCs_Internos.list()
+        ]);
+        
+        // Filtra notebooks disponíveis para reserva
+        const externosDisponiveis = notebooksExternos.filter(nb => nb.disponivel_para_reserva === true);
+        const internosDisponiveis = pcsInternos.filter(pc => pc.tipo === 'Notebook' && pc.disponivel_para_reserva === true);
+        
+        // Combina e adiciona identificador de origem
+        return [
+          ...externosDisponiveis.map(n => ({ ...n, origem: 'Notebooks_Externos' })),
+          ...internosDisponiveis.map(n => ({ ...n, origem: 'PCs_Internos' }))
+        ];
       } catch (error) {
         console.error('Erro ao carregar notebooks:', error);
         return [];
@@ -216,7 +229,7 @@ export default function ReservaPublica() {
 
       const reservaData = {
         equipamento_id: selectedEquipamento.id,
-        equipamento_tipo: "Notebooks_Externos",
+        equipamento_tipo: selectedEquipamento.origem || "Notebooks_Externos",
         equipamento_nome: `${selectedEquipamento.marca} ${selectedEquipamento.modelo}`,
         ...formData,
         status: statusInicial
