@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Laptop, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Tablet, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
 
-export default function Notebooks_Externos() {
+export default function Tablets() {
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [selectedEquipamento, setSelectedEquipamento] = useState(null);
@@ -19,32 +19,32 @@ export default function Notebooks_Externos() {
   const queryClient = useQueryClient();
 
   const { data: equipamentos = [], isLoading } = useQuery({
-    queryKey: ['notebooks_externos'],
-    queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
+    queryKey: ['tablets'],
+    queryFn: () => base44.entities.Tablets.list('-created_date'),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Notebooks_Externos.create(data),
+    mutationFn: (data) => base44.entities.Tablets.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      queryClient.invalidateQueries({ queryKey: ['tablets'] });
       setShowForm(false);
       setEditingEquipamento(null);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Notebooks_Externos.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.Tablets.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      queryClient.invalidateQueries({ queryKey: ['tablets'] });
       setShowForm(false);
       setEditingEquipamento(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Notebooks_Externos.delete(id),
+    mutationFn: (id) => base44.entities.Tablets.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      queryClient.invalidateQueries({ queryKey: ['tablets'] });
     },
   });
 
@@ -57,7 +57,6 @@ export default function Notebooks_Externos() {
   };
 
   const filteredEquipamentos = equipamentos.filter(eq =>
-    eq.tipo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,12 +77,12 @@ export default function Notebooks_Externos() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Laptop className="w-6 h-6 text-purple-600" />
+            <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <Tablet className="w-6 h-6 text-indigo-600" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Notebooks Externos</h1>
-              <p className="text-gray-500 mt-1">Gerenciar notebooks e tablets externos</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Tablets</h1>
+              <p className="text-gray-500 mt-1">Gerenciar tablets</p>
             </div>
           </div>
           <Button
@@ -91,10 +90,10 @@ export default function Notebooks_Externos() {
               setEditingEquipamento(null);
               setShowForm(true);
             }}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-indigo-600 hover:bg-indigo-700"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar Notebook
+            Adicionar Tablet
           </Button>
         </div>
 
@@ -127,7 +126,7 @@ export default function Notebooks_Externos() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Reservados</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.reservados}</p>
+                <p className="text-3xl font-bold text-indigo-600 mt-1">{stats.reservados}</p>
               </div>
             </CardContent>
           </Card>
@@ -141,7 +140,7 @@ export default function Notebooks_Externos() {
               setShowForm(false);
               setEditingEquipamento(null);
             }}
-            entityType="Notebooks_Externos"
+            entityType="Tablets"
           />
         )}
 
@@ -165,7 +164,6 @@ export default function Notebooks_Externos() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tipo</TableHead>
                     <TableHead>Marca/Modelo</TableHead>
                     <TableHead>Etiqueta</TableHead>
                     <TableHead>Usuário Atual</TableHead>
@@ -178,13 +176,13 @@ export default function Notebooks_Externos() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredEquipamentos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         Nenhum equipamento encontrado
                       </TableCell>
                     </TableRow>
@@ -195,9 +193,6 @@ export default function Notebooks_Externos() {
                         className="cursor-pointer hover:bg-gray-50"
                         onClick={() => setSelectedEquipamento(equipamento)}
                       >
-                        <TableCell>
-                          <Badge variant="outline">{equipamento.tipo}</Badge>
-                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{equipamento.marca}</p>
@@ -210,7 +205,7 @@ export default function Notebooks_Externos() {
                         <TableCell>
                           <Badge className={
                             equipamento.status === "Disponível" ? "bg-green-100 text-green-800" :
-                            equipamento.status === "Reservado" ? "bg-purple-100 text-purple-800" :
+                            equipamento.status === "Reservado" ? "bg-indigo-100 text-indigo-800" :
                             equipamento.status === "Em uso" ? "bg-blue-100 text-blue-800" :
                             equipamento.status === "Danificado" ? "bg-red-100 text-red-800" :
                             "bg-orange-100 text-orange-800"

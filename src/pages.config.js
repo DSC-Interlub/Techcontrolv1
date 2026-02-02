@@ -64,6 +64,7 @@ import Smartphones from './pages/Smartphones';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
+import Tablets from './pages/Tablets';
 import __Layout from './Layout.jsx';
 
 
@@ -85,6 +86,7 @@ export const PAGES = {
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
+    "Tablets": Tablets,
 }
 
 export const pagesConfig = {

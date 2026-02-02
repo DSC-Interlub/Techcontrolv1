@@ -49,6 +49,11 @@ const navigationItems = [
     icon: Laptop,
   },
   {
+    title: "Tablets",
+    url: createPageUrl("Tablets"),
+    icon: Smartphone,
+  },
+  {
     title: "Smartphones",
     url: createPageUrl("Smartphones"),
     icon: Smartphone,
