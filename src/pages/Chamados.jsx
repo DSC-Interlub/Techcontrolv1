@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, Copy, Check, Eye, Laptop, Star } from "lucide-react";
+import { Headset, Copy, Check, Eye, Laptop, Star, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +22,20 @@ export default function Chamados() {
   const [originalChamado, setOriginalChamado] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Erro ao carregar usuário:", error);
+      }
+    };
+    loadUser();
+  }, []);
 
   const publicUrl = `${window.location.origin}${createPageUrl("chamado-publico")}`;
 
@@ -53,61 +67,37 @@ export default function Chamados() {
   };
 
   const handleSaveChanges = () => {
-    if (!selectedChamado || !originalChamado) return;
+    if (!selectedChamado || !originalChamado || !currentUser) return;
 
     const historico = selectedChamado.historico || [];
     const dataHora = new Date().toISOString();
     let updateData = { ...selectedChamado, historico };
 
     // Detectar mudanças e adicionar ao histórico
-    if (selectedChamado.status !== originalChamado.status) {
-      historico.push({
-        data_hora: dataHora,
-        tipo: "status",
-        valor_anterior: originalChamado.status || "Nenhum",
-        valor_novo: selectedChamado.status,
-        usuario: "Admin"
-      });
-
-      // Se mudou para Resolvido, calcular tempo de resolução
-      if (selectedChamado.status === "Resolvido" && !selectedChamado.data_conclusao) {
-        updateData.data_conclusao = new Date().toISOString().split('T')[0];
-        if (selectedChamado.data_abertura) {
-          const abertura = new Date(selectedChamado.data_abertura);
-          const conclusao = new Date();
-          const diffMs = conclusao - abertura;
-          updateData.tempo_resolucao_horas = Math.round(diffMs / (1000 * 60 * 60));
-        }
-      }
-    }
-
-    if (selectedChamado.observacoes !== originalChamado.observacoes) {
+    if (selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes) {
       historico.push({
         data_hora: dataHora,
         tipo: "observacao",
-        valor_anterior: originalChamado.observacoes || "Nenhuma",
-        valor_novo: selectedChamado.observacoes || "Nenhuma",
-        usuario: "Admin"
+        descricao: `Observação adicionada por ${currentUser.full_name}: ${selectedChamado.observacoes}`,
+        usuario: currentUser.full_name
       });
     }
 
-    if (selectedChamado.solucao !== originalChamado.solucao) {
+    if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
       historico.push({
         data_hora: dataHora,
         tipo: "solucao",
-        valor_anterior: originalChamado.solucao || "Nenhuma",
-        valor_novo: selectedChamado.solucao || "Nenhuma",
-        usuario: "Admin"
+        descricao: `Solução registrada por ${currentUser.full_name}: ${selectedChamado.solucao}`,
+        usuario: currentUser.full_name
       });
     }
 
-    if (selectedChamado.responsavel !== originalChamado.responsavel) {
+    if (selectedChamado.responsavel !== originalChamado.responsavel && selectedChamado.responsavel) {
       historico.push({
         data_hora: dataHora,
         tipo: "responsavel",
-        valor_anterior: originalChamado.responsavel || "Nenhum",
-        valor_novo: selectedChamado.responsavel || "Nenhum",
-        usuario: "Admin"
+        descricao: `Responsável alterado para: ${selectedChamado.responsavel}`,
+        usuario: currentUser.full_name
       });
     }
 
@@ -127,19 +117,31 @@ export default function Chamados() {
     const inicio = new Date(chamado.data_inicio_atendimento);
     const fim = chamado.data_conclusao ? new Date(chamado.data_conclusao) : new Date();
     const diffMs = fim - inicio;
-    return Math.round(diffMs / (1000 * 60 * 60)); // horas
+    const minutos = Math.round(diffMs / (1000 * 60));
+    
+    if (minutos < 60) {
+      return `${minutos}min`;
+    } else {
+      const horas = Math.floor(minutos / 60);
+      const mins = minutos % 60;
+      return mins > 0 ? `${horas}h ${mins}min` : `${horas}h`;
+    }
   };
 
   const handleIniciarAtendimento = (chamado) => {
+    if (!currentUser) {
+      alert("Erro: usuário não identificado");
+      return;
+    }
+
     const agora = new Date().toISOString();
     const historico = chamado.historico || [];
     
     historico.push({
       data_hora: agora,
       tipo: "inicio_atendimento",
-      valor_anterior: "Não iniciado",
-      valor_novo: "Atendimento iniciado",
-      usuario: "Admin"
+      descricao: `Atendimento iniciado por ${currentUser.full_name}`,
+      usuario: currentUser.full_name
     });
 
     updateChamadoMutation.mutate({
@@ -148,29 +150,34 @@ export default function Chamados() {
         ...chamado,
         data_inicio_atendimento: agora,
         status: "Em Andamento",
+        responsavel: currentUser.full_name,
         historico
       }
     });
   };
 
   const handleFinalizarAtendimento = (chamado) => {
+    if (!currentUser) {
+      alert("Erro: usuário não identificado");
+      return;
+    }
+
     const agora = new Date().toISOString();
     const historico = chamado.historico || [];
     
-    let tempo_resolucao_horas = null;
+    let tempo_resolucao_minutos = null;
     if (chamado.data_inicio_atendimento) {
       const inicio = new Date(chamado.data_inicio_atendimento);
       const fim = new Date(agora);
       const diffMs = fim - inicio;
-      tempo_resolucao_horas = Math.round(diffMs / (1000 * 60 * 60));
+      tempo_resolucao_minutos = Math.round(diffMs / (1000 * 60));
     }
 
     historico.push({
       data_hora: agora,
       tipo: "conclusao",
-      valor_anterior: chamado.status,
-      valor_novo: "Resolvido",
-      usuario: "Admin"
+      descricao: `Atendimento finalizado por ${currentUser.full_name}. Aguardando avaliação do solicitante.`,
+      usuario: currentUser.full_name
     });
 
     updateChamadoMutation.mutate({
@@ -178,8 +185,8 @@ export default function Chamados() {
       data: {
         ...chamado,
         data_conclusao: agora,
-        status: "Resolvido",
-        tempo_resolucao_horas,
+        status: "Aguardando Avaliação",
+        tempo_resolucao_minutos,
         historico
       }
     });
@@ -209,11 +216,12 @@ export default function Chamados() {
     total: chamados.length,
     abertos: chamados.filter(c => c.status === "Aberto").length,
     emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
+    aguardandoAvaliacao: chamados.filter(c => c.status === "Aguardando Avaliação").length,
     resolvidos: chamados.filter(c => c.status === "Resolvido").length,
     avaliados: chamadosAvaliados.length,
-    tempoMedioResolucao: chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas)
-      .reduce((acc, c) => acc + c.tempo_resolucao_horas, 0) / 
-      (chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_horas).length || 1),
+    tempoMedioResolucao: chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos)
+      .reduce((acc, c) => acc + c.tempo_resolucao_minutos, 0) / 
+      (chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos).length || 1),
   };
 
   const getTipoCompleto = (chamado) => {
@@ -233,16 +241,27 @@ export default function Chamados() {
     return detalhes;
   };
 
-  const getTipoDescricao = (tipo) => {
-    const tipos = {
-      status: "Status alterado",
-      observacao: "Observação adicionada/alterada",
-      solucao: "Solução registrada/alterada",
-      responsavel: "Responsável alterado",
-      inicio_atendimento: "Atendimento iniciado",
-      conclusao: "Atendimento finalizado"
-    };
-    return tipos[tipo] || tipo;
+  const renderHistorico = (historico) => {
+    if (!historico || historico.length === 0) {
+      return <p className="text-sm text-gray-500">Nenhuma alteração registrada</p>;
+    }
+
+    return (
+      <div className="space-y-3">
+        {historico.map((item, index) => (
+          <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">{item.descricao}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {format(new Date(item.data_hora), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • {item.usuario}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -278,7 +297,7 @@ export default function Chamados() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
@@ -306,6 +325,14 @@ export default function Chamados() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
+                <p className="text-sm text-gray-600">Aguard. Avaliação</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.aguardandoAvaliacao}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
                 <p className="text-sm text-gray-600">Resolvidos</p>
                 <p className="text-3xl font-bold text-green-600 mt-1">{stats.resolvidos}</p>
               </div>
@@ -315,8 +342,11 @@ export default function Chamados() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Tempo Médio</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">
-                  {stats.tempoMedioResolucao.toFixed(0)}h
+                <p className="text-2xl font-bold text-purple-600 mt-1">
+                  {stats.tempoMedioResolucao < 60 
+                    ? `${Math.round(stats.tempoMedioResolucao)}min`
+                    : `${Math.floor(stats.tempoMedioResolucao / 60)}h ${Math.round(stats.tempoMedioResolucao % 60)}min`
+                  }
                 </p>
               </div>
             </CardContent>
@@ -398,6 +428,7 @@ export default function Chamados() {
                   <SelectItem value="Em Análise">Em Análise</SelectItem>
                   <SelectItem value="Em Andamento">Em Andamento</SelectItem>
                   <SelectItem value="Aguardando Peça">Aguardando Peça</SelectItem>
+                  <SelectItem value="Aguardando Avaliação">Aguardando Avaliação</SelectItem>
                   <SelectItem value="Resolvido">Resolvido</SelectItem>
                   <SelectItem value="Cancelado">Cancelado</SelectItem>
                 </SelectContent>
@@ -461,12 +492,8 @@ export default function Chamados() {
                         </TableCell>
                         <TableCell>
                           {tempoAtendimento !== null ? (
-                            <span className={`font-medium ${
-                              tempoAtendimento > 48 ? "text-red-600" : 
-                              tempoAtendimento > 24 ? "text-orange-600" : 
-                              "text-gray-900"
-                            }`}>
-                              {tempoAtendimento}h
+                            <span className="font-medium text-gray-900">
+                              {tempoAtendimento}
                             </span>
                           ) : (
                             <span className="text-gray-400 text-sm">-</span>
@@ -476,6 +503,7 @@ export default function Chamados() {
                           <Badge className={
                             chamado.status === "Aberto" ? "bg-red-100 text-red-800" :
                             chamado.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                            chamado.status === "Aguardando Avaliação" ? "bg-orange-100 text-orange-800" :
                             chamado.status === "Resolvido" ? "bg-green-100 text-green-800" :
                             "bg-gray-100 text-gray-800"
                           }>
@@ -544,20 +572,23 @@ export default function Chamados() {
 
                 {selectedChamado.data_inicio_atendimento && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <Label className="text-blue-900">Atendimento Iniciado em</Label>
-                    <p className="font-medium text-blue-800 mt-1">
-                      {format(new Date(selectedChamado.data_inicio_atendimento), "dd/MM/yyyy 'às' HH:mm")}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-blue-700" />
+                      <Label className="text-blue-900">Atendimento Iniciado</Label>
+                    </div>
+                    <p className="font-medium text-blue-800">
+                      {format(new Date(selectedChamado.data_inicio_atendimento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     {calcularTempoAtendimento(selectedChamado) !== null && (
                       <p className="text-sm text-blue-700 mt-1">
-                        Tempo de atendimento: {calcularTempoAtendimento(selectedChamado)}h
+                        Tempo de atendimento: {calcularTempoAtendimento(selectedChamado)}
                       </p>
                     )}
                   </div>
                 )}
 
                 <div className="flex gap-3">
-                  {!selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Resolvido" && (
+                  {!selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Aguardando Avaliação" && selectedChamado.status !== "Resolvido" && (
                     <Button
                       onClick={() => handleIniciarAtendimento(selectedChamado)}
                       className="bg-blue-600 hover:bg-blue-700 flex-1"
@@ -565,7 +596,7 @@ export default function Chamados() {
                       Iniciar Atendimento
                     </Button>
                   )}
-                  {selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Resolvido" && (
+                  {selectedChamado.data_inicio_atendimento && selectedChamado.status !== "Aguardando Avaliação" && selectedChamado.status !== "Resolvido" && (
                     <Button
                       onClick={() => handleFinalizarAtendimento(selectedChamado)}
                       className="bg-green-600 hover:bg-green-700 flex-1"
@@ -574,6 +605,14 @@ export default function Chamados() {
                     </Button>
                   )}
                 </div>
+
+                {selectedChamado.status === "Aguardando Avaliação" && (
+                  <Alert className="bg-orange-50 border-orange-200">
+                    <AlertDescription className="text-orange-800 text-sm">
+                      <strong>Aguardando:</strong> Este chamado está aguardando a avaliação do solicitante. Após a avaliação, o status será alterado para "Resolvido" automaticamente.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-900 mb-2">Tipo de Solicitação</h3>
@@ -673,6 +712,13 @@ export default function Chamados() {
                     rows={2}
                   />
                 </div>
+
+                {selectedChamado.historico && selectedChamado.historico.length > 0 && (
+                  <div>
+                    <Label className="mb-3 block">Histórico de Alterações</Label>
+                    {renderHistorico(selectedChamado.historico)}
+                  </div>
+                )}
 
                 {selectedChamado.avaliacao_data && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
