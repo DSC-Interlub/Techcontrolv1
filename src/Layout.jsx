@@ -97,6 +97,11 @@ const managementItems = [
     icon: Phone,
   },
   {
+    title: "Usuários",
+    url: createPageUrl("Usuarios"),
+    icon: Settings,
+  },
+  {
     title: "Importar Dados",
     url: createPageUrl("Importar"),
     icon: Upload,

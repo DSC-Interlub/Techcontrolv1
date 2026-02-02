@@ -241,28 +241,7 @@ export default function Chamados() {
     return detalhes;
   };
 
-  const renderHistorico = (historico) => {
-    if (!historico || historico.length === 0) {
-      return <p className="text-sm text-gray-500">Nenhuma alteração registrada</p>;
-    }
 
-    return (
-      <div className="space-y-3">
-        {historico.map((item, index) => (
-          <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{item.descricao}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {format(new Date(item.data_hora), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} • {item.usuario}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
@@ -712,13 +691,6 @@ export default function Chamados() {
                     rows={2}
                   />
                 </div>
-
-                {selectedChamado.historico && selectedChamado.historico.length > 0 && (
-                  <div>
-                    <Label className="mb-3 block">Histórico de Alterações</Label>
-                    {renderHistorico(selectedChamado.historico)}
-                  </div>
-                )}
 
                 {selectedChamado.avaliacao_data && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
