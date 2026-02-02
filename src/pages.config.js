@@ -61,10 +61,10 @@ import Ramais from './pages/Ramais';
 import Reservas from './pages/Reservas';
 import Resumo from './pages/Resumo';
 import Smartphones from './pages/Smartphones';
+import Tablets from './pages/Tablets';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
-import Tablets from './pages/Tablets';
 import __Layout from './Layout.jsx';
 
 
@@ -83,10 +83,10 @@ export const PAGES = {
     "Reservas": Reservas,
     "Resumo": Resumo,
     "Smartphones": Smartphones,
+    "Tablets": Tablets,
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
-    "Tablets": Tablets,
 }
 
 export const pagesConfig = {

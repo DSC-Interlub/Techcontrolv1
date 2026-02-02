@@ -73,10 +73,15 @@ export default function Reservas() {
     },
   });
 
-  // Atualizar status das reservas automaticamente baseado na data/hora
+  // Atualizar status das reservas automaticamente baseado na data/hora (otimizado)
   useEffect(() => {
+    if (!reservas || reservas.length === 0) return;
+    
     const updateReservasStatus = () => {
       const agora = new Date();
+      
+      // Coletar todas as atualizações necessárias antes de executar
+      const updates = [];
       
       reservas.forEach(reserva => {
         const inicioReserva = new Date(`${reserva.data_inicio}T${reserva.hora_inicio}`);
@@ -91,19 +96,24 @@ export default function Reservas() {
         }
         
         if (novoStatus !== reserva.status) {
-          updateReservaMutation.mutate({
-            id: reserva.id,
-            data: { ...reserva, status: novoStatus }
-          });
+          updates.push({ id: reserva.id, status: novoStatus, reserva });
         }
       });
+
+      // Executar atualizações apenas se houver mudanças
+      if (updates.length > 0) {
+        updates.forEach(({ id, reserva, status }) => {
+          updateReservaMutation.mutate({
+            id,
+            data: { ...reserva, status }
+          });
+        });
+      }
     };
 
+    // Executar apenas uma vez ao carregar, não em loop contínuo
     updateReservasStatus();
-    const interval = setInterval(updateReservasStatus, 60000); // Verifica a cada 1 minuto
-    
-    return () => clearInterval(interval);
-  }, [reservas]);
+  }, [reservas.length]); // Dependência otimizada
 
   const handleToggleReserva = (notebook) => {
     updateNotebookMutation.mutate({
