@@ -31,15 +31,38 @@ export default function Reservas() {
     queryFn: () => base44.entities.Reservas.list('-created_date'),
   });
 
-  const { data: notebooks = [], isLoading: loadingNotebooks } = useQuery({
+  const { data: notebooksExternos = [], isLoading: loadingNotebooksExternos } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
   });
 
+  const { data: pcsInternos = [], isLoading: loadingPcsInternos } = useQuery({
+    queryKey: ['pcs_internos'],
+    queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
+  });
+
+  // Combinar notebooks de ambas as entidades
+  const notebooks = [
+    ...notebooksExternos.map(n => ({ ...n, origem: 'Notebooks_Externos' })),
+    ...pcsInternos.filter(pc => pc.tipo === 'Notebook').map(n => ({ ...n, origem: 'PCs_Internos' }))
+  ];
+
+  const loadingNotebooks = loadingNotebooksExternos || loadingPcsInternos;
+
   const updateNotebookMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Notebooks_Externos.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+    mutationFn: ({ id, data, origem }) => {
+      if (origem === 'Notebooks_Externos') {
+        return base44.entities.Notebooks_Externos.update(id, data);
+      } else {
+        return base44.entities.PCs_Internos.update(id, data);
+      }
+    },
+    onSuccess: (data, variables) => {
+      if (variables.origem === 'Notebooks_Externos') {
+        queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      }
     },
   });
 
@@ -85,6 +108,7 @@ export default function Reservas() {
   const handleToggleReserva = (notebook) => {
     updateNotebookMutation.mutate({
       id: notebook.id,
+      origem: notebook.origem,
       data: {
         disponivel_para_reserva: !notebook.disponivel_para_reserva
       }
@@ -485,6 +509,9 @@ export default function Reservas() {
                             <div>
                               <p className="font-medium">{notebook.marca}</p>
                               <p className="text-sm text-gray-500">{notebook.modelo}</p>
+                              {notebook.origem === 'PCs_Internos' && (
+                                <Badge variant="outline" className="text-xs mt-1">PC Interno</Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>{notebook.etiqueta_interna || "-"}</TableCell>
