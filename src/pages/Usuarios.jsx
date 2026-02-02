@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Mail, Shield, Edit, Trash2 } from "lucide-react";
+import { UserPlus, Mail, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,17 +14,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Usuarios() {
   const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    password: "",
-    role: "user"
-  });
+  const [emailConvite, setEmailConvite] = useState("");
+  const [roleConvite, setRoleConvite] = useState("user");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [sending, setSending] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: usuarios = [], isLoading } = useQuery({
@@ -32,105 +28,26 @@ export default function Usuarios() {
     queryFn: () => base44.entities.User.list('-created_date'),
   });
 
-  const createUserMutation = useMutation({
-    mutationFn: (userData) => base44.entities.User.create(userData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setSuccess("Usuário criado com sucesso!");
-      setShowForm(false);
-      resetForm();
-      setTimeout(() => setSuccess(""), 3000);
-    },
-    onError: (err) => {
-      setError(err.message || "Erro ao criar usuário");
-    }
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setSuccess("Usuário atualizado com sucesso!");
-      setShowForm(false);
-      resetForm();
-      setTimeout(() => setSuccess(""), 3000);
-    },
-    onError: (err) => {
-      setError(err.message || "Erro ao atualizar usuário");
-    }
-  });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: (id) => base44.entities.User.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setSuccess("Usuário excluído com sucesso!");
-      setTimeout(() => setSuccess(""), 3000);
-    },
-    onError: (err) => {
-      setError(err.message || "Erro ao excluir usuário");
-    }
-  });
-
-  const resetForm = () => {
-    setFormData({
-      full_name: "",
-      email: "",
-      password: "",
-      role: "user"
-    });
-    setEditingUser(null);
-    setError("");
-  };
-
-  const handleOpenForm = (user = null) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({
-        full_name: user.full_name || "",
-        email: user.email || "",
-        password: "",
-        role: user.role || "user"
-      });
-    } else {
-      resetForm();
-    }
-    setShowForm(true);
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.email || !formData.full_name) {
-      setError("Por favor, preencha nome e email");
+  const handleInvite = async () => {
+    if (!emailConvite) {
+      setError("Por favor, insira um email");
       return;
     }
 
-    if (!editingUser && !formData.password) {
-      setError("Por favor, defina uma senha para o novo usuário");
-      return;
-    }
-
-    setError("");
-
-    const userData = {
-      full_name: formData.full_name,
-      email: formData.email,
-      role: formData.role
-    };
-
-    if (formData.password) {
-      userData.password = formData.password;
-    }
-
-    if (editingUser) {
-      updateUserMutation.mutate({ id: editingUser.id, data: userData });
-    } else {
-      createUserMutation.mutate(userData);
-    }
-  };
-
-  const handleDelete = (user) => {
-    if (window.confirm(`Tem certeza que deseja excluir o usuário ${user.full_name}?`)) {
-      deleteUserMutation.mutate(user.id);
+    try {
+      setSending(true);
+      setError("");
+      await base44.users.inviteUser(emailConvite, roleConvite);
+      setSuccess(`Convite enviado para ${emailConvite}! O usuário receberá um email para criar sua senha.`);
+      setEmailConvite("");
+      setRoleConvite("user");
+      setShowForm(false);
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (err) {
+      setError(err.message || "Erro ao enviar convite");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -164,11 +81,11 @@ export default function Usuarios() {
             </div>
           </div>
           <Button
-            onClick={() => handleOpenForm()}
+            onClick={() => setShowForm(true)}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Novo Usuário
+            Convidar Usuário
           </Button>
         </div>
 
@@ -238,19 +155,18 @@ export default function Usuarios() {
                     <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Data de Cadastro</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredUsuarios.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -285,25 +201,6 @@ export default function Usuarios() {
                         <TableCell className="text-gray-600">
                           {new Date(user.created_date).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleOpenForm(user)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDelete(user)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -313,13 +210,10 @@ export default function Usuarios() {
           </CardContent>
         </Card>
 
-        <Dialog open={showForm} onOpenChange={(open) => {
-          setShowForm(open);
-          if (!open) resetForm();
-        }}>
+        <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingUser ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+              <DialogTitle>Convidar Usuário</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {error && (
@@ -327,39 +221,26 @@ export default function Usuarios() {
                   <AlertDescription className="text-red-800">{error}</AlertDescription>
                 </Alert>
               )}
+
+              <Alert className="bg-blue-50 border-blue-200">
+                <AlertDescription className="text-blue-800 text-sm">
+                  Um email de convite será enviado para o usuário. Ele poderá definir sua própria senha ao aceitar o convite.
+                </AlertDescription>
+              </Alert>
               
               <div>
-                <Label>Nome Completo</Label>
-                <Input
-                  placeholder="Nome do usuário"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label>Email</Label>
+                <Label>Email do Usuário</Label>
                 <Input
                   type="email"
                   placeholder="usuario@empresa.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label>Senha {editingUser && "(deixe em branco para não alterar)"}</Label>
-                <Input
-                  type="password"
-                  placeholder={editingUser ? "••••••••" : "Digite a senha"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={emailConvite}
+                  onChange={(e) => setEmailConvite(e.target.value)}
                 />
               </div>
 
               <div>
                 <Label>Função no Sistema</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                <Select value={roleConvite} onValueChange={setRoleConvite}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -374,17 +255,15 @@ export default function Usuarios() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setShowForm(false);
-                resetForm();
-              }}>
+              <Button variant="outline" onClick={() => setShowForm(false)}>
                 Cancelar
               </Button>
               <Button 
-                onClick={handleSubmit}
+                onClick={handleInvite}
+                disabled={sending}
                 className="bg-purple-600 hover:bg-purple-700"
               >
-                {editingUser ? "Atualizar" : "Criar"} Usuário
+                {sending ? "Enviando..." : "Enviar Convite"}
               </Button>
             </DialogFooter>
           </DialogContent>
