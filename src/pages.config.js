@@ -62,10 +62,10 @@ import Reservas from './pages/Reservas';
 import Resumo from './pages/Resumo';
 import Smartphones from './pages/Smartphones';
 import Tablets from './pages/Tablets';
+import Usuarios from './pages/Usuarios';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
-import Usuarios from './pages/Usuarios';
 import __Layout from './Layout.jsx';
 
 
@@ -85,10 +85,10 @@ export const PAGES = {
     "Resumo": Resumo,
     "Smartphones": Smartphones,
     "Tablets": Tablets,
+    "Usuarios": Usuarios,
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
-    "Usuarios": Usuarios,
 }
 
 export const pagesConfig = {

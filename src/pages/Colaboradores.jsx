@@ -32,7 +32,7 @@ export default function Colaboradores() {
   });
 
   const handleExportar = () => {
-    const header = "NOME_COMPLETO\tEMAIL\tAREA\tTIPO\tTELEFONE\tDATA_ADMISSAO\tSTATUS\n";
+    const header = ["Nome Completo", "Email", "Área", "Tipo", "Telefone", "Data Admissão", "Status"];
     const rows = colaboradores.map(c => [
       c.nome_completo || "",
       c.email || "",
@@ -41,9 +41,15 @@ export default function Colaboradores() {
       c.telefone || "",
       c.data_admissao || "",
       c.status || ""
-    ].join("\t")).join("\n");
+    ]);
 
-    const blob = new Blob(["\ufeff" + header + rows], { type: "text/csv;charset=utf-8;" });
+    // Criar CSV com delimitador ponto e vírgula (;) para Excel
+    const csvContent = [
+      header.join(";"),
+      ...rows.map(row => row.join(";"))
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
