@@ -61,6 +61,10 @@ export default function PCs_Internos() {
       setNewUserName("");
       setSelectedAvailableEquipment("");
     },
+    onError: (error) => {
+      console.error("❌ Erro ao atualizar equipamento:", error);
+      alert("Erro ao salvar equipamento: " + (error.message || "Erro desconhecido"));
+    },
   });
 
   const deleteMutation = useMutation({
