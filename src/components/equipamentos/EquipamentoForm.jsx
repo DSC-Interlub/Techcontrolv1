@@ -124,7 +124,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       dataToSubmit.avaliacao_data = new Date().toISOString();
     }
     
-    // Remover campos readonly do banco de dados antes de enviar
+    // Remover campos readonly e calculados do banco de dados antes de enviar
     const { 
       id, 
       created_date, 
@@ -134,6 +134,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       is_sample,
       entity_name,
       app_id,
+      tempo_uso,  // Campo calculado, não deve ser salvo
       ...cleanData 
     } = dataToSubmit;
     
