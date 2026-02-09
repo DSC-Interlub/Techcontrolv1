@@ -125,18 +125,24 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     }
     
     // Remover campos readonly e calculados do banco de dados antes de enviar
-    const { 
-      id, 
-      created_date, 
-      updated_date, 
-      created_by_id, 
-      created_by, 
-      is_sample,
-      entity_name,
-      app_id,
-      tempo_uso,  // Campo calculado, não deve ser salvo
-      ...cleanData 
-    } = dataToSubmit;
+    const fieldsToRemove = [
+      'id', 
+      'created_date', 
+      'updated_date', 
+      'created_by_id', 
+      'created_by', 
+      'is_sample',
+      'entity_name',
+      'app_id',
+      'tempo_uso'
+    ];
+    
+    const cleanData = Object.keys(dataToSubmit).reduce((acc, key) => {
+      if (!fieldsToRemove.includes(key)) {
+        acc[key] = dataToSubmit[key];
+      }
+      return acc;
+    }, {});
     
     console.log("💾 Dados limpos para salvar:", cleanData);
     onSubmit(cleanData);
