@@ -105,25 +105,27 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       dataToSubmit.usuarios_anteriores = usuariosAnteriores;
     }
     
-    // Calcular score e recomendação se houver dados de avaliação
+    // Calcular score e recomendação SEMPRE que for PC ou Notebook
     if ((entityType === "PCs_Internos" || entityType === "Notebooks_Externos") && 
         (dataToSubmit.tipo === "Desktop" || dataToSubmit.tipo === "Notebook")) {
-      const temAvaliacao = dataToSubmit.avaliacao_uso_memoria || 
-                          dataToSubmit.avaliacao_tipo_armazenamento ||
-                          dataToSubmit.avaliacao_desempenho || 
-                          dataToSubmit.avaliacao_atende_necessidades;
       
-      if (temAvaliacao) {
-        console.log("Calculando avaliação para:", dataToSubmit);
-        const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
-        console.log("Resultado da avaliação - Score:", score, "Recomendação:", recomendacao);
-        dataToSubmit.avaliacao_score = score;
-        dataToSubmit.avaliacao_recomendacao_sistema = recomendacao;
-        dataToSubmit.avaliacao_data = new Date().toISOString();
-      }
+      console.log("🔄 Calculando avaliação automática para:", {
+        entity: entityType,
+        tipo: dataToSubmit.tipo,
+        dados: dataToSubmit
+      });
+      
+      const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
+      
+      console.log("✅ Resultado calculado - Score:", score, "Recomendação:", recomendacao);
+      
+      // SEMPRE atualizar os campos calculados
+      dataToSubmit.avaliacao_score = score;
+      dataToSubmit.avaliacao_recomendacao_sistema = recomendacao;
+      dataToSubmit.avaliacao_data = new Date().toISOString();
     }
     
-    console.log("Dados a serem salvos:", dataToSubmit);
+    console.log("💾 Dados finais a serem salvos:", dataToSubmit);
     onSubmit(dataToSubmit);
   };
 
