@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, FileText, Activity } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoSaude from "./AvaliacaoSaude";
-import { calcularAvaliacaoEquipamento } from "../utils/calcularAvaliacaoEquipamento";
+
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
   const [formData, setFormData] = useState(equipamento || {
@@ -567,9 +567,9 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 {renderFieldsByType()}
               </TabsContent>
               <TabsContent value="avaliacao">
-                <AvaliacaoEquipamento 
-                  equipamento={formData} 
-                  onChange={setFormData}
+                <AvaliacaoSaude 
+                  formData={formData} 
+                  setFormData={setFormData}
                 />
               </TabsContent>
             </Tabs>
