@@ -92,7 +92,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     e.preventDefault();
     
     // Criar uma cópia dos dados do formulário
-    const dataToSubmit = { ...formData };
+    let dataToSubmit = { ...formData };
     
     // Se está editando e o usuário mudou, adicionar ao histórico
     if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
@@ -111,8 +111,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       
       console.log("🔄 Calculando avaliação automática para:", {
         entity: entityType,
-        tipo: dataToSubmit.tipo,
-        dados: dataToSubmit
+        tipo: dataToSubmit.tipo
       });
       
       const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
@@ -125,8 +124,21 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       dataToSubmit.avaliacao_data = new Date().toISOString();
     }
     
-    console.log("💾 Dados finais a serem salvos:", dataToSubmit);
-    onSubmit(dataToSubmit);
+    // Remover campos readonly do banco de dados antes de enviar
+    const { 
+      id, 
+      created_date, 
+      updated_date, 
+      created_by_id, 
+      created_by, 
+      is_sample,
+      entity_name,
+      app_id,
+      ...cleanData 
+    } = dataToSubmit;
+    
+    console.log("💾 Dados limpos para salvar:", cleanData);
+    onSubmit(cleanData);
   };
 
   const handleChange = (field, value) => {
