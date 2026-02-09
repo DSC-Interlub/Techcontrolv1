@@ -17,7 +17,8 @@ import {
   Settings,
   Phone,
   Users,
-  LogOut
+  LogOut,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,9 +106,9 @@ const managementItems = [
     icon: Settings,
   },
   {
-    title: "Pesos de Avaliação",
-    url: createPageUrl("Configurar_Pesos_Avaliacao"),
-    icon: Settings,
+    title: "Avaliações de Equipamentos",
+    url: createPageUrl("Avaliacoes_Equipamentos"),
+    icon: Activity,
   },
   {
     title: "Importar Dados",
