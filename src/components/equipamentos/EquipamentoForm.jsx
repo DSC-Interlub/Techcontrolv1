@@ -8,17 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, FileText, Activity } from "lucide-react";
+import { X } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
-import AvaliacaoSaude from "./AvaliacaoSaude.jsx";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
   });
-  const [activeTab, setActiveTab] = useState("dados");
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
@@ -531,9 +528,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     return null;
   };
 
-  const podeAvaliar = entityType === "PCs_Internos" || entityType === "Notebooks_Externos";
-  const eComputador = formData.tipo === "Desktop" || formData.tipo === "Notebook";
-
   return (
     <Card className="mb-6">
       <CardHeader className="border-b">
@@ -548,33 +542,9 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="pt-6">
-          {podeAvaliar && eComputador ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="dados" className="gap-2">
-                  <FileText className="w-4 h-4" />
-                  Dados do Equipamento
-                </TabsTrigger>
-                <TabsTrigger value="avaliacao" className="gap-2">
-                  <Activity className="w-4 h-4" />
-                  Avaliação do Equipamento
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="dados" className="space-y-4">
-                {renderFieldsByType()}
-              </TabsContent>
-              <TabsContent value="avaliacao">
-                <AvaliacaoSaude 
-                  formData={formData} 
-                  setFormData={setFormData}
-                />
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <div className="space-y-4">
-              {renderFieldsByType()}
-            </div>
-          )}
+          <div className="space-y-4">
+            {renderFieldsByType()}
+          </div>
         </CardContent>
         <CardFooter className="border-t pt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>
