@@ -173,14 +173,21 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
 
   // Calcular na montagem se já houver dados
   useEffect(() => {
-    if (formData.saude_uso_ram || formData.saude_tipo_disco) {
+    if (formData.saude_uso_ram || formData.saude_tipo_disco || formData.saude_score) {
       const resultado = calcularSaude(formData);
-      setFormData({
-        ...formData,
-        saude_score: resultado.score,
-        saude_status: resultado.status,
-        saude_recomendacao: resultado.recomendacao
-      });
+      if (resultado.score !== formData.saude_score) {
+        setFormData({
+          ...formData,
+          saude_score: resultado.score,
+          saude_status: resultado.status,
+          saude_recomendacao: resultado.recomendacao
+        });
+      }
+    }
+    
+    // Carregar problemas salvos
+    if (formData.saude_problemas && formData.saude_problemas.length > 0) {
+      setProblemasSelecionados(formData.saude_problemas);
     }
   }, []);
 
