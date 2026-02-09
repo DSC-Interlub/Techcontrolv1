@@ -19,7 +19,7 @@ const problemasOpcoes = [
 
 export default function AvaliacaoSaude({ formData, setFormData }) {
   const [problemasSelecionados, setProblemasSelecionados] = useState(
-    formData.saude_problemas || []
+    formData.avaliacao_problemas || []
   );
 
   const handleProblemaChange = (problema, checked) => {
@@ -40,7 +40,7 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
     }
     
     setProblemasSelecionados(novosProblemas);
-    handleAvaliacaoChange("saude_problemas", novosProblemas);
+    handleAvaliacaoChange("avaliacao_problemas", novosProblemas);
   };
 
   const handleAvaliacaoChange = (campo, valor) => {
@@ -51,10 +51,10 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
     
     setFormData({
       ...novosDados,
-      saude_score: resultado.score,
-      saude_status: resultado.status,
-      saude_recomendacao: resultado.recomendacao,
-      saude_data_avaliacao: new Date().toISOString()
+      avaliacao_score: resultado.score,
+      avaliacao_status: resultado.status,
+      avaliacao_recomendacao_sistema: resultado.recomendacao,
+      avaliacao_data: new Date().toISOString()
     });
   };
 
@@ -62,64 +62,64 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
     let score = 0;
 
     // 1. Uso de Memória RAM (até 10 pontos)
-    if (dados.saude_uso_ram === "Menos de 50%") score += 0;
-    else if (dados.saude_uso_ram === "Entre 50% e 70%") score += 3;
-    else if (dados.saude_uso_ram === "Entre 70% e 90%") score += 6;
-    else if (dados.saude_uso_ram === "Acima de 90%") score += 10;
-    else if (dados.saude_uso_ram === "Não consegui verificar") score += 3;
+    if (dados.avaliacao_uso_memoria === "Menos de 50%") score += 0;
+    else if (dados.avaliacao_uso_memoria === "Entre 50% e 70%") score += 3;
+    else if (dados.avaliacao_uso_memoria === "Entre 70% e 90%") score += 6;
+    else if (dados.avaliacao_uso_memoria === "Acima de 90%") score += 10;
+    else if (dados.avaliacao_uso_memoria === "Não consegui verificar") score += 3;
 
     // 2. Tipo de armazenamento (até 10 pontos)
-    if (dados.saude_tipo_disco === "SSD") score += 0;
-    else if (dados.saude_tipo_disco === "HD") score += 10;
-    else if (dados.saude_tipo_disco === "Não sei informar") score += 5;
+    if (dados.avaliacao_tipo_armazenamento === "SSD") score += 0;
+    else if (dados.avaliacao_tipo_armazenamento === "HD") score += 10;
+    else if (dados.avaliacao_tipo_armazenamento === "Não sei informar") score += 5;
 
     // 3. Espaço livre em disco (até 10 pontos)
-    if (dados.saude_espaco_livre === "Mais de 100 GB livres") score += 0;
-    else if (dados.saude_espaco_livre === "Entre 50 e 100 GB livres") score += 3;
-    else if (dados.saude_espaco_livre === "Entre 20 e 50 GB livres") score += 6;
-    else if (dados.saude_espaco_livre === "Menos de 20 GB livres") score += 10;
-    else if (dados.saude_espaco_livre === "Não sei verificar") score += 3;
+    if (dados.avaliacao_espaco_disco === "Mais de 100 GB livres") score += 0;
+    else if (dados.avaliacao_espaco_disco === "Entre 50 e 100 GB livres") score += 3;
+    else if (dados.avaliacao_espaco_disco === "Entre 20 e 50 GB livres") score += 6;
+    else if (dados.avaliacao_espaco_disco === "Menos de 20 GB livres") score += 10;
+    else if (dados.avaliacao_espaco_disco === "Não sei verificar") score += 3;
 
     // 4. Versão do Windows (até 10 pontos)
-    if (dados.saude_windows === "Windows 11") score += 0;
-    else if (dados.saude_windows === "Windows 10") score += 5;
-    else if (dados.saude_windows === "Outra versão") score += 10;
-    else if (dados.saude_windows === "Não sei informar") score += 5;
+    if (dados.avaliacao_versao_windows === "Windows 11") score += 0;
+    else if (dados.avaliacao_versao_windows === "Windows 10") score += 5;
+    else if (dados.avaliacao_versao_windows === "Outra versão") score += 10;
+    else if (dados.avaliacao_versao_windows === "Não sei informar") score += 5;
 
     // 5. Antivírus (até 10 pontos)
-    if (dados.saude_antivirus === "Sim, está ativo") score += 0;
-    else if (dados.saude_antivirus === "Aparece aviso de desativado") score += 5;
-    else if (dados.saude_antivirus === "Não tem antivírus") score += 10;
-    else if (dados.saude_antivirus === "Não sei verificar") score += 5;
+    if (dados.avaliacao_status_antivirus === "Sim, está ativo") score += 0;
+    else if (dados.avaliacao_status_antivirus === "Aparece aviso de desativado") score += 5;
+    else if (dados.avaliacao_status_antivirus === "Não tem antivírus") score += 10;
+    else if (dados.avaliacao_status_antivirus === "Não sei verificar") score += 5;
 
     // 6. Desempenho geral percebido (até 10 pontos)
-    if (dados.saude_desempenho === "Muito rápido") score += 0;
-    else if (dados.saude_desempenho === "Bom") score += 3;
-    else if (dados.saude_desempenho === "Normal") score += 6;
-    else if (dados.saude_desempenho === "Lento") score += 8;
-    else if (dados.saude_desempenho === "Muito lento") score += 10;
+    if (dados.avaliacao_desempenho === "Muito rápido") score += 0;
+    else if (dados.avaliacao_desempenho === "Bom") score += 3;
+    else if (dados.avaliacao_desempenho === "Normal") score += 6;
+    else if (dados.avaliacao_desempenho === "Lento") score += 8;
+    else if (dados.avaliacao_desempenho === "Muito lento") score += 10;
 
     // 7. Problemas percebidos (até 10 pontos)
-    const problemas = dados.saude_problemas || [];
+    const problemas = dados.avaliacao_problemas || [];
     if (!problemas.includes("Nenhum problema")) {
       const numProblemas = problemas.length;
       score += Math.min(numProblemas * 2, 10);
     }
 
     // 8. Equipamento atende seu trabalho (até 10 pontos)
-    if (dados.saude_atende_trabalho === "Sim") score += 0;
-    else if (dados.saude_atende_trabalho === "Parcialmente") score += 5;
-    else if (dados.saude_atende_trabalho === "Não") score += 10;
+    if (dados.avaliacao_atende_necessidades === "Sim") score += 0;
+    else if (dados.avaliacao_atende_necessidades === "Parcialmente") score += 5;
+    else if (dados.avaliacao_atende_necessidades === "Não") score += 10;
 
     // 9. Opinião do usuário (até 5 pontos)
-    if (dados.saude_opiniao === "Continuar como está") score += 0;
-    else if (dados.saude_opiniao === "Receber melhorias (upgrade)") score += 3;
-    else if (dados.saude_opiniao === "Ser substituído") score += 5;
+    if (dados.avaliacao_recomendacao_usuario === "Continuar como está") score += 0;
+    else if (dados.avaliacao_recomendacao_usuario === "Receber melhorias (upgrade)") score += 3;
+    else if (dados.avaliacao_recomendacao_usuario === "Ser substituído") score += 5;
 
     // 10. Satisfação geral (até 5 pontos)
-    if (dados.saude_satisfacao === "Nota 8 a 10") score += 0;
-    else if (dados.saude_satisfacao === "Nota 5 a 7") score += 3;
-    else if (dados.saude_satisfacao === "Nota 0 a 4") score += 5;
+    if (dados.avaliacao_nota_satisfacao === "Nota 8 a 10") score += 0;
+    else if (dados.avaliacao_nota_satisfacao === "Nota 5 a 7") score += 3;
+    else if (dados.avaliacao_nota_satisfacao === "Nota 0 a 4") score += 5;
 
     // 11. Idade do equipamento (até 20 pontos)
     if (dados.data_aquisicao) {
@@ -151,50 +151,50 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
   };
 
   const getScoreColor = () => {
-    const score = formData.saude_score || 0;
+    const score = formData.avaliacao_score || 0;
     if (score <= 39) return "text-green-600";
     if (score <= 69) return "text-yellow-600";
     return "text-red-600";
   };
 
   const getScoreIcon = () => {
-    const score = formData.saude_score || 0;
+    const score = formData.avaliacao_score || 0;
     if (score <= 39) return <TrendingUp className="w-5 h-5" />;
     if (score <= 69) return <AlertTriangle className="w-5 h-5" />;
     return <AlertCircle className="w-5 h-5" />;
   };
 
   const getRecomendacaoColor = () => {
-    if (formData.saude_recomendacao === "Manter") return "bg-green-100 text-green-800";
-    if (formData.saude_recomendacao === "Upgrade") return "bg-yellow-100 text-yellow-800";
-    if (formData.saude_recomendacao === "Substituir") return "bg-red-100 text-red-800";
+    if (formData.avaliacao_recomendacao_sistema === "Manter") return "bg-green-100 text-green-800";
+    if (formData.avaliacao_recomendacao_sistema === "Upgrade") return "bg-yellow-100 text-yellow-800";
+    if (formData.avaliacao_recomendacao_sistema === "Substituir") return "bg-red-100 text-red-800";
     return "bg-gray-100 text-gray-800";
   };
 
   // Calcular na montagem se já houver dados
   useEffect(() => {
-    if (formData.saude_uso_ram || formData.saude_tipo_disco || formData.saude_score) {
+    if (formData.avaliacao_uso_memoria || formData.avaliacao_tipo_armazenamento || formData.avaliacao_score) {
       const resultado = calcularSaude(formData);
-      if (resultado.score !== formData.saude_score) {
+      if (resultado.score !== formData.avaliacao_score) {
         setFormData({
           ...formData,
-          saude_score: resultado.score,
-          saude_status: resultado.status,
-          saude_recomendacao: resultado.recomendacao
+          avaliacao_score: resultado.score,
+          avaliacao_status: resultado.status,
+          avaliacao_recomendacao_sistema: resultado.recomendacao
         });
       }
     }
     
     // Carregar problemas salvos
-    if (formData.saude_problemas && formData.saude_problemas.length > 0) {
-      setProblemasSelecionados(formData.saude_problemas);
+    if (formData.avaliacao_problemas && formData.avaliacao_problemas.length > 0) {
+      setProblemasSelecionados(formData.avaliacao_problemas);
     }
   }, []);
 
   return (
     <div className="space-y-6">
       {/* Resultado da Avaliação */}
-      {formData.saude_score !== undefined && (
+      {formData.avaliacao_score !== undefined && (
         <Card className="border-2 border-blue-200 bg-blue-50/50">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
@@ -208,26 +208,26 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
                 <p className="text-sm text-gray-600 mb-2">Score</p>
                 <div className={`flex items-center justify-center gap-2 ${getScoreColor()}`}>
                   {getScoreIcon()}
-                  <p className="text-4xl font-bold">{formData.saude_score}</p>
+                  <p className="text-4xl font-bold">{formData.avaliacao_score}</p>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">de 100 pontos</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">Status</p>
                 <Badge className="text-lg px-4 py-1 mt-2">
-                  {formData.saude_status}
+                  {formData.avaliacao_status}
                 </Badge>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">Recomendação</p>
                 <Badge className={`text-lg px-4 py-1 mt-2 ${getRecomendacaoColor()}`}>
-                  {formData.saude_recomendacao}
+                  {formData.avaliacao_recomendacao_sistema}
                 </Badge>
               </div>
             </div>
-            {formData.saude_data_avaliacao && (
+            {formData.avaliacao_data && (
               <p className="text-xs text-gray-500 text-center mt-4">
-                Última avaliação: {new Date(formData.saude_data_avaliacao).toLocaleString('pt-BR')}
+                Última avaliação: {new Date(formData.avaliacao_data).toLocaleString('pt-BR')}
               </p>
             )}
           </CardContent>
@@ -245,8 +245,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">1. Uso de Memória (RAM)</Label>
             <Select 
-              value={formData.saude_uso_ram || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_uso_ram", value)}
+              value={formData.avaliacao_uso_memoria || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_uso_memoria", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -265,8 +265,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">2. Tipo de Armazenamento</Label>
             <Select 
-              value={formData.saude_tipo_disco || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_tipo_disco", value)}
+              value={formData.avaliacao_tipo_armazenamento || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_tipo_armazenamento", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -283,8 +283,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">3. Espaço Livre em Disco</Label>
             <Select 
-              value={formData.saude_espaco_livre || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_espaco_livre", value)}
+              value={formData.avaliacao_espaco_disco || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_espaco_disco", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -303,8 +303,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">4. Versão do Windows</Label>
             <Select 
-              value={formData.saude_windows || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_windows", value)}
+              value={formData.avaliacao_versao_windows || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_versao_windows", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -322,8 +322,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">5. Antivírus</Label>
             <Select 
-              value={formData.saude_antivirus || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_antivirus", value)}
+              value={formData.avaliacao_status_antivirus || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_status_antivirus", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -341,8 +341,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">6. Desempenho Geral Percebido</Label>
             <Select 
-              value={formData.saude_desempenho || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_desempenho", value)}
+              value={formData.avaliacao_desempenho || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_desempenho", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -383,8 +383,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">8. O Equipamento Atende Seu Trabalho?</Label>
             <Select 
-              value={formData.saude_atende_trabalho || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_atende_trabalho", value)}
+              value={formData.avaliacao_atende_necessidades || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_atende_necessidades", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -401,8 +401,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">9. Opinião do Usuário sobre o Equipamento</Label>
             <Select 
-              value={formData.saude_opiniao || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_opiniao", value)}
+              value={formData.avaliacao_recomendacao_usuario || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_recomendacao_usuario", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
@@ -419,8 +419,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
           <div className="space-y-2">
             <Label className="text-base font-semibold">10. Satisfação Geral</Label>
             <Select 
-              value={formData.saude_satisfacao || ""} 
-              onValueChange={(value) => handleAvaliacaoChange("saude_satisfacao", value)}
+              value={formData.avaliacao_nota_satisfacao || ""} 
+              onValueChange={(value) => handleAvaliacaoChange("avaliacao_nota_satisfacao", value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione..." />
