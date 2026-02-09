@@ -114,13 +114,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                           dataToSubmit.avaliacao_atende_necessidades;
       
       if (temAvaliacao) {
+        console.log("Calculando avaliação para:", dataToSubmit);
         const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
+        console.log("Resultado da avaliação - Score:", score, "Recomendação:", recomendacao);
         dataToSubmit.avaliacao_score = score;
         dataToSubmit.avaliacao_recomendacao_sistema = recomendacao;
         dataToSubmit.avaliacao_data = new Date().toISOString();
       }
     }
     
+    console.log("Dados a serem salvos:", dataToSubmit);
     onSubmit(dataToSubmit);
   };
 
