@@ -66,6 +66,7 @@ import Usuarios from './pages/Usuarios';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
+import avaliacoesEquipamentos from './pages/Avaliacoes_Equipamentos';
 import __Layout from './Layout.jsx';
 
 
@@ -89,6 +90,7 @@ export const PAGES = {
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
     "reserva-publica": reservaPublica,
+    "Avaliacoes_Equipamentos": avaliacoesEquipamentos,
 }
 
 export const pagesConfig = {
