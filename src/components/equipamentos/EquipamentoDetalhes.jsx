@@ -131,6 +131,39 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           )}
 
+          {equipamento.avaliacao_score !== undefined && equipamento.avaliacao_score !== null && (
+            <div className="pt-4 border-t">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Avaliação de Saúde do Equipamento</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Score de Saúde</p>
+                  <p className={`text-2xl font-bold ${
+                    equipamento.avaliacao_score >= 70 ? "text-red-600" :
+                    equipamento.avaliacao_score >= 40 ? "text-yellow-600" :
+                    "text-green-600"
+                  }`}>
+                    {equipamento.avaliacao_score.toFixed(1)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Recomendação</p>
+                  <Badge className={
+                    equipamento.avaliacao_recomendacao_sistema === "Manter" ? "bg-green-100 text-green-800" :
+                    equipamento.avaliacao_recomendacao_sistema === "Upgrade" ? "bg-yellow-100 text-yellow-800" :
+                    "bg-red-100 text-red-800"
+                  }>
+                    {equipamento.avaliacao_recomendacao_sistema || "Não avaliado"}
+                  </Badge>
+                </div>
+              </div>
+              {equipamento.avaliacao_data && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Avaliado em: {format(new Date(equipamento.avaliacao_data), "dd/MM/yyyy 'às' HH:mm")}
+                </p>
+              )}
+            </div>
+          )}
+
           {equipamento.usuarios_anteriores && equipamento.usuarios_anteriores.length > 0 && (
             <div className="pt-4 border-t">
               <p className="text-sm font-semibold text-gray-700 mb-3">Histórico de Usuários Anteriores</p>
