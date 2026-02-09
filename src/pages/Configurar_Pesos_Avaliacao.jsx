@@ -64,11 +64,11 @@ export default function ConfigurarPesosAvaliacao() {
 
   const { data: pesos = [] } = useQuery({
     queryKey: ['pesos_avaliacao'],
-    queryFn: () => base44.entities.Pesos_Avaliacao.list(),
+    queryFn: () => base44.entities.PesosAvaliacao.list(),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Pesos_Avaliacao.bulkCreate(data),
+    mutationFn: (data) => base44.entities.PesosAvaliacao.bulkCreate(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pesos_avaliacao'] });
       setMensagem({ tipo: "sucesso", texto: "Pesos configurados com sucesso!" });
@@ -77,7 +77,7 @@ export default function ConfigurarPesosAvaliacao() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Pesos_Avaliacao.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.PesosAvaliacao.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pesos_avaliacao'] });
     },
