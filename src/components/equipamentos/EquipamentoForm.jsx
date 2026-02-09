@@ -11,7 +11,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, FileText, Activity } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
-import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
+import AvaliacaoSaude from "./AvaliacaoSaude";
 import { calcularAvaliacaoEquipamento } from "../utils/calcularAvaliacaoEquipamento";
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
@@ -91,73 +91,42 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    try {
-      // Criar uma cópia dos dados do formulário
-      let dataToSubmit = { ...formData };
-      
-      // Se está editando e o usuário mudou, adicionar ao histórico
-      if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
-        const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
-        usuariosAnteriores.push({
-          nome: equipamento.usuario_atual,
-          data_inicio: equipamento.usuario_desde || equipamento.data_aquisicao || "",
-          data_fim: new Date().toISOString().split('T')[0]
-        });
-        dataToSubmit.usuarios_anteriores = usuariosAnteriores;
-      }
-      
-      // Calcular score e recomendação SEMPRE que for PC ou Notebook
-      if ((entityType === "PCs_Internos" || entityType === "Notebooks_Externos") && 
-          (dataToSubmit.tipo === "Desktop" || dataToSubmit.tipo === "Notebook")) {
-        
-        console.log("🔄 Calculando avaliação automática para:", {
-          entity: entityType,
-          tipo: dataToSubmit.tipo
-        });
-        
-        const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
-        
-        console.log("✅ Resultado calculado - Score:", score, "Recomendação:", recomendacao);
-        
-        // SEMPRE atualizar os campos calculados
-        dataToSubmit.avaliacao_score = score;
-        dataToSubmit.avaliacao_recomendacao_sistema = recomendacao;
-        dataToSubmit.avaliacao_data = new Date().toISOString();
-      }
-      
-      // Remover campos readonly e calculados do banco de dados antes de enviar
-      const fieldsToRemove = [
-        'id', 
-        'created_date', 
-        'updated_date', 
-        'created_by_id', 
-        'created_by', 
-        'is_sample',
-        'entity_name',
-        'app_id',
-        'tempo_uso',
-        'origem'
-      ];
-      
-      const cleanData = {};
-      for (const key in dataToSubmit) {
-        if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
-          cleanData[key] = dataToSubmit[key];
-        }
-      }
-      
-      console.log("💾 Dados limpos para salvar:", cleanData);
-      console.log("📊 Campos de avaliação incluídos:", {
-        score: cleanData.avaliacao_score,
-        recomendacao: cleanData.avaliacao_recomendacao_sistema,
-        data: cleanData.avaliacao_data
+    // Criar uma cópia dos dados do formulário
+    let dataToSubmit = { ...formData };
+    
+    // Se está editando e o usuário mudou, adicionar ao histórico
+    if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
+      const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
+      usuariosAnteriores.push({
+        nome: equipamento.usuario_atual,
+        data_inicio: equipamento.usuario_desde || equipamento.data_aquisicao || "",
+        data_fim: new Date().toISOString().split('T')[0]
       });
-      
-      onSubmit(cleanData);
-    } catch (error) {
-      console.error("❌ Erro no handleSubmit:", error);
-      alert("Erro ao processar formulário: " + error.message);
+      dataToSubmit.usuarios_anteriores = usuariosAnteriores;
     }
+    
+    // Remover campos readonly do banco de dados antes de enviar
+    const fieldsToRemove = [
+      'id', 
+      'created_date', 
+      'updated_date', 
+      'created_by_id', 
+      'created_by', 
+      'is_sample',
+      'entity_name',
+      'app_id',
+      'tempo_uso',
+      'origem'
+    ];
+    
+    const cleanData = {};
+    for (const key in dataToSubmit) {
+      if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
+        cleanData[key] = dataToSubmit[key];
+      }
+    }
+    
+    onSubmit(cleanData);
   };
 
   const handleChange = (field, value) => {

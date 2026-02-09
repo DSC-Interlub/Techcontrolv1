@@ -28,15 +28,15 @@ export default function AvaliacoesEquipamentos() {
   const equipamentosAvaliados = [
     ...pcsInternos
       .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && 
-                    pc.avaliacao_score !== undefined && 
-                    pc.avaliacao_score !== null &&
-                    pc.avaliacao_data)
+                    pc.saude_score !== undefined && 
+                    pc.saude_score !== null &&
+                    pc.saude_data_avaliacao)
       .map(pc => ({ ...pc, origem: "PCs_Internos" })),
     ...notebooksExternos
       .filter(nb => nb.tipo === "Notebook" && 
-                   nb.avaliacao_score !== undefined && 
-                   nb.avaliacao_score !== null &&
-                   nb.avaliacao_data)
+                   nb.saude_score !== undefined && 
+                   nb.saude_score !== null &&
+                   nb.saude_data_avaliacao)
       .map(nb => ({ ...nb, origem: "Notebooks_Externos" }))
   ];
 
@@ -49,41 +49,43 @@ export default function AvaliacoesEquipamentos() {
       eq.etiqueta_interna?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchRecomendacao = filterRecomendacao === "todos" || 
-      eq.avaliacao_recomendacao_sistema === filterRecomendacao;
+      eq.saude_recomendacao === filterRecomendacao;
 
     const matchScore = 
       filterScore === "todos" ||
-      (filterScore === "critico" && eq.avaliacao_score >= 70) ||
-      (filterScore === "atencao" && eq.avaliacao_score >= 40 && eq.avaliacao_score < 70) ||
-      (filterScore === "bom" && eq.avaliacao_score < 40);
+      (filterScore === "critico" && eq.saude_score < 40) ||
+      (filterScore === "atencao" && eq.saude_score >= 40 && eq.saude_score < 80) ||
+      (filterScore === "bom" && eq.saude_score >= 80);
 
     return matchSearch && matchRecomendacao && matchScore;
   });
 
-  // Ordenar por score (maior primeiro)
+  // Ordenar por score (menor primeiro - críticos aparecem primeiro)
   const equipamentosOrdenados = [...equipamentosFiltrados].sort((a, b) => 
-    (b.avaliacao_score || 0) - (a.avaliacao_score || 0)
+    (a.saude_score || 0) - (b.saude_score || 0)
   );
 
   // Estatísticas
   const totalAvaliados = equipamentosAvaliados.length;
-  const substituir = equipamentosAvaliados.filter(eq => eq.avaliacao_recomendacao_sistema === "Substituir").length;
-  const upgrade = equipamentosAvaliados.filter(eq => eq.avaliacao_recomendacao_sistema === "Upgrade").length;
-  const manter = equipamentosAvaliados.filter(eq => eq.avaliacao_recomendacao_sistema === "Manter").length;
+  const substituir = equipamentosAvaliados.filter(eq => eq.saude_recomendacao === "Substituir").length;
+  const upgrade = equipamentosAvaliados.filter(eq => eq.saude_recomendacao === "Upgrade").length;
+  const manter = equipamentosAvaliados.filter(eq => eq.saude_recomendacao === "Manter").length;
   const scoremedio = totalAvaliados > 0 
-    ? (equipamentosAvaliados.reduce((sum, eq) => sum + (eq.avaliacao_score || 0), 0) / totalAvaliados).toFixed(1)
+    ? (equipamentosAvaliados.reduce((sum, eq) => sum + (eq.saude_score || 0), 0) / totalAvaliados).toFixed(1)
     : 0;
 
   const getScoreColor = (score) => {
-    if (score >= 70) return "text-red-600";
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-blue-600";
     if (score >= 40) return "text-yellow-600";
-    return "text-green-600";
+    return "text-red-600";
   };
 
   const getScoreIcon = (score) => {
-    if (score >= 70) return <AlertCircle className="w-4 h-4 text-red-600" />;
+    if (score >= 80) return <CheckCircle className="w-4 h-4 text-green-600" />;
+    if (score >= 60) return <CheckCircle className="w-4 h-4 text-blue-600" />;
     if (score >= 40) return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-    return <CheckCircle className="w-4 h-4 text-green-600" />;
+    return <AlertCircle className="w-4 h-4 text-red-600" />;
   };
 
   const getRecomendacaoColor = (recomendacao) => {
@@ -189,9 +191,9 @@ export default function AvaliacoesEquipamentos() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos Scores</SelectItem>
-                  <SelectItem value="critico">Crítico (≥70)</SelectItem>
-                  <SelectItem value="atencao">Atenção (40-69)</SelectItem>
-                  <SelectItem value="bom">Bom (&lt;40)</SelectItem>
+                  <SelectItem value="bom">Bom (≥80)</SelectItem>
+                  <SelectItem value="atencao">Atenção (40-79)</SelectItem>
+                  <SelectItem value="critico">Crítico (&lt;40)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -251,28 +253,28 @@ export default function AvaliacoesEquipamentos() {
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {getScoreIcon(eq.avaliacao_score)}
-                          <span className={`font-bold ${getScoreColor(eq.avaliacao_score)}`}>
-                            {eq.avaliacao_score?.toFixed(1)}
+                          {getScoreIcon(eq.saude_score)}
+                          <span className={`font-bold ${getScoreColor(eq.saude_score)}`}>
+                            {eq.saude_score?.toFixed(0)}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className={getRecomendacaoColor(eq.avaliacao_recomendacao_sistema)}>
-                          {eq.avaliacao_recomendacao_sistema}
+                        <Badge className={getRecomendacaoColor(eq.saude_recomendacao)}>
+                          {eq.saude_recomendacao}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={eq.avaliacao_tipo_armazenamento === "HD" ? "destructive" : "default"}>
-                          {eq.avaliacao_tipo_armazenamento || "—"}
+                        <Badge variant={eq.saude_tipo_disco === "HD" ? "destructive" : "default"}>
+                          {eq.saude_tipo_disco || "—"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{eq.avaliacao_desempenho || "—"}</span>
+                        <span className="text-sm">{eq.saude_desempenho || "—"}</span>
                       </TableCell>
                       <TableCell className="text-sm text-gray-600">
-                        {eq.avaliacao_data 
-                          ? new Date(eq.avaliacao_data).toLocaleDateString('pt-BR')
+                        {eq.saude_data_avaliacao 
+                          ? new Date(eq.saude_data_avaliacao).toLocaleDateString('pt-BR')
                           : "—"}
                       </TableCell>
                     </TableRow>
