@@ -88,13 +88,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     );
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Criar uma cópia dos dados do formulário
     let dataToSubmit = { ...formData };
     
-    // Se está editando e o usuário mudou, adicionar ao histórico
     if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
       const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
       usuariosAnteriores.push({
@@ -105,7 +103,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       dataToSubmit.usuarios_anteriores = usuariosAnteriores;
     }
     
-    // Remover campos readonly do banco de dados antes de enviar
     const fieldsToRemove = [
       'id', 
       'created_date', 
@@ -125,14 +122,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         cleanData[key] = dataToSubmit[key];
       }
     }
-    
-    console.log("💾 Dados sendo enviados:", cleanData);
-    console.log("📊 Campos de avaliação:", {
-      avaliacao_score: cleanData.avaliacao_score,
-      avaliacao_recomendacao_sistema: cleanData.avaliacao_recomendacao_sistema,
-      avaliacao_status: cleanData.avaliacao_status,
-      avaliacao_data: cleanData.avaliacao_data
-    });
     
     onSubmit(cleanData);
   };
