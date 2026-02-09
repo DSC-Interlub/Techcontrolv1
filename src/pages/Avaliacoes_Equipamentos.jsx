@@ -6,14 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, Search, Filter, TrendingUp, AlertCircle, CheckCircle, AlertTriangle } from "lucide-react";
+import { Activity, Search, Filter, CheckCircle, AlertTriangle, AlertCircle } from "lucide-react";
 
 export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRecomendacao, setFilterRecomendacao] = useState("todos");
   const [filterScore, setFilterScore] = useState("todos");
 
-  // Buscar PCs Internos e Notebooks Externos
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
@@ -24,7 +23,6 @@ export default function AvaliacoesEquipamentos() {
     queryFn: () => base44.entities.Notebooks_Externos.list(),
   });
 
-  // Combinar todos os equipamentos avaliados (apenas os que têm score válido)
   const equipamentosAvaliados = [
     ...pcsInternos
       .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && 
@@ -40,7 +38,6 @@ export default function AvaliacoesEquipamentos() {
       .map(nb => ({ ...nb, origem: "Notebooks_Externos" }))
   ];
 
-  // Aplicar filtros
   const equipamentosFiltrados = equipamentosAvaliados.filter(eq => {
     const matchSearch = !searchTerm || 
       eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,19 +50,17 @@ export default function AvaliacoesEquipamentos() {
 
     const matchScore = 
       filterScore === "todos" ||
-      (filterScore === "critico" && eq.avaliacao_score < 40) ||
-      (filterScore === "atencao" && eq.avaliacao_score >= 40 && eq.avaliacao_score < 80) ||
-      (filterScore === "bom" && eq.avaliacao_score >= 80);
+      (filterScore === "critico" && eq.avaliacao_score > 69) ||
+      (filterScore === "atencao" && eq.avaliacao_score >= 40 && eq.avaliacao_score <= 69) ||
+      (filterScore === "bom" && eq.avaliacao_score < 40);
 
     return matchSearch && matchRecomendacao && matchScore;
   });
 
-  // Ordenar por score (maior primeiro - críticos aparecem primeiro, pois score invertido)
   const equipamentosOrdenados = [...equipamentosFiltrados].sort((a, b) => 
     (b.avaliacao_score || 0) - (a.avaliacao_score || 0)
   );
 
-  // Estatísticas
   const totalAvaliados = equipamentosAvaliados.length;
   const substituir = equipamentosAvaliados.filter(eq => eq.avaliacao_recomendacao_sistema === "Substituir").length;
   const upgrade = equipamentosAvaliados.filter(eq => eq.avaliacao_recomendacao_sistema === "Upgrade").length;
@@ -95,7 +90,6 @@ export default function AvaliacoesEquipamentos() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Cabeçalho */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
           <Activity className="w-8 h-8 text-blue-600" />
@@ -106,7 +100,6 @@ export default function AvaliacoesEquipamentos() {
         </p>
       </div>
 
-      {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -154,7 +147,6 @@ export default function AvaliacoesEquipamentos() {
         </Card>
       </div>
 
-      {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -189,9 +181,9 @@ export default function AvaliacoesEquipamentos() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos Scores</SelectItem>
-                  <SelectItem value="bom">Bom (≥80)</SelectItem>
-                  <SelectItem value="atencao">Atenção (40-79)</SelectItem>
-                  <SelectItem value="critico">Crítico (&lt;40)</SelectItem>
+                  <SelectItem value="bom">Bom (&lt;40)</SelectItem>
+                  <SelectItem value="atencao">Atenção (40-69)</SelectItem>
+                  <SelectItem value="critico">Crítico (&gt;69)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -199,7 +191,6 @@ export default function AvaliacoesEquipamentos() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Equipamentos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

@@ -46,7 +46,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
   const handleAvaliacaoChange = (campo, valor) => {
     const novosDados = { ...formData, [campo]: valor };
     
-    // Calcular score e recomendação automaticamente
     const resultado = calcularSaude(novosDados);
     
     setFormData({
@@ -61,67 +60,56 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
   const calcularSaude = (dados) => {
     let score = 0;
 
-    // 1. Uso de Memória RAM (até 10 pontos)
     if (dados.avaliacao_uso_memoria === "Menos de 50%") score += 0;
     else if (dados.avaliacao_uso_memoria === "Entre 50% e 70%") score += 3;
     else if (dados.avaliacao_uso_memoria === "Entre 70% e 90%") score += 6;
     else if (dados.avaliacao_uso_memoria === "Acima de 90%") score += 10;
     else if (dados.avaliacao_uso_memoria === "Não consegui verificar") score += 3;
 
-    // 2. Tipo de armazenamento (até 10 pontos)
     if (dados.avaliacao_tipo_armazenamento === "SSD") score += 0;
     else if (dados.avaliacao_tipo_armazenamento === "HD") score += 10;
     else if (dados.avaliacao_tipo_armazenamento === "Não sei informar") score += 5;
 
-    // 3. Espaço livre em disco (até 10 pontos)
     if (dados.avaliacao_espaco_disco === "Mais de 100 GB livres") score += 0;
     else if (dados.avaliacao_espaco_disco === "Entre 50 e 100 GB livres") score += 3;
     else if (dados.avaliacao_espaco_disco === "Entre 20 e 50 GB livres") score += 6;
     else if (dados.avaliacao_espaco_disco === "Menos de 20 GB livres") score += 10;
     else if (dados.avaliacao_espaco_disco === "Não sei verificar") score += 3;
 
-    // 4. Versão do Windows (até 10 pontos)
     if (dados.avaliacao_versao_windows === "Windows 11") score += 0;
     else if (dados.avaliacao_versao_windows === "Windows 10") score += 5;
     else if (dados.avaliacao_versao_windows === "Outra versão") score += 10;
     else if (dados.avaliacao_versao_windows === "Não sei informar") score += 5;
 
-    // 5. Antivírus (até 10 pontos)
     if (dados.avaliacao_status_antivirus === "Sim, está ativo") score += 0;
     else if (dados.avaliacao_status_antivirus === "Aparece aviso de desativado") score += 5;
     else if (dados.avaliacao_status_antivirus === "Não tem antivírus") score += 10;
     else if (dados.avaliacao_status_antivirus === "Não sei verificar") score += 5;
 
-    // 6. Desempenho geral percebido (até 10 pontos)
     if (dados.avaliacao_desempenho === "Muito rápido") score += 0;
     else if (dados.avaliacao_desempenho === "Bom") score += 3;
     else if (dados.avaliacao_desempenho === "Normal") score += 6;
     else if (dados.avaliacao_desempenho === "Lento") score += 8;
     else if (dados.avaliacao_desempenho === "Muito lento") score += 10;
 
-    // 7. Problemas percebidos (até 10 pontos)
     const problemas = dados.avaliacao_problemas || [];
     if (!problemas.includes("Nenhum problema")) {
       const numProblemas = problemas.length;
       score += Math.min(numProblemas * 2, 10);
     }
 
-    // 8. Equipamento atende seu trabalho (até 10 pontos)
     if (dados.avaliacao_atende_necessidades === "Sim") score += 0;
     else if (dados.avaliacao_atende_necessidades === "Parcialmente") score += 5;
     else if (dados.avaliacao_atende_necessidades === "Não") score += 10;
 
-    // 9. Opinião do usuário (até 5 pontos)
     if (dados.avaliacao_recomendacao_usuario === "Continuar como está") score += 0;
     else if (dados.avaliacao_recomendacao_usuario === "Receber melhorias (upgrade)") score += 3;
     else if (dados.avaliacao_recomendacao_usuario === "Ser substituído") score += 5;
 
-    // 10. Satisfação geral (até 5 pontos)
     if (dados.avaliacao_nota_satisfacao === "Nota 8 a 10") score += 0;
     else if (dados.avaliacao_nota_satisfacao === "Nota 5 a 7") score += 3;
     else if (dados.avaliacao_nota_satisfacao === "Nota 0 a 4") score += 5;
 
-    // 11. Idade do equipamento (até 20 pontos)
     if (dados.data_aquisicao) {
       const anos = (new Date() - new Date(dados.data_aquisicao)) / (1000 * 60 * 60 * 24 * 365);
       if (anos < 2) score += 0;
@@ -131,10 +119,8 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
       else score += 20;
     }
 
-    // Garantir score entre 0 e 100
     score = Math.max(0, Math.min(100, Math.round(score)));
 
-    // Determinar status e recomendação
     let status, recomendacao;
     if (score <= 39) {
       status = "Ótimo";
@@ -171,7 +157,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
     return "bg-gray-100 text-gray-800";
   };
 
-  // Calcular na montagem se já houver dados
   useEffect(() => {
     if (formData.avaliacao_uso_memoria || formData.avaliacao_tipo_armazenamento || formData.avaliacao_score) {
       const resultado = calcularSaude(formData);
@@ -185,7 +170,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
       }
     }
     
-    // Carregar problemas salvos
     if (formData.avaliacao_problemas && formData.avaliacao_problemas.length > 0) {
       setProblemasSelecionados(formData.avaliacao_problemas);
     }
@@ -193,8 +177,7 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
 
   return (
     <div className="space-y-6">
-      {/* Resultado da Avaliação */}
-      {formData.avaliacao_score !== undefined && (
+      {formData.avaliacao_score !== undefined && formData.avaliacao_score !== null && (
         <Card className="border-2 border-blue-200 bg-blue-50/50">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
@@ -234,14 +217,12 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
         </Card>
       )}
 
-      {/* Formulário de Avaliação */}
       <Card>
         <CardHeader>
           <CardTitle>Questionário de Avaliação</CardTitle>
           <p className="text-sm text-gray-600">Preencha as informações abaixo para calcular a saúde do equipamento</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* 1. Uso de Memória RAM */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">1. Uso de Memória (RAM)</Label>
             <Select 
@@ -261,7 +242,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 2. Tipo de Armazenamento */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">2. Tipo de Armazenamento</Label>
             <Select 
@@ -279,7 +259,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 3. Espaço Livre em Disco */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">3. Espaço Livre em Disco</Label>
             <Select 
@@ -299,7 +278,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 4. Versão do Windows */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">4. Versão do Windows</Label>
             <Select 
@@ -318,7 +296,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 5. Antivírus */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">5. Antivírus</Label>
             <Select 
@@ -337,7 +314,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 6. Desempenho Geral Percebido */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">6. Desempenho Geral Percebido</Label>
             <Select 
@@ -357,7 +333,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 7. Problemas Percebidos */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">7. Problemas Percebidos (marque todos que se aplicam)</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg border">
@@ -379,7 +354,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </div>
           </div>
 
-          {/* 8. Equipamento Atende Seu Trabalho */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">8. O Equipamento Atende Seu Trabalho?</Label>
             <Select 
@@ -397,7 +371,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 9. Opinião do Usuário */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">9. Opinião do Usuário sobre o Equipamento</Label>
             <Select 
@@ -415,7 +388,6 @@ export default function AvaliacaoSaude({ formData, setFormData }) {
             </Select>
           </div>
 
-          {/* 10. Satisfação Geral */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">10. Satisfação Geral</Label>
             <Select 
