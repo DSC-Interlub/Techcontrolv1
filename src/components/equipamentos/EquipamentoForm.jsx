@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X, FileText, Activity } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
+import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
+import { calcularAvaliacaoEquipamento } from "../utils/calcularAvaliacaoEquipamento";
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
   });
+  const [activeTab, setActiveTab] = useState("dados");
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
@@ -84,7 +88,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     );
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Se está editando e o usuário mudou, adicionar ao histórico
@@ -96,6 +100,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         data_fim: new Date().toISOString().split('T')[0]
       });
       formData.usuarios_anteriores = usuariosAnteriores;
+    }
+    
+    // Calcular score e recomendação se houver dados de avaliação
+    if (entityType === "PCs_Internos" || entityType === "Notebooks_Externos") {
+      const temAvaliacao = formData.avaliacao_uso_memoria || formData.avaliacao_desempenho || 
+                          formData.avaliacao_atende_necessidades || formData.avaliacao_recomendacao_usuario;
+      
+      if (temAvaliacao) {
+        const { score, recomendacao } = await calcularAvaliacaoEquipamento(formData, base44);
+        formData.avaliacao_score = score;
+        formData.avaliacao_recomendacao_sistema = recomendacao;
+        formData.avaliacao_data = new Date().toISOString();
+      }
     }
     
     onSubmit(formData);
@@ -506,6 +523,9 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     return null;
   };
 
+  const podeAvaliar = entityType === "PCs_Internos" || entityType === "Notebooks_Externos";
+  const eComputador = formData.tipo === "Desktop" || formData.tipo === "Notebook";
+
   return (
     <Card className="mb-6">
       <CardHeader className="border-b">
@@ -519,8 +539,34 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         </div>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="pt-6 space-y-4">
-          {renderFieldsByType()}
+        <CardContent className="pt-6">
+          {podeAvaliar && eComputador ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="dados" className="gap-2">
+                  <FileText className="w-4 h-4" />
+                  Dados do Equipamento
+                </TabsTrigger>
+                <TabsTrigger value="avaliacao" className="gap-2">
+                  <Activity className="w-4 h-4" />
+                  Avaliação do Equipamento
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="dados" className="space-y-4">
+                {renderFieldsByType()}
+              </TabsContent>
+              <TabsContent value="avaliacao">
+                <AvaliacaoEquipamento 
+                  equipamento={formData} 
+                  onChange={setFormData}
+                />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="space-y-4">
+              {renderFieldsByType()}
+            </div>
+          )}
         </CardContent>
         <CardFooter className="border-t pt-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onCancel}>
