@@ -24,13 +24,19 @@ export default function AvaliacoesEquipamentos() {
     queryFn: () => base44.entities.Notebooks_Externos.list(),
   });
 
-  // Combinar todos os equipamentos avaliados
+  // Combinar todos os equipamentos avaliados (apenas os que têm score válido)
   const equipamentosAvaliados = [
     ...pcsInternos
-      .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && pc.avaliacao_score !== undefined)
+      .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && 
+                    pc.avaliacao_score !== undefined && 
+                    pc.avaliacao_score !== null &&
+                    pc.avaliacao_data)
       .map(pc => ({ ...pc, origem: "PCs_Internos" })),
     ...notebooksExternos
-      .filter(nb => nb.tipo === "Notebook" && nb.avaliacao_score !== undefined)
+      .filter(nb => nb.tipo === "Notebook" && 
+                   nb.avaliacao_score !== undefined && 
+                   nb.avaliacao_score !== null &&
+                   nb.avaliacao_data)
       .map(nb => ({ ...nb, origem: "Notebooks_Externos" }))
   ];
 

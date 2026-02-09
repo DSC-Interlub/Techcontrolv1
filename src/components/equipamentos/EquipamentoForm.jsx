@@ -91,31 +91,37 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Criar uma cópia dos dados do formulário
+    const dataToSubmit = { ...formData };
+    
     // Se está editando e o usuário mudou, adicionar ao histórico
-    if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== formData.usuario_atual) {
-      const usuariosAnteriores = formData.usuarios_anteriores || equipamento.usuarios_anteriores || [];
+    if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
+      const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
       usuariosAnteriores.push({
         nome: equipamento.usuario_atual,
         data_inicio: equipamento.usuario_desde || equipamento.data_aquisicao || "",
         data_fim: new Date().toISOString().split('T')[0]
       });
-      formData.usuarios_anteriores = usuariosAnteriores;
+      dataToSubmit.usuarios_anteriores = usuariosAnteriores;
     }
     
     // Calcular score e recomendação se houver dados de avaliação
-    if (entityType === "PCs_Internos" || entityType === "Notebooks_Externos") {
-      const temAvaliacao = formData.avaliacao_uso_memoria || formData.avaliacao_desempenho || 
-                          formData.avaliacao_atende_necessidades || formData.avaliacao_recomendacao_usuario;
+    if ((entityType === "PCs_Internos" || entityType === "Notebooks_Externos") && 
+        (dataToSubmit.tipo === "Desktop" || dataToSubmit.tipo === "Notebook")) {
+      const temAvaliacao = dataToSubmit.avaliacao_uso_memoria || 
+                          dataToSubmit.avaliacao_tipo_armazenamento ||
+                          dataToSubmit.avaliacao_desempenho || 
+                          dataToSubmit.avaliacao_atende_necessidades;
       
       if (temAvaliacao) {
-        const { score, recomendacao } = await calcularAvaliacaoEquipamento(formData, base44);
-        formData.avaliacao_score = score;
-        formData.avaliacao_recomendacao_sistema = recomendacao;
-        formData.avaliacao_data = new Date().toISOString();
+        const { score, recomendacao } = await calcularAvaliacaoEquipamento(dataToSubmit, base44);
+        dataToSubmit.avaliacao_score = score;
+        dataToSubmit.avaliacao_recomendacao_sistema = recomendacao;
+        dataToSubmit.avaliacao_data = new Date().toISOString();
       }
     }
     
-    onSubmit(formData);
+    onSubmit(dataToSubmit);
   };
 
   const handleChange = (field, value) => {
