@@ -105,6 +105,11 @@ const managementItems = [
     icon: Settings,
   },
   {
+    title: "Pesos de Avaliação",
+    url: createPageUrl("Configurar_Pesos_Avaliacao"),
+    icon: Settings,
+  },
+  {
     title: "Importar Dados",
     url: createPageUrl("Importar"),
     icon: Upload,
