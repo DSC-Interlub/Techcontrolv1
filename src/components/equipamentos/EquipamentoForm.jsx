@@ -11,7 +11,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, FileText, Activity } from "lucide-react";
 import UsuariosAnteriores from "./UsuariosAnteriores";
-import AvaliacaoSaude from "./AvaliacaoSaude";
+import AvaliacaoSaude from "./AvaliacaoSaude.jsx";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
