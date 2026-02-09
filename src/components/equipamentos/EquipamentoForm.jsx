@@ -128,10 +128,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     
     console.log("💾 Dados sendo enviados:", cleanData);
     console.log("📊 Campos de avaliação:", {
-      saude_score: cleanData.saude_score,
-      saude_recomendacao: cleanData.saude_recomendacao,
-      saude_status: cleanData.saude_status,
-      saude_data_avaliacao: cleanData.saude_data_avaliacao
+      avaliacao_score: cleanData.avaliacao_score,
+      avaliacao_recomendacao_sistema: cleanData.avaliacao_recomendacao_sistema,
+      avaliacao_status: cleanData.avaliacao_status,
+      avaliacao_data: cleanData.avaliacao_data
     });
     
     onSubmit(cleanData);
