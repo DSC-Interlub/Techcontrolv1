@@ -13,10 +13,46 @@ export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
 
-  const { data: avaliacoes = [], isLoading } = useQuery({
-    queryKey: ['avaliacoes_equipamentos'],
-    queryFn: () => base44.entities.Avaliacoes_Equipamentos.list('-data_avaliacao'),
+  const { data: pcsInternos = [] } = useQuery({
+    queryKey: ['pcs_internos'],
+    queryFn: () => base44.entities.PCs_Internos.list(),
   });
+
+  const { data: notebooksExternos = [] } = useQuery({
+    queryKey: ['notebooks_externos'],
+    queryFn: () => base44.entities.Notebooks_Externos.list(),
+  });
+
+  const avaliacoes = [
+    ...pcsInternos
+      .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && pc.avaliacao_pontuacao_total !== undefined && pc.avaliacao_pontuacao_total !== null)
+      .map(pc => ({
+        id: pc.id,
+        usuario_avaliador: pc.avaliacao_usuario || pc.usuario_atual,
+        equipamento_nome: `${pc.marca || ''} ${pc.modelo || ''}`.trim() || "Sem nome",
+        equipamento_tipo: "PCs_Internos",
+        pontuacao_total: pc.avaliacao_pontuacao_total,
+        classificacao: pc.avaliacao_classificacao,
+        data_avaliacao: pc.avaliacao_data
+      })),
+    ...notebooksExternos
+      .filter(nb => nb.tipo === "Notebook" && nb.avaliacao_pontuacao_total !== undefined && nb.avaliacao_pontuacao_total !== null)
+      .map(nb => ({
+        id: nb.id,
+        usuario_avaliador: nb.avaliacao_usuario || nb.usuario_atual,
+        equipamento_nome: `${nb.marca || ''} ${nb.modelo || ''}`.trim() || "Sem nome",
+        equipamento_tipo: "Notebooks_Externos",
+        pontuacao_total: nb.avaliacao_pontuacao_total,
+        classificacao: nb.avaliacao_classificacao,
+        data_avaliacao: nb.avaliacao_data
+      }))
+  ].sort((a, b) => {
+    if (!a.data_avaliacao) return 1;
+    if (!b.data_avaliacao) return -1;
+    return new Date(b.data_avaliacao) - new Date(a.data_avaliacao);
+  });
+
+  const isLoading = false;
 
   const avaliacoesFiltradas = avaliacoes.filter(av => {
     const matchSearch = !searchTerm || 
