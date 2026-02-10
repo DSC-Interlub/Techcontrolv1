@@ -23,23 +23,6 @@ export default function Notebooks_Externos() {
     queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
   });
 
-  const handleEdit = (equipamento) => {
-    setEditingEquipamento(equipamento);
-    setShowForm(true);
-  };
-
-  // Verificar se há um ID na URL para abrir automaticamente
-  React.useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const equipamentoId = urlParams.get('id');
-    if (equipamentoId && equipamentos.length > 0) {
-      const equip = equipamentos.find(e => e.id === equipamentoId);
-      if (equip) {
-        handleEdit(equip);
-      }
-    }
-  }, [equipamentos]);
-
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Notebooks_Externos.create(data),
     onSuccess: () => {
@@ -72,6 +55,23 @@ export default function Notebooks_Externos() {
       createMutation.mutate(data);
     }
   };
+
+  const handleEdit = (equipamento) => {
+    setEditingEquipamento(equipamento);
+    setShowForm(true);
+  };
+
+  // Verificar se há um ID na URL para abrir automaticamente
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const equipamentoId = urlParams.get('id');
+    if (equipamentoId && equipamentos.length > 0) {
+      const equip = equipamentos.find(e => e.id === equipamentoId);
+      if (equip) {
+        handleEdit(equip);
+      }
+    }
+  }, [equipamentos]);
 
   const filteredEquipamentos = equipamentos.filter(eq =>
     eq.tipo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
