@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown } from "lucide-react";
+import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink } from "lucide-react";
 
 export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -189,12 +191,13 @@ export default function AvaliacoesEquipamentos() {
                     <TableHead className="text-center">Classificação</TableHead>
                     <TableHead>Avaliador</TableHead>
                     <TableHead>Data</TableHead>
+                    <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {avaliacoesFiltradas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={8} className="text-center text-gray-500 py-8">
                         Nenhuma avaliação encontrada
                       </TableCell>
                     </TableRow>
@@ -232,6 +235,15 @@ export default function AvaliacoesEquipamentos() {
                                 minute: '2-digit'
                               })
                             : "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Link 
+                            to={`${createPageUrl(av.equipamento_tipo)}?id=${av.equipamento_id}`}
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Ver
+                          </Link>
                         </TableCell>
                       </TableRow>
                     ))
