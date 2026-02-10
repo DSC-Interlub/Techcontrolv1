@@ -13,51 +13,16 @@ export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
 
-  const { data: pcsInternos = [] } = useQuery({
-    queryKey: ['pcs_internos'],
-    queryFn: () => base44.entities.PCs_Internos.list(),
+  const { data: avaliacoes = [], isLoading } = useQuery({
+    queryKey: ['avaliacoes'],
+    queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
   });
-
-  const { data: notebooksExternos = [] } = useQuery({
-    queryKey: ['notebooks_externos'],
-    queryFn: () => base44.entities.Notebooks_Externos.list(),
-  });
-
-  const avaliacoes = [
-    ...pcsInternos
-      .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && pc.avaliacao_pontuacao_total !== undefined && pc.avaliacao_pontuacao_total !== null)
-      .map(pc => ({
-        id: pc.id,
-        usuario_avaliador: pc.avaliacao_usuario || pc.usuario_atual,
-        equipamento_nome: `${pc.marca || ''} ${pc.modelo || ''}`.trim() || "Sem nome",
-        equipamento_tipo: "PCs_Internos",
-        pontuacao_total: pc.avaliacao_pontuacao_total,
-        classificacao: pc.avaliacao_classificacao,
-        data_avaliacao: pc.avaliacao_data
-      })),
-    ...notebooksExternos
-      .filter(nb => nb.tipo === "Notebook" && nb.avaliacao_pontuacao_total !== undefined && nb.avaliacao_pontuacao_total !== null)
-      .map(nb => ({
-        id: nb.id,
-        usuario_avaliador: nb.avaliacao_usuario || nb.usuario_atual,
-        equipamento_nome: `${nb.marca || ''} ${nb.modelo || ''}`.trim() || "Sem nome",
-        equipamento_tipo: "Notebooks_Externos",
-        pontuacao_total: nb.avaliacao_pontuacao_total,
-        classificacao: nb.avaliacao_classificacao,
-        data_avaliacao: nb.avaliacao_data
-      }))
-  ].sort((a, b) => {
-    if (!a.data_avaliacao) return 1;
-    if (!b.data_avaliacao) return -1;
-    return new Date(b.data_avaliacao) - new Date(a.data_avaliacao);
-  });
-
-  const isLoading = false;
 
   const avaliacoesFiltradas = avaliacoes.filter(av => {
     const matchSearch = !searchTerm || 
-      av.usuario_avaliador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      av.equipamento_nome?.toLowerCase().includes(searchTerm.toLowerCase());
+      av.usuario_equipamento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      av.equipamento_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      av.avaliador?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchClassificacao = filterClassificacao === "todos" || 
       av.classificacao === filterClassificacao;
@@ -92,13 +57,14 @@ export default function AvaliacoesEquipamentos() {
   };
 
   const exportarCSV = () => {
-    const headers = ["Usuário", "Equipamento", "Tipo", "Pontuação", "Classificação", "Data Avaliação"];
+    const headers = ["Usuário Equipamento", "Equipamento", "Tipo", "Pontuação", "Classificação", "Avaliador", "Data"];
     const rows = avaliacoesFiltradas.map(av => [
-      av.usuario_avaliador || "",
+      av.usuario_equipamento || "",
       av.equipamento_nome || "",
-      av.equipamento_tipo || "",
+      av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo",
       av.pontuacao_total || "",
       av.classificacao || "",
+      av.avaliador || "",
       av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR') : ""
     ]);
 
@@ -183,7 +149,7 @@ export default function AvaliacoesEquipamentos() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Buscar por usuário ou equipamento..."
+                placeholder="Buscar por usuário, equipamento ou avaliador..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -221,20 +187,21 @@ export default function AvaliacoesEquipamentos() {
                     <TableHead>Tipo</TableHead>
                     <TableHead className="text-center">Pontuação</TableHead>
                     <TableHead className="text-center">Classificação</TableHead>
-                    <TableHead>Data Avaliação</TableHead>
+                    <TableHead>Avaliador</TableHead>
+                    <TableHead>Data</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {avaliacoesFiltradas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
                         Nenhuma avaliação encontrada
                       </TableCell>
                     </TableRow>
                   ) : (
                     avaliacoesFiltradas.map((av) => (
                       <TableRow key={av.id}>
-                        <TableCell className="font-medium">{av.usuario_avaliador || "—"}</TableCell>
+                        <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
                         <TableCell>{av.equipamento_nome || "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -254,6 +221,7 @@ export default function AvaliacoesEquipamentos() {
                             </Badge>
                           </div>
                         </TableCell>
+                        <TableCell className="text-sm text-gray-600">{av.avaliador || "—"}</TableCell>
                         <TableCell className="text-sm text-gray-600">
                           {av.data_avaliacao 
                             ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {

@@ -1,6 +1,7 @@
+
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,21 +20,61 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     usuarios_anteriores: []
   });
   const [activeTab, setActiveTab] = useState("dados");
+  const queryClient = useQueryClient();
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
   });
 
+  const { data: avaliacaoExistente } = useQuery({
+    queryKey: ['avaliacao', equipamento?.id],
+    queryFn: async () => {
+      if (!equipamento?.id) return null;
+      const avaliacoes = await base44.entities.Avaliacoes.filter({
+        equipamento_id: equipamento.id,
+        equipamento_tipo: entityType
+      });
+      return avaliacoes.length > 0 ? avaliacoes[0] : null;
+    },
+    enabled: !!equipamento?.id,
+  });
+
+  const salvarAvaliacaoMutation = useMutation({
+    mutationFn: async (dadosAvaliacao) => {
+      const user = await base44.auth.me();
+      const avaliacaoData = {
+        equipamento_id: equipamento.id,
+        equipamento_tipo: entityType,
+        equipamento_nome: `${formData.marca || ''} ${formData.modelo || ''}`.trim(),
+        usuario_equipamento: formData.usuario_atual || '',
+        ...dadosAvaliacao,
+        data_avaliacao: new Date().toISOString(),
+        avaliador: user.email,
+      };
+
+      if (avaliacaoExistente?.id) {
+        return base44.entities.Avaliacoes.update(avaliacaoExistente.id, avaliacaoData);
+      } else {
+        return base44.entities.Avaliacoes.create(avaliacaoData);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['avaliacao', equipamento?.id]);
+      queryClient.invalidateQueries(['avaliacoes']);
+      alert('Avaliação salva com sucesso!');
+    },
+  });
+
   // Calcular tempo de uso automaticamente
   const calculateTimeInUse = (acquisitionDate) => {
     if (!acquisitionDate) return "";
-    
+
     const today = new Date();
     const acquisition = new Date(acquisitionDate);
     const diffTime = Math.abs(today - acquisition);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) {
       return diffDays === 1 ? "1 dia" : `${diffDays} dias`;
     } else if (diffDays < 365) {
@@ -49,50 +90,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     }
   };
 
-  // Para outros tipos de equipamento
-  const renderUsuarioAtualField = () => {
-    const colaboradoresOptions = [
-      { value: "", label: "Nenhum (Disponível)" },
-      ...colaboradores
-        .filter(c => c.status === "Ativo")
-        .map(c => ({
-          value: c.nome_completo,
-          label: `${c.nome_completo} - ${c.area}`
-        }))
-    ];
-
-    return (
-      <div>
-        <Label>Usuário Atual</Label>
-        <Combobox
-          value={formData.usuario_atual || ""}
-          onValueChange={(value) => {
-            handleChange("usuario_atual", value);
-            const colaborador = colaboradores.find(c => c.nome_completo === value);
-            if (colaborador) {
-              handleChange("area", colaborador.area);
-            }
-            // Define data atual como usuario_desde quando atribuir usuário
-            if (value && !formData.usuario_desde) {
-              handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
-            } else if (!value) {
-              handleChange("usuario_desde", "");
-            }
-          }}
-          options={colaboradoresOptions}
-          placeholder="Selecione o colaborador"
-          searchPlaceholder="Buscar colaborador..."
-          emptyText="Nenhum colaborador encontrado"
-        />
-      </div>
-    );
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     let dataToSubmit = { ...formData };
-    
+
     if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
       const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
       usuariosAnteriores.push({
@@ -102,31 +104,27 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       });
       dataToSubmit.usuarios_anteriores = usuariosAnteriores;
     }
-    
+
     const fieldsToRemove = [
-      'id', 
-      'created_date', 
-      'updated_date', 
-      'created_by_id', 
-      'created_by', 
+      'id',
+      'created_date',
+      'updated_date',
+      'created_by_id',
+      'created_by',
       'is_sample',
       'entity_name',
       'app_id',
       'tempo_uso',
       'origem'
     ];
-    
+
     const cleanData = {};
     for (const key in dataToSubmit) {
-      if (!fieldsToRemove.includes(key)) {
-        // Incluir campo se não for undefined, ou se for um campo de avaliação (pode ser null)
-        if (dataToSubmit[key] !== undefined || key.startsWith('avaliacao_')) {
-          cleanData[key] = dataToSubmit[key];
-        }
+      if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
+        cleanData[key] = dataToSubmit[key];
       }
     }
-    
-    console.log("Dados sendo salvos:", cleanData);
+
     onSubmit(cleanData);
   };
 
@@ -134,37 +132,13 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAvaliacaoChange = (avaliacaoData) => {
-    // Calcula tempo de uso em anos se houver data de aquisição
-    let tempoUsoAnos = 0;
-    if (formData.data_aquisicao) {
-      const hoje = new Date();
-      const aquisicao = new Date(formData.data_aquisicao);
-      tempoUsoAnos = (hoje - aquisicao) / (1000 * 60 * 60 * 24 * 365);
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      avaliacao_memoria_ram: avaliacaoData.memoria_ram,
-      avaliacao_tipo_armazenamento: avaliacaoData.tipo_armazenamento,
-      avaliacao_espaco_disco: avaliacaoData.espaco_disco,
-      avaliacao_versao_windows: avaliacaoData.versao_windows,
-      avaliacao_antivirus: avaliacaoData.antivirus,
-      avaliacao_desempenho: avaliacaoData.desempenho,
-      avaliacao_problemas: avaliacaoData.problemas,
-      avaliacao_atende_trabalho: avaliacaoData.atende_trabalho,
-      avaliacao_recomendacao_usuario: avaliacaoData.recomendacao_usuario,
-      avaliacao_satisfacao: avaliacaoData.satisfacao,
-      avaliacao_tempo_uso_anos: tempoUsoAnos,
-      avaliacao_pontuacao_total: avaliacaoData.pontuacao_total,
-      avaliacao_classificacao: avaliacaoData.classificacao,
-      avaliacao_data: avaliacaoData.data_avaliacao,
-      avaliacao_usuario: prev.usuario_atual || ""
-    }));
+  const handleSalvarAvaliacao = async (dadosAvaliacao) => {
+    await salvarAvaliacaoMutation.mutateAsync(dadosAvaliacao);
   };
 
   const podeAvaliar = (entityType === "PCs_Internos" || entityType === "Notebooks_Externos") &&
-                       (formData.tipo === "Desktop" || formData.tipo === "Notebook");
+                       (formData.tipo === "Desktop" || formData.tipo === "Notebook") &&
+                       equipamento?.id;
 
   const renderFieldsByType = () => {
     if (entityType === "PCs_Internos" || entityType === "Notebooks_Externos" || entityType === "Tablets") {
@@ -474,7 +448,37 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {renderUsuarioAtualField()}
+            <div>
+              <Label>Usuário Atual</Label>
+              <Combobox
+                value={formData.usuario_atual || ""}
+                onValueChange={(value) => {
+                  handleChange("usuario_atual", value);
+                  const colaborador = colaboradores.find(c => c.nome_completo === value);
+                  if (colaborador) {
+                    handleChange("area", colaborador.area);
+                  }
+                  // Define data atual como usuario_desde quando atribuir usuário
+                  if (value && !formData.usuario_desde) {
+                    handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                  } else if (!value) {
+                    handleChange("usuario_desde", "");
+                  }
+                }}
+                options={[
+                  { value: "", label: "Nenhum (Disponível)" },
+                  ...colaboradores
+                    .filter(c => c.status === "Ativo")
+                    .map(c => ({
+                      value: c.nome_completo,
+                      label: `${c.nome_completo} - ${c.area}`
+                    }))
+                ]}
+                placeholder="Selecione o colaborador"
+                searchPlaceholder="Buscar colaborador..."
+                emptyText="Nenhum colaborador encontrado"
+              />
+            </div>
             <div>
               <Label>Usuário Desde</Label>
               <Input
@@ -598,23 +602,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               </TabsContent>
               <TabsContent value="avaliacao">
                 <AvaliacaoEquipamento
-                  avaliacao={{
-                    memoria_ram: formData.avaliacao_memoria_ram,
-                    tipo_armazenamento: formData.avaliacao_tipo_armazenamento,
-                    espaco_disco: formData.avaliacao_espaco_disco,
-                    versao_windows: formData.avaliacao_versao_windows,
-                    antivirus: formData.avaliacao_antivirus,
-                    desempenho: formData.avaliacao_desempenho,
-                    problemas: formData.avaliacao_problemas || [],
-                    atende_trabalho: formData.avaliacao_atende_trabalho,
-                    recomendacao_usuario: formData.avaliacao_recomendacao_usuario,
-                    satisfacao: formData.avaliacao_satisfacao,
-                    tempo_uso_anos: formData.avaliacao_tempo_uso_anos,
-                    pontuacao_total: formData.avaliacao_pontuacao_total,
-                    classificacao: formData.avaliacao_classificacao,
-                    data_avaliacao: formData.avaliacao_data
-                  }}
-                  onChange={handleAvaliacaoChange}
+                  equipamento={equipamento}
+                  entityType={entityType}
+                  avaliacaoExistente={avaliacaoExistente}
+                  onSalvar={handleSalvarAvaliacao}
                 />
               </TabsContent>
             </Tabs>
