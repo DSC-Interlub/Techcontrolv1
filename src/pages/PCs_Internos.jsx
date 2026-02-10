@@ -29,6 +29,18 @@ export default function PCs_Internos() {
 
   const queryClient = useQueryClient();
 
+  // Verificar se há um ID na URL para abrir automaticamente
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const equipamentoId = urlParams.get('id');
+    if (equipamentoId && equipamentos.length > 0) {
+      const equip = equipamentos.find(e => e.id === equipamentoId);
+      if (equip) {
+        handleEdit(equip);
+      }
+    }
+  }, [equipamentos]);
+
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
