@@ -118,11 +118,15 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     
     const cleanData = {};
     for (const key in dataToSubmit) {
-      if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
-        cleanData[key] = dataToSubmit[key];
+      if (!fieldsToRemove.includes(key)) {
+        // Incluir campo se não for undefined, ou se for um campo de avaliação (pode ser null)
+        if (dataToSubmit[key] !== undefined || key.startsWith('avaliacao_')) {
+          cleanData[key] = dataToSubmit[key];
+        }
       }
     }
     
+    console.log("Dados sendo salvos:", cleanData);
     onSubmit(cleanData);
   };
 
