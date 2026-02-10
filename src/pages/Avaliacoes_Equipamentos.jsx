@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink } from "lucide-react";
+import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon } from "lucide-react";
 
 export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,6 +19,28 @@ export default function AvaliacoesEquipamentos() {
     queryKey: ['avaliacoes'],
     queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
   });
+
+  const { data: pcsInternos = [] } = useQuery({
+    queryKey: ['pcs_internos'],
+    queryFn: () => base44.entities.PCs_Internos.list(),
+  });
+
+  const { data: notebooksExternos = [] } = useQuery({
+    queryKey: ['notebooks_externos'],
+    queryFn: () => base44.entities.Notebooks_Externos.list(),
+  });
+
+  // Identificar equipamentos não avaliados
+  const equipamentosNaoAvaliados = [
+    ...pcsInternos
+      .filter(pc => (pc.tipo === "Desktop" || pc.tipo === "Notebook") && 
+        !avaliacoes.some(av => av.equipamento_id === pc.id))
+      .map(pc => ({ ...pc, entityType: "PCs_Internos" })),
+    ...notebooksExternos
+      .filter(nb => (nb.tipo === "Notebook") && 
+        !avaliacoes.some(av => av.equipamento_id === nb.id))
+      .map(nb => ({ ...nb, entityType: "Notebooks_Externos" }))
+  ];
 
   const avaliacoesFiltradas = avaliacoes.filter(av => {
     const matchSearch = !searchTerm || 
@@ -56,6 +78,33 @@ export default function AvaliacoesEquipamentos() {
     if (pontos <= 39) return "text-green-600 font-bold";
     if (pontos <= 69) return "text-yellow-600 font-bold";
     return "text-red-600 font-bold";
+  };
+
+  const hasAlerts = (avaliacao) => {
+    const alerts = [];
+    
+    // HD (não SSD)
+    if (avaliacao.tipo_armazenamento?.toLowerCase().includes('hd')) {
+      alerts.push("HD detectado (não SSD)");
+    }
+    
+    // Windows 10
+    if (avaliacao.versao_windows?.toLowerCase().includes('windows 10')) {
+      alerts.push("Windows 10");
+    }
+    
+    // Sem antivírus
+    if (avaliacao.antivirus?.toLowerCase().includes('não') || 
+        avaliacao.antivirus?.toLowerCase().includes('sem')) {
+      alerts.push("Sem antivírus");
+    }
+    
+    // Não atende trabalho
+    if (avaliacao.atende_trabalho?.toLowerCase().includes('não')) {
+      alerts.push("Não atende necessidades de trabalho");
+    }
+    
+    return alerts;
   };
 
   const exportarCSV = () => {
@@ -98,13 +147,22 @@ export default function AvaliacoesEquipamentos() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-blue-600">{total}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">Não Avaliados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-orange-600">{equipamentosNaoAvaliados.length}</p>
           </CardContent>
         </Card>
 
@@ -184,6 +242,7 @@ export default function AvaliacoesEquipamentos() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Alertas</TableHead>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Equipamento</TableHead>
                     <TableHead>Tipo</TableHead>
@@ -195,50 +254,34 @@ export default function AvaliacoesEquipamentos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {avaliacoesFiltradas.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-500 py-8">
-                        Nenhuma avaliação encontrada
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    avaliacoesFiltradas.map((av) => (
-                      <TableRow key={av.id}>
-                        <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
-                        <TableCell>{av.equipamento_nome || "—"}</TableCell>
+                  {equipamentosNaoAvaliados.length > 0 && (
+                    equipamentosNaoAvaliados.map((eq) => (
+                      <TableRow key={`nao-avaliado-${eq.id}`} className="bg-orange-50">
                         <TableCell>
-                          <Badge variant="outline">
-                            {av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo"}
+                          <div className="flex items-center gap-2 text-orange-600" title="Equipamento não avaliado">
+                            <AlertOctagon className="w-5 h-5" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{eq.usuario_atual || "—"}</TableCell>
+                        <TableCell>{eq.modelo || eq.marca || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-orange-100">
+                            {eq.entityType === "PCs_Internos" ? "PC Interno" : "Notebook Externo"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">
-                          <span className={getPontuacaoColor(av.pontuacao_total)}>
-                            {av.pontuacao_total}
-                          </span>
+                          <span className="text-orange-600 font-bold">—</span>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {getClassificacaoIcon(av.classificacao)}
-                            <Badge className={getClassificacaoColor(av.classificacao)}>
-                              {av.classificacao}
-                            </Badge>
-                          </div>
+                          <Badge className="bg-orange-100 text-orange-800">
+                            Não Avaliado
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600">{av.avaliador || "—"}</TableCell>
-                        <TableCell className="text-sm text-gray-600">
-                          {av.data_avaliacao 
-                            ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : "—"}
-                        </TableCell>
+                        <TableCell className="text-sm text-gray-600">—</TableCell>
+                        <TableCell className="text-sm text-gray-600">—</TableCell>
                         <TableCell className="text-center">
                           <Link 
-                            to={`${createPageUrl(av.equipamento_tipo)}?id=${av.equipamento_id}`}
+                            to={`${createPageUrl(eq.entityType)}?id=${eq.id}`}
                             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -247,6 +290,73 @@ export default function AvaliacoesEquipamentos() {
                         </TableCell>
                       </TableRow>
                     ))
+                  )}
+                  {avaliacoesFiltradas.length === 0 && equipamentosNaoAvaliados.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-gray-500 py-8">
+                        Nenhuma avaliação encontrada
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    avaliacoesFiltradas.map((av) => {
+                      const alerts = hasAlerts(av);
+                      return (
+                        <TableRow key={av.id} className={alerts.length > 0 ? "bg-red-50" : ""}>
+                          <TableCell>
+                            {alerts.length > 0 && (
+                              <div 
+                                className="flex items-center gap-2 text-red-600 cursor-help" 
+                                title={alerts.join(", ")}
+                              >
+                                <AlertOctagon className="w-5 h-5" />
+                                <span className="text-xs font-medium">{alerts.length}</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
+                          <TableCell>{av.equipamento_nome || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={getPontuacaoColor(av.pontuacao_total)}>
+                              {av.pontuacao_total}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {getClassificacaoIcon(av.classificacao)}
+                              <Badge className={getClassificacaoColor(av.classificacao)}>
+                                {av.classificacao}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-600">{av.avaliador || "—"}</TableCell>
+                          <TableCell className="text-sm text-gray-600">
+                            {av.data_avaliacao 
+                              ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Link 
+                              to={`${createPageUrl(av.equipamento_tipo)}?id=${av.equipamento_id}`}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Ver
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
