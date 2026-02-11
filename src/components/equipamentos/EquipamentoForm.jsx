@@ -609,10 +609,10 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      {avaliacoes.map((av) => (
-                        <div key={av.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                      {avaliacoes.map((av, index) => (
+                        <div key={av.id} className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-md transition-shadow cursor-pointer">
                           <div className="flex-1">
-                            <p className="font-semibold text-sm">{av.numero_avaliacao}ª Avaliação</p>
+                            <p className="font-semibold text-sm">{av.numero_avaliacao || (avaliacoes.length - index)}ª Avaliação</p>
                             <p className="text-xs text-gray-600">
                               {new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
                                 day: '2-digit',

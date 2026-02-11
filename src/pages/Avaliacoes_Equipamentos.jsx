@@ -17,10 +17,20 @@ export default function AvaliacoesEquipamentos() {
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
   const [activeTab, setActiveTab] = useState("realizadas");
 
-  const { data: avaliacoes = [], isLoading } = useQuery({
+  const { data: todasAvaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
     queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
   });
+
+  // Agrupar avaliações por equipamento e pegar apenas a mais recente
+  const avaliacoesAgrupadas = todasAvaliacoes.reduce((acc, av) => {
+    if (!acc[av.equipamento_id] || new Date(av.data_avaliacao) > new Date(acc[av.equipamento_id].data_avaliacao)) {
+      acc[av.equipamento_id] = av;
+    }
+    return acc;
+  }, {});
+  
+  const avaliacoes = Object.values(avaliacoesAgrupadas);
 
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
@@ -315,9 +325,9 @@ export default function AvaliacoesEquipamentos() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="font-mono">
-                              {av.numero_avaliacao}ª
-                            </Badge>
+                           <Badge variant="outline" className="font-mono">
+                             {av.numero_avaliacao || 1}ª
+                           </Badge>
                           </TableCell>
                           <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
                           <TableCell>{av.equipamento_nome || "—"}</TableCell>
