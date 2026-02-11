@@ -104,6 +104,28 @@ export default function AvaliacoesEquipamentos() {
       alerts.push("Não atende necessidades de trabalho");
     }
     
+    // Memória RAM acima de 90%
+    if (avaliacao.memoria_ram) {
+      const ramMatch = avaliacao.memoria_ram.match(/(\d+)%/);
+      if (ramMatch && parseInt(ramMatch[1]) > 90) {
+        alerts.push(`Memória RAM acima de 90% (${ramMatch[1]}%)`);
+      }
+    }
+    
+    // Espaço livre em disco menos de 20 GB
+    if (avaliacao.espaco_disco) {
+      const discoMatch = avaliacao.espaco_disco.match(/(\d+)\s*gb/i);
+      if (discoMatch && parseInt(discoMatch[1]) < 20) {
+        alerts.push(`Pouco espaço em disco (${discoMatch[1]} GB)`);
+      }
+    }
+    
+    // Desempenho lento ou muito lento
+    if (avaliacao.desempenho?.toLowerCase().includes('lento') || 
+        avaliacao.desempenho?.toLowerCase().includes('muito lento')) {
+      alerts.push(`Desempenho: ${avaliacao.desempenho}`);
+    }
+    
     return alerts;
   };
 
