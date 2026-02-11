@@ -15,6 +15,10 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function AcompanharChamado() {
+  // Configura o título da página
+  React.useEffect(() => {
+    document.title = "Acompanhar Chamado - TechControl";
+  }, []);
   const [numeroChamado, setNumeroChamado] = useState("");
   const [buscarChamado, setBuscarChamado] = useState(false);
   const [showAvaliacao, setShowAvaliacao] = useState(false);

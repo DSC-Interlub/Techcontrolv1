@@ -15,6 +15,10 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 export default function ChamadoPublico() {
+  // Configura o título da página
+  React.useEffect(() => {
+    document.title = "Abrir Chamado de Suporte - TechControl";
+  }, []);
   const [formData, setFormData] = useState({
     tipo_solicitacao: "",
     sistema_tipo: "",

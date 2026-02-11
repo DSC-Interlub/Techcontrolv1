@@ -15,6 +15,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function ReservaPublica() {
+  // Configura o título da página
+  React.useEffect(() => {
+    document.title = "Reservar Notebook - TechControl";
+  }, []);
   const [step, setStep] = useState(1);
   const [selectedEquipamento, setSelectedEquipamento] = useState(null);
   const [formData, setFormData] = useState({
