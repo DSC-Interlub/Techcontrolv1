@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
+  const [activeTab, setActiveTab] = useState("realizadas");
 
   const { data: avaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
@@ -225,38 +227,51 @@ export default function AvaliacoesEquipamentos() {
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Buscar por usuário, equipamento ou avaliador..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterClassificacao} onValueChange={setFilterClassificacao}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por classificação" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas as Classificações</SelectItem>
-                <SelectItem value="Manter">Manter</SelectItem>
-                <SelectItem value="Upgrade">Upgrade</SelectItem>
-                <SelectItem value="Substituir">Substituir</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="realizadas">
+            Avaliações Realizadas ({avaliacoesFiltradas.length})
+          </TabsTrigger>
+          <TabsTrigger value="nao-realizadas">
+            Não Realizadas ({equipamentosNaoAvaliados.length})
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Avaliações Realizadas ({avaliacoesFiltradas.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Buscar por usuário, equipamento ou avaliador..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {activeTab === "realizadas" && (
+                <Select value={filterClassificacao} onValueChange={setFilterClassificacao}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filtrar por classificação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas as Classificações</SelectItem>
+                    <SelectItem value="Manter">Manter</SelectItem>
+                    <SelectItem value="Upgrade">Upgrade</SelectItem>
+                    <SelectItem value="Substituir">Substituir</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <TabsContent value="realizadas">
+          <Card>
+            <CardHeader>
+              <CardTitle>Avaliações Realizadas ({avaliacoesFiltradas.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
           {isLoading ? (
             <p className="text-center text-gray-500 py-8">Carregando...</p>
           ) : (
@@ -265,6 +280,7 @@ export default function AvaliacoesEquipamentos() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Alertas</TableHead>
+                    <TableHead>Nº</TableHead>
                     <TableHead>Usuário</TableHead>
                     <TableHead>Equipamento</TableHead>
                     <TableHead>Tipo</TableHead>
@@ -276,44 +292,7 @@ export default function AvaliacoesEquipamentos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {equipamentosNaoAvaliados.length > 0 && (
-                    equipamentosNaoAvaliados.map((eq) => (
-                      <TableRow key={`nao-avaliado-${eq.id}`} className="bg-orange-50">
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-orange-600" title="Equipamento não avaliado">
-                            <AlertOctagon className="w-5 h-5" />
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{eq.usuario_atual || "—"}</TableCell>
-                        <TableCell>{eq.modelo || eq.marca || "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-orange-100">
-                            {eq.entityType === "PCs_Internos" ? "PC Interno" : "Notebook Externo"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-orange-600 font-bold">—</span>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-orange-100 text-orange-800">
-                            Não Avaliado
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-gray-600">—</TableCell>
-                        <TableCell className="text-sm text-gray-600">—</TableCell>
-                        <TableCell className="text-center">
-                          <Link 
-                            to={`${createPageUrl(eq.entityType)}?id=${eq.id}`}
-                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            Ver
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                  {avaliacoesFiltradas.length === 0 && equipamentosNaoAvaliados.length === 0 ? (
+                  {avaliacoesFiltradas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-gray-500 py-8">
                         Nenhuma avaliação encontrada
@@ -334,6 +313,11 @@ export default function AvaliacoesEquipamentos() {
                                 <span className="text-xs font-medium">{alerts.length}</span>
                               </div>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono">
+                              {av.numero_avaliacao}ª
+                            </Badge>
                           </TableCell>
                           <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
                           <TableCell>{av.equipamento_nome || "—"}</TableCell>
@@ -386,6 +370,98 @@ export default function AvaliacoesEquipamentos() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="nao-realizadas">
+          <Card>
+            <CardHeader>
+              <CardTitle>Equipamentos Não Avaliados ({equipamentosNaoAvaliados.filter(eq => 
+                !searchTerm || 
+                eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                eq.marca?.toLowerCase().includes(searchTerm.toLowerCase())
+              ).length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-center text-gray-500 py-8">Carregando...</p>
+              ) : (
+                <div className="rounded-lg border overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead>Equipamento</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Marca</TableHead>
+                        <TableHead>Data Aquisição</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {equipamentosNaoAvaliados.filter(eq => 
+                        !searchTerm || 
+                        eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        eq.marca?.toLowerCase().includes(searchTerm.toLowerCase())
+                      ).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                            {searchTerm ? "Nenhum equipamento encontrado" : "Todos os equipamentos foram avaliados! 🎉"}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        equipamentosNaoAvaliados
+                          .filter(eq => 
+                            !searchTerm || 
+                            eq.usuario_atual?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            eq.modelo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            eq.marca?.toLowerCase().includes(searchTerm.toLowerCase())
+                          )
+                          .map((eq) => (
+                            <TableRow key={`nao-avaliado-${eq.id}`} className="bg-orange-50">
+                              <TableCell>
+                                <div className="flex items-center gap-2 text-orange-600">
+                                  <AlertOctagon className="w-5 h-5" />
+                                  <Badge className="bg-orange-100 text-orange-800">
+                                    Não Avaliado
+                                  </Badge>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{eq.usuario_atual || "Disponível"}</TableCell>
+                              <TableCell>{eq.modelo || "—"}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {eq.tipo || (eq.entityType === "PCs_Internos" ? "PC Interno" : "Notebook Externo")}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{eq.marca || "—"}</TableCell>
+                              <TableCell className="text-sm text-gray-600">
+                                {eq.data_aquisicao 
+                                  ? new Date(eq.data_aquisicao).toLocaleDateString('pt-BR')
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Link 
+                                  to={`${createPageUrl(eq.entityType)}?id=${eq.id}`}
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  Avaliar
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
