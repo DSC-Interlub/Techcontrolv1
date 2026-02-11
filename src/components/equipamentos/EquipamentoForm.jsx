@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,15 +26,15 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     queryFn: () => base44.entities.Colaboradores.list(),
   });
 
-  const { data: avaliacaoExistente } = useQuery({
-    queryKey: ['avaliacao', equipamento?.id],
+  const { data: avaliacoes = [] } = useQuery({
+    queryKey: ['avaliacoes', equipamento?.id],
     queryFn: async () => {
-      if (!equipamento?.id) return null;
+      if (!equipamento?.id) return [];
       const avaliacoes = await base44.entities.Avaliacoes.filter({
         equipamento_id: equipamento.id,
         equipamento_tipo: entityType
-      });
-      return avaliacoes.length > 0 ? avaliacoes[0] : null;
+      }, '-data_avaliacao');
+      return avaliacoes;
     },
     enabled: !!equipamento?.id,
   });
@@ -43,24 +42,23 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const salvarAvaliacaoMutation = useMutation({
     mutationFn: async (dadosAvaliacao) => {
       const user = await base44.auth.me();
+      const numeroAvaliacao = avaliacoes.length + 1;
+      
       const avaliacaoData = {
         equipamento_id: equipamento.id,
         equipamento_tipo: entityType,
         equipamento_nome: `${formData.marca || ''} ${formData.modelo || ''}`.trim(),
         usuario_equipamento: formData.usuario_atual || '',
+        numero_avaliacao: numeroAvaliacao,
         ...dadosAvaliacao,
         data_avaliacao: new Date().toISOString(),
         avaliador: user.email,
       };
 
-      if (avaliacaoExistente?.id) {
-        return base44.entities.Avaliacoes.update(avaliacaoExistente.id, avaliacaoData);
-      } else {
-        return base44.entities.Avaliacoes.create(avaliacaoData);
-      }
+      return base44.entities.Avaliacoes.create(avaliacaoData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['avaliacao', equipamento?.id]);
+      queryClient.invalidateQueries(['avaliacoes', equipamento?.id]);
       queryClient.invalidateQueries(['avaliacoes']);
       alert('Avaliação salva com sucesso!');
     },
@@ -600,11 +598,59 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
               <TabsContent value="dados" className="space-y-4">
                 {renderFieldsByType()}
               </TabsContent>
-              <TabsContent value="avaliacao">
+              <TabsContent value="avaliacao" className="space-y-4">
+                {avaliacoes.length > 0 && (
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-blue-600" />
+                        Histórico de Avaliações ({avaliacoes.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {avaliacoes.map((av) => (
+                        <div key={av.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm">{av.numero_avaliacao}ª Avaliação</p>
+                            <p className="text-xs text-gray-600">
+                              {new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })} - {av.avaliador}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge className={
+                              av.classificacao === "Manter" ? "bg-green-100 text-green-800" :
+                              av.classificacao === "Upgrade" ? "bg-yellow-100 text-yellow-800" :
+                              "bg-red-100 text-red-800"
+                            }>
+                              {av.classificacao}
+                            </Badge>
+                            <span className="text-lg font-bold text-gray-700">{av.pontuacao_total} pts</span>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+                
+                <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300">
+                  <CardHeader>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <Activity className="w-6 h-6 text-blue-600" />
+                      Nova Avaliação ({avaliacoes.length + 1}ª)
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                
                 <AvaliacaoEquipamento
                   equipamento={equipamento}
                   entityType={entityType}
-                  avaliacaoExistente={avaliacaoExistente}
+                  avaliacaoExistente={null}
                   onSalvar={handleSalvarAvaliacao}
                 />
               </TabsContent>
