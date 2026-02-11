@@ -20,6 +20,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     usuarios_anteriores: []
   });
   const [activeTab, setActiveTab] = useState("dados");
+  const [avaliacaoExpandida, setAvaliacaoExpandida] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: colaboradores = [] } = useQuery({
@@ -610,29 +611,89 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {avaliacoes.map((av, index) => (
-                        <div key={av.id} className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-md transition-shadow cursor-pointer">
-                          <div className="flex-1">
-                            <p className="font-semibold text-sm">{av.numero_avaliacao || (avaliacoes.length - index)}ª Avaliação</p>
-                            <p className="text-xs text-gray-600">
-                              {new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })} - {av.avaliador}
-                            </p>
+                        <div key={av.id}>
+                          <div 
+                            onClick={() => setAvaliacaoExpandida(avaliacaoExpandida === av.id ? null : av.id)}
+                            className="flex items-center justify-between p-3 bg-white rounded-lg border hover:shadow-md transition-shadow cursor-pointer"
+                          >
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{av.numero_avaliacao || (avaliacoes.length - index)}ª Avaliação</p>
+                              <p className="text-xs text-gray-600">
+                                {new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })} - {av.avaliador}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Badge className={
+                                av.classificacao === "Manter" ? "bg-green-100 text-green-800" :
+                                av.classificacao === "Upgrade" ? "bg-yellow-100 text-yellow-800" :
+                                "bg-red-100 text-red-800"
+                              }>
+                                {av.classificacao}
+                              </Badge>
+                              <span className="text-lg font-bold text-gray-700">{av.pontuacao_total} pts</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge className={
-                              av.classificacao === "Manter" ? "bg-green-100 text-green-800" :
-                              av.classificacao === "Upgrade" ? "bg-yellow-100 text-yellow-800" :
-                              "bg-red-100 text-red-800"
-                            }>
-                              {av.classificacao}
-                            </Badge>
-                            <span className="text-lg font-bold text-gray-700">{av.pontuacao_total} pts</span>
-                          </div>
+                          
+                          {avaliacaoExpandida === av.id && (
+                            <div className="mt-2 p-4 bg-gray-50 rounded-lg border text-sm space-y-2">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <p className="font-semibold text-gray-700">Memória RAM:</p>
+                                  <p className="text-gray-600">{av.memoria_ram || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Armazenamento:</p>
+                                  <p className="text-gray-600">{av.tipo_armazenamento || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Espaço em Disco:</p>
+                                  <p className="text-gray-600">{av.espaco_disco || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Windows:</p>
+                                  <p className="text-gray-600">{av.versao_windows || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Antivírus:</p>
+                                  <p className="text-gray-600">{av.antivirus || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Desempenho:</p>
+                                  <p className="text-gray-600">{av.desempenho || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Atende Trabalho:</p>
+                                  <p className="text-gray-600">{av.atende_trabalho || "—"}</p>
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-700">Satisfação:</p>
+                                  <p className="text-gray-600">{av.satisfacao || "—"}</p>
+                                </div>
+                              </div>
+                              {av.problemas && av.problemas.length > 0 && (
+                                <div>
+                                  <p className="font-semibold text-gray-700">Problemas:</p>
+                                  <ul className="list-disc list-inside text-gray-600">
+                                    {av.problemas.map((prob, i) => (
+                                      <li key={i}>{prob}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {av.recomendacao_usuario && (
+                                <div>
+                                  <p className="font-semibold text-gray-700">Recomendação do Usuário:</p>
+                                  <p className="text-gray-600">{av.recomendacao_usuario}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </CardContent>
