@@ -65,6 +65,7 @@ export default function AcompanharChamado() {
         avaliacao_nota_geral: Math.round(notaGeral * 10) / 10,
         avaliacao_comentario: avaliacao.comentario,
         avaliacao_data: new Date().toISOString(),
+        status: "Resolvido",
       });
     },
     onSuccess: () => {
