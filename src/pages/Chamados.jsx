@@ -135,6 +135,8 @@ export default function Chamados() {
     !c.responsavel
   );
 
+  const chamadosGeral = chamados.filter(c => c.status === "Resolvido");
+
   const responsaveis = [...new Set(chamados
     .filter(c => c.responsavel && c.status !== "Aberto")
     .map(c => c.responsavel)
@@ -143,6 +145,14 @@ export default function Chamados() {
   const getChamadosPorResponsavel = (responsavel) => {
     return chamados.filter(c => c.responsavel === responsavel);
   };
+
+  const getChamadosAbaAtiva = () => {
+    if (activeTab === "abertos") return chamadosAbertos;
+    if (activeTab === "geral") return chamadosGeral;
+    return getChamadosPorResponsavel(activeTab);
+  };
+
+  const chamadosAbaAtiva = getChamadosAbaAtiva();
 
   const filteredChamados = filterStatus === "all" 
     ? chamados 
@@ -277,36 +287,36 @@ export default function Chamados() {
     });
   };
 
-  const chamadosAvaliados = chamados.filter(c => c.avaliacao_data);
+  const chamadosAvaliadosAba = chamadosAbaAtiva.filter(c => c.avaliacao_data);
   
   const mediaAvaliacoes = {
-    geral: chamadosAvaliados.length > 0 
-      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliados.length 
+    geral: chamadosAvaliadosAba.length > 0 
+      ? chamadosAvaliadosAba.reduce((acc, c) => acc + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliadosAba.length 
       : 0,
-    tempo_resolucao: chamadosAvaliados.length > 0
-      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_tempo_resolucao || 0), 0) / chamadosAvaliados.length
+    tempo_resolucao: chamadosAvaliadosAba.length > 0
+      ? chamadosAvaliadosAba.reduce((acc, c) => acc + (c.avaliacao_tempo_resolucao || 0), 0) / chamadosAvaliadosAba.length
       : 0,
-    qualidade_atendimento: chamadosAvaliados.length > 0
-      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_qualidade_atendimento || 0), 0) / chamadosAvaliados.length
+    qualidade_atendimento: chamadosAvaliadosAba.length > 0
+      ? chamadosAvaliadosAba.reduce((acc, c) => acc + (c.avaliacao_qualidade_atendimento || 0), 0) / chamadosAvaliadosAba.length
       : 0,
-    qualidade_solucao: chamadosAvaliados.length > 0
-      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_qualidade_solucao || 0), 0) / chamadosAvaliados.length
+    qualidade_solucao: chamadosAvaliadosAba.length > 0
+      ? chamadosAvaliadosAba.reduce((acc, c) => acc + (c.avaliacao_qualidade_solucao || 0), 0) / chamadosAvaliadosAba.length
       : 0,
-    comunicacao: chamadosAvaliados.length > 0
-      ? chamadosAvaliados.reduce((acc, c) => acc + (c.avaliacao_comunicacao || 0), 0) / chamadosAvaliados.length
+    comunicacao: chamadosAvaliadosAba.length > 0
+      ? chamadosAvaliadosAba.reduce((acc, c) => acc + (c.avaliacao_comunicacao || 0), 0) / chamadosAvaliadosAba.length
       : 0,
   };
 
   const stats = {
-    total: chamados.length,
-    abertos: chamados.filter(c => c.status === "Aberto").length,
-    emAndamento: chamados.filter(c => c.status === "Em Andamento").length,
-    aguardandoAvaliacao: chamados.filter(c => c.status === "Aguardando Avaliação").length,
-    resolvidos: chamados.filter(c => c.status === "Resolvido").length,
-    avaliados: chamadosAvaliados.length,
-    tempoMedioResolucao: chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos)
+    total: chamadosAbaAtiva.length,
+    abertos: chamadosAbaAtiva.filter(c => c.status === "Aberto").length,
+    emAndamento: chamadosAbaAtiva.filter(c => c.status === "Em Andamento").length,
+    aguardandoAvaliacao: chamadosAbaAtiva.filter(c => c.status === "Aguardando Avaliação").length,
+    resolvidos: chamadosAbaAtiva.filter(c => c.status === "Resolvido").length,
+    avaliados: chamadosAvaliadosAba.length,
+    tempoMedioResolucao: chamadosAbaAtiva.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos)
       .reduce((acc, c) => acc + c.tempo_resolucao_minutos, 0) / 
-      (chamados.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos).length || 1),
+      (chamadosAbaAtiva.filter(c => c.status === "Resolvido" && c.tempo_resolucao_minutos).length || 1),
   };
 
   const getTipoCompleto = (chamado) => {
@@ -535,7 +545,7 @@ export default function Chamados() {
           </Card>
         </div>
 
-        {chamadosAvaliados.length > 0 && (
+        {chamadosAvaliadosAba.length > 0 && (
           <Card className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-yellow-900">
@@ -582,7 +592,7 @@ export default function Chamados() {
                 </div>
               </div>
               <p className="text-xs text-center text-yellow-700 mt-3">
-                Baseado em {chamadosAvaliados.length} {chamadosAvaliados.length === 1 ? 'avaliação' : 'avaliações'}
+                Baseado em {chamadosAvaliadosAba.length} {chamadosAvaliadosAba.length === 1 ? 'avaliação' : 'avaliações'}
               </p>
             </CardContent>
           </Card>
@@ -606,6 +616,12 @@ export default function Chamados() {
                   >
                     Em Aberto ({chamadosAbertos.length})
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="geral" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent px-6 py-3"
+                  >
+                    Geral ({chamadosGeral.length})
+                  </TabsTrigger>
                   {responsaveis.map((responsavel) => {
                     const count = getChamadosPorResponsavel(responsavel).length;
                     return (
@@ -622,6 +638,10 @@ export default function Chamados() {
 
                 <TabsContent value="abertos" className="mt-0">
                   {renderChamadosTable(chamadosAbertos)}
+                </TabsContent>
+
+                <TabsContent value="geral" className="mt-0">
+                  {renderChamadosTable(chamadosGeral)}
                 </TabsContent>
 
                 {responsaveis.map((responsavel) => (
