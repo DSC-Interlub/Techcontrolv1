@@ -21,11 +21,28 @@ export default function Usuarios() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [sending, setSending] = useState(false);
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
   const queryClient = useQueryClient();
+
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+      } catch (error) {
+        base44.auth.redirectToLogin();
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
     queryFn: () => base44.entities.User.list('-created_date'),
+    enabled: !!user,
   });
 
   const handleInvite = async () => {
@@ -66,6 +83,21 @@ export default function Usuarios() {
     admins: usuarios.filter(u => u.role === "admin").length,
     users: usuarios.filter(u => u.role === "user").length,
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">

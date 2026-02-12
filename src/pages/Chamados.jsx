@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Chamados() {
   const [filterStatus, setFilterStatus] = useState("all");
@@ -24,6 +25,7 @@ export default function Chamados() {
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showAvaliacao, setShowAvaliacao] = useState(false);
+  const [activeTab, setActiveTab] = useState("abertos");
   const [avaliacao, setAvaliacao] = useState({
     tempo_resolucao: 5,
     qualidade_atendimento: 5,
@@ -31,15 +33,20 @@ export default function Chamados() {
     comunicacao: 5,
     comentario: ""
   });
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const user = await base44.auth.me();
-        setCurrentUser(user);
+        const currentUserData = await base44.auth.me();
+        setCurrentUser(currentUserData);
+        setUser(currentUserData);
       } catch (error) {
-        console.error("Erro ao carregar usuário:", error);
+        base44.auth.redirectToLogin();
+      } finally {
+        setLoading(false);
       }
     };
     loadUser();
@@ -50,6 +57,13 @@ export default function Chamados() {
   const { data: chamados = [], isLoading } = useQuery({
     queryKey: ['chamados'],
     queryFn: () => base44.entities.Chamados.list('-created_date'),
+    enabled: !!user,
+  });
+
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => base44.entities.User.list(),
+    enabled: !!user,
   });
 
   const updateChamadoMutation = useMutation({
@@ -113,6 +127,21 @@ export default function Chamados() {
       id: selectedChamado.id, 
       data: updateData
     });
+  };
+
+  const chamadosAbertos = chamados.filter(c => 
+    c.status === "Aberto" || 
+    c.status === "Em Análise" ||
+    !c.responsavel
+  );
+
+  const responsaveis = [...new Set(chamados
+    .filter(c => c.responsavel && c.status !== "Aberto")
+    .map(c => c.responsavel)
+  )].sort();
+
+  const getChamadosPorResponsavel = (responsavel) => {
+    return chamados.filter(c => c.responsavel === responsavel);
   };
 
   const filteredChamados = filterStatus === "all" 
@@ -297,7 +326,117 @@ export default function Chamados() {
     return detalhes;
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
+  if (!user) {
+    return null;
+  }
+
+  const renderChamadosTable = (chamadosList) => (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nº Chamado</TableHead>
+            <TableHead>Solicitante</TableHead>
+            <TableHead>Tipo</TableHead>
+            <TableHead>Urgência</TableHead>
+            <TableHead>Tempo Atendimento</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Avaliação</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {chamadosList.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                Nenhum chamado encontrado
+              </TableCell>
+            </TableRow>
+          ) : (
+            chamadosList.map((chamado) => {
+              const tempoAtendimento = calcularTempoAtendimento(chamado);
+              return (
+              <TableRow key={chamado.id}>
+                <TableCell className="font-mono text-sm">{chamado.numero_chamado}</TableCell>
+                <TableCell>
+                  <div>
+                    <p className="font-medium">{chamado.solicitante_nome}</p>
+                    <p className="text-sm text-gray-500">{chamado.solicitante_area}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="max-w-[200px]">
+                    <p className="text-sm truncate">{getTipoCompleto(chamado)}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge className={
+                    chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" :
+                    chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" :
+                    chamado.urgencia === "Média" ? "bg-yellow-100 text-yellow-800" :
+                    "bg-blue-100 text-blue-800"
+                  }>
+                    {chamado.urgencia}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {tempoAtendimento !== null ? (
+                    <span className="font-medium text-gray-900">
+                      {tempoAtendimento}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge className={
+                    chamado.status === "Aberto" ? "bg-red-100 text-red-800" :
+                    chamado.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                    chamado.status === "Aguardando Avaliação" ? "bg-orange-100 text-orange-800" :
+                    chamado.status === "Resolvido" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {chamado.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {chamado.avaliacao_nota_geral ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-600 font-medium">{chamado.avaliacao_nota_geral.toFixed(1)}</span>
+                      <span className="text-yellow-500">⭐</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">-</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleOpenDetails(chamado)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   return (
     <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
@@ -451,126 +590,47 @@ export default function Chamados() {
 
         <Card>
           <CardHeader className="border-b">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Lista de Chamados ({filteredChamados.length})</CardTitle>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="Aberto">Aberto</SelectItem>
-                  <SelectItem value="Em Análise">Em Análise</SelectItem>
-                  <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                  <SelectItem value="Aguardando Peça">Aguardando Peça</SelectItem>
-                  <SelectItem value="Aguardando Avaliação">Aguardando Avaliação</SelectItem>
-                  <SelectItem value="Resolvido">Resolvido</SelectItem>
-                  <SelectItem value="Cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <CardTitle>Chamados por Responsável</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nº Chamado</TableHead>
-                    <TableHead>Solicitante</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Urgência</TableHead>
-                    <TableHead>Tempo Atendimento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Avaliação</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredChamados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                        Nenhum chamado encontrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredChamados.map((chamado) => {
-                      const tempoAtendimento = calcularTempoAtendimento(chamado);
-                      return (
-                      <TableRow key={chamado.id}>
-                        <TableCell className="font-mono text-sm">{chamado.numero_chamado}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{chamado.solicitante_nome}</p>
-                            <p className="text-sm text-gray-500">{chamado.solicitante_area}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[200px]">
-                            <p className="text-sm truncate">{getTipoCompleto(chamado)}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" :
-                            chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" :
-                            chamado.urgencia === "Média" ? "bg-yellow-100 text-yellow-800" :
-                            "bg-blue-100 text-blue-800"
-                          }>
-                            {chamado.urgencia}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {tempoAtendimento !== null ? (
-                            <span className="font-medium text-gray-900">
-                              {tempoAtendimento}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            chamado.status === "Aberto" ? "bg-red-100 text-red-800" :
-                            chamado.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
-                            chamado.status === "Aguardando Avaliação" ? "bg-orange-100 text-orange-800" :
-                            chamado.status === "Resolvido" ? "bg-green-100 text-green-800" :
-                            "bg-gray-100 text-gray-800"
-                          }>
-                            {chamado.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {chamado.avaliacao_nota_geral ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-yellow-600 font-medium">{chamado.avaliacao_nota_geral.toFixed(1)}</span>
-                              <span className="text-yellow-500">⭐</span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleOpenDetails(chamado)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+            {isLoading ? (
+              <div className="text-center py-8 text-gray-500">
+                Carregando...
+              </div>
+            ) : (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto flex-wrap">
+                  <TabsTrigger 
+                    value="abertos" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-orange-600 data-[state=active]:bg-transparent px-6 py-3"
+                  >
+                    Em Aberto ({chamadosAbertos.length})
+                  </TabsTrigger>
+                  {responsaveis.map((responsavel) => {
+                    const count = getChamadosPorResponsavel(responsavel).length;
+                    return (
+                      <TabsTrigger 
+                        key={responsavel}
+                        value={responsavel} 
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-6 py-3"
+                      >
+                        {responsavel} ({count})
+                      </TabsTrigger>
                     );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  })}
+                </TabsList>
+
+                <TabsContent value="abertos" className="mt-0">
+                  {renderChamadosTable(chamadosAbertos)}
+                </TabsContent>
+
+                {responsaveis.map((responsavel) => (
+                  <TabsContent key={responsavel} value={responsavel} className="mt-0">
+                    {renderChamadosTable(getChamadosPorResponsavel(responsavel))}
+                  </TabsContent>
+                ))}
+              </Tabs>
+            )}
           </CardContent>
         </Card>
 
