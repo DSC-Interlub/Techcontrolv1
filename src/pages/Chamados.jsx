@@ -193,23 +193,29 @@ export default function Chamados() {
 
     // Enviar e-mail informando início do atendimento
     if (chamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
-        from_name: "TechControl - Suporte",
-        to: chamado.solicitante_email,
-        subject: `Chamado #${chamado.numero_chamado} - Atendimento Iniciado`,
-        body: `
-          <h2>Seu Chamado Está em Andamento!</h2>
-          <p>Olá ${chamado.solicitante_nome},</p>
-          <p>Boas notícias! O atendimento do seu chamado foi iniciado.</p>
-          <p><strong>Número do Chamado:</strong> ${chamado.numero_chamado}</p>
-          <p><strong>Responsável:</strong> ${currentUser.full_name}</p>
-          <p><strong>Data/Hora:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
-          <p>Nossa equipe está trabalhando para resolver sua solicitação o mais rápido possível.</p>
-          <p>Em breve você receberá uma notificação quando o atendimento for finalizado.</p>
-          <br>
-          <p>Atenciosamente,<br>Equipe TechControl</p>
-        `
-      });
+      try {
+        await base44.integrations.Core.SendEmail({
+          from_name: "TechControl - Suporte",
+          to: chamado.solicitante_email,
+          subject: `Chamado #${chamado.numero_chamado} - Atendimento Iniciado`,
+          body: `
+            <h2>Seu Chamado Está em Andamento!</h2>
+            <p>Olá ${chamado.solicitante_nome},</p>
+            <p>Boas notícias! O atendimento do seu chamado foi iniciado.</p>
+            <p><strong>Número do Chamado:</strong> ${chamado.numero_chamado}</p>
+            <p><strong>Responsável:</strong> ${currentUser.full_name}</p>
+            <p><strong>Data/Hora:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
+            <p>Nossa equipe está trabalhando para resolver sua solicitação o mais rápido possível.</p>
+            <p>Em breve você receberá uma notificação quando o atendimento for finalizado.</p>
+            <br>
+            <p>Atenciosamente,<br>Equipe TechControl</p>
+          `
+        });
+        console.log("E-mail de início de atendimento enviado com sucesso");
+      } catch (error) {
+        console.error("Erro ao enviar e-mail:", error);
+        alert("Atendimento iniciado, mas houve um erro ao enviar o e-mail de notificação.");
+      }
     }
 
     updateChamadoMutation.mutate({
@@ -252,29 +258,35 @@ export default function Chamados() {
 
     // Enviar e-mail informando finalização e solicitando avaliação
     if (chamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
-        from_name: "TechControl - Suporte",
-        to: chamado.solicitante_email,
-        subject: `Chamado #${chamado.numero_chamado} - Atendimento Finalizado`,
-        body: `
-          <h2>Seu Chamado Foi Finalizado!</h2>
-          <p>Olá ${chamado.solicitante_nome},</p>
-          <p>Seu chamado foi atendido e finalizado com sucesso.</p>
-          <p><strong>Número do Chamado:</strong> ${chamado.numero_chamado}</p>
-          <p><strong>Responsável:</strong> ${currentUser.full_name}</p>
-          <p><strong>Data/Hora:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
-          ${chamado.solucao ? `<p><strong>Solução:</strong> ${chamado.solucao}</p>` : ''}
-          <hr>
-          <h3>Avalie Nosso Atendimento</h3>
-          <p>Para concluir o chamado, pedimos que você avalie nosso atendimento.</p>
-          <p>Acesse o link abaixo para acompanhar e avaliar seu chamado:</p>
-          <p><a href="${linkAcompanhamento}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Acompanhar e Avaliar Chamado</a></p>
-          <br>
-          <p>Sua opinião é muito importante para melhorarmos nosso serviço!</p>
-          <br>
-          <p>Atenciosamente,<br>Equipe TechControl</p>
-        `
-      });
+      try {
+        await base44.integrations.Core.SendEmail({
+          from_name: "TechControl - Suporte",
+          to: chamado.solicitante_email,
+          subject: `Chamado #${chamado.numero_chamado} - Atendimento Finalizado`,
+          body: `
+            <h2>Seu Chamado Foi Finalizado!</h2>
+            <p>Olá ${chamado.solicitante_nome},</p>
+            <p>Seu chamado foi atendido e finalizado com sucesso.</p>
+            <p><strong>Número do Chamado:</strong> ${chamado.numero_chamado}</p>
+            <p><strong>Responsável:</strong> ${currentUser.full_name}</p>
+            <p><strong>Data/Hora:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
+            ${chamado.solucao ? `<p><strong>Solução:</strong> ${chamado.solucao}</p>` : ''}
+            <hr>
+            <h3>Avalie Nosso Atendimento</h3>
+            <p>Para concluir o chamado, pedimos que você avalie nosso atendimento.</p>
+            <p>Acesse o link abaixo para acompanhar e avaliar seu chamado:</p>
+            <p><a href="${linkAcompanhamento}" style="background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Acompanhar e Avaliar Chamado</a></p>
+            <br>
+            <p>Sua opinião é muito importante para melhorarmos nosso serviço!</p>
+            <br>
+            <p>Atenciosamente,<br>Equipe TechControl</p>
+          `
+        });
+        console.log("E-mail de finalização enviado com sucesso");
+      } catch (error) {
+        console.error("Erro ao enviar e-mail:", error);
+        alert("Atendimento finalizado, mas houve um erro ao enviar o e-mail de notificação.");
+      }
     }
 
     updateChamadoMutation.mutate({
