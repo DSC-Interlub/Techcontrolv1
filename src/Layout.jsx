@@ -157,24 +157,6 @@ export default function Layout({ children }) {
     return <>{children}</>;
   }
 
-  // Se não for página pública e estiver carregando, mostra loader
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Se não for página pública e não estiver autenticado, redireciona para login
-  if (!loading && !currentUser) {
-    base44.auth.redirectToLogin(location.pathname);
-    return null;
-  }
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
