@@ -204,6 +204,31 @@ export default function ChamadoPublico() {
         equipamentos_usuario: equipamentosUsuario,
       });
 
+      // Enviar e-mail de confirmação de abertura
+      if (data.solicitante_email) {
+        try {
+          await base44.integrations.Core.SendEmail({
+            from_name: "TechControl - Suporte",
+            to: data.solicitante_email,
+            subject: `Chamado #${numeroChamado} - Aberto com Sucesso`,
+            body: `
+              <h2>Chamado Aberto com Sucesso!</h2>
+              <p>Olá ${data.solicitante_nome},</p>
+              <p>Seu chamado foi registrado em nosso sistema.</p>
+              <p><strong>Número do Chamado:</strong> ${numeroChamado}</p>
+              <p><strong>Tipo:</strong> ${data.tipo_solicitacao}</p>
+              <p><strong>Urgência:</strong> ${data.urgencia}</p>
+              <p>Nossa equipe irá avaliar sua solicitação em breve e iniciará o atendimento o mais rápido possível.</p>
+              <p>Você pode acompanhar o status do seu chamado através do link de acompanhamento.</p>
+              <br>
+              <p>Atenciosamente,<br>Equipe TechControl</p>
+            `
+          });
+        } catch (error) {
+          console.error("Erro ao enviar e-mail:", error);
+        }
+      }
+
       return { chamado, numeroChamado };
     },
     onSuccess: (data) => {
