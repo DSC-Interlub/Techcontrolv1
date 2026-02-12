@@ -23,6 +23,14 @@ export default function Chamados() {
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showAvaliacao, setShowAvaliacao] = useState(false);
+  const [avaliacao, setAvaliacao] = useState({
+    tempo_resolucao: 5,
+    qualidade_atendimento: 5,
+    qualidade_solucao: 5,
+    comunicacao: 5,
+    comentario: ""
+  });
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -189,6 +197,54 @@ export default function Chamados() {
         tempo_resolucao_minutos,
         historico
       }
+    });
+  };
+
+  const handleAvaliar = () => {
+    setShowAvaliacao(true);
+  };
+
+  const handleSalvarAvaliacao = () => {
+    if (!selectedChamado) return;
+
+    const nota_geral = (
+      avaliacao.tempo_resolucao +
+      avaliacao.qualidade_atendimento +
+      avaliacao.qualidade_solucao +
+      avaliacao.comunicacao
+    ) / 4;
+
+    const historico = selectedChamado.historico || [];
+    historico.push({
+      data_hora: new Date().toISOString(),
+      tipo: "avaliacao",
+      descricao: `Chamado avaliado com nota ${nota_geral.toFixed(1)}/5`,
+      usuario: selectedChamado.solicitante_nome
+    });
+
+    updateChamadoMutation.mutate({
+      id: selectedChamado.id,
+      data: {
+        ...selectedChamado,
+        avaliacao_tempo_resolucao: avaliacao.tempo_resolucao,
+        avaliacao_qualidade_atendimento: avaliacao.qualidade_atendimento,
+        avaliacao_qualidade_solucao: avaliacao.qualidade_solucao,
+        avaliacao_comunicacao: avaliacao.comunicacao,
+        avaliacao_nota_geral: nota_geral,
+        avaliacao_comentario: avaliacao.comentario,
+        avaliacao_data: new Date().toISOString(),
+        status: "Resolvido",
+        historico
+      }
+    });
+
+    setShowAvaliacao(false);
+    setAvaliacao({
+      tempo_resolucao: 5,
+      qualidade_atendimento: 5,
+      qualidade_solucao: 5,
+      comunicacao: 5,
+      comentario: ""
     });
   };
 
@@ -585,12 +641,126 @@ export default function Chamados() {
                   )}
                 </div>
 
-                {selectedChamado.status === "Aguardando Avaliação" && (
-                  <Alert className="bg-orange-50 border-orange-200">
-                    <AlertDescription className="text-orange-800 text-sm">
-                      <strong>Aguardando:</strong> Este chamado está aguardando a avaliação do solicitante. Após a avaliação, o status será alterado para "Resolvido" automaticamente.
-                    </AlertDescription>
-                  </Alert>
+                {selectedChamado.status === "Aguardando Avaliação" && !selectedChamado.avaliacao_data && (
+                  <div className="space-y-3">
+                    <Alert className="bg-orange-50 border-orange-200">
+                      <AlertDescription className="text-orange-800 text-sm">
+                        <strong>Aguardando:</strong> Este chamado está aguardando avaliação. Clique no botão abaixo para avaliar o atendimento.
+                      </AlertDescription>
+                    </Alert>
+                    <Button
+                      onClick={handleAvaliar}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700"
+                    >
+                      <Star className="w-4 h-4 mr-2" />
+                      Avaliar Atendimento
+                    </Button>
+                  </div>
+                )}
+
+                {showAvaliacao && (
+                  <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 space-y-4">
+                    <h3 className="font-semibold text-yellow-900 text-lg flex items-center gap-2">
+                      <Star className="w-5 h-5" />
+                      Avalie o Atendimento
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label>Tempo de Resolução</Label>
+                        <div className="flex gap-2 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setAvaliacao({ ...avaliacao, tempo_resolucao: star })}
+                              className={`text-2xl transition-colors ${
+                                star <= avaliacao.tempo_resolucao ? "text-yellow-500" : "text-gray-300"
+                              }`}
+                            >
+                              ⭐
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Qualidade do Atendimento</Label>
+                        <div className="flex gap-2 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setAvaliacao({ ...avaliacao, qualidade_atendimento: star })}
+                              className={`text-2xl transition-colors ${
+                                star <= avaliacao.qualidade_atendimento ? "text-yellow-500" : "text-gray-300"
+                              }`}
+                            >
+                              ⭐
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Qualidade da Solução</Label>
+                        <div className="flex gap-2 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setAvaliacao({ ...avaliacao, qualidade_solucao: star })}
+                              className={`text-2xl transition-colors ${
+                                star <= avaliacao.qualidade_solucao ? "text-yellow-500" : "text-gray-300"
+                              }`}
+                            >
+                              ⭐
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Comunicação</Label>
+                        <div className="flex gap-2 mt-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              onClick={() => setAvaliacao({ ...avaliacao, comunicacao: star })}
+                              className={`text-2xl transition-colors ${
+                                star <= avaliacao.comunicacao ? "text-yellow-500" : "text-gray-300"
+                              }`}
+                            >
+                              ⭐
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label>Comentário (opcional)</Label>
+                        <Textarea
+                          value={avaliacao.comentario}
+                          onChange={(e) => setAvaliacao({ ...avaliacao, comentario: e.target.value })}
+                          placeholder="Deixe seu comentário sobre o atendimento..."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowAvaliacao(false)}
+                          className="flex-1"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handleSalvarAvaliacao}
+                          className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          Enviar Avaliação
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
