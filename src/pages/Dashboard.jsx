@@ -22,44 +22,69 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+      } catch (error) {
+        base44.auth.redirectToLogin();
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
+    enabled: !!user,
   });
 
   const { data: notebooksExternos = [] } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
+    enabled: !!user,
   });
 
   const { data: smartphones = [] } = useQuery({
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list(),
+    enabled: !!user,
   });
 
   const { data: cameras = [] } = useQuery({
     queryKey: ['cameras'],
     queryFn: () => base44.entities.Cameras.list(),
+    enabled: !!user,
   });
 
   const { data: coletores = [] } = useQuery({
     queryKey: ['coletores'],
     queryFn: () => base44.entities.Coletores.list(),
+    enabled: !!user,
   });
 
   const { data: canetas = [] } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list(),
+    enabled: !!user,
   });
 
   const { data: chamados = [] } = useQuery({
     queryKey: ['chamados'],
     queryFn: () => base44.entities.Chamados.list('-created_date', 5),
+    enabled: !!user,
   });
 
   const { data: reservas = [] } = useQuery({
     queryKey: ['reservas'],
     queryFn: () => base44.entities.Reservas.list('-created_date', 5),
+    enabled: !!user,
   });
 
   const equipmentStats = [
@@ -118,6 +143,21 @@ export default function Dashboard() {
   const valorTotal = smartphones.reduce((sum, s) => sum + (s.valor || 0), 0);
 
   const chamadosAbertos = chamados.filter(c => c.status === "Aberto").length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
