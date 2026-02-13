@@ -99,15 +99,35 @@ export default function Usuarios() {
 
   // Mutation para atualizar nome
   const updateNameMutation = useMutation({
-    mutationFn: async ({ userId, newName, isSelf }) => {
+    mutationFn: async ({ userId, newName, isSelf, userEmail }) => {
       if (isSelf) {
-        return await base44.auth.updateMe({ full_name: newName });
+        const result = await base44.auth.updateMe({ full_name: newName });
+        return result;
       } else {
-        return await base44.entities.User.update(userId, { full_name: newName });
+        // Para outros usuários, buscar primeiro e depois atualizar
+        const allUsers = await base44.entities.User.list();
+        const targetUser = allUsers.find(u => u.id === userId);
+        
+        if (!targetUser) {
+          throw new Error("Usuário não encontrado");
+        }
+        
+        // Atualizar via SDK
+        const result = await base44.entities.User.update(userId, { 
+          full_name: newName,
+          email: targetUser.email
+        });
+        
+        return result;
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Nome atualizado:", data);
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      // Aguardar um pouco para o banco atualizar
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      }, 500);
       setShowEditDialog(false);
       setEditingUser(null);
       setEditName("");
@@ -115,6 +135,7 @@ export default function Usuarios() {
       setTimeout(() => setSuccess(""), 5000);
     },
     onError: (err) => {
+      console.error("Erro ao atualizar:", err);
       setError("Erro ao atualizar nome. Apenas administradores podem editar outros usuários.");
       setTimeout(() => setError(""), 5000);
     },
