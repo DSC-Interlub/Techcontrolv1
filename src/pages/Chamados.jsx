@@ -913,13 +913,49 @@ export default function Chamados() {
                   </div>
                 )}
 
+                {selectedChamado.anexos && selectedChamado.anexos.length > 0 && (
+                  <div>
+                    <Label>Arquivos Anexados</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      {selectedChamado.anexos.map((anexo, idx) => (
+                        <a 
+                          key={idx} 
+                          href={anexo.file_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                        >
+                          {anexo.file_type === 'image' ? (
+                            <img src={anexo.file_url} alt={anexo.file_name} className="w-full h-32 object-cover rounded mb-2" />
+                          ) : (
+                            <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center mb-2">
+                              <span className="text-4xl">🎥</span>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-600 truncate">{anexo.file_name}</p>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <Label>Responsável</Label>
-                  <Input
-                    value={selectedChamado.responsavel || ""}
-                    onChange={(e) => setSelectedChamado({ ...selectedChamado, responsavel: e.target.value })}
-                    placeholder="Nome do responsável"
-                  />
+                  <Select 
+                    value={selectedChamado.responsavel || ""} 
+                    onValueChange={(value) => setSelectedChamado({ ...selectedChamado, responsavel: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o responsável" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usuarios.map((usr) => (
+                        <SelectItem key={usr.id} value={usr.full_name}>
+                          {usr.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

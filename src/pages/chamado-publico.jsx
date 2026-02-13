@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { Headset, CheckCircle, Loader2, Laptop, AlertCircle, Search } from "lucide-react";
+import { Headset, CheckCircle, Loader2, Laptop, AlertCircle, Search, Upload, X, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link } from "react-router-dom";
@@ -42,6 +42,8 @@ export default function ChamadoPublico() {
   const [numeroChamado, setNumeroChamado] = useState("");
   const [countdown, setCountdown] = useState(15);
   const [equipamentosUsuario, setEquipamentosUsuario] = useState([]);
+  const [anexos, setAnexos] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   // Countdown timer
   useEffect(() => {
@@ -192,6 +194,34 @@ export default function ChamadoPublico() {
     setEquipamentosUsuario(equipamentos);
   };
 
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    const uploadedFiles = [];
+
+    try {
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        uploadedFiles.push({
+          file_url,
+          file_name: file.name,
+          file_type: file.type.startsWith('image/') ? 'image' : 'video'
+        });
+      }
+      setAnexos([...anexos, ...uploadedFiles]);
+    } catch (error) {
+      alert("Erro ao fazer upload dos arquivos");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAnexo = (index) => {
+    setAnexos(anexos.filter((_, i) => i !== index));
+  };
+
   const createChamadoMutation = useMutation({
     mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
@@ -202,6 +232,7 @@ export default function ChamadoPublico() {
         status: "Aberto",
         data_abertura: new Date().toISOString().split('T')[0],
         equipamentos_usuario: equipamentosUsuario,
+        anexos: anexos,
       });
 
       return { chamado, numeroChamado };
@@ -210,6 +241,7 @@ export default function ChamadoPublico() {
       setNumeroChamado(data.numeroChamado);
       setSuccess(true);
       setCountdown(15);
+      setAnexos([]);
     },
   });
 
@@ -524,6 +556,57 @@ export default function ChamadoPublico() {
               <div>
                 <Label>Descrição Adicional do Problema *</Label>
                 <Textarea required placeholder="Descreva detalhadamente seu problema ou solicitação..." value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={5} />
+              </div>
+
+              <div>
+                <Label>Anexar Fotos, Imagens ou Vídeos (opcional)</Label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    id="file-upload"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <label htmlFor="file-upload">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      disabled={uploading}
+                      onClick={() => document.getElementById('file-upload').click()}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Fazendo upload...</>
+                      ) : (
+                        <><Upload className="w-4 h-4 mr-2" />Adicionar Arquivos</>
+                      )}
+                    </Button>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">Imagens e vídeos que ajudem a entender o problema</p>
+                </div>
+
+                {anexos.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {anexos.map((anexo, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-700 truncate max-w-xs">{anexo.file_name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAnexo(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

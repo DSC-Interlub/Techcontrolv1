@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Mail, Shield } from "lucide-react";
+import { UserPlus, Mail, Shield, Edit } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,9 @@ export default function Usuarios() {
   const [sending, setSending] = useState(false);
   const [user, setUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [newName, setNewName] = useState("");
   const queryClient = useQueryClient();
 
   React.useEffect(() => {
@@ -43,6 +46,21 @@ export default function Usuarios() {
     queryKey: ['usuarios'],
     queryFn: () => base44.entities.User.list('-created_date'),
     enabled: !!user,
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      setShowEditDialog(false);
+      setEditingUser(null);
+      setNewName("");
+      setSuccess("Nome do usuário atualizado com sucesso!");
+      setTimeout(() => setSuccess(""), 5000);
+    },
+    onError: (err) => {
+      setError(err.message || "Erro ao atualizar nome");
+    },
   });
 
   const handleInvite = async () => {
@@ -66,6 +84,23 @@ export default function Usuarios() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleEditUser = (usuario) => {
+    setEditingUser(usuario);
+    setNewName(usuario.full_name || "");
+    setShowEditDialog(true);
+  };
+
+  const handleSaveName = () => {
+    if (!newName.trim()) {
+      setError("O nome não pode estar vazio");
+      return;
+    }
+    updateUserMutation.mutate({
+      id: editingUser.id,
+      data: { full_name: newName }
+    });
   };
 
   const filteredUsuarios = usuarios.filter(user => {
@@ -187,51 +222,61 @@ export default function Usuarios() {
                     <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Data de Cadastro</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredUsuarios.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsuarios.map((user) => (
-                      <TableRow key={user.id}>
+                    filteredUsuarios.map((usr) => (
+                      <TableRow key={usr.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                               <span className="text-purple-700 font-semibold">
-                                {user.full_name?.charAt(0).toUpperCase() || "?"}
+                                {usr.full_name?.charAt(0).toUpperCase() || "?"}
                               </span>
                             </div>
-                            <span className="font-medium">{user.full_name || "Sem nome"}</span>
+                            <span className="font-medium">{usr.full_name || "Sem nome"}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-gray-400" />
-                            {user.email}
+                            {usr.email}
                           </div>
                         </TableCell>
                         <TableCell>
                           <Badge className={
-                            user.role === "admin" 
+                            usr.role === "admin" 
                               ? "bg-purple-100 text-purple-800" 
                               : "bg-blue-100 text-blue-800"
                           }>
-                            {user.role === "admin" ? "Administrador" : "Usuário"}
+                            {usr.role === "admin" ? "Administrador" : "Usuário"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-gray-600">
-                          {new Date(user.created_date).toLocaleDateString('pt-BR')}
+                          {new Date(usr.created_date).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditUser(usr)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -296,6 +341,51 @@ export default function Usuarios() {
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 {sending ? "Enviando..." : "Enviar Convite"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Nome do Usuário</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              <div>
+                <Label>Nome Completo</Label>
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+
+              <div>
+                <Label>Email (não editável)</Label>
+                <Input
+                  value={editingUser?.email || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSaveName}
+                disabled={updateUserMutation.isLoading}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {updateUserMutation.isLoading ? "Salvando..." : "Salvar"}
               </Button>
             </DialogFooter>
           </DialogContent>
