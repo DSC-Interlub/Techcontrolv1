@@ -90,17 +90,26 @@ export default function Usuarios() {
     setEditingUser(usuario);
     setNewName(usuario.full_name || "");
     setShowEditDialog(true);
+    setError("");
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (!newName.trim()) {
       setError("O nome não pode estar vazio");
       return;
     }
-    updateUserMutation.mutate({
-      id: editingUser.id,
-      data: { full_name: newName }
-    });
+    
+    setError("");
+    
+    try {
+      await updateUserMutation.mutateAsync({
+        id: editingUser.id,
+        data: { full_name: newName }
+      });
+    } catch (err) {
+      console.error("Erro ao atualizar usuário:", err);
+      setError(err.message || "Erro ao atualizar o nome do usuário");
+    }
   };
 
   const filteredUsuarios = usuarios.filter(user => {
