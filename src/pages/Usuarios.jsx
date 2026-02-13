@@ -99,44 +99,21 @@ export default function Usuarios() {
 
   // Mutation para atualizar nome
   const updateNameMutation = useMutation({
-    mutationFn: async ({ userId, newName, isSelf, userEmail }) => {
-      if (isSelf) {
-        const result = await base44.auth.updateMe({ full_name: newName });
-        return result;
-      } else {
-        // Para outros usuários, buscar primeiro e depois atualizar
-        const allUsers = await base44.entities.User.list();
-        const targetUser = allUsers.find(u => u.id === userId);
-        
-        if (!targetUser) {
-          throw new Error("Usuário não encontrado");
-        }
-        
-        // Atualizar via SDK
-        const result = await base44.entities.User.update(userId, { 
-          full_name: newName,
-          email: targetUser.email
-        });
-        
-        return result;
-      }
+    mutationFn: async ({ userId, newName }) => {
+      return await base44.entities.User.update(userId, { nome_exibicao: newName });
     },
     onSuccess: (data) => {
       console.log("Nome atualizado:", data);
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
-      // Aguardar um pouco para o banco atualizar
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["usuarios"] });
-      }, 500);
       setShowEditDialog(false);
       setEditingUser(null);
       setEditName("");
-      setSuccess("Nome atualizado com sucesso!");
+      setSuccess("Nome de exibição atualizado com sucesso!");
       setTimeout(() => setSuccess(""), 5000);
     },
     onError: (err) => {
       console.error("Erro ao atualizar:", err);
-      setError("Erro ao atualizar nome. Apenas administradores podem editar outros usuários.");
+      setError("Erro ao atualizar nome de exibição.");
       setTimeout(() => setError(""), 5000);
     },
   });
@@ -153,7 +130,7 @@ export default function Usuarios() {
 
   const handleEdit = (usuario) => {
     setEditingUser(usuario);
-    setEditName(usuario.full_name || "");
+    setEditName(usuario.nome_exibicao || usuario.full_name || "");
     setShowEditDialog(true);
   };
 
@@ -164,13 +141,9 @@ export default function Usuarios() {
       return;
     }
 
-    const isSelf = editingUser.id === user.id;
-    console.log("Salvando edição:", { userId: editingUser.id, newName: editName, isSelf, userEmail: editingUser.email });
     updateNameMutation.mutate({
       userId: editingUser.id,
       newName: editName,
-      isSelf,
-      userEmail: editingUser.email,
     });
   };
 
@@ -320,10 +293,10 @@ export default function Usuarios() {
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                               <span className="text-blue-700 font-semibold text-sm">
-                                {usuario.full_name?.charAt(0)?.toUpperCase() || usuario.email?.charAt(0)?.toUpperCase() || "?"}
+                                {(usuario.nome_exibicao || usuario.full_name || usuario.email)?.charAt(0)?.toUpperCase() || "?"}
                               </span>
                             </div>
-                            <span>{usuario.full_name || usuario.email}</span>
+                            <span>{usuario.nome_exibicao || usuario.full_name || usuario.email}</span>
                           </div>
                         </TableCell>
                         <TableCell className="text-gray-600">{usuario.email}</TableCell>
@@ -423,18 +396,27 @@ export default function Usuarios() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Nome do Usuário</DialogTitle>
+            <DialogTitle>Editar Nome de Exibição</DialogTitle>
             <DialogDescription>
-              Altere o nome de exibição do usuário {editingUser?.email}
+              Este nome será exibido no sistema e nos chamados
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo</Label>
+              <Label htmlFor="email-display">Email</Label>
+              <Input
+                id="email-display"
+                value={editingUser?.email || ""}
+                disabled
+                className="bg-gray-50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome de Exibição</Label>
               <Input
                 id="name"
-                placeholder="Digite o nome completo"
+                placeholder="Digite o nome de exibição"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
