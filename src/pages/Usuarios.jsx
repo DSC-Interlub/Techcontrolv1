@@ -49,7 +49,12 @@ export default function Usuarios() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      console.log("Tentando atualizar usuário:", id, data);
+      const result = await base44.entities.User.update(id, data);
+      console.log("Resultado da atualização:", result);
+      return result;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       setShowEditDialog(false);
@@ -59,7 +64,9 @@ export default function Usuarios() {
       setTimeout(() => setSuccess(""), 5000);
     },
     onError: (err) => {
-      setError(err.message || "Erro ao atualizar nome");
+      console.error("Erro completo:", err);
+      alert("Erro ao atualizar: " + (err.message || JSON.stringify(err)));
+      setError(err.message || "Erro ao atualizar nome. Você precisa ser administrador para editar outros usuários.");
     },
   });
 
