@@ -95,13 +95,15 @@ export default function Chamados() {
     const dataHora = new Date().toISOString();
     let updateData = { ...selectedChamado, historico };
 
+    const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
+    
     // Detectar mudanças e adicionar ao histórico
     if (selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes) {
       historico.push({
         data_hora: dataHora,
         tipo: "observacao",
-        descricao: `Observação adicionada por ${currentUser.full_name}: ${selectedChamado.observacoes}`,
-        usuario: currentUser.full_name
+        descricao: `Observação adicionada por ${nomeExibicao}: ${selectedChamado.observacoes}`,
+        usuario: nomeExibicao
       });
     }
 
@@ -109,8 +111,8 @@ export default function Chamados() {
       historico.push({
         data_hora: dataHora,
         tipo: "solucao",
-        descricao: `Solução registrada por ${currentUser.full_name}: ${selectedChamado.solucao}`,
-        usuario: currentUser.full_name
+        descricao: `Solução registrada por ${nomeExibicao}: ${selectedChamado.solucao}`,
+        usuario: nomeExibicao
       });
     }
 
@@ -119,7 +121,7 @@ export default function Chamados() {
         data_hora: dataHora,
         tipo: "responsavel",
         descricao: `Responsável alterado para: ${selectedChamado.responsavel}`,
-        usuario: currentUser.full_name
+        usuario: nomeExibicao
       });
     }
 
@@ -184,11 +186,13 @@ export default function Chamados() {
     const agora = new Date().toISOString();
     const historico = chamado.historico || [];
     
+    const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
+    
     historico.push({
       data_hora: agora,
       tipo: "inicio_atendimento",
-      descricao: `Atendimento iniciado por ${currentUser.full_name}`,
-      usuario: currentUser.full_name
+      descricao: `Atendimento iniciado por ${nomeExibicao}`,
+      usuario: nomeExibicao
     });
 
     updateChamadoMutation.mutate({
@@ -197,7 +201,7 @@ export default function Chamados() {
         ...chamado,
         data_inicio_atendimento: agora,
         status: "Em Andamento",
-        responsavel: currentUser.full_name,
+        responsavel: nomeExibicao,
         historico
       }
     });
@@ -220,11 +224,13 @@ export default function Chamados() {
       tempo_resolucao_minutos = Math.round(diffMs / (1000 * 60));
     }
 
+    const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
+    
     historico.push({
       data_hora: agora,
       tipo: "conclusao",
-      descricao: `Atendimento finalizado por ${currentUser.full_name}. Aguardando avaliação do solicitante.`,
-      usuario: currentUser.full_name
+      descricao: `Atendimento finalizado por ${nomeExibicao}. Aguardando avaliação do solicitante.`,
+      usuario: nomeExibicao
     });
 
     updateChamadoMutation.mutate({
@@ -950,8 +956,8 @@ export default function Chamados() {
                     </SelectTrigger>
                     <SelectContent>
                       {usuarios.map((usr) => (
-                        <SelectItem key={usr.id} value={usr.full_name}>
-                          {usr.full_name}
+                        <SelectItem key={usr.id} value={usr.nome_exibicao || usr.full_name}>
+                          {usr.nome_exibicao || usr.full_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
