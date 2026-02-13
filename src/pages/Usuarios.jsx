@@ -114,13 +114,14 @@ export default function Usuarios() {
     setError("");
     
     try {
+      const isSelf = editingUser.id === user.id;
       await updateUserMutation.mutateAsync({
-        email: editingUser.email,
-        full_name: newName
+        id: editingUser.id,
+        full_name: newName,
+        isSelf
       });
     } catch (err) {
       console.error("Erro ao atualizar usuário:", err);
-      setError(err.message || "Erro ao atualizar o nome do usuário");
     }
   };
 
