@@ -1,303 +1,335 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Mail, Shield, Edit } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Users, UserPlus, Edit, Search, Shield, User, CheckCircle, XCircle } from "lucide-react";
 
 export default function Usuarios() {
-  const [showForm, setShowForm] = useState(false);
-  const [emailConvite, setEmailConvite] = useState("");
-  const [roleConvite, setRoleConvite] = useState("user");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("all");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [sending, setSending] = useState(false);
-  const [user, setUser] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [editingUser, setEditingUser] = useState(null);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [newName, setNewName] = useState("");
   const queryClient = useQueryClient();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Estados para convidar usuário
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("user");
+
+  // Estados para editar usuário
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editName, setEditName] = useState("");
+
+  // Estados para busca e filtro
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+
+  // Mensagens
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  // Carregar usuário atual
   React.useEffect(() => {
-    const checkAuth = async () => {
+    const loadUser = async () => {
       try {
         const currentUser = await base44.auth.me();
         setUser(currentUser);
-      } catch (error) {
+      } catch (err) {
+        console.error("Erro ao carregar usuário:", err);
         base44.auth.redirectToLogin();
       } finally {
         setLoading(false);
       }
     };
-    checkAuth();
+    loadUser();
   }, []);
 
-  const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => base44.entities.User.list('-created_date'),
+  // Buscar lista de usuários
+  const { data: usuarios = [], isLoading: loadingUsers } = useQuery({
+    queryKey: ["usuarios"],
+    queryFn: () => base44.entities.User.list(),
     enabled: !!user,
   });
 
-  const updateUserMutation = useMutation({
-    mutationFn: async ({ id, full_name, isSelf }) => {
-      console.log("Atualizando usuário:", { id, full_name, isSelf });
-      
-      if (isSelf) {
-        // Atualizar próprio usuário usando updateMe
-        return await base44.auth.updateMe({ full_name });
-      } else {
-        // Tentar atualizar outro usuário (precisa ser admin)
-        return await base44.entities.User.update(id, { full_name });
-      }
+  // Mutation para convidar usuário
+  const inviteMutation = useMutation({
+    mutationFn: async ({ email, role }) => {
+      return await base44.users.inviteUser(email, role);
     },
-    onSuccess: (data) => {
-      console.log("Atualizado com sucesso:", data);
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setShowEditDialog(false);
-      setEditingUser(null);
-      setNewName("");
-      setSuccess("Nome do usuário atualizado com sucesso!");
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      setShowInviteDialog(false);
+      setInviteEmail("");
+      setInviteRole("user");
+      setSuccess("Usuário convidado com sucesso!");
       setTimeout(() => setSuccess(""), 5000);
     },
     onError: (err) => {
-      console.error("Erro completo:", err);
-      setError("Erro ao atualizar nome. Apenas administradores podem editar outros usuários.");
+      setError(err.message || "Erro ao convidar usuário");
+      setTimeout(() => setError(""), 5000);
     },
   });
 
-  const handleInvite = async () => {
-    if (!emailConvite) {
-      setError("Por favor, insira um email");
-      return;
-    }
-
-    try {
-      setSending(true);
-      setError("");
-      await base44.users.inviteUser(emailConvite, roleConvite);
-      setSuccess(`Convite enviado para ${emailConvite}! O usuário receberá um email para criar sua senha.`);
-      setEmailConvite("");
-      setRoleConvite("user");
-      setShowForm(false);
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+  // Mutation para atualizar nome
+  const updateNameMutation = useMutation({
+    mutationFn: async ({ userId, newName, isSelf }) => {
+      if (isSelf) {
+        return await base44.auth.updateMe({ full_name: newName });
+      } else {
+        return await base44.entities.User.update(userId, { full_name: newName });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      setShowEditDialog(false);
+      setEditingUser(null);
+      setEditName("");
+      setSuccess("Nome atualizado com sucesso!");
       setTimeout(() => setSuccess(""), 5000);
-    } catch (err) {
-      setError(err.message || "Erro ao enviar convite");
-    } finally {
-      setSending(false);
-    }
-  };
+    },
+    onError: (err) => {
+      setError("Erro ao atualizar nome. Apenas administradores podem editar outros usuários.");
+      setTimeout(() => setError(""), 5000);
+    },
+  });
 
-  const handleEditUser = (usuario) => {
-    setEditingUser(usuario);
-    setNewName(usuario.full_name || "");
-    setShowEditDialog(true);
-    setError("");
-  };
-
-  const handleSaveName = async () => {
-    if (!newName.trim()) {
-      setError("O nome não pode estar vazio");
+  // Handlers
+  const handleInvite = () => {
+    if (!inviteEmail.trim()) {
+      setError("Digite um email válido");
+      setTimeout(() => setError(""), 3000);
       return;
     }
-    
-    setError("");
-    
-    try {
-      const isSelf = editingUser.id === user.id;
-      await updateUserMutation.mutateAsync({
-        id: editingUser.id,
-        full_name: newName,
-        isSelf
-      });
-    } catch (err) {
-      console.error("Erro ao atualizar usuário:", err);
-    }
+    inviteMutation.mutate({ email: inviteEmail, role: inviteRole });
   };
 
-  const filteredUsuarios = usuarios.filter(user => {
-    const matchesSearch = 
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = filterRole === "all" || user.role === filterRole;
-    
+  const handleEdit = (usuario) => {
+    setEditingUser(usuario);
+    setEditName(usuario.full_name || "");
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editName.trim()) {
+      setError("O nome não pode estar vazio");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    const isSelf = editingUser.id === user.id;
+    updateNameMutation.mutate({
+      userId: editingUser.id,
+      newName: editName,
+      isSelf,
+    });
+  };
+
+  // Filtrar usuários
+  const filteredUsers = usuarios.filter((u) => {
+    const matchesSearch =
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
+  // Estatísticas
   const stats = {
     total: usuarios.length,
-    admins: usuarios.filter(u => u.role === "admin").length,
-    users: usuarios.filter(u => u.role === "user").length,
+    admins: usuarios.filter((u) => u.role === "admin").length,
+    users: usuarios.filter((u) => u.role === "user").length,
   };
 
-  if (loading) {
+  if (loading || loadingUsers) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando usuários...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Shield className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Usuários do Sistema</h1>
-              <p className="text-gray-500 mt-1">Gerenciar acesso de administradores e usuários</p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Cabeçalho */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <Users className="w-8 h-8 text-blue-600" />
+              Gerenciamento de Usuários
+            </h1>
+            <p className="text-gray-600 mt-1">Gerencie os usuários do sistema</p>
           </div>
           <Button
-            onClick={() => setShowForm(true)}
-            className="bg-purple-600 hover:bg-purple-700"
+            onClick={() => setShowInviteDialog(true)}
+            className="bg-blue-600 hover:bg-blue-700"
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Convidar Usuário
           </Button>
         </div>
 
+        {/* Mensagens */}
         {success && (
-          <Alert className="mb-6 bg-green-50 border-green-200">
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">{success}</AlertDescription>
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {error && (
+          <Alert className="border-red-200 bg-red-50">
+            <XCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Estatísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Total de Usuários</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
-              </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Total de Usuários</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
             </CardContent>
           </Card>
+
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Administradores</p>
-                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.admins}</p>
-              </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Administradores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">{stats.admins}</div>
             </CardContent>
           </Card>
+
           <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Usuários</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.users}</p>
-              </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Usuários</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{stats.users}</div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Filtros */}
         <Card>
-          <CardHeader className="border-b">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle>Lista de Usuários ({filteredUsuarios.length})</CardTitle>
-              <div className="flex gap-3 w-full md:w-auto">
+          <CardHeader>
+            <CardTitle>Lista de Usuários</CardTitle>
+            <CardDescription>Visualize e gerencie todos os usuários do sistema</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Buscar por nome ou email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full md:w-64"
+                  className="pl-10"
                 />
-                <Select value={filterRole} onValueChange={setFilterRole}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="admin">Admins</SelectItem>
-                    <SelectItem value="user">Usuários</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Filtrar por role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="admin">Administradores</SelectItem>
+                  <SelectItem value="user">Usuários</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
+
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Função</TableHead>
-                    <TableHead>Data de Cadastro</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        Carregando...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredUsuarios.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsuarios.map((usr) => (
-                      <TableRow key={usr.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-purple-700 font-semibold">
-                                {usr.full_name?.charAt(0).toUpperCase() || "?"}
+                    filteredUsers.map((usuario) => (
+                      <TableRow key={usuario.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-700 font-semibold text-sm">
+                                {usuario.full_name?.charAt(0)?.toUpperCase() || usuario.email?.charAt(0)?.toUpperCase() || "?"}
                               </span>
                             </div>
-                            <span className="font-medium">{usr.full_name || "Sem nome"}</span>
+                            <span>{usuario.full_name || usuario.email}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-gray-600">{usuario.email}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            {usr.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            usr.role === "admin" 
-                              ? "bg-purple-100 text-purple-800" 
-                              : "bg-blue-100 text-blue-800"
-                          }>
-                            {usr.role === "admin" ? "Administrador" : "Usuário"}
+                          <Badge
+                            variant={usuario.role === "admin" ? "default" : "secondary"}
+                            className={usuario.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
+                          >
+                            {usuario.role === "admin" ? (
+                              <>
+                                <Shield className="w-3 h-3 mr-1" />
+                                Admin
+                              </>
+                            ) : (
+                              <>
+                                <User className="w-3 h-3 mr-1" />
+                                Usuário
+                              </>
+                            )}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {new Date(usr.created_date).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
-                            size="sm"
                             variant="ghost"
-                            onClick={() => handleEditUser(usr)}
+                            size="sm"
+                            onClick={() => handleEdit(usuario)}
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-4 h-4 mr-1" />
+                            Editar Nome
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -308,111 +340,101 @@ export default function Usuarios() {
             </div>
           </CardContent>
         </Card>
-
-        <Dialog open={showForm} onOpenChange={setShowForm}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Convidar Usuário</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {error && (
-                <Alert className="bg-red-50 border-red-200">
-                  <AlertDescription className="text-red-800">{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertDescription className="text-blue-800 text-sm">
-                  Um email de convite será enviado para o usuário. Ele poderá definir sua própria senha ao aceitar o convite.
-                </AlertDescription>
-              </Alert>
-              
-              <div>
-                <Label>Email do Usuário</Label>
-                <Input
-                  type="email"
-                  placeholder="usuario@empresa.com"
-                  value={emailConvite}
-                  onChange={(e) => setEmailConvite(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label>Função no Sistema</Label>
-                <Select value={roleConvite} onValueChange={setRoleConvite}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">Usuário</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-2">
-                  Administradores têm acesso completo ao sistema.
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleInvite}
-                disabled={sending}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {sending ? "Enviando..." : "Enviar Convite"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar Nome do Usuário</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {error && (
-                <Alert className="bg-red-50 border-red-200">
-                  <AlertDescription className="text-red-800">{error}</AlertDescription>
-                </Alert>
-              )}
-              
-              <div>
-                <Label>Nome Completo</Label>
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Digite o nome completo"
-                />
-              </div>
-
-              <div>
-                <Label>Email (não editável)</Label>
-                <Input
-                  value={editingUser?.email || ""}
-                  disabled
-                  className="bg-gray-50"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleSaveName}
-                disabled={updateUserMutation.isLoading}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                {updateUserMutation.isLoading ? "Salvando..." : "Salvar"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Dialog: Convidar Usuário */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Convidar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Envie um convite por email para adicionar um novo usuário ao sistema
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="usuario@exemplo.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Tipo de Usuário</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Usuário</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowInviteDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleInvite}
+              disabled={inviteMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {inviteMutation.isPending ? "Enviando..." : "Enviar Convite"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar Nome */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Nome do Usuário</DialogTitle>
+            <DialogDescription>
+              Altere o nome de exibição do usuário {editingUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome Completo</Label>
+              <Input
+                id="name"
+                placeholder="Digite o nome completo"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateNameMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {updateNameMutation.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
