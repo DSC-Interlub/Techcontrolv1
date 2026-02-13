@@ -165,10 +165,12 @@ export default function Usuarios() {
     }
 
     const isSelf = editingUser.id === user.id;
+    console.log("Salvando edição:", { userId: editingUser.id, newName: editName, isSelf, userEmail: editingUser.email });
     updateNameMutation.mutate({
       userId: editingUser.id,
       newName: editName,
       isSelf,
+      userEmail: editingUser.email,
     });
   };
 
