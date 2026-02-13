@@ -120,23 +120,10 @@ export default function Usuarios() {
     setError("");
     
     try {
-      // Se estiver editando o próprio usuário, use updateMe
-      if (editingUser.id === user.id) {
-        await base44.auth.updateMe({ full_name: newName });
-      } else {
-        // Para editar outros usuários, precisa ser admin
-        await updateUserMutation.mutateAsync({
-          id: editingUser.id,
-          data: { full_name: newName }
-        });
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      setShowEditDialog(false);
-      setEditingUser(null);
-      setNewName("");
-      setSuccess("Nome do usuário atualizado com sucesso!");
-      setTimeout(() => setSuccess(""), 5000);
+      await updateUserMutation.mutateAsync({
+        email: editingUser.email,
+        full_name: newName
+      });
     } catch (err) {
       console.error("Erro ao atualizar usuário:", err);
       setError(err.message || "Erro ao atualizar o nome do usuário");
