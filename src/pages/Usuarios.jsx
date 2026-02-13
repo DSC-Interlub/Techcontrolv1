@@ -49,25 +49,19 @@ export default function Usuarios() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ email, full_name }) => {
-      console.log("Atualizando para:", email, full_name);
-      // Encontra o usuário pelo email e usa updateMe diretamente
-      const response = await fetch(`/api/apps/${base44.appId}/entities/User/${email}/update-name`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ full_name }),
-        credentials: 'include'
-      });
+    mutationFn: async ({ id, full_name, isSelf }) => {
+      console.log("Atualizando usuário:", { id, full_name, isSelf });
       
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar nome');
+      if (isSelf) {
+        // Atualizar próprio usuário usando updateMe
+        return await base44.auth.updateMe({ full_name });
+      } else {
+        // Tentar atualizar outro usuário (precisa ser admin)
+        return await base44.entities.User.update(id, { full_name });
       }
-      
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Atualizado com sucesso:", data);
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       setShowEditDialog(false);
       setEditingUser(null);
@@ -77,7 +71,7 @@ export default function Usuarios() {
     },
     onError: (err) => {
       console.error("Erro completo:", err);
-      setError(err.message || "Erro ao atualizar nome.");
+      setError("Erro ao atualizar nome. Apenas administradores podem editar outros usuários.");
     },
   });
 
