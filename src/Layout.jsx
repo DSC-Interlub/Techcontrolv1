@@ -127,7 +127,15 @@ export default function Layout({ children }) {
   const [currentUser, setCurrentUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
+  const isPublicPage = location.pathname.includes('/chamado-publico') || 
+                       location.pathname.includes('/reserva-publica') ||
+                       location.pathname.includes('/acompanhar-chamado');
+
   React.useEffect(() => {
+    if (isPublicPage) {
+      setLoading(false);
+      return;
+    }
     const loadUser = async () => {
       try {
         const user = await base44.auth.me();
@@ -139,7 +147,7 @@ export default function Layout({ children }) {
       }
     };
     loadUser();
-  }, []);
+  }, [isPublicPage]);
 
   const handleLogout = () => {
     if (window.confirm("Deseja realmente sair do sistema?")) {
