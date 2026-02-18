@@ -272,33 +272,34 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    await base44.entities.Chamados.update(chamado.id, {
+    const updatePromise = base44.entities.Chamados.update(chamado.id, {
       ...chamado,
       data_inicio_atendimento: agora,
       status: "Em Andamento",
       responsavel: nomeExibicao,
       historico
     });
+
+    const emailPromise = chamado.solicitante_email
+      ? base44.functions.invoke('sendEmail', {
+          to: chamado.solicitante_email,
+          subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
+          html: buildEmailHtml({
+            titulo: '🔧 Em Andamento',
+            corTitulo: '#2563eb',
+            nome: chamado.solicitante_nome,
+            numero: chamado.numero_chamado,
+            mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
+            detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
+            linkAcompanhar: `https://techcontrol.site/chamado-publico`,
+            rodapeExtra: `Use o número <strong>${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
+          })
+        })
+      : Promise.resolve();
+
+    await Promise.all([updatePromise, emailPromise]);
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
-
-    if (chamado.solicitante_email) {
-      const linkAcompanhar = `https://www.techcontrol.site${createPageUrl('acompanhar-chamado')}?numero=${chamado.numero_chamado}`;
-      await base44.functions.invoke('sendEmail', {
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
-        html: buildEmailHtml({
-          titulo: '🔧 Em Andamento',
-          corTitulo: '#2563eb',
-          nome: chamado.solicitante_nome,
-          numero: chamado.numero_chamado,
-          mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
-          detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
-          linkAcompanhar,
-          rodapeExtra: `Use o número <strong>${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
-        })
-      });
-    }
   };
 
   const handleFinalizarAtendimento = async (chamado) => {
