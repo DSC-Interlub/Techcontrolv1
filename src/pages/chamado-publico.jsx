@@ -512,22 +512,37 @@ export default function ChamadoPublico() {
 
               <div className="border-t pt-5 mt-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Seus Dados</h3>
-                <div>
-                  <Label>Nome Completo *</Label>
-                  <Combobox
-                    value={formData.solicitante_nome}
-                    onValueChange={handleSelectUsuario}
-                    options={colaboradores
-                      .filter(c => c.status === "Ativo")
-                      .map(c => ({
-                        value: c.nome_completo,
-                        label: `${c.nome_completo} - ${c.area}`
-                      }))}
-                    placeholder="Selecione seu nome"
-                    searchPlaceholder="Buscar colaborador..."
-                    emptyText="Nenhum colaborador encontrado"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Seus dados de contato serão preenchidos automaticamente</p>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Nome Completo *</Label>
+                    <Combobox
+                      value={formData.solicitante_nome}
+                      onValueChange={handleSelectUsuario}
+                      options={colaboradores
+                        .filter(c => c.status === "Ativo")
+                        .map(c => ({
+                          value: c.nome_completo,
+                          label: `${c.nome_completo} - ${c.area}`
+                        }))}
+                      placeholder="Selecione seu nome"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Seus dados de contato serão preenchidos automaticamente</p>
+                  </div>
+                  {formData.solicitante_nome && (
+                    <div>
+                      <Label>E-mail para notificações *</Label>
+                      <Input
+                        type="email"
+                        required
+                        placeholder="seu@email.com"
+                        value={formData.solicitante_email}
+                        onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Você receberá atualizações do chamado neste e-mail</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
