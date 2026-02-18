@@ -88,7 +88,7 @@ export default function Chamados() {
     setShowDetails(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedChamado || !originalChamado || !currentUser) return;
 
     const historico = selectedChamado.historico || [];
