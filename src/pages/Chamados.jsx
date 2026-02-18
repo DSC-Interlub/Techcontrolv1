@@ -232,14 +232,11 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
-      console.log("=== ENVIANDO EMAIL INICIO ATENDIMENTO ===");
-      console.log("Para:", chamado.solicitante_email);
-      const emailRes = await base44.integrations.Core.SendEmail({
+      await base44.integrations.Core.SendEmail({
         to: chamado.solicitante_email,
-        subject: `Seu chamado ${chamado.numero_chamado} esta em andamento`,
-        body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} foi iniciado por ${nomeExibicao} em ${new Date(agora).toLocaleString('pt-BR')}.`
+        subject: `Chamado ${chamado.numero_chamado} em andamento`,
+        body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} esta sendo atendido por ${nomeExibicao}.`
       });
-      console.log("=== RESULTADO EMAIL:", emailRes);
     }
   };
 
