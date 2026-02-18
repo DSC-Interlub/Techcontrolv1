@@ -1,9 +1,21 @@
 Deno.serve(async (req) => {
   try {
-    const { to, subject, body } = await req.json();
+    const { to, subject, body, html } = await req.json();
 
-    if (!to || !subject || !body) {
+    if (!to || !subject || (!body && !html)) {
       return Response.json({ error: 'Parametros obrigatorios: to, subject, body' }, { status: 400 });
+    }
+
+    const emailPayload = {
+      from: 'TechControl <no-reply@techcontrol.site>',
+      to: [to],
+      subject,
+    };
+
+    if (html) {
+      emailPayload.html = html;
+    } else {
+      emailPayload.text = body;
     }
 
     const response = await fetch('https://api.resend.com/emails', {
@@ -12,12 +24,7 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: 'TechControl <no-reply@techcontrol.site>',
-        to: [to],
-        subject,
-        text: body,
-      }),
+      body: JSON.stringify(emailPayload),
     });
 
     const result = await response.json();
