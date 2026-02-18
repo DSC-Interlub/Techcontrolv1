@@ -77,7 +77,10 @@ export default function ChamadoPublico() {
     }
   }, [success, countdown]);
 
+  const queryOptions = { retry: false, throwOnError: false };
+
   const { data: colaboradores = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['colaboradores_chamado'],
     queryFn: async () => {
       try { return await base44.entities.Colaboradores.list(); } catch { return []; }
@@ -86,6 +89,7 @@ export default function ChamadoPublico() {
 
   // Buscar todos os equipamentos
   const { data: pcsInternos = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['pcs_internos_publico'],
     queryFn: async () => {
       try { return await base44.entities.PCs_Internos.list(); } catch { return []; }
@@ -93,6 +97,7 @@ export default function ChamadoPublico() {
   });
 
   const { data: notebooksExternos = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['notebooks_externos_publico'],
     queryFn: async () => {
       try { return await base44.entities.Notebooks_Externos.list(); } catch { return []; }
@@ -100,6 +105,7 @@ export default function ChamadoPublico() {
   });
 
   const { data: smartphones = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['smartphones_publico'],
     queryFn: async () => {
       try { return await base44.entities.Smartphones.list(); } catch { return []; }
@@ -107,6 +113,7 @@ export default function ChamadoPublico() {
   });
 
   const { data: cameras = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['cameras_publico'],
     queryFn: async () => {
       try { return await base44.entities.Cameras.list(); } catch { return []; }
@@ -114,6 +121,7 @@ export default function ChamadoPublico() {
   });
 
   const { data: coletores = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['coletores_publico'],
     queryFn: async () => {
       try { return await base44.entities.Coletores.list(); } catch { return []; }
@@ -121,6 +129,7 @@ export default function ChamadoPublico() {
   });
 
   const { data: canetasVibracao = [] } = useQuery({
+    ...queryOptions,
     queryKey: ['canetas_vibracao_publico'],
     queryFn: async () => {
       try { return await base44.entities.Canetas_Vibracao.list(); } catch { return []; }
