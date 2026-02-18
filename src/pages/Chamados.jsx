@@ -211,8 +211,7 @@ export default function Chamados() {
     }
 
     const agora = new Date().toISOString();
-    const historico = chamado.historico || [];
-    
+    const historico = [...(chamado.historico || [])];
     const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
     
     historico.push({
@@ -222,23 +221,20 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    updateChamadoMutation.mutate({
-      id: chamado.id,
-      data: {
-        ...chamado,
-        data_inicio_atendimento: agora,
-        status: "Em Andamento",
-        responsavel: nomeExibicao,
-        historico
-      }
+    await base44.entities.Chamados.update(chamado.id, {
+      ...chamado,
+      data_inicio_atendimento: agora,
+      status: "Em Andamento",
+      responsavel: nomeExibicao,
+      historico
     });
+    queryClient.invalidateQueries({ queryKey: ['chamados'] });
+    setShowDetails(false);
 
-    // Enviar e-mail ao solicitante informando início do atendimento
     if (chamado.solicitante_email) {
       try {
         await base44.integrations.Core.SendEmail({
           to: chamado.solicitante_email,
-          from_name: nomeExibicao,
           subject: `🔧 Seu chamado ${chamado.numero_chamado} está em andamento`,
           body: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
@@ -248,13 +244,11 @@ export default function Chamados() {
               <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
                 <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
                 <p style="color: #374151;">Sua solicitação está sendo atendida.</p>
-
                 <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
                   <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Chamado:</strong> ${chamado.numero_chamado}</p>
                   <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Responsável:</strong> ${nomeExibicao}</p>
                   <p style="color: #1d4ed8; font-size: 13px; margin: 0;"><strong>Início:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
                 </div>
-
                 <p style="color: #6b7280; font-size: 13px;">Você será notificado quando o atendimento for concluído.</p>
               </div>
             </div>
