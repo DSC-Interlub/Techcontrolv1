@@ -277,9 +277,6 @@ export default function ChamadoPublico() {
               </div>
             `
           });
-        } catch (e) {
-          console.error("Erro ao enviar e-mail de abertura:", e);
-        }
       }
 
       return { chamado, numeroChamado };
