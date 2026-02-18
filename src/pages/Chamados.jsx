@@ -88,7 +88,7 @@ export default function Chamados() {
     setShowDetails(true);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = async () => { // eslint-disable-line
     if (!selectedChamado || !originalChamado || !currentUser) return;
 
     const historico = selectedChamado.historico || [];
