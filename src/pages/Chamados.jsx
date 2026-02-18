@@ -232,31 +232,14 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
-      try {
-        await base44.integrations.Core.SendEmail({
-          to: chamado.solicitante_email,
-          subject: `🔧 Seu chamado ${chamado.numero_chamado} está em andamento`,
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-              <div style="background-color: #2563eb; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 22px;">Atendimento Iniciado!</h1>
-              </div>
-              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
-                <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
-                <p style="color: #374151;">Sua solicitação está sendo atendida.</p>
-                <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                  <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Chamado:</strong> ${chamado.numero_chamado}</p>
-                  <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Responsável:</strong> ${nomeExibicao}</p>
-                  <p style="color: #1d4ed8; font-size: 13px; margin: 0;"><strong>Início:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
-                </div>
-                <p style="color: #6b7280; font-size: 13px;">Você será notificado quando o atendimento for concluído.</p>
-              </div>
-            </div>
-          `
-        });
-      } catch (e) {
-        console.error("Erro ao enviar e-mail de início:", e);
-      }
+      console.log("=== ENVIANDO EMAIL INICIO ATENDIMENTO ===");
+      console.log("Para:", chamado.solicitante_email);
+      const emailRes = await base44.integrations.Core.SendEmail({
+        to: chamado.solicitante_email,
+        subject: `Seu chamado ${chamado.numero_chamado} esta em andamento`,
+        body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} foi iniciado por ${nomeExibicao} em ${new Date(agora).toLocaleString('pt-BR')}.`
+      });
+      console.log("=== RESULTADO EMAIL:", emailRes);
     }
   };
 
