@@ -215,41 +215,39 @@ export default function ChamadoPublico() {
 
       // Enviar e-mail de confirmação de abertura do chamado
       if (data.solicitante_email) {
-        try {
-          await base44.integrations.Core.SendEmail({
-            to: data.solicitante_email,
-            subject: `✅ Chamado ${numeroChamado} aberto com sucesso`,
-            body: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-                <div style="background-color: #ea580c; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-                  <h1 style="color: white; margin: 0; font-size: 22px;">Chamado Aberto com Sucesso!</h1>
-                </div>
-                <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
-                  <p style="color: #374151; font-size: 16px;">Olá, <strong>${data.solicitante_nome}</strong>!</p>
-                  <p style="color: #374151;">Seu chamado foi aberto e nossa equipe irá atendê-lo em breve.</p>
-                  <div style="background-color: #fff7ed; border: 2px solid #fdba74; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
-                    <p style="color: #9a3412; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">⚠️ GUARDE ESTE NÚMERO</p>
-                    <p style="color: #1f2937; font-size: 32px; font-weight: bold; font-family: monospace; margin: 0;">${numeroChamado}</p>
-                    <p style="color: #9a3412; font-size: 11px; margin: 8px 0 0 0;">Use este número para acompanhar seu chamado</p>
-                  </div>
-                  <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-                    <tr style="background-color: #f3f4f6;">
-                      <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; width: 40%;">Tipo</td>
-                      <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${data.tipo_solicitacao}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Urgência</td>
-                      <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${data.urgencia}</td>
-                    </tr>
-                  </table>
-                  <p style="color: #6b7280; font-size: 13px;">Você receberá uma notificação assim que o atendimento for iniciado.</p>
-                </div>
+        console.log("Tentando enviar e-mail para:", data.solicitante_email);
+        const emailResult = await base44.integrations.Core.SendEmail({
+          to: data.solicitante_email,
+          subject: `✅ Chamado ${numeroChamado} aberto com sucesso`,
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+              <div style="background-color: #ea580c; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Chamado Aberto com Sucesso!</h1>
               </div>
-            `
-          });
-        } catch (e) {
-          console.error("Erro ao enviar e-mail de confirmação:", e);
-        }
+              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+                <p style="color: #374151; font-size: 16px;">Olá, <strong>${data.solicitante_nome}</strong>!</p>
+                <p style="color: #374151;">Seu chamado foi aberto e nossa equipe irá atendê-lo em breve.</p>
+                <div style="background-color: #fff7ed; border: 2px solid #fdba74; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+                  <p style="color: #9a3412; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">GUARDE ESTE NÚMERO</p>
+                  <p style="color: #1f2937; font-size: 32px; font-weight: bold; font-family: monospace; margin: 0;">${numeroChamado}</p>
+                  <p style="color: #9a3412; font-size: 11px; margin: 8px 0 0 0;">Use este número para acompanhar seu chamado</p>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                  <tr style="background-color: #f3f4f6;">
+                    <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; width: 40%;">Tipo</td>
+                    <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${data.tipo_solicitacao}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Urgencia</td>
+                    <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${data.urgencia}</td>
+                  </tr>
+                </table>
+                <p style="color: #6b7280; font-size: 13px;">Voce recebera uma notificacao assim que o atendimento for iniciado.</p>
+              </div>
+            </div>
+          `
+        });
+        console.log("E-mail enviado com sucesso:", emailResult);
       }
 
       return { chamado, numeroChamado };
