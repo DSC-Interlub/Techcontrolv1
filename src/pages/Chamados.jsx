@@ -258,7 +258,7 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
+      await base44.functions.invoke('sendEmail', {
         to: chamado.solicitante_email,
         subject: `Chamado ${chamado.numero_chamado} finalizado`,
         body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} foi finalizado por ${nomeExibicao}. Por favor avalie o atendimento acessando: ${window.location.origin}${createPageUrl('acompanhar-chamado')} (use o numero ${chamado.numero_chamado}).`
