@@ -364,12 +364,13 @@ export default function Chamados() {
           to: chamado.solicitante_email,
           subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
           html: buildEmailHtml({
-            titulo: '✅ Chamado Concluído',
+            titulo: 'Chamado Concluído',
+            icone: '✅',
             corTitulo: '#16a34a',
             nome: chamado.solicitante_nome,
             numero: chamado.numero_chamado,
             mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
-            detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br>${chamado.solucao}` : `<strong>Responsável:</strong> ${nomeExibicao}`,
+            detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br><span style="color:#374151;">${chamado.solucao}</span>` : `<strong>Responsável:</strong> ${nomeExibicao}`,
             linkAcompanhar: `https://techcontrol.site/chamado-publico`,
             rodapeExtra: 'Clique no botão acima para avaliar o atendimento. Sua opinião é muito importante para nós!'
           })
