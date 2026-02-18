@@ -213,7 +213,7 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
+      await base44.functions.invoke('sendEmail', {
         to: chamado.solicitante_email,
         subject: `Chamado ${chamado.numero_chamado} em andamento`,
         body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} esta sendo atendido por ${nomeExibicao}.`
