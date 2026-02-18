@@ -224,7 +224,7 @@ export default function ChamadoPublico() {
 
       // Enviar e-mail de confirmação de abertura do chamado
       if (data.solicitante_email) {
-        await base44.integrations.Core.SendEmail({
+        await base44.functions.invoke('sendEmail', {
           to: data.solicitante_email,
           subject: `Chamado ${numeroChamado} aberto com sucesso`,
           body: `Ola ${data.solicitante_nome}, seu chamado foi aberto com sucesso.\n\nNumero do chamado: ${numeroChamado}\nTipo: ${data.tipo_solicitacao}\nUrgencia: ${data.urgencia}\n\nGuarde este numero para acompanhar o status do seu chamado.`
