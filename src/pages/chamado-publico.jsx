@@ -613,21 +613,19 @@ export default function ChamadoPublico() {
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  <label htmlFor="file-upload">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      disabled={uploading}
-                      onClick={() => document.getElementById('file-upload').click()}
-                    >
-                      {uploading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Fazendo upload...</>
-                      ) : (
-                        <><Upload className="w-4 h-4 mr-2" />Adicionar Arquivos</>
-                      )}
-                    </Button>
-                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={uploading}
+                    onClick={() => document.getElementById('file-upload').click()}
+                  >
+                    {uploading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Fazendo upload...</>
+                    ) : (
+                      <><Upload className="w-4 h-4 mr-2" />Adicionar Arquivos</>
+                    )}
+                  </Button>
                   <p className="text-xs text-gray-500 mt-1">Imagens e vídeos que ajudem a entender o problema</p>
                 </div>
 
