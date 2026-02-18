@@ -338,7 +338,7 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
-      const linkAvaliar = `${window.location.origin}${createPageUrl('acompanhar-chamado')}?numero=${chamado.numero_chamado}`;
+      const linkAvaliar = `https://www.techcontrol.site${createPageUrl('acompanhar-chamado')}?numero=${chamado.numero_chamado}`;
       await base44.functions.invoke('sendEmail', {
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
