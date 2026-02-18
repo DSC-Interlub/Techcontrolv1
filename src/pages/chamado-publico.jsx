@@ -236,11 +236,10 @@ export default function ChamadoPublico() {
       });
 
       // Enviar e-mail de confirmação para o solicitante
-      if (data.solicitante_email) {
-        try {
-          await base44.integrations.Core.SendEmail({
-            to: data.solicitante_email,
-            subject: `✅ Chamado ${numeroChamado} aberto com sucesso`,
+      if (data.solicitante_email && data.solicitante_email.trim() !== "") {
+        await base44.integrations.Core.SendEmail({
+            to: data.solicitante_email.trim(),
+            subject: `Chamado ${numeroChamado} aberto com sucesso`,
             body: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
                 <div style="background-color: #ea580c; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
