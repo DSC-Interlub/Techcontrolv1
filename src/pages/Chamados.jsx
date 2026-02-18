@@ -328,10 +328,20 @@ export default function Chamados() {
     setShowDetails(false);
 
     if (chamado.solicitante_email) {
+      const linkAvaliar = `${window.location.origin}${createPageUrl('acompanhar-chamado')}?numero=${chamado.numero_chamado}`;
       await base44.functions.invoke('sendEmail', {
         to: chamado.solicitante_email,
-        subject: `Chamado ${chamado.numero_chamado} finalizado`,
-        body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} foi finalizado por ${nomeExibicao}. Por favor avalie o atendimento acessando: ${window.location.origin}${createPageUrl('acompanhar-chamado')} (use o numero ${chamado.numero_chamado}).`
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
+        html: buildEmailHtml({
+          titulo: '✅ Chamado Concluído',
+          corTitulo: '#16a34a',
+          nome: chamado.solicitante_nome,
+          numero: chamado.numero_chamado,
+          mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
+          detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br>${chamado.solucao}` : `<strong>Responsável:</strong> ${nomeExibicao}`,
+          linkAcompanhar: linkAvaliar,
+          rodapeExtra: 'Clique no botão acima para avaliar o atendimento. Sua opinião é muito importante para nós!'
+        })
       });
     }
   };
