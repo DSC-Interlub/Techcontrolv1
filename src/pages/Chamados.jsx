@@ -276,43 +276,12 @@ export default function Chamados() {
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
 
-    // Enviar e-mail ao solicitante informando conclusão
     if (chamado.solicitante_email) {
-      try {
-        await base44.integrations.Core.SendEmail({
-          to: chamado.solicitante_email,
-          from_name: nomeExibicao,
-          subject: `✅ Seu chamado ${chamado.numero_chamado} foi finalizado`,
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-              <div style="background-color: #16a34a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 22px;">Chamado Finalizado!</h1>
-              </div>
-              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
-                <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
-                <p style="color: #374151;">Seu chamado foi concluído pelo responsável <strong>${nomeExibicao}</strong>.</p>
-
-                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                  <p style="color: #15803d; font-size: 13px; margin: 0 0 4px 0;"><strong>Chamado:</strong> ${chamado.numero_chamado}</p>
-                  <p style="color: #15803d; font-size: 13px; margin: 0 0 4px 0;"><strong>Responsável:</strong> ${nomeExibicao}</p>
-                  ${chamado.solucao ? `<p style="color: #15803d; font-size: 13px; margin: 0;"><strong>Solução:</strong> ${chamado.solucao}</p>` : ''}
-                </div>
-
-                <p style="color: #374151; font-size: 14px;">Por favor, <strong>avalie o atendimento</strong> acessando o link abaixo:</p>
-                <div style="text-align: center; margin: 20px 0;">
-                  <a href="${window.location.origin}${createPageUrl('acompanhar-chamado')}" 
-                    style="background-color: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
-                    Avaliar Atendimento
-                  </a>
-                </div>
-                <p style="color: #6b7280; font-size: 12px; text-align: center;">Use o número <strong>${chamado.numero_chamado}</strong> para acessar sua avaliação</p>
-              </div>
-            </div>
-          `
-        });
-      } catch (e) {
-        console.error("Erro ao enviar e-mail de finalização:", e);
-      }
+      await base44.integrations.Core.SendEmail({
+        to: chamado.solicitante_email,
+        subject: `Chamado ${chamado.numero_chamado} finalizado`,
+        body: `Ola ${chamado.solicitante_nome}, seu chamado ${chamado.numero_chamado} foi finalizado por ${nomeExibicao}. Por favor avalie o atendimento acessando: ${window.location.origin}${createPageUrl('acompanhar-chamado')} (use o numero ${chamado.numero_chamado}).`
+      });
     }
   };
 
