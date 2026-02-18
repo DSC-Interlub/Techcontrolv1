@@ -127,7 +127,7 @@ export default function Chamados() {
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
+      await base44.functions.invoke('sendEmail', {
         to: selectedChamado.solicitante_email,
         subject: `Nova observacao no chamado ${selectedChamado.numero_chamado}`,
         body: `Ola ${selectedChamado.solicitante_nome}, ${nomeExibicao} adicionou uma observacao ao seu chamado ${selectedChamado.numero_chamado}:\n\n${selectedChamado.observacoes}`
