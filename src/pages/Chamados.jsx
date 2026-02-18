@@ -127,7 +127,7 @@ export default function Chamados() {
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      const linkAcompanhar = `${window.location.origin}${createPageUrl('acompanhar-chamado')}?numero=${selectedChamado.numero_chamado}`;
+      const linkAcompanhar = `https://www.techcontrol.site${createPageUrl('acompanhar-chamado')}?numero=${selectedChamado.numero_chamado}`;
       await base44.functions.invoke('sendEmail', {
         to: selectedChamado.solicitante_email,
         subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
