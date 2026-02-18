@@ -130,12 +130,13 @@ export default function Chamados() {
           to: selectedChamado.solicitante_email,
           subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
           html: buildEmailHtml({
-            titulo: '📝 Nova Atualização',
+            titulo: 'Nova Atualização',
+            icone: '📝',
             corTitulo: '#d97706',
             nome: selectedChamado.solicitante_nome,
             numero: selectedChamado.numero_chamado,
             mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
-            detalheExtra: `<strong>Observação:</strong><br>${selectedChamado.observacoes}`,
+            detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
             linkAcompanhar: `https://techcontrol.site/chamado-publico`,
             rodapeExtra: null
           })
