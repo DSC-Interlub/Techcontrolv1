@@ -123,26 +123,27 @@ export default function Chamados() {
       });
     }
 
-    await base44.entities.Chamados.update(selectedChamado.id, updateData);
-    queryClient.invalidateQueries({ queryKey: ['chamados'] });
+    const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    if (observacaoAlterada && selectedChamado.solicitante_email) {
-      const linkAcompanhar = `https://www.techcontrol.site${createPageUrl('acompanhar-chamado')}?numero=${selectedChamado.numero_chamado}`;
-      await base44.functions.invoke('sendEmail', {
-        to: selectedChamado.solicitante_email,
-        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
-        html: buildEmailHtml({
-          titulo: '📝 Nova Atualização',
-          corTitulo: '#d97706',
-          nome: selectedChamado.solicitante_nome,
-          numero: selectedChamado.numero_chamado,
-          mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
-          detalheExtra: `<strong>Observação:</strong><br>${selectedChamado.observacoes}`,
-          linkAcompanhar,
-          rodapeExtra: null
+    const emailPromise = (observacaoAlterada && selectedChamado.solicitante_email)
+      ? base44.functions.invoke('sendEmail', {
+          to: selectedChamado.solicitante_email,
+          subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
+          html: buildEmailHtml({
+            titulo: '📝 Nova Atualização',
+            corTitulo: '#d97706',
+            nome: selectedChamado.solicitante_nome,
+            numero: selectedChamado.numero_chamado,
+            mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
+            detalheExtra: `<strong>Observação:</strong><br>${selectedChamado.observacoes}`,
+            linkAcompanhar: `https://techcontrol.site/chamado-publico`,
+            rodapeExtra: null
+          })
         })
-      });
-    }
+      : Promise.resolve();
+
+    await Promise.all([updatePromise, emailPromise]);
+    queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     setShowDetails(false);
     setSelectedChamado(null);
