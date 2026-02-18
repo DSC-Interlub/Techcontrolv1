@@ -286,16 +286,15 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    updateChamadoMutation.mutate({
-      id: chamado.id,
-      data: {
-        ...chamado,
-        data_conclusao: agora,
-        status: "Aguardando Avaliação",
-        tempo_resolucao_minutos,
-        historico
-      }
+    await base44.entities.Chamados.update(chamado.id, {
+      ...chamado,
+      data_conclusao: agora,
+      status: "Aguardando Avaliação",
+      tempo_resolucao_minutos,
+      historico
     });
+    queryClient.invalidateQueries({ queryKey: ['chamados'] });
+    setShowDetails(false);
 
     // Enviar e-mail ao solicitante informando conclusão
     if (chamado.solicitante_email) {
