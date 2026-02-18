@@ -85,7 +85,7 @@ export default function Chamados() {
     setShowDetails(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedChamado || !originalChamado || !currentUser) return;
 
     const historico = selectedChamado.historico || [];
@@ -94,7 +94,6 @@ export default function Chamados() {
 
     const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
     
-    // Detectar mudanças e adicionar ao histórico
     const observacaoAlterada = selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes;
 
     if (observacaoAlterada) {
@@ -124,16 +123,13 @@ export default function Chamados() {
       });
     }
 
-    updateChamadoMutation.mutate({ 
-      id: selectedChamado.id, 
-      data: updateData
-    });
+    await base44.entities.Chamados.update(selectedChamado.id, updateData);
+    queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
-    // Enviar e-mail quando houver nova observação
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.integrations.Core.SendEmail({
+      try {
+        await base44.integrations.Core.SendEmail({
           to: selectedChamado.solicitante_email,
-          from_name: nomeExibicao,
           subject: `💬 Nova observação no seu chamado ${selectedChamado.numero_chamado}`,
           body: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
@@ -143,18 +139,23 @@ export default function Chamados() {
               <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
                 <p style="color: #374151; font-size: 16px;">Olá, <strong>${selectedChamado.solicitante_nome}</strong>!</p>
                 <p style="color: #374151;"><strong>${nomeExibicao}</strong> adicionou uma observação ao seu chamado.</p>
-
                 <div style="background-color: #faf5ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 20px 0;">
                   <p style="color: #6d28d9; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">CHAMADO ${selectedChamado.numero_chamado}</p>
                   <p style="color: #1f2937; font-size: 14px; margin: 0; white-space: pre-wrap;">${selectedChamado.observacoes}</p>
                 </div>
-
                 <p style="color: #6b7280; font-size: 13px;">Acesse a página de acompanhamento para ver todos os detalhes do seu chamado.</p>
               </div>
             </div>
           `
-        }).catch(e => console.error("Erro ao enviar e-mail de observação:", e));
+        });
+      } catch (e) {
+        console.error("Erro ao enviar e-mail de observação:", e);
+      }
     }
+
+    setShowDetails(false);
+    setSelectedChamado(null);
+    setOriginalChamado(null);
   };
 
   const chamadosAbertos = chamados.filter(c => 
