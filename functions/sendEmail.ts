@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     }
 
     const emailPayload = {
-      from: 'TechControl <no-reply@techcontrol.site>',
+      from: 'TechControl <suporte@techcontrol.site>',
       to: [to],
       subject,
     };
