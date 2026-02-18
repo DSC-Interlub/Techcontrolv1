@@ -307,14 +307,15 @@ export default function Chamados() {
           to: chamado.solicitante_email,
           subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
           html: buildEmailHtml({
-            titulo: '🔧 Em Andamento',
+            titulo: 'Em Andamento',
+            icone: '🔧',
             corTitulo: '#2563eb',
             nome: chamado.solicitante_nome,
             numero: chamado.numero_chamado,
             mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
             detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
             linkAcompanhar: `https://techcontrol.site/chamado-publico`,
-            rodapeExtra: `Use o número <strong>${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
+            rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
           })
         })
       : Promise.resolve();
