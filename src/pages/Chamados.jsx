@@ -127,10 +127,20 @@ export default function Chamados() {
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     if (observacaoAlterada && selectedChamado.solicitante_email) {
+      const linkAcompanhar = `${window.location.origin}${createPageUrl('acompanhar-chamado')}?numero=${selectedChamado.numero_chamado}`;
       await base44.functions.invoke('sendEmail', {
         to: selectedChamado.solicitante_email,
-        subject: `Nova observacao no chamado ${selectedChamado.numero_chamado}`,
-        body: `Ola ${selectedChamado.solicitante_nome}, ${nomeExibicao} adicionou uma observacao ao seu chamado ${selectedChamado.numero_chamado}:\n\n${selectedChamado.observacoes}`
+        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
+        html: buildEmailHtml({
+          titulo: '📝 Nova Atualização',
+          corTitulo: '#d97706',
+          nome: selectedChamado.solicitante_nome,
+          numero: selectedChamado.numero_chamado,
+          mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
+          detalheExtra: `<strong>Observação:</strong><br>${selectedChamado.observacoes}`,
+          linkAcompanhar,
+          rodapeExtra: null
+        })
       });
     }
 
