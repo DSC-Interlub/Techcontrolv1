@@ -328,33 +328,34 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    await base44.entities.Chamados.update(chamado.id, {
+    const updatePromise = base44.entities.Chamados.update(chamado.id, {
       ...chamado,
       data_conclusao: agora,
       status: "Aguardando Avaliação",
       tempo_resolucao_minutos,
       historico
     });
+
+    const emailPromise = chamado.solicitante_email
+      ? base44.functions.invoke('sendEmail', {
+          to: chamado.solicitante_email,
+          subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
+          html: buildEmailHtml({
+            titulo: '✅ Chamado Concluído',
+            corTitulo: '#16a34a',
+            nome: chamado.solicitante_nome,
+            numero: chamado.numero_chamado,
+            mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
+            detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br>${chamado.solucao}` : `<strong>Responsável:</strong> ${nomeExibicao}`,
+            linkAcompanhar: `https://techcontrol.site/chamado-publico`,
+            rodapeExtra: 'Clique no botão acima para avaliar o atendimento. Sua opinião é muito importante para nós!'
+          })
+        })
+      : Promise.resolve();
+
+    await Promise.all([updatePromise, emailPromise]);
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
-
-    if (chamado.solicitante_email) {
-      const linkAvaliar = `https://www.techcontrol.site${createPageUrl('acompanhar-chamado')}?numero=${chamado.numero_chamado}`;
-      await base44.functions.invoke('sendEmail', {
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
-        html: buildEmailHtml({
-          titulo: '✅ Chamado Concluído',
-          corTitulo: '#16a34a',
-          nome: chamado.solicitante_nome,
-          numero: chamado.numero_chamado,
-          mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
-          detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br>${chamado.solucao}` : `<strong>Responsável:</strong> ${nomeExibicao}`,
-          linkAcompanhar: linkAvaliar,
-          rodapeExtra: 'Clique no botão acima para avaliar o atendimento. Sua opinião é muito importante para nós!'
-        })
-      });
-    }
   };
 
   const handleAvaliar = () => {
