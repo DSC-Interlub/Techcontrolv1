@@ -1034,9 +1034,7 @@ export default function Chamados() {
                           {anexo.file_type === 'image' ? (
                             <img src={anexo.file_url} alt={anexo.file_name} className="w-full h-32 object-cover rounded mb-2" />
                           ) : (
-                            <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center mb-2">
-                              <span className="text-4xl">🎥</span>
-                            </div>
+                            <video src={anexo.file_url} controls className="w-full h-32 object-cover rounded mb-2" />
                           )}
                           <p className="text-xs text-gray-600 truncate">{anexo.file_name}</p>
                         </a>
