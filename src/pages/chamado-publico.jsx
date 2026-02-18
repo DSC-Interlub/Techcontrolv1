@@ -213,23 +213,25 @@ export default function ChamadoPublico() {
     mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
       
-      const chamado = await base44.entities.Chamados.create({
-        ...data,
-        numero_chamado: numeroChamado,
-        status: "Aberto",
-        data_abertura: new Date().toISOString().split('T')[0],
-        equipamentos_usuario: equipamentosUsuario,
-        anexos: anexos,
-      });
+      const emailHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 20px;"><tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);"><tr><td style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:32px 40px;text-align:center;"><p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Sistema de Chamados</p><h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">TechControl</h1></td></tr><tr><td style="padding:0;text-align:center;"><div style="display:inline-block;background:#ea580c;color:#fff;font-size:13px;font-weight:700;padding:8px 24px;border-radius:0 0 20px 20px;letter-spacing:1px;text-transform:uppercase;">📋 Chamado Aberto</div></td></tr><tr><td style="padding:36px 40px;"><p style="margin:0 0 8px;font-size:16px;color:#374151;">Olá, <strong>${data.solicitante_nome}</strong>!</p><p style="margin:0 0 24px;font-size:15px;color:#6b7280;">Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:24px;"><tr><td style="padding:20px 24px;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Número do Chamado</p><p style="margin:0;font-size:22px;font-weight:700;color:#1e40af;font-family:monospace;">${numeroChamado}</p></td></tr><tr><td style="padding:0 24px 20px;font-size:14px;color:#475569;"><strong>Tipo:</strong> ${data.tipo_solicitacao}<br><strong>Urgência:</strong> ${data.urgencia}</td></tr></table><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:24px;"><a href="https://techcontrol.site/chamado-publico" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">Acompanhar Chamado</a></td></tr></table></td></tr><tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;"><p style="margin:0;font-size:12px;color:#94a3b8;">Este e-mail foi enviado automaticamente pelo sistema <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
 
-      // Enviar e-mail de confirmação de abertura do chamado
-      if (data.solicitante_email) {
-        await base44.functions.invoke('sendEmail', {
-          to: data.solicitante_email,
-          subject: `Chamado ${numeroChamado} aberto com sucesso`,
-          body: `Ola ${data.solicitante_nome}, seu chamado foi aberto com sucesso.\n\nNumero do chamado: ${numeroChamado}\nTipo: ${data.tipo_solicitacao}\nUrgencia: ${data.urgencia}\n\nGuarde este numero para acompanhar o status do seu chamado.`
-        });
-      }
+      const [chamado] = await Promise.all([
+        base44.entities.Chamados.create({
+          ...data,
+          numero_chamado: numeroChamado,
+          status: "Aberto",
+          data_abertura: new Date().toISOString().split('T')[0],
+          equipamentos_usuario: equipamentosUsuario,
+          anexos: anexos,
+        }),
+        data.solicitante_email
+          ? base44.functions.invoke('sendEmail', {
+              to: data.solicitante_email,
+              subject: `[TechControl] Chamado ${numeroChamado} aberto com sucesso`,
+              html: emailHtml
+            })
+          : Promise.resolve()
+      ]);
 
       return { chamado, numeroChamado };
     },
