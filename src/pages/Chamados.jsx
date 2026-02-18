@@ -196,65 +196,86 @@ export default function Chamados() {
     }
   };
 
-  const buildEmailHtml = ({ titulo, corTitulo, nome, numero, mensagem, detalheExtra, linkAcompanhar, rodapeExtra }) => `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-    <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 20px;">
-        <tr><td align="center">
-          <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-            <!-- Header -->
-            <tr>
-              <td style="background:linear-gradient(135deg,#1e40af,#3b82f6);padding:32px 40px;text-align:center;">
-                <p style="margin:0 0 8px;color:#bfdbfe;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Sistema de Chamados</p>
-                <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">TechControl</h1>
-              </td>
-            </tr>
-            <!-- Status Badge -->
-            <tr>
-              <td style="padding:0;text-align:center;">
-                <div style="display:inline-block;background:${corTitulo};color:#fff;font-size:13px;font-weight:700;padding:8px 24px;border-radius:0 0 20px 20px;letter-spacing:1px;text-transform:uppercase;">${titulo}</div>
-              </td>
-            </tr>
-            <!-- Body -->
-            <tr>
-              <td style="padding:36px 40px;">
-                <p style="margin:0 0 8px;font-size:16px;color:#374151;">Olá, <strong>${nome}</strong>!</p>
-                <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">${mensagem}</p>
-                <!-- Chamado Card -->
-                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:24px;">
-                  <tr>
-                    <td style="padding:20px 24px;">
-                      <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Número do Chamado</p>
-                      <p style="margin:0;font-size:22px;font-weight:700;color:#1e40af;font-family:monospace;">${numero}</p>
-                    </td>
-                  </tr>
-                  ${detalheExtra ? `<tr><td style="padding:0 24px 20px;font-size:14px;color:#475569;">${detalheExtra}</td></tr>` : ''}
-                </table>
-                ${linkAcompanhar ? `
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td align="center" style="padding-bottom:24px;">
-                      <a href="${linkAcompanhar}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">Acompanhar Chamado</a>
-                    </td>
-                  </tr>
-                </table>` : ''}
-                ${rodapeExtra ? `<p style="font-size:13px;color:#94a3b8;margin:0;">${rodapeExtra}</p>` : ''}
-              </td>
-            </tr>
-            <!-- Footer -->
-            <tr>
-              <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
-                <p style="margin:0;font-size:12px;color:#94a3b8;">Este e-mail foi enviado automaticamente pelo sistema <strong>TechControl</strong>. Por favor, não responda.</p>
-              </td>
-            </tr>
-          </table>
-        </td></tr>
-      </table>
-    </body>
-    </html>
-  `;
+  const buildEmailHtml = ({ titulo, corTitulo, corFaixaTexto, icone, nome, numero, mensagem, detalheExtra, linkAcompanhar, rodapeExtra }) => `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TechControl</title>
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef2f7;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="580" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;">
+
+          <!-- Logo / Brand -->
+          <tr>
+            <td align="center" style="padding-bottom:20px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background:#1e40af;border-radius:12px;padding:10px 22px;">
+                    <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:1px;">⚙ TechControl</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Status Banner -->
+          <tr>
+            <td style="background:${corTitulo};border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;">
+              <p style="margin:0;color:#ffffff;font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${icone}&nbsp;&nbsp;${titulo}</p>
+            </td>
+          </tr>
+
+          <!-- Main Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:0 0 10px 10px;padding:36px 40px;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+
+              <!-- Greeting -->
+              <p style="margin:0 0 6px 0;font-size:22px;font-weight:700;color:#111827;">Olá, ${nome}!</p>
+              <p style="margin:0 0 28px 0;font-size:15px;color:#6b7280;line-height:1.6;">${mensagem}</p>
+
+              <!-- Ticket Info Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px 12px 24px;border-bottom:1px solid #e2e8f0;">
+                    <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;">Número do Chamado</p>
+                    <p style="margin:0;font-size:28px;font-weight:800;color:#1e40af;font-family:'Courier New',Courier,monospace;letter-spacing:1px;">${numero}</p>
+                  </td>
+                </tr>
+                ${detalheExtra ? `<tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;">${detalheExtra}</td></tr>` : ''}
+              </table>
+
+              <!-- CTA Button -->
+              ${linkAcompanhar ? `
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom:20px;">
+                    <a href="${linkAcompanhar}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(30,64,175,0.3);">🔍 Acompanhar Chamado</a>
+                  </td>
+                </tr>
+              </table>` : ''}
+
+              ${rodapeExtra ? `<p style="margin:8px 0 0 0;font-size:13px;color:#9ca3af;text-align:center;line-height:1.5;">${rodapeExtra}</p>` : ''}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:24px 0 8px 0;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">Este e-mail foi gerado automaticamente pelo sistema <strong style="color:#6b7280;">TechControl</strong>. Por favor, não responda.</p>
+              <p style="margin:6px 0 0 0;font-size:11px;color:#d1d5db;">© 2026 TechControl · Todos os direitos reservados</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
   const handleIniciarAtendimento = async (chamado) => {
     if (!currentUser) {
