@@ -157,6 +157,12 @@ export default function Layout({ children }) {
     return <>{children}</>;
   }
 
+  // Redireciona para login se não autenticado em páginas privadas
+  if (!loading && !currentUser) {
+    base44.auth.redirectToLogin();
+    return null;
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
