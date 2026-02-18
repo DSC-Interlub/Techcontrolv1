@@ -88,7 +88,7 @@ export default function Chamados() {
     setShowDetails(true);
   };
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = () => {
     if (!selectedChamado || !originalChamado || !currentUser) return;
 
     const historico = selectedChamado.historico || [];
@@ -134,8 +134,7 @@ export default function Chamados() {
 
     // Enviar e-mail quando houver nova observação
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      try {
-        await base44.integrations.Core.SendEmail({
+      base44.integrations.Core.SendEmail({
           to: selectedChamado.solicitante_email,
           from_name: nomeExibicao,
           subject: `💬 Nova observação no seu chamado ${selectedChamado.numero_chamado}`,
@@ -157,10 +156,7 @@ export default function Chamados() {
               </div>
             </div>
           `
-        });
-      } catch (e) {
-        console.error("Erro ao enviar e-mail de observação:", e);
-      }
+        }).catch(e => console.error("Erro ao enviar e-mail de observação:", e));
     }
   };
 
