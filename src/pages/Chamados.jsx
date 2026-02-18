@@ -127,30 +127,11 @@ export default function Chamados() {
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      try {
-        await base44.integrations.Core.SendEmail({
-          to: selectedChamado.solicitante_email,
-          subject: `💬 Nova observação no seu chamado ${selectedChamado.numero_chamado}`,
-          body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-              <div style="background-color: #7c3aed; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 22px;">Nova Observação no Chamado</h1>
-              </div>
-              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
-                <p style="color: #374151; font-size: 16px;">Olá, <strong>${selectedChamado.solicitante_nome}</strong>!</p>
-                <p style="color: #374151;"><strong>${nomeExibicao}</strong> adicionou uma observação ao seu chamado.</p>
-                <div style="background-color: #faf5ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                  <p style="color: #6d28d9; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">CHAMADO ${selectedChamado.numero_chamado}</p>
-                  <p style="color: #1f2937; font-size: 14px; margin: 0; white-space: pre-wrap;">${selectedChamado.observacoes}</p>
-                </div>
-                <p style="color: #6b7280; font-size: 13px;">Acesse a página de acompanhamento para ver todos os detalhes do seu chamado.</p>
-              </div>
-            </div>
-          `
-        });
-      } catch (e) {
-        console.error("Erro ao enviar e-mail de observação:", e);
-      }
+      await base44.integrations.Core.SendEmail({
+        to: selectedChamado.solicitante_email,
+        subject: `Nova observacao no chamado ${selectedChamado.numero_chamado}`,
+        body: `Ola ${selectedChamado.solicitante_nome}, ${nomeExibicao} adicionou uma observacao ao seu chamado ${selectedChamado.numero_chamado}:\n\n${selectedChamado.observacoes}`
+      });
     }
 
     setShowDetails(false);
