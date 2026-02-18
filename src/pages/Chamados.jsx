@@ -70,9 +70,6 @@ export default function Chamados() {
     mutationFn: ({ id, data }) => base44.entities.Chamados.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados'] });
-      setShowDetails(false);
-      setSelectedChamado(null);
-      setOriginalChamado(null);
     },
   });
 
