@@ -235,6 +235,45 @@ export default function Chamados() {
       }
     });
 
+    // Enviar e-mail de confirmação de abertura (agora que há autenticação)
+    if (chamado.solicitante_email) {
+      base44.integrations.Core.SendEmail({
+        to: chamado.solicitante_email,
+        subject: `Chamado ${chamado.numero_chamado} recebido - Atendimento iniciado`,
+        body: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+            <div style="background-color: #ea580c; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 22px;">Chamado Recebido e em Atendimento!</h1>
+            </div>
+            <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+              <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
+              <p style="color: #374151;">Seu chamado foi recebido e já está sendo atendido por <strong>${nomeExibicao}</strong>.</p>
+              <div style="background-color: #fff7ed; border: 2px solid #fdba74; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+                <p style="color: #9a3412; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">NÚMERO DO SEU CHAMADO</p>
+                <p style="color: #1f2937; font-size: 28px; font-weight: bold; font-family: monospace; margin: 0;">${chamado.numero_chamado}</p>
+                <p style="color: #9a3412; font-size: 11px; margin: 8px 0 0 0;">Guarde este número para acompanhar o status</p>
+              </div>
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                <tr style="background-color: #f3f4f6;">
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280; width: 40%;">Tipo</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${chamado.tipo_solicitacao}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Responsável</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${nomeExibicao}</td>
+                </tr>
+                <tr style="background-color: #f3f4f6;">
+                  <td style="padding: 8px 12px; font-size: 13px; color: #6b7280;">Urgência</td>
+                  <td style="padding: 8px 12px; font-size: 13px; color: #1f2937; font-weight: 500;">${chamado.urgencia}</td>
+                </tr>
+              </table>
+              <p style="color: #6b7280; font-size: 13px; margin-top: 20px;">Você receberá uma notificação quando o atendimento for concluído.</p>
+            </div>
+          </div>
+        `
+      }).catch(e => console.error("Erro ao enviar e-mail de confirmação:", e));
+    }
+
     // Enviar e-mail ao solicitante informando início do atendimento
     if (chamado.solicitante_email) {
       try {
