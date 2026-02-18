@@ -373,7 +373,7 @@ export default function Chamados() {
             mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
             detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br><span style="color:#374151;">${chamado.solucao}</span>` : `<strong>Responsável:</strong> ${nomeExibicao}`,
             linkAcompanhar: `https://techcontrol.site/chamado-publico`,
-            rodapeExtra: 'Clique no botão acima para avaliar o atendimento. Sua opinião é muito importante para nós!'
+            rodapeExtra: '⚠️ <strong style="color:#374151;">Ação necessária:</strong> Para encerrar definitivamente o chamado, é preciso avaliar o atendimento. Clique no botão acima, acesse seu chamado e registre sua avaliação.'
           })
         })
       : Promise.resolve();
