@@ -98,7 +98,9 @@ export default function Chamados() {
     const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
     
     // Detectar mudanças e adicionar ao histórico
-    if (selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes) {
+    const observacaoAlterada = selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes;
+
+    if (observacaoAlterada) {
       historico.push({
         data_hora: dataHora,
         tipo: "observacao",
@@ -129,6 +131,37 @@ export default function Chamados() {
       id: selectedChamado.id, 
       data: updateData
     });
+
+    // Enviar e-mail quando houver nova observação
+    if (observacaoAlterada && selectedChamado.solicitante_email) {
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: selectedChamado.solicitante_email,
+          from_name: nomeExibicao,
+          subject: `💬 Nova observação no seu chamado ${selectedChamado.numero_chamado}`,
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+              <div style="background-color: #7c3aed; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Nova Observação no Chamado</h1>
+              </div>
+              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+                <p style="color: #374151; font-size: 16px;">Olá, <strong>${selectedChamado.solicitante_nome}</strong>!</p>
+                <p style="color: #374151;"><strong>${nomeExibicao}</strong> adicionou uma observação ao seu chamado.</p>
+
+                <div style="background-color: #faf5ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <p style="color: #6d28d9; font-size: 12px; margin: 0 0 8px 0; font-weight: bold;">CHAMADO ${selectedChamado.numero_chamado}</p>
+                  <p style="color: #1f2937; font-size: 14px; margin: 0; white-space: pre-wrap;">${selectedChamado.observacoes}</p>
+                </div>
+
+                <p style="color: #6b7280; font-size: 13px;">Acesse a página de acompanhamento para ver todos os detalhes do seu chamado.</p>
+              </div>
+            </div>
+          `
+        });
+      } catch (e) {
+        console.error("Erro ao enviar e-mail de observação:", e);
+      }
+    }
   };
 
   const chamadosAbertos = chamados.filter(c => 
@@ -205,6 +238,38 @@ export default function Chamados() {
         historico
       }
     });
+
+    // Enviar e-mail ao solicitante informando início do atendimento
+    if (chamado.solicitante_email) {
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: chamado.solicitante_email,
+          from_name: nomeExibicao,
+          subject: `🔧 Seu chamado ${chamado.numero_chamado} está em andamento`,
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+              <div style="background-color: #2563eb; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Atendimento Iniciado!</h1>
+              </div>
+              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+                <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
+                <p style="color: #374151;">Sua solicitação está sendo atendida.</p>
+
+                <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Chamado:</strong> ${chamado.numero_chamado}</p>
+                  <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 4px 0;"><strong>Responsável:</strong> ${nomeExibicao}</p>
+                  <p style="color: #1d4ed8; font-size: 13px; margin: 0;"><strong>Início:</strong> ${new Date(agora).toLocaleString('pt-BR')}</p>
+                </div>
+
+                <p style="color: #6b7280; font-size: 13px;">Você será notificado quando o atendimento for concluído.</p>
+              </div>
+            </div>
+          `
+        });
+      } catch (e) {
+        console.error("Erro ao enviar e-mail de início:", e);
+      }
+    }
   };
 
   const handleFinalizarAtendimento = async (chamado) => {
@@ -243,6 +308,45 @@ export default function Chamados() {
         historico
       }
     });
+
+    // Enviar e-mail ao solicitante informando conclusão
+    if (chamado.solicitante_email) {
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: chamado.solicitante_email,
+          from_name: nomeExibicao,
+          subject: `✅ Seu chamado ${chamado.numero_chamado} foi finalizado`,
+          body: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+              <div style="background-color: #16a34a; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Chamado Finalizado!</h1>
+              </div>
+              <div style="background-color: white; padding: 24px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb;">
+                <p style="color: #374151; font-size: 16px;">Olá, <strong>${chamado.solicitante_nome}</strong>!</p>
+                <p style="color: #374151;">Seu chamado foi concluído pelo responsável <strong>${nomeExibicao}</strong>.</p>
+
+                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+                  <p style="color: #15803d; font-size: 13px; margin: 0 0 4px 0;"><strong>Chamado:</strong> ${chamado.numero_chamado}</p>
+                  <p style="color: #15803d; font-size: 13px; margin: 0 0 4px 0;"><strong>Responsável:</strong> ${nomeExibicao}</p>
+                  ${chamado.solucao ? `<p style="color: #15803d; font-size: 13px; margin: 0;"><strong>Solução:</strong> ${chamado.solucao}</p>` : ''}
+                </div>
+
+                <p style="color: #374151; font-size: 14px;">Por favor, <strong>avalie o atendimento</strong> acessando o link abaixo:</p>
+                <div style="text-align: center; margin: 20px 0;">
+                  <a href="${window.location.origin}${createPageUrl('acompanhar-chamado')}" 
+                    style="background-color: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                    Avaliar Atendimento
+                  </a>
+                </div>
+                <p style="color: #6b7280; font-size: 12px; text-align: center;">Use o número <strong>${chamado.numero_chamado}</strong> para acessar sua avaliação</p>
+              </div>
+            </div>
+          `
+        });
+      } catch (e) {
+        console.error("Erro ao enviar e-mail de finalização:", e);
+      }
+    }
   };
 
   const handleAvaliar = () => {
