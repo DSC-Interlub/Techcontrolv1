@@ -29,12 +29,16 @@ Deno.serve(async (req) => {
 
     const result = await response.json();
 
+    console.log(`[sendEmail] to=${to} status=${response.status} result=${JSON.stringify(result)}`);
+
     if (!response.ok) {
-      return Response.json({ error: result.message || 'Erro ao enviar e-mail' }, { status: response.status });
+      console.error(`[sendEmail] ERRO ao enviar para ${to}: ${JSON.stringify(result)}`);
+      return Response.json({ error: result.message || result.name || 'Erro ao enviar e-mail', details: result }, { status: response.status });
     }
 
     return Response.json({ success: true, id: result.id });
   } catch (error) {
+    console.error(`[sendEmail] Exception: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
