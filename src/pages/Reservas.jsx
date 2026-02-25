@@ -604,7 +604,7 @@ export default function Reservas() {
                                 </div>
                                 <div className="flex items-center gap-2 text-gray-600">
                                   <Clock className="w-4 h-4" />
-                                  {format(new Date(reserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} - {format(new Date(reserva.data_fim), "dd/MM/yyyy", { locale: ptBR })}
+                                  {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} - {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy", { locale: ptBR })}
                                 </div>
                               </div>
                             </div>
