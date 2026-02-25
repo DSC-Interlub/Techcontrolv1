@@ -413,9 +413,11 @@ export default function Reservas() {
                       <TableRow>
                         <TableHead>Solicitante</TableHead>
                         <TableHead>Equipamento</TableHead>
+                        <TableHead>Etiqueta</TableHead>
                         <TableHead>Período</TableHead>
                         <TableHead>Área</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
