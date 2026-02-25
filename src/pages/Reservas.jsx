@@ -725,7 +725,7 @@ export default function Reservas() {
                       <p className="text-sm font-semibold text-gray-700 mb-1">Data e Hora de Início</p>
                       <div className="flex items-center gap-2 text-gray-900">
                         <Clock className="w-4 h-4 text-gray-400" />
-                        {format(new Date(selectedReserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} às {selectedReserva.hora_inicio}
+                        {format(parseDateLocal(selectedReserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} às {selectedReserva.hora_inicio}
                       </div>
                     </div>
 
