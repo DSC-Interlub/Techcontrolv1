@@ -765,6 +765,17 @@ export default function Reservas() {
                     </div>
                   </div>
                 )}
+
+                {selectedReserva.status !== "Cancelada" && selectedReserva.status !== "Concluída" && (
+                  <div className="pt-2 border-t flex justify-end">
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleCancelarReserva(selectedReserva)}
+                    >
+                      Cancelar Reserva
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>
