@@ -161,17 +161,19 @@ export default function Reservas() {
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+  const parseDateLocal = (dateStr) => {
+    // Parseia a data como local (sem conversão UTC) para evitar problema de fuso horário
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const getReservasForDate = (date) => {
     return reservas.filter(reserva => {
       if (reserva.status === "Cancelada") return false;
       
-      const dataInicio = parseISO(reserva.data_inicio);
-      const dataFim = parseISO(reserva.data_fim);
+      const dataInicio = parseDateLocal(reserva.data_inicio);
+      const dataFim = parseDateLocal(reserva.data_fim);
       
-      // Ensure the date is within the reservation period
-      // For a date, we care if any part of the reservation spans that date.
-      // So, the reservation must start on or before the date, and end on or after the date.
-      // Also, considering whole days for calendar display, we compare dates without time.
       return date >= dataInicio && date <= dataFim;
     });
   };
