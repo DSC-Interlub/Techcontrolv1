@@ -78,6 +78,12 @@ export default function Reservas() {
     },
   });
 
+  const handleCancelarReserva = (reserva) => {
+    if (!window.confirm(`Deseja cancelar a reserva de ${reserva.solicitante_nome} para ${reserva.equipamento_nome}?`)) return;
+    updateReservaMutation.mutate({ id: reserva.id, data: { ...reserva, status: "Cancelada" } });
+    setShowDetailsModal(false);
+  };
+
   // Atualizar status das reservas automaticamente baseado na data/hora (otimizado)
   useEffect(() => {
     if (!reservas || reservas.length === 0) return;
