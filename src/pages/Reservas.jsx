@@ -453,8 +453,8 @@ export default function Reservas() {
                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                <p>{format(new Date(reserva.data_inicio), "dd/MM/yyyy")} - {reserva.hora_inicio}</p>
-                                <p className="text-gray-500">até {format(new Date(reserva.data_fim), "dd/MM/yyyy")} - {reserva.hora_fim}</p>
+                                <p>{format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy")} - {reserva.hora_inicio}</p>
+                                <p className="text-gray-500">até {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy")} - {reserva.hora_fim}</p>
                               </div>
                             </TableCell>
                             <TableCell>{reserva.solicitante_area}</TableCell>
