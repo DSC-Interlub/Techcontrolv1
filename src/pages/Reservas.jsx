@@ -434,7 +434,10 @@ export default function Reservas() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredReservas.map((reserva) => (
+                        filteredReservas.map((reserva) => {
+                          const notebook = notebooks.find(n => n.id === reserva.equipamento_id);
+                          const etiqueta = notebook?.etiqueta_interna || "-";
+                          return (
                           <TableRow key={reserva.id}>
                             <TableCell>
                               <div>
@@ -443,6 +446,9 @@ export default function Reservas() {
                               </div>
                             </TableCell>
                             <TableCell>{reserva.equipamento_nome}</TableCell>
+                            <TableCell>
+                              <span className="font-mono text-sm font-semibold text-purple-700">{etiqueta}</span>
+                            </TableCell>
                             <TableCell>
                               <div className="text-sm">
                                 <p>{format(new Date(reserva.data_inicio), "dd/MM/yyyy")} - {reserva.hora_inicio}</p>
@@ -460,8 +466,20 @@ export default function Reservas() {
                                 {reserva.status}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              {reserva.status !== "Cancelada" && reserva.status !== "Concluída" && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleCancelarReserva(reserva)}
+                                >
+                                  Cancelar
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
-                        ))
+                        );
+                        })
                       )}
                     </TableBody>
                   </Table>
