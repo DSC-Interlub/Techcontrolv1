@@ -296,13 +296,18 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    const updatePromise = base44.entities.Chamados.update(chamado.id, {
+    // Atualizar o selectedChamado também para refletir o responsável imediatamente
+    const dataAtualizada = {
       ...chamado,
       data_inicio_atendimento: agora,
       status: "Em Andamento",
       responsavel: nomeExibicao,
       historico
-    });
+    };
+
+    setSelectedChamado(dataAtualizada);
+
+    const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
     // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
