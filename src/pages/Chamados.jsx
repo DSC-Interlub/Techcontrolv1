@@ -360,21 +360,14 @@ export default function Chamados() {
       historico
     });
 
+    const avaliacaoUrl = `https://techcontrol.site/acompanhar-chamado`;
+    const emailConclusaoHtml = buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, avaliacaoUrl);
+
     const emailPromise = chamado.solicitante_email
       ? base44.functions.invoke('sendEmail', {
           to: chamado.solicitante_email,
-          subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅`,
-          html: buildEmailHtml({
-            titulo: 'Chamado Concluído',
-            icone: '✅',
-            corTitulo: '#16a34a',
-            nome: chamado.solicitante_nome,
-            numero: chamado.numero_chamado,
-            mensagem: `Seu chamado foi concluído com sucesso por <strong>${nomeExibicao}</strong>. Gostaríamos de saber sua opinião sobre o atendimento recebido.`,
-            detalheExtra: chamado.solucao ? `<strong>Solução aplicada:</strong><br><span style="color:#374151;">${chamado.solucao}</span>` : `<strong>Responsável:</strong> ${nomeExibicao}`,
-            linkAcompanhar: `https://techcontrol.site/acompanhar-chamado`,
-            rodapeExtra: '⚠️ <strong style="color:#374151;">Ação necessária:</strong> Para encerrar definitivamente o chamado, é preciso avaliar o atendimento. Clique no botão acima, acesse seu chamado e registre sua avaliação.'
-          })
+          subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
+          html: emailConclusaoHtml,
         })
       : Promise.resolve();
 
