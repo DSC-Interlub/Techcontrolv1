@@ -171,6 +171,7 @@ export default function PortalEquipamentos() {
                     </div>
                   )}
                 </TabsContent>
+
               </Tabs>
             )}
           </div>
