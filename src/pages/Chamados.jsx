@@ -125,12 +125,12 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    // Adiciona à fila (retorna instantaneamente)
+    // Fire and forget - não bloqueia
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: selectedChamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
-        corpo_html: buildEmailHtml({
+      base44.functions.invoke('sendEmailAsync', {
+        to: selectedChamado.solicitante_email,
+        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
+        html: buildEmailHtml({
           titulo: 'Nova Atualização',
           icone: '📝',
           corTitulo: '#d97706',
@@ -140,9 +140,7 @@ export default function Chamados() {
           detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: null
-        }),
-        tipo_evento: 'observacao_adicionada',
-        referencia_id: selectedChamado.id
+        })
       });
     }
 
@@ -311,12 +309,12 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Adiciona à fila (retorna instantaneamente)
+    // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: chamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
-        corpo_html: buildEmailHtml({
+      base44.functions.invoke('sendEmailAsync', {
+        to: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
+        html: buildEmailHtml({
           titulo: 'Em Andamento',
           icone: '🔧',
           corTitulo: '#2563eb',
@@ -326,9 +324,7 @@ export default function Chamados() {
           detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
-        }),
-        tipo_evento: 'atendimento_iniciado',
-        referencia_id: chamado.id
+        })
       });
     }
 
@@ -430,14 +426,12 @@ export default function Chamados() {
     const avaliacaoUrl = `${window.location.origin}${createPageUrl('portal-chamados')}`;
     const emailConclusaoHtml = buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, avaliacaoUrl);
 
-    // Adiciona à fila (retorna instantaneamente)
+    // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: chamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-        corpo_html: emailConclusaoHtml,
-        tipo_evento: 'chamado_concluido',
-        referencia_id: chamado.id
+      base44.functions.invoke('sendEmailAsync', {
+        to: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
+        html: emailConclusaoHtml,
       });
     }
 
