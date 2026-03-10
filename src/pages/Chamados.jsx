@@ -856,10 +856,11 @@ export default function Chamados() {
         </Card>
 
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Detalhes do Chamado</DialogTitle>
-            </DialogHeader>
+           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+             <DialogHeader>
+               <DialogTitle>Detalhes do Chamado</DialogTitle>
+               <p className="text-sm text-gray-500" style={{display: 'none'}}>Detalhes e chat do chamado selecionado</p>
+             </DialogHeader>
             {selectedChamado && (
               <div className="space-y-4">
                 <Alert className="bg-blue-50 border-blue-200">
