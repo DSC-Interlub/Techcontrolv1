@@ -127,6 +127,8 @@ const managementItems = [
   },
 ];
 
+const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}${createPageUrl("portal-login")}` : '';
+
 export default function Layout({ children }) {
   const location = useLocation();
   const [currentUser, setCurrentUser] = React.useState(null);
