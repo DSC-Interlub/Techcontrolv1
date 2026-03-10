@@ -122,6 +122,15 @@ export default function SalaTreinamento() {
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Sala de Treinamento</h1>
           <p className="text-gray-600">Reserve a sala de reunião clicando em um horário disponível</p>
+          <a
+            href={createPageUrl("reserva-sala-publica")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Link público para agendamento
+          </a>
         </div>
 
         {success && (
