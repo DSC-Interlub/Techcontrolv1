@@ -219,7 +219,7 @@ export default function PortalChamados() {
 
   const { data: chatMessages = [] } = useQuery({
     queryKey: ['chamados_chat', selectedChamado?.id],
-    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, '-created_date'),
+    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, 'data_hora'),
     enabled: !!selectedChamado?.id,
     refetchInterval: 3000,
   });
