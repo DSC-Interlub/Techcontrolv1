@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, Users, Clock, AlertCircle, Loader2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle, Users, Clock, AlertCircle, Loader2, CalendarDays, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { createPageUrl } from "@/utils";
 import { format, addDays, startOfWeek, isSameDay, parseISO, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
