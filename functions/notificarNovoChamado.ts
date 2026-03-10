@@ -38,52 +38,42 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Nenhum dado de chamado' }, { status: 400 });
     }
 
-    // Buscar admins via service role
+    // Buscar admins via service role (sem duplicatas)
     const allUsers = await base44.asServiceRole.entities.User.list();
-    const adminEmails = allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email);
-
-    const destinatarios = [];
-    const acompanharUrl = `${new URL(req.url).origin}/portal-chamados`;
+    const adminEmails = [...new Set(allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email))];
 
     // Email para o solicitante
     if (chamado.solicitante_email) {
-      destinatarios.push({
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`,
-        html: buildEmail(chamado.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', {
+      enviarEmail(
+        chamado.solicitante_email,
+        `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`,
+        buildEmail(chamado.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', {
           numeroChamado: chamado.numero_chamado,
           solicitante_nome: chamado.solicitante_nome,
           tipo_solicitacao: chamado.tipo_solicitacao,
           titulo_chamado: chamado.titulo_chamado,
           urgencia: chamado.urgencia
-        }, acompanharUrl)
-      });
+        }, '/portal-chamados')
+      ).catch(err => console.error(`[notificarNovoChamado] Erro ao enviar para ${chamado.solicitante_email}: ${err.message}`));
     }
 
-    // Emails para admins
-    for (const adminEmail of adminEmails) {
-      destinatarios.push({
-        to: adminEmail,
-        subject: `[TechControl] Novo chamado aberto: ${chamado.numero_chamado}`,
-        html: buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamado.solicitante_nome}</strong> e aguarda atendimento.`, {
+    // Email para admins (uma vez cada, sem duplicatas)
+    adminEmails.forEach(adminEmail => {
+      enviarEmail(
+        adminEmail,
+        `[TechControl] Novo chamado aberto: ${chamado.numero_chamado}`,
+        buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamado.solicitante_nome}</strong> e aguarda atendimento.`, {
           numeroChamado: chamado.numero_chamado,
           solicitante_nome: chamado.solicitante_nome,
           tipo_solicitacao: chamado.tipo_solicitacao,
           titulo_chamado: chamado.titulo_chamado,
           urgencia: chamado.urgencia
-        }, acompanharUrl)
-      });
-    }
-
-    // Fire and forget - enviar sem esperar resposta
-    destinatarios.forEach(dest => {
-      enviarEmail(dest.to, dest.subject, dest.html).catch(err => 
-        console.error(`[notificarNovoChamado] Erro ao enviar para ${dest.to}: ${err.message}`)
-      );
+        }, '/portal-chamados')
+      ).catch(err => console.error(`[notificarNovoChamado] Erro ao enviar para ${adminEmail}: ${err.message}`));
     });
 
-    console.log(`[notificarNovoChamado] Iniciados ${destinatarios.length} envios. Chamado: ${chamado.numero_chamado}`);
-    return Response.json({ success: true, iniciados: destinatarios.length, admins: adminEmails });
+    console.log(`[notificarNovoChamado] Chamado ${chamado.numero_chamado} - enviado para solicitante e ${adminEmails.length} admin(ins)`);
+    return Response.json({ success: true });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
