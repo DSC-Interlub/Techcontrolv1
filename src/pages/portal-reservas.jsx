@@ -94,10 +94,12 @@ export default function PortalReservas() {
     r.solicitante_email?.toLowerCase() === colaborador.email?.toLowerCase()
   );
 
-  // Mostra notebooks marcados como disponíveis para reserva
-  // Se nenhum tiver o flag, mostra todos para não deixar a lista vazia
-  const notebooksMarcados = notebooksExternos.filter(n => n.disponivel_para_reserva === true);
-  const notebooksDisponiveis = notebooksMarcados.length > 0 ? notebooksMarcados : notebooksExternos.filter(n => n.status !== "Danificado" && n.status !== "Manutenção");
+  // Combina notebooks externos e PCs internos tipo Notebook marcados como disponíveis para reserva
+  const todosDispo = [
+    ...notebooksExternos.map(n => ({ ...n, _fonte: "Notebooks_Externos" })),
+    ...pcsInternos.filter(p => p.tipo === "Notebook").map(p => ({ ...p, _fonte: "PCs_Internos" })),
+  ];
+  const notebooksDisponiveis = todosDispo.filter(n => n.disponivel_para_reserva === true);
 
   const handleSubmit = (e) => {
     e.preventDefault();
