@@ -510,8 +510,9 @@ export default function ChamadoPublico() {
               </div>
 
               <div>
-                <Label>Descrição Adicional do Problema *</Label>
-                <Textarea required placeholder="Descreva detalhadamente seu problema ou solicitação..." value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={5} />
+                <Label>Descrição do Problema *</Label>
+                <p className="text-xs text-gray-500 mb-2">Descreva com o máximo de detalhes possível: o que aconteceu, quando começou, mensagens de erro, etc. Quanto mais informações, mais rápido conseguimos resolver.</p>
+                <Textarea required placeholder="Ex: Ao tentar acessar o sistema WMS, aparece a mensagem 'Erro de conexão' desde ontem às 14h. Já tentei reiniciar o computador mas o problema persiste..." value={formData.descricao_problema} onChange={(e) => setFormData({ ...formData, descricao_problema: e.target.value })} rows={5} />
               </div>
 
               <div>
