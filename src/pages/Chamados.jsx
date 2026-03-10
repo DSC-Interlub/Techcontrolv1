@@ -309,12 +309,12 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Fire and forget - não bloqueia
+    // Adiciona à fila (retorna instantaneamente)
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmailAsync', {
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
-        html: buildEmailHtml({
+      base44.functions.invoke('adicionarFilaEmail', {
+        destinatario: chamado.solicitante_email,
+        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
+        corpo_html: buildEmailHtml({
           titulo: 'Em Andamento',
           icone: '🔧',
           corTitulo: '#2563eb',
@@ -324,7 +324,9 @@ export default function Chamados() {
           detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
-        })
+        }),
+        tipo_evento: 'atendimento_iniciado',
+        referencia_id: chamado.id
       });
     }
 
