@@ -75,6 +75,7 @@ import portalChamados from './pages/portal-chamados';
 import portalRamais from './pages/portal-ramais';
 import portalReservas from './pages/portal-reservas';
 import portalSala from './pages/portal-sala';
+import portalEquipamentos from './pages/portal-equipamentos';
 import __Layout from './Layout.jsx';
 
 
@@ -107,6 +108,7 @@ export const PAGES = {
     "portal-ramais": portalRamais,
     "portal-reservas": portalReservas,
     "portal-sala": portalSala,
+    "portal-equipamentos": portalEquipamentos,
 }
 
 export const pagesConfig = {
