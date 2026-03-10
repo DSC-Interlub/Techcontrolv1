@@ -443,18 +443,12 @@ export default function Chamados() {
       historico
     });
 
-    const avaliacaoUrl = `${window.location.origin}${createPageUrl('portal-chamados')}`;
-    const emailConclusaoHtml = buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, avaliacaoUrl);
-
-    // Adiciona à fila (retorna instantaneamente)
     if (chamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: chamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-        corpo_html: emailConclusaoHtml,
-        tipo_evento: 'chamado_concluido',
-        referencia_id: chamado.id
-      });
+      base44.integrations.Core.SendEmail({
+        to: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
+        body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi concluído por ${nomeExibicao}.\n\nSolução: ${chamado.solucao || 'Não informada'}\n\nAcesse o portal para avaliar o atendimento em menos de 1 minuto.\n\nNúmero do Chamado: ${chamado.numero_chamado}`
+      }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
     await updatePromise;
