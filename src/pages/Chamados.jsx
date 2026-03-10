@@ -361,8 +361,7 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    await updatePromise;
-
+    // Enviar email sem aguardar (fire-and-forget)
     if (chamado.solicitante_email) {
       const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
       base44.integrations.Core.SendEmail({
@@ -380,6 +379,8 @@ export default function Chamados() {
         })
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
+
+    await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
   };
