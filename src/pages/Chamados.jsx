@@ -530,8 +530,9 @@ export default function Chamados() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="max-w-[200px]">
-                    <p className="text-sm truncate">{getTipoCompleto(chamado)}</p>
+                  <div className="max-w-[220px]">
+                    <p className="text-sm font-medium truncate">{chamado.titulo_chamado || getTipoCompleto(chamado)}</p>
+                    <p className="text-xs text-gray-500 truncate">{getTipoCompleto(chamado)}</p>
                   </div>
                 </TableCell>
                 <TableCell>
