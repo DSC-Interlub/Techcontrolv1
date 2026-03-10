@@ -101,24 +101,7 @@ export default function Chamados() {
 
       const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
 
-      // Enviar email imediatamente (sem fila)
-      if (selectedChamado.solicitante_email) {
-        const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
-        base44.integrations.Core.SendEmail({
-          to: selectedChamado.solicitante_email,
-          subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Mensagem`,
-          html: buildEmailHtml({
-            titulo: "Nova Mensagem",
-            corTitulo: "#7c3aed",
-            icone: "💬",
-            nome: selectedChamado.solicitante_nome,
-            numero: selectedChamado.numero_chamado,
-            mensagem: `Você recebeu uma nova mensagem de <strong>${currentUser.nome_exibicao || currentUser.full_name}</strong>.`,
-            detalheExtra: `<strong>Mensagem:</strong><br>"${msg}"`,
-            linkAcompanhar: portalUrl
-          })
-        }).catch(err => console.error("Erro ao enviar email:", err));
-      }
+      // Email será disparado automaticamente pela automação entity
 
       return chatMsg;
     },
