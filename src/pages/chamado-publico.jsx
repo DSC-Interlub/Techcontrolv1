@@ -227,18 +227,7 @@ export default function ChamadoPublico() {
         anexos: anexos,
       });
 
-      // Enviar email sem aguardar (fire-and-forget)
-      base44.functions.invoke('notificarNovoChamado', {
-        chamadoData: {
-          numeroChamado,
-          solicitante_nome: data.solicitante_nome,
-          tipo_solicitacao: data.tipo_solicitacao,
-          titulo_chamado: data.titulo_chamado,
-          urgencia: data.urgencia,
-        },
-        solicitanteEmail: data.solicitante_email,
-        acompanharUrl: `${window.location.origin}${createPageUrl("acompanhar-chamado")}`,
-      }).catch(err => console.error("Erro ao enviar notificação:", err));
+      // Email é disparado automaticamente pela automação entity
 
       return { chamado, numeroChamado };
     },
