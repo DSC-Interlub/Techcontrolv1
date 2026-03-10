@@ -476,6 +476,7 @@ export default function Chamados() {
       historico
     });
 
+    // Enviar email sem aguardar (fire-and-forget)
     if (chamado.solicitante_email) {
       const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
       base44.integrations.Core.SendEmail({
