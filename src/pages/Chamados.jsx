@@ -1197,10 +1197,12 @@ export default function Chamados() {
                      {chatMessages.length === 0 ? (
                        <p className="text-sm text-gray-500 text-center py-8">Nenhuma mensagem ainda. Seja o primeiro a escrever!</p>
                      ) : (
-                       chatMessages.map((msg) => (
-                         <div key={msg.id} className={`flex ${msg.tipo_remetente === "admin" ? "justify-end" : "justify-start"}`}>
+                       chatMessages.map((msg) => {
+                         const isAdminMsg = msg.tipo_remetente === "admin" || msg.remetente_email === currentUser?.email;
+                         return (
+                         <div key={msg.id} className={`flex ${isAdminMsg ? "justify-end" : "justify-start"}`}>
                            <div className={`max-w-xs rounded-lg p-3 ${
-                             msg.tipo_remetente === "admin" 
+                             isAdminMsg
                                ? "bg-blue-100 text-blue-900" 
                                : "bg-gray-100 text-gray-900"
                            }`}>
@@ -1212,7 +1214,7 @@ export default function Chamados() {
                                  target="_blank" 
                                  rel="noopener noreferrer"
                                  className={`block mt-2 text-xs underline ${
-                                   msg.tipo_remetente === "admin" 
+                                   isAdminMsg
                                      ? "text-blue-700 hover:text-blue-900" 
                                      : "text-gray-700 hover:text-gray-900"
                                  }`}
@@ -1225,7 +1227,8 @@ export default function Chamados() {
                              </p>
                            </div>
                          </div>
-                       ))
+                       );
+                       })
                      )}
                    </div>
                    <div className="space-y-2">
