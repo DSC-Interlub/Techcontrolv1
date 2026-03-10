@@ -428,11 +428,11 @@ export default function Chamados() {
 
     // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
         html: emailConclusaoHtml,
-      }).catch(err => console.error('Erro ao notificar conclusão:', err));
+      });
     }
 
     await updatePromise;
