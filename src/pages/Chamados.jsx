@@ -127,7 +127,7 @@ export default function Chamados() {
 
     // Fire and forget - não bloqueia
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: selectedChamado.solicitante_email,
         subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
         html: buildEmailHtml({
@@ -141,7 +141,7 @@ export default function Chamados() {
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: null
         })
-      }).catch(err => console.error('Erro ao notificar observação:', err));
+      });
     }
 
     await updatePromise;
@@ -296,17 +296,22 @@ export default function Chamados() {
       usuario: nomeExibicao
     });
 
-    const updatePromise = base44.entities.Chamados.update(chamado.id, {
+    // Atualizar o selectedChamado também para refletir o responsável imediatamente
+    const dataAtualizada = {
       ...chamado,
       data_inicio_atendimento: agora,
       status: "Em Andamento",
       responsavel: nomeExibicao,
       historico
-    });
+    };
+
+    setSelectedChamado(dataAtualizada);
+
+    const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
     // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
         html: buildEmailHtml({
@@ -320,7 +325,7 @@ export default function Chamados() {
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
         })
-      }).catch(err => console.error('Erro ao notificar:', err));
+      });
     }
 
     await updatePromise;
@@ -423,11 +428,11 @@ export default function Chamados() {
 
     // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
         html: emailConclusaoHtml,
-      }).catch(err => console.error('Erro ao notificar conclusão:', err));
+      });
     }
 
     await updatePromise;
