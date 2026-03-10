@@ -80,6 +80,35 @@ export default function PortalReservas() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
+  const getNotebookStatus = (nbId) => {
+    const agora = new Date();
+    const reservaAtiva = todasReservas.find(r => {
+      if (r.equipamento_id !== nbId || r.status === "Cancelada" || r.status === "Concluída") return false;
+      const ini = new Date(`${r.data_inicio}T${r.hora_inicio}`);
+      const fim = new Date(`${r.data_fim}T${r.hora_fim}`);
+      return agora >= ini && agora < fim;
+    });
+    if (reservaAtiva) {
+      return { emUso: true, disponivelEm: new Date(`${reservaAtiva.data_fim}T${reservaAtiva.hora_fim}`) };
+    }
+    return { emUso: false, disponivelEm: null };
+  };
+
+  const getProximaDisponibilidade = (nbId) => {
+    const agora = new Date();
+    const futuras = todasReservas
+      .filter(r => {
+        if (r.equipamento_id !== nbId || r.status === "Cancelada" || r.status === "Concluída") return false;
+        return new Date(`${r.data_fim}T${r.hora_fim}`) > agora;
+      })
+      .sort((a, b) => new Date(`${a.data_fim}T${a.hora_fim}`) - new Date(`${b.data_fim}T${b.hora_fim}`));
+    if (futuras.length > 0) {
+      const ultima = futuras[futuras.length - 1];
+      return new Date(`${ultima.data_fim}T${ultima.hora_fim}`);
+    }
+    return null;
+  };
+
   const checkConflict = (nbId, dataInicio, horaInicio, dataFim, horaFim) => {
     const novoInicio = new Date(`${dataInicio}T${horaInicio}`);
     const novoFim = new Date(`${dataFim}T${horaFim}`);
