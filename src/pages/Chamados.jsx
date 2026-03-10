@@ -428,12 +428,14 @@ export default function Chamados() {
     const avaliacaoUrl = `${window.location.origin}${createPageUrl('portal-chamados')}`;
     const emailConclusaoHtml = buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, avaliacaoUrl);
 
-    // Fire and forget - não bloqueia
+    // Adiciona à fila (retorna instantaneamente)
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmailAsync', {
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-        html: emailConclusaoHtml,
+      base44.functions.invoke('adicionarFilaEmail', {
+        destinatario: chamado.solicitante_email,
+        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
+        corpo_html: emailConclusaoHtml,
+        tipo_evento: 'chamado_concluido',
+        referencia_id: chamado.id
       });
     }
 
