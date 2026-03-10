@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Activity, Loader2, Monitor, Laptop, ChevronLeft } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Activity, Loader2, Monitor, Laptop, ChevronLeft, History, ClipboardList } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import AvaliacaoEquipamento from "../components/equipamentos/AvaliacaoEquipamento";
@@ -81,11 +82,17 @@ export default function PortalEquipamentos() {
       .map(nb => ({ ...nb, entityType: "Notebooks_Externos", IconComp: Laptop })),
   ];
 
+  // Todas avaliações dos meus equipamentos (histórico completo)
+  const meusEquipamentosIds = meusEquipamentos.map(e => e.id);
+  const minhasAvaliacoes = avaliacoes.filter(a => meusEquipamentosIds.includes(a.equipamento_id));
+
   const getUltimaAvaliacao = (id) => avaliacoes.find(a => a.equipamento_id === id);
+  const getHistoricoEquipamento = (id) => avaliacoes.filter(a => a.equipamento_id === id).sort((a, b) => new Date(b.data_avaliacao) - new Date(a.data_avaliacao));
 
   // Tela de avaliação de equipamento específico
   if (equipamentoSelecionado) {
-    const ultimaAvaliacao = getUltimaAvaliacao(equipamentoSelecionado.id);
+    const historicoEq = getHistoricoEquipamento(equipamentoSelecionado.id);
+    const ultimaAvaliacao = historicoEq[0];
     return (
       <PortalLayout colaborador={colaborador} onLogout={logout}>
         <div className="p-4 md:p-8">
@@ -103,7 +110,7 @@ export default function PortalEquipamentos() {
                 <h1 className="text-xl font-bold text-gray-900">
                   {equipamentoSelecionado.marca} {equipamentoSelecionado.modelo}
                 </h1>
-                <p className="text-gray-500 text-sm">Etiqueta: {equipamentoSelecionado.etiqueta_interna || "—"}</p>
+                <p className="text-gray-500 text-sm">Etiqueta: {equipamentoSelecionado.etiqueta_interna || "—"} · {historicoEq.length} avaliação(ões) anteriores</p>
               </div>
             </div>
 
@@ -116,12 +123,69 @@ export default function PortalEquipamentos() {
                 <p className="text-gray-500">Redirecionando...</p>
               </div>
             ) : (
-              <AvaliacaoEquipamento
-                equipamento={equipamentoSelecionado}
-                entityType={equipamentoSelecionado.entityType}
-                avaliacaoExistente={ultimaAvaliacao}
-                onSalvar={(dados) => salvarAvaliacaoMutation.mutate(dados)}
-              />
+              <Tabs defaultValue="nova">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="nova" className="gap-2">
+                    <ClipboardList className="w-4 h-4" />
+                    Nova Avaliação
+                  </TabsTrigger>
+                  <TabsTrigger value="historico" className="gap-2">
+                    <History className="w-4 h-4" />
+                    Histórico ({historicoEq.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="nova">
+                  <AvaliacaoEquipamento
+                    equipamento={equipamentoSelecionado}
+                    entityType={equipamentoSelecionado.entityType}
+                    avaliacaoExistente={null}
+                    onSalvar={(dados) => salvarAvaliacaoMutation.mutate(dados)}
+                  />
+                </TabsContent>
+
+                <TabsContent value="historico">
+                  {historicoEq.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <History className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                      <p>Nenhuma avaliação anterior para este equipamento.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {historicoEq.map((av, idx) => (
+                        <Card key={av.id} className={idx === 0 ? "border-blue-200" : ""}>
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="font-mono">{av.numero_avaliacao || idx + 1}ª Avaliação</Badge>
+                                {idx === 0 && <Badge className="bg-blue-100 text-blue-800">Mais recente</Badge>}
+                              </div>
+                              <Badge className={getClassColor(av.classificacao)}>{av.classificacao}</Badge>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                              <div><p className="text-gray-500">Data</p><p className="font-medium">{new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}</p></div>
+                              <div><p className="text-gray-500">Pontuação</p><p className="font-medium">{av.pontuacao_total}/100</p></div>
+                              <div><p className="text-gray-500">Desempenho</p><p className="font-medium">{av.desempenho || "—"}</p></div>
+                              <div><p className="text-gray-500">Armazenamento</p><p className="font-medium">{av.tipo_armazenamento || "—"}</p></div>
+                              <div><p className="text-gray-500">Antivírus</p><p className="font-medium">{av.antivirus || "—"}</p></div>
+                              <div><p className="text-gray-500">Windows</p><p className="font-medium">{av.versao_windows || "—"}</p></div>
+                            </div>
+                            {av.problemas?.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-gray-500 text-sm mb-1">Problemas relatados:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {av.problemas.map((p, pi) => <Badge key={pi} variant="outline" className="text-xs text-red-700 border-red-200">{p}</Badge>)}
+                                </div>
+                              </div>
+                            )}
+                            {av.satisfacao && <p className="text-xs text-gray-500 mt-2">Satisfação: {av.satisfacao}</p>}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </div>
@@ -139,7 +203,7 @@ export default function PortalEquipamentos() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Meus Equipamentos</h1>
-              <p className="text-gray-500 mt-1">Equipamentos atribuídos a você</p>
+              <p className="text-gray-500 mt-1">Equipamentos atribuídos a você · {minhasAvaliacoes.length} avaliação(ões) realizadas</p>
             </div>
           </div>
 
@@ -154,6 +218,7 @@ export default function PortalEquipamentos() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {meusEquipamentos.map((eq) => {
                 const avaliacao = getUltimaAvaliacao(eq.id);
+                const historico = getHistoricoEquipamento(eq.id);
                 const Icon = eq.IconComp;
                 return (
                   <Card key={eq.id} className="hover:shadow-md transition-shadow">
@@ -172,28 +237,40 @@ export default function PortalEquipamentos() {
                               "bg-orange-100 text-orange-800"
                             }>{eq.status}</Badge>
                             {eq.tipo && <Badge variant="outline">{eq.tipo}</Badge>}
-                            {avaliacao && (
-                              <Badge className={getClassColor(avaliacao.classificacao)}>{avaliacao.classificacao}</Badge>
-                            )}
+                            {avaliacao && <Badge className={getClassColor(avaliacao.classificacao)}>{avaliacao.classificacao}</Badge>}
                           </div>
-                          {avaliacao && (
+                          {avaliacao ? (
                             <p className="text-xs text-gray-500 mt-1">
                               Última avaliação: {new Date(avaliacao.data_avaliacao).toLocaleDateString('pt-BR')}
                               {" · "}Pontuação: {avaliacao.pontuacao_total}
+                              {historico.length > 1 && ` · ${historico.length} avaliações`}
                             </p>
+                          ) : (
+                            <p className="text-xs text-orange-600 mt-1">Ainda não avaliado</p>
                           )}
                         </div>
                       </div>
-                      <div className="mt-4 pt-3 border-t">
+                      <div className="mt-4 pt-3 border-t flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full gap-2"
+                          className="flex-1 gap-2"
                           onClick={() => setEquipamentoSelecionado(eq)}
                         >
                           <Activity className="w-4 h-4" />
-                          {avaliacao ? "Reavaliar Equipamento" : "Avaliar Equipamento"}
+                          {avaliacao ? "Reavaliar" : "Avaliar"}
                         </Button>
+                        {historico.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-gray-500"
+                            onClick={() => setEquipamentoSelecionado(eq)}
+                          >
+                            <History className="w-4 h-4" />
+                            {historico.length}
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
