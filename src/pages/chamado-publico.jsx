@@ -640,8 +640,8 @@ export default function ChamadoPublico() {
             </CardContent>
 
             <div className="border-t p-6 bg-gray-50 flex justify-end">
-              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={createChamadoMutation.isLoading}>
-                {createChamadoMutation.isLoading ? (
+              <Button type="submit" className="bg-orange-600 hover:bg-orange-700" disabled={createChamadoMutation.isPending}>
+                {createChamadoMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</>
                 ) : (
                   "Abrir Chamado"
