@@ -193,10 +193,13 @@ export default function ChamadoPublico() {
     try {
       for (const file of files) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(file.name);
+        const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|wmv)$/i.test(file.name);
         uploadedFiles.push({
           file_url,
           file_name: file.name,
-          file_type: file.type.startsWith('image/') ? 'image' : 'video'
+          file_type: isImage ? 'image' : isVideo ? 'video' : 'image',
+          mime_type: file.type
         });
       }
       setAnexos([...anexos, ...uploadedFiles]);
