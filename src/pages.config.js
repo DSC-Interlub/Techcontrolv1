@@ -69,6 +69,7 @@ import chamadoPublico from './pages/chamado-publico';
 import reservaPublica from './pages/reserva-publica';
 import salaTreinamento from './pages/sala-treinamento';
 import reservaSalaPublica from './pages/reserva-sala-publica';
+import portalLogin from './pages/portal-login';
 import __Layout from './Layout.jsx';
 
 
@@ -95,6 +96,7 @@ export const PAGES = {
     "reserva-publica": reservaPublica,
     "sala-treinamento": salaTreinamento,
     "reserva-sala-publica": reservaSalaPublica,
+    "portal-login": portalLogin,
 }
 
 export const pagesConfig = {
