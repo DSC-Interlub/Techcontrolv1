@@ -1205,6 +1205,20 @@ export default function Chamados() {
                            }`}>
                              <p className="text-xs font-semibold mb-1">{msg.remetente_nome}</p>
                              <p className="text-sm">{msg.mensagem}</p>
+                             {msg.anexo_url && (
+                               <a 
+                                 href={msg.anexo_url} 
+                                 target="_blank" 
+                                 rel="noopener noreferrer"
+                                 className={`block mt-2 text-xs underline ${
+                                   msg.tipo_remetente === "admin" 
+                                     ? "text-blue-700 hover:text-blue-900" 
+                                     : "text-gray-700 hover:text-gray-900"
+                                 }`}
+                               >
+                                 📎 {msg.anexo_nome}
+                               </a>
+                             )}
                              <p className="text-xs mt-1 opacity-70">
                                {format(new Date(msg.data_hora), "HH:mm", { locale: ptBR })}
                              </p>
