@@ -228,8 +228,8 @@ export default function ChamadoPublico() {
         anexos: anexos,
       });
 
-      // Uma única chamada backend centralizada que busca admins e envia todos os emails
-      base44.functions.invoke('notificarNovoChamado', {
+      // Aguarda o envio dos emails para garantir entrega
+      await base44.functions.invoke('notificarNovoChamado', {
         chamadoData: {
           numeroChamado,
           solicitante_nome: data.solicitante_nome,
