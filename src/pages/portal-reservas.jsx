@@ -153,8 +153,10 @@ export default function PortalReservas() {
 
                   <div>
                     <Label>Selecione o Notebook *</Label>
-                    {notebooksDisponiveis.length === 0 ? (
-                      <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva no momento.</p>
+                    {notebooksExternos.length === 0 ? (
+                      <p className="text-sm text-gray-500 mt-1">Carregando notebooks...</p>
+                    ) : notebooksDisponiveis.length === 0 ? (
+                      <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva. Configure os notebooks em "Notebooks Externos" marcando "Disponível para Reserva".</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                         {notebooksDisponiveis.map(nb => (
