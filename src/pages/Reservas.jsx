@@ -593,20 +593,26 @@ export default function Reservas() {
                                 </Badge>
                               </div>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <User className="w-4 h-4" />
-                                  {reserva.solicitante_nome}
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Briefcase className="w-4 h-4" />
-                                  {reserva.solicitante_area}
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-600">
-                                  <Clock className="w-4 h-4" />
-                                  {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} - {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy", { locale: ptBR })}
-                                </div>
-                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
+                                 <div className="flex items-center gap-2 text-gray-600">
+                                   <User className="w-4 h-4" />
+                                   {reserva.solicitante_nome}
+                                 </div>
+                                 <div className="flex items-center gap-2 text-gray-600">
+                                   <Briefcase className="w-4 h-4" />
+                                   {reserva.solicitante_area}
+                                 </div>
+                                 <div className="flex items-center gap-2 text-gray-600">
+                                   <Clock className="w-4 h-4" />
+                                   {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy", { locale: ptBR })} - {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy", { locale: ptBR })}
+                                 </div>
+                                 <div className="flex items-center gap-2">
+                                   <span className="text-gray-500">Etiqueta:</span>
+                                   <span className="font-mono text-sm font-semibold text-purple-700">
+                                     {notebooks.find(n => n.id === reserva.equipamento_id)?.etiqueta_interna || "-"}
+                                   </span>
+                                 </div>
+                               </div>
                             </div>
 
                             <Button
