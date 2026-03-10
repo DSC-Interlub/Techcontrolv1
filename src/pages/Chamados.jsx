@@ -125,12 +125,12 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    // Fire and forget - não bloqueia
+    // Adiciona à fila (retorna instantaneamente)
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.functions.invoke('sendEmailAsync', {
-        to: selectedChamado.solicitante_email,
-        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
-        html: buildEmailHtml({
+      base44.functions.invoke('adicionarFilaEmail', {
+        destinatario: selectedChamado.solicitante_email,
+        assunto: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
+        corpo_html: buildEmailHtml({
           titulo: 'Nova Atualização',
           icone: '📝',
           corTitulo: '#d97706',
@@ -140,7 +140,9 @@ export default function Chamados() {
           detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: null
-        })
+        }),
+        tipo_evento: 'observacao_adicionada',
+        referencia_id: selectedChamado.id
       });
     }
 
