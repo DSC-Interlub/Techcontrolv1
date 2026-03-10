@@ -692,6 +692,12 @@ export default function Reservas() {
                     <div>
                       <h3 className="font-semibold text-lg">{selectedReserva.equipamento_nome}</h3>
                       <p className="text-sm text-gray-600">Tipo: {selectedReserva.equipamento_tipo}</p>
+                      {(() => {
+                        const nb = notebooks.find(n => n.id === selectedReserva.equipamento_id);
+                        return nb?.etiqueta_interna ? (
+                          <p className="text-sm font-mono font-semibold text-purple-700">Etiqueta: {nb.etiqueta_interna}</p>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <Badge className={statusColors[selectedReserva.status]}>
