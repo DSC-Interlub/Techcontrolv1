@@ -101,7 +101,12 @@ export default function Chamados() {
 
       const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
 
-      // Email será disparado automaticamente pela automação entity
+      // Dispara email imediatamente via backend (sem esperar resposta)
+      base44.functions.invoke('enviarEmailMensagemChat', {
+        chamado_id: selectedChamado.id,
+        remetente_nome: currentUser.nome_exibicao || currentUser.full_name,
+        mensagem: msg
+      }).catch(err => console.error("Erro ao enviar email:", err));
 
       return chatMsg;
     },
