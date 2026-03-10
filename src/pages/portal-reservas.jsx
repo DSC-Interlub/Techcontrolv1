@@ -7,13 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
@@ -50,20 +47,26 @@ export default function PortalReservas() {
     enabled: !!colaborador,
   });
 
-  if (loading || !colaborador) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.Reservas.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] });
+      setSuccess(true);
+      setShowForm(false);
+      setSelectedNotebook(null);
+      setFormData({ data_inicio: "", hora_inicio: "08:00", data_fim: "", hora_fim: "18:00", motivo: "" });
+      setTimeout(() => setSuccess(false), 5000);
+    },
+  });
 
-  const parseDateLocal = (d) => { const [y, m, day] = d.split('-').map(Number); return new Date(y, m - 1, day); };
+  const cancelMutation = useMutation({
+    mutationFn: (id) => base44.entities.Reservas.update(id, { status: "Cancelada" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] }),
+  });
 
-  const isNotebookDisponivel = (nb) => {
-    const agora = new Date();
-    return !todasReservas.some(r => {
-      if (r.equipamento_id !== nb.id) return false;
-      if (r.status === "Cancelada" || r.status === "Concluída") return false;
-      const fim = new Date(`${r.data_fim}T${r.hora_fim}`);
-      const inicio = new Date(`${r.data_inicio}T${r.hora_inicio}`);
-      return fim > agora && inicio < agora;
-    });
-  };
+  if (loading || !colaborador) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  }
 
   const checkConflict = (nbId, dataInicio, horaInicio, dataFim, horaFim) => {
     const novoInicio = new Date(`${dataInicio}T${horaInicio}`);
@@ -82,22 +85,6 @@ export default function PortalReservas() {
   );
 
   const notebooksDisponiveis = notebooksExternos.filter(n => n.disponivel_para_reserva);
-
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Reservas.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] });
-      setSuccess(true);
-      setShowForm(false);
-      setSelectedNotebook(null);
-      setTimeout(() => setSuccess(false), 5000);
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: (id) => base44.entities.Reservas.update(id, { status: "Cancelada" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] }),
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();

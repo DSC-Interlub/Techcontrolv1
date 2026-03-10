@@ -38,17 +38,37 @@ export default function PortalSala() {
     if (!loading) requireAuth();
   }, [loading]);
 
-  const hoje = new Date();
-  const inicioSemana = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), semanaOffset * 7);
-  const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
-
   const { data: reservas = [] } = useQuery({
     queryKey: ['portal_sala_reservas'],
     queryFn: () => base44.entities.ReservasSala.list('-created_date'),
     enabled: !!colaborador,
   });
 
-  if (loading || !colaborador) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.ReservasSala.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] });
+      setSuccess(true);
+      setShowForm(false);
+      setSelectedSlot(null);
+      setFormData({ hora_fim: "", motivo: "", num_participantes: "", observacoes: "" });
+      setTimeout(() => setSuccess(false), 5000);
+    },
+    onError: () => setConflictError(true),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id) => base44.entities.ReservasSala.update(id, { status: "Cancelada" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] }),
+  });
+
+  if (loading || !colaborador) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  }
+
+  const hoje = new Date();
+  const inicioSemana = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), semanaOffset * 7);
+  const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
 
   const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
   const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
@@ -73,24 +93,6 @@ export default function PortalSala() {
     setShowForm(true);
     setConflictError(false);
   };
-
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ReservasSala.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] });
-      setSuccess(true);
-      setShowForm(false);
-      setSelectedSlot(null);
-      setFormData({ hora_fim: "", motivo: "", num_participantes: "", observacoes: "" });
-      setTimeout(() => setSuccess(false), 5000);
-    },
-    onError: () => setConflictError(true),
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: (id) => base44.entities.ReservasSala.update(id, { status: "Cancelada" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] }),
-  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
