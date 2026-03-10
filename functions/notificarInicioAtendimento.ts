@@ -62,7 +62,7 @@ function buildEmail(nome, responsavel, chamado) {
 
   <table width="100%" cellpadding="0" cellspacing="0" border="0">
     <tr><td align="center" style="padding-bottom:20px;">
-      <a href="${new URL('http://localhost').origin}/portal-chamados" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(30,64,175,0.3);">🔍 Acompanhar Chamado</a>
+      <a href="/portal-chamados" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(30,64,175,0.3);">🔍 Ir para o Portal</a>
     </td></tr>
   </table>
 </td></tr>
