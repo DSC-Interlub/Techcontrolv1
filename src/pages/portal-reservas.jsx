@@ -86,7 +86,10 @@ export default function PortalReservas() {
     r.solicitante_email?.toLowerCase() === colaborador.email?.toLowerCase()
   );
 
-  const notebooksDisponiveis = notebooksExternos.filter(n => n.disponivel_para_reserva);
+  // Mostra notebooks marcados como disponíveis para reserva
+  // Se nenhum tiver o flag, mostra todos para não deixar a lista vazia
+  const notebooksMarcados = notebooksExternos.filter(n => n.disponivel_para_reserva === true);
+  const notebooksDisponiveis = notebooksMarcados.length > 0 ? notebooksMarcados : notebooksExternos.filter(n => n.status !== "Danificado" && n.status !== "Manutenção");
 
   const handleSubmit = (e) => {
     e.preventDefault();
