@@ -315,7 +315,7 @@ export default function Chamados() {
             numero: chamado.numero_chamado,
             mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
             detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
-            linkAcompanhar: `https://techcontrol.site/chamado-publico`,
+            linkAcompanhar: `https://techcontrol.site/acompanhar-chamado`,
             rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
           })
         })
