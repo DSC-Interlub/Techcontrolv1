@@ -69,7 +69,7 @@ export default function Chamados() {
 
   const { data: chatMessages = [] } = useQuery({
     queryKey: ['chamados_chat', selectedChamado?.id],
-    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, '-created_date'),
+    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, 'created_date'),
     enabled: !!selectedChamado?.id,
     refetchInterval: 2000,
   });
