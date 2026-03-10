@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[notificarNovoChamado] Enviados ${destinatarios.length} emails. Admins: ${adminEmails.join(', ')}`);
-    return Response.json({ success: true, enviados: promises.length, admins: adminEmails });
+    return Response.json({ success: true, enviados: destinatarios.length, admins: adminEmails });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
