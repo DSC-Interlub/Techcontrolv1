@@ -178,6 +178,7 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
+    // Enviar email sem aguardar (fire-and-forget)
     if (selectedChamado.solicitante_email && selectedChamado.solucao && !originalChamado.solucao) {
       const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
       base44.integrations.Core.SendEmail({
