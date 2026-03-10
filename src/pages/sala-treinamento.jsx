@@ -103,7 +103,11 @@ export default function SalaTreinamento() {
 
   const handleSlotClick = (data, hora) => {
     const reserva = getReservaNoSlot(data, hora);
-    if (reserva || isSlotPassado(data, hora)) return;
+    if (reserva) {
+      setReservaDetalhes(reserva);
+      return;
+    }
+    if (isSlotPassado(data, hora)) return;
     setSelectedSlot({ data, hora_inicio: hora });
     const idx = HORARIOS.indexOf(hora);
     setFormData(prev => ({ ...prev, hora_fim: HORARIOS[idx + 2] || HORARIOS[idx + 1] || hora }));
