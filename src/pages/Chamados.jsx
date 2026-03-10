@@ -1213,31 +1213,54 @@ export default function Chamados() {
                        ))
                      )}
                    </div>
-                   <div className="flex gap-2">
-                     <input
-                       type="text"
-                       value={novaMsg}
-                       onChange={(e) => setNovaMsg(e.target.value)}
-                       onKeyPress={(e) => {
-                         if (e.key === "Enter" && novaMsg.trim()) {
-                           enviarMsgMutation.mutate(novaMsg);
-                         }
-                       }}
-                       placeholder="Digite sua mensagem..."
-                       className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     />
-                     <Button
-                       onClick={() => {
-                         if (novaMsg.trim()) {
-                           enviarMsgMutation.mutate(novaMsg);
-                         }
-                       }}
-                       disabled={enviarMsgMutation.isPending || !novaMsg.trim()}
-                       className="bg-blue-600 hover:bg-blue-700"
-                       size="sm"
-                     >
-                       <Send className="w-4 h-4" />
-                     </Button>
+                   <div className="space-y-2">
+                     {anexoChat && (
+                       <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-sm flex items-center justify-between">
+                         <span className="text-blue-900">📎 {anexoChat.name}</span>
+                         <button 
+                           onClick={() => setAnexoChat(null)}
+                           className="text-blue-700 hover:text-blue-900 font-bold"
+                         >
+                           ✕
+                         </button>
+                       </div>
+                     )}
+                     <div className="flex gap-2">
+                       <input
+                         type="text"
+                         value={novaMsg}
+                         onChange={(e) => setNovaMsg(e.target.value)}
+                         onKeyPress={(e) => {
+                           if (e.key === "Enter" && novaMsg.trim()) {
+                             enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                           }
+                         }}
+                         placeholder="Digite sua mensagem..."
+                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       />
+                       <label className="cursor-pointer">
+                         <input
+                           type="file"
+                           onChange={(e) => setAnexoChat(e.target.files?.[0] || null)}
+                           className="hidden"
+                         />
+                         <div className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-2 flex items-center justify-center transition-colors">
+                           📎
+                         </div>
+                       </label>
+                       <Button
+                         onClick={() => {
+                           if (novaMsg.trim()) {
+                             enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                           }
+                         }}
+                         disabled={enviarMsgMutation.isPending || !novaMsg.trim()}
+                         className="bg-blue-600 hover:bg-blue-700"
+                         size="sm"
+                       >
+                         <Send className="w-4 h-4" />
+                       </Button>
+                     </div>
                    </div>
                  </div>
 
