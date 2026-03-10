@@ -29,32 +29,42 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const { chamadoData, solicitanteEmail, acompanharUrl } = await req.json();
 
-    // Usa service role para buscar admins (não precisa de usuário logado)
+    // Busca apenas admins para notificar
     const allUsers = await base44.asServiceRole.entities.User.list();
-    const adminEmails = allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email);
+    const adminEmails = allUsers
+      .filter(u => u.role === 'admin' && u.email)
+      .map(u => u.email);
 
-    const destinatarios = [];
+    // Deduplica emails (evita enviar duplicado se solicitante for admin)
+    const uniqueAdminEmails = adminEmails.filter(e => e !== solicitanteEmail);
+
+    // Envia email para o solicitante primeiro
+    const envios = [];
 
     if (solicitanteEmail) {
-      destinatarios.push({
-        to: solicitanteEmail,
-        subject: `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
-        html: buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
-      });
+      envios.push(enviarEmail(
+        solicitanteEmail,
+        `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
+        buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
+      ));
     }
 
-    for (const adminEmail of adminEmails) {
-      destinatarios.push({
-        to: adminEmail,
-        subject: `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
-        html: buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
-      });
+    // Envia para admins com pequeno delay entre cada um para evitar rate limit (429)
+    for (let i = 0; i < uniqueAdminEmails.length; i++) {
+      if (i > 0) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+      envios.push(enviarEmail(
+        uniqueAdminEmails[i],
+        `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
+        buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
+      ));
     }
 
-    await Promise.all(destinatarios.map(dest => enviarEmail(dest.to, dest.subject, dest.html)));
+    await Promise.all(envios);
 
-    console.log(`[portalNotificarChamado] Enviados ${destinatarios.length} emails`);
-    return Response.json({ success: true, enviados: destinatarios.length });
+    console.log(`[portalNotificarChamado] Enviados ${envios.length} emails`);
+    return Response.json({ success: true, enviados: envios.length });
   } catch (error) {
     console.error(`[portalNotificarChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
