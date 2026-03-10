@@ -243,6 +243,40 @@ export default function SalaTreinamento() {
           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-teal-200 border-2 border-teal-400" /><span className="text-sm text-gray-600">Selecionado</span></div>
         </div>
 
+        {/* Painel de detalhes / cancelamento */}
+        {reservaDetalhes && (
+          <Card className="shadow-xl max-w-lg mx-auto mb-6 border-teal-200">
+            <CardHeader className="border-b bg-teal-50 flex flex-row items-center justify-between">
+              <CardTitle className="text-teal-900 text-base">Detalhes da Reserva</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setReservaDetalhes(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><span className="text-gray-500">Solicitante</span><p className="font-medium">{reservaDetalhes.solicitante_nome}</p></div>
+                <div><span className="text-gray-500">Área</span><p className="font-medium">{reservaDetalhes.solicitante_area || "—"}</p></div>
+                <div><span className="text-gray-500">Data</span><p className="font-medium">{reservaDetalhes.data}</p></div>
+                <div><span className="text-gray-500">Horário</span><p className="font-medium">{reservaDetalhes.hora_inicio} – {reservaDetalhes.hora_fim}</p></div>
+                {reservaDetalhes.motivo && <div className="col-span-2"><span className="text-gray-500">Pauta</span><p className="font-medium">{reservaDetalhes.motivo}</p></div>}
+                {reservaDetalhes.num_participantes && <div><span className="text-gray-500">Participantes</span><p className="font-medium">{reservaDetalhes.num_participantes}</p></div>}
+                {reservaDetalhes.observacoes && <div className="col-span-2"><span className="text-gray-500">Observações</span><p className="font-medium">{reservaDetalhes.observacoes}</p></div>}
+              </div>
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleCancelarReserva(reservaDetalhes)}
+                  disabled={cancelMutation.isPending}
+                >
+                  {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Cancelar Reserva
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Formulário de reserva */}
         {showForm && selectedSlot && (
           <Card className="shadow-xl max-w-lg mx-auto">
