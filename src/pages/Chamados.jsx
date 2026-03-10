@@ -125,25 +125,26 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    const emailPromise = (observacaoAlterada && selectedChamado.solicitante_email)
-      ? base44.functions.invoke('sendEmail', {
-          to: selectedChamado.solicitante_email,
-          subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
-          html: buildEmailHtml({
-            titulo: 'Nova Atualização',
-            icone: '📝',
-            corTitulo: '#d97706',
-            nome: selectedChamado.solicitante_nome,
-            numero: selectedChamado.numero_chamado,
-            mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
-            detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
-            linkAcompanhar: `https://techcontrol.site/acompanhar-chamado`,
-            rodapeExtra: null
-          })
+    // Fire and forget - não bloqueia
+    if (observacaoAlterada && selectedChamado.solicitante_email) {
+      base44.functions.invoke('sendEmail', {
+        to: selectedChamado.solicitante_email,
+        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
+        html: buildEmailHtml({
+          titulo: 'Nova Atualização',
+          icone: '📝',
+          corTitulo: '#d97706',
+          nome: selectedChamado.solicitante_nome,
+          numero: selectedChamado.numero_chamado,
+          mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
+          detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
+          linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
+          rodapeExtra: null
         })
-      : Promise.resolve();
+      }).catch(err => console.error('Erro ao notificar observação:', err));
+    }
 
-    await Promise.all([updatePromise, emailPromise]);
+    await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
     setShowDetails(false);
