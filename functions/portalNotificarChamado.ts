@@ -51,10 +51,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    for (const dest of destinatarios) {
-      await enviarEmail(dest.to, dest.subject, dest.html);
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+    await Promise.all(destinatarios.map(dest => enviarEmail(dest.to, dest.subject, dest.html)));
 
     console.log(`[portalNotificarChamado] Enviados ${destinatarios.length} emails`);
     return Response.json({ success: true, enviados: destinatarios.length });
