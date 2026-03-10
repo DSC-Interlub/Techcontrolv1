@@ -66,16 +66,16 @@ import Tablets from './pages/Tablets';
 import Usuarios from './pages/Usuarios';
 import acompanharChamado from './pages/acompanhar-chamado';
 import chamadoPublico from './pages/chamado-publico';
-import reservaPublica from './pages/reserva-publica';
-import salaTreinamento from './pages/sala-treinamento';
-import reservaSalaPublica from './pages/reserva-sala-publica';
-import portalLogin from './pages/portal-login';
-import portal from './pages/portal';
 import portalChamados from './pages/portal-chamados';
+import portalEquipamentos from './pages/portal-equipamentos';
+import portalLogin from './pages/portal-login';
 import portalRamais from './pages/portal-ramais';
 import portalReservas from './pages/portal-reservas';
 import portalSala from './pages/portal-sala';
-import portalEquipamentos from './pages/portal-equipamentos';
+import portal from './pages/portal';
+import reservaPublica from './pages/reserva-publica';
+import reservaSalaPublica from './pages/reserva-sala-publica';
+import salaTreinamento from './pages/sala-treinamento';
 import __Layout from './Layout.jsx';
 
 
@@ -99,16 +99,16 @@ export const PAGES = {
     "Usuarios": Usuarios,
     "acompanhar-chamado": acompanharChamado,
     "chamado-publico": chamadoPublico,
-    "reserva-publica": reservaPublica,
-    "sala-treinamento": salaTreinamento,
-    "reserva-sala-publica": reservaSalaPublica,
-    "portal-login": portalLogin,
-    "portal": portal,
     "portal-chamados": portalChamados,
+    "portal-equipamentos": portalEquipamentos,
+    "portal-login": portalLogin,
     "portal-ramais": portalRamais,
     "portal-reservas": portalReservas,
     "portal-sala": portalSala,
-    "portal-equipamentos": portalEquipamentos,
+    "portal": portal,
+    "reserva-publica": reservaPublica,
+    "reserva-sala-publica": reservaSalaPublica,
+    "sala-treinamento": salaTreinamento,
 }
 
 export const pagesConfig = {

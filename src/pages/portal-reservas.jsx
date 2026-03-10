@@ -35,11 +35,10 @@ export default function PortalReservas() {
     if (!loading) requireAuth();
   }, [loading]);
 
-  const { data: notebooksExternos = [] } = useQuery({
+  const { data: notebooksExternos = [], isLoading: loadingNotebooks } = useQuery({
     queryKey: ['portal_nb_ext'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
     enabled: !!colaborador,
-    // Sem cache para garantir dados frescos
     staleTime: 0,
   });
 
@@ -153,8 +152,8 @@ export default function PortalReservas() {
 
                   <div>
                     <Label>Selecione o Notebook *</Label>
-                    {notebooksExternos.length === 0 ? (
-                      <p className="text-sm text-gray-500 mt-1">Carregando notebooks...</p>
+                    {loadingNotebooks ? (
+                      <div className="flex items-center gap-2 mt-2 text-sm text-gray-500"><Loader2 className="w-4 h-4 animate-spin" />Carregando notebooks...</div>
                     ) : notebooksDisponiveis.length === 0 ? (
                       <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva. Configure os notebooks em "Notebooks Externos" marcando "Disponível para Reserva".</p>
                     ) : (
