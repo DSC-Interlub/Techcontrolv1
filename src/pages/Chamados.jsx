@@ -417,18 +417,19 @@ export default function Chamados() {
       historico
     });
 
-    const avaliacaoUrl = `https://techcontrol.site/acompanhar-chamado`;
+    const avaliacaoUrl = `${window.location.origin}${createPageUrl('portal-chamados')}`;
     const emailConclusaoHtml = buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, avaliacaoUrl);
 
-    const emailPromise = chamado.solicitante_email
-      ? base44.functions.invoke('sendEmail', {
-          to: chamado.solicitante_email,
-          subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-          html: emailConclusaoHtml,
-        })
-      : Promise.resolve();
+    // Fire and forget - não bloqueia
+    if (chamado.solicitante_email) {
+      base44.functions.invoke('sendEmail', {
+        to: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
+        html: emailConclusaoHtml,
+      }).catch(err => console.error('Erro ao notificar conclusão:', err));
+    }
 
-    await Promise.all([updatePromise, emailPromise]);
+    await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
   };
