@@ -67,6 +67,30 @@ export default function Chamados() {
     enabled: !!user,
   });
 
+  const { data: chatMessages = [] } = useQuery({
+    queryKey: ['chamados_chat', selectedChamado?.id],
+    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, '-created_date'),
+    enabled: !!selectedChamado?.id,
+    refetchInterval: 2000,
+  });
+
+  const enviarMsgMutation = useMutation({
+    mutationFn: async (msg) => {
+      return base44.entities.ChamadosChat.create({
+        chamado_id: selectedChamado.id,
+        tipo_remetente: "admin",
+        remetente_nome: currentUser.nome_exibicao || currentUser.full_name,
+        remetente_email: currentUser.email,
+        mensagem: msg,
+        data_hora: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
+      setNovaMsg("");
+    },
+  });
+
   const updateChamadoMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Chamados.update(id, data),
     onSuccess: () => {
