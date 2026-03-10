@@ -340,15 +340,15 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
+    await updatePromise;
+
     if (chamado.solicitante_email) {
-      base44.integrations.Core.SendEmail({
+      await base44.integrations.Core.SendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento 🔧`,
         body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi recebido e o atendimento já foi iniciado por ${nomeExibicao}.\n\nEstamos trabalhando para resolver sua solicitação o mais breve possível.\n\nResponsável: ${nomeExibicao}\nTipo: ${getTipoCompleto(chamado)}\nNúmero: ${chamado.numero_chamado}`
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
-
-    await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
     setShowDetails(false);
   };
