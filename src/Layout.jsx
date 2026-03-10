@@ -282,6 +282,14 @@ export default function Layout({ children }) {
             <div className="text-xs text-gray-600 text-center">
               <p className="font-semibold">Sistema TechControl</p>
               <p className="text-gray-500">v1.0.0</p>
+              <a
+                href={portalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-blue-600 hover:underline"
+              >
+                🔗 Portal do Colaborador
+              </a>
             </div>
           </SidebarFooter>
         </Sidebar>
