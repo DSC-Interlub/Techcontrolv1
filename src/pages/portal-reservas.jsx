@@ -38,8 +38,8 @@ export default function PortalReservas() {
   const { data: notebooksExternos = [] } = useQuery({
     queryKey: ['portal_nb_ext'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
-    // Carregar sempre, não só quando autenticado no portal
-    enabled: true,
+    enabled: !!colaborador,
+    // Sem cache para garantir dados frescos
     staleTime: 0,
   });
 
