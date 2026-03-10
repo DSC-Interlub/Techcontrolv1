@@ -115,6 +115,23 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
+
+          {/* Status de acesso portal */}
+          <div className={`mb-3 px-4 py-2 rounded-lg border text-sm flex items-center gap-2 ${
+            !colaborador.senha_portal ? 'bg-gray-50 border-gray-200 text-gray-600' :
+            colaborador.acesso_portal_bloqueado ? 'bg-red-50 border-red-200 text-red-700' :
+            'bg-green-50 border-green-200 text-green-700'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${
+              !colaborador.senha_portal ? 'bg-gray-400' :
+              colaborador.acesso_portal_bloqueado ? 'bg-red-500' : 'bg-green-500'
+            }`} />
+            Portal: {
+              !colaborador.senha_portal ? "Senha não configurada" :
+              colaborador.acesso_portal_bloqueado ? "Acesso bloqueado" :
+              "Acesso liberado"
+            }
+          </div>
           
           <Card>
             <CardHeader className="border-b">
