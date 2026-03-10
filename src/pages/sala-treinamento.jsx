@@ -212,7 +212,7 @@ export default function SalaTreinamento() {
                         onClick={() => handleSlotClick(dia, hora)}
                         className={`border-l min-h-[40px] p-1 transition-all ${
                           reserva
-                            ? 'bg-teal-100 cursor-default'
+                            ? 'bg-teal-100 cursor-pointer hover:bg-teal-200'
                             : passado
                             ? 'bg-gray-100 cursor-not-allowed opacity-50'
                             : selecionado
