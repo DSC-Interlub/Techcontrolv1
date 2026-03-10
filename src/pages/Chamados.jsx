@@ -137,7 +137,7 @@ export default function Chamados() {
             numero: selectedChamado.numero_chamado,
             mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
             detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
-            linkAcompanhar: `https://techcontrol.site/chamado-publico`,
+            linkAcompanhar: `https://techcontrol.site/acompanhar-chamado`,
             rodapeExtra: null
           })
         })
