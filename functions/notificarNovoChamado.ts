@@ -26,24 +26,38 @@ function buildEmail(destinatario, intro, chamadoData, acompanharUrl) {
 
 Deno.serve(async (req) => {
   try {
+    const base44 = createClientFromRequest(req);
     const { chamadoData, solicitanteEmail, acompanharUrl } = await req.json();
 
-    // Fire and forget - envia em paralelo para solicitante + ADM fixo
-    Promise.all([
-      enviarEmail(
-        solicitanteEmail,
-        `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
-        buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
-      ),
-      enviarEmail(
-        'adm.sp1@interlub.com',
-        `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
-        buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
-      )
-    ]).catch(err => console.error('[notificarNovoChamado] Erro:', err.message));
+    // Buscar admins via service role
+    const allUsers = await base44.asServiceRole.entities.User.list();
+    const adminEmails = allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email);
 
-    console.log(`[notificarNovoChamado] Enviando 2 emails (fire and forget)`);
-    return Response.json({ success: true });
+    const destinatarios = [];
+
+    // Email para o solicitante primeiro
+    if (solicitanteEmail) {
+      destinatarios.push({
+        to: solicitanteEmail,
+        subject: `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
+        html: buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
+      });
+    }
+
+    // Emails para admins
+    for (const adminEmail of adminEmails) {
+      destinatarios.push({
+        to: adminEmail,
+        subject: `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
+        html: buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
+      });
+    }
+
+    // Enviar em paralelo para não fazer rate limit
+    await Promise.all(destinatarios.map(dest => enviarEmail(dest.to, dest.subject, dest.html)));
+
+    console.log(`[notificarNovoChamado] Enviados ${destinatarios.length} emails. Admins: ${adminEmails.join(', ')}`);
+    return Response.json({ success: true, enviados: destinatarios.length, admins: adminEmails });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
