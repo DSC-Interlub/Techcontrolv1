@@ -70,6 +70,9 @@ import reservaPublica from './pages/reserva-publica';
 import salaTreinamento from './pages/sala-treinamento';
 import reservaSalaPublica from './pages/reserva-sala-publica';
 import portalLogin from './pages/portal-login';
+import portal from './pages/portal';
+import portalChamados from './pages/portal-chamados';
+import portalRamais from './pages/portal-ramais';
 import __Layout from './Layout.jsx';
 
 
@@ -97,6 +100,9 @@ export const PAGES = {
     "sala-treinamento": salaTreinamento,
     "reserva-sala-publica": reservaSalaPublica,
     "portal-login": portalLogin,
+    "portal": portal,
+    "portal-chamados": portalChamados,
+    "portal-ramais": portalRamais,
 }
 
 export const pagesConfig = {
