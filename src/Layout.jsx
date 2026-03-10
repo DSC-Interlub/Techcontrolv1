@@ -135,7 +135,14 @@ export default function Layout({ children }) {
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
                        location.pathname.includes('/reserva-publica') ||
                        location.pathname.includes('/reserva-sala-publica') ||
-                       location.pathname.includes('/acompanhar-chamado');
+                       location.pathname.includes('/acompanhar-chamado') ||
+                       location.pathname.includes('/portal-login') ||
+                       location.pathname.includes('/portal-chamados') ||
+                       location.pathname.includes('/portal-reservas') ||
+                       location.pathname.includes('/portal-sala') ||
+                       location.pathname.includes('/portal-equipamentos') ||
+                       location.pathname.includes('/portal-ramais') ||
+                       location.pathname.includes('/portal');
 
   React.useEffect(() => {
     if (isPublicPage) {

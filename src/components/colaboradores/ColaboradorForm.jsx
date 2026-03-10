@@ -160,6 +160,43 @@ export default function ColaboradorForm({ colaborador, onClose }) {
             </div>
           </div>
 
+          {/* Acesso ao Portal */}
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Acesso ao Portal do Colaborador</h3>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800">O colaborador usará o <strong>e-mail</strong> e a <strong>senha do portal</strong> para acessar o portal.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Senha do Portal</Label>
+                <div className="relative">
+                  <Input
+                    type={showSenhas.portal ? "text" : "password"}
+                    placeholder="Definir senha de acesso ao portal"
+                    value={formData.senha_portal || ""}
+                    onChange={(e) => setFormData({ ...formData, senha_portal: e.target.value })}
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => toggleShowSenha('portal')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showSenhas.portal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 pt-6">
+                <input
+                  type="checkbox"
+                  id="bloquear_portal"
+                  checked={formData.acesso_portal_bloqueado || false}
+                  onChange={(e) => setFormData({ ...formData, acesso_portal_bloqueado: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="bloquear_portal" className="text-sm text-gray-700 cursor-pointer">
+                  Bloquear acesso ao portal
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Senhas */}
           <div className="border-t pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Credenciais de Acesso</h3>
