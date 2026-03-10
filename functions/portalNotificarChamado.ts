@@ -26,45 +26,24 @@ function buildEmail(destinatario, intro, chamadoData, acompanharUrl) {
 
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
     const { chamadoData, solicitanteEmail, acompanharUrl } = await req.json();
 
-    // Busca apenas admins para notificar
-    const allUsers = await base44.asServiceRole.entities.User.list();
-    const adminEmails = allUsers
-      .filter(u => u.role === 'admin' && u.email)
-      .map(u => u.email);
-
-    // Deduplica emails (evita enviar duplicado se solicitante for admin)
-    const uniqueAdminEmails = adminEmails.filter(e => e !== solicitanteEmail);
-
-    // Envia email para o solicitante primeiro
-    const envios = [];
-
-    if (solicitanteEmail) {
-      envios.push(enviarEmail(
+    // Envia em paralelo para: solicitante + ADM fixo
+    await Promise.all([
+      enviarEmail(
         solicitanteEmail,
         `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
         buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
-      ));
-    }
-
-    // Envia para admins com pequeno delay entre cada um para evitar rate limit (429)
-    for (let i = 0; i < uniqueAdminEmails.length; i++) {
-      if (i > 0) {
-        await new Promise(r => setTimeout(r, 300));
-      }
-      envios.push(enviarEmail(
-        uniqueAdminEmails[i],
+      ),
+      enviarEmail(
+        'adm.sp1@interlub.com',
         `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
         buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
-      ));
-    }
+      )
+    ]);
 
-    await Promise.all(envios);
-
-    console.log(`[portalNotificarChamado] Enviados ${envios.length} emails`);
-    return Response.json({ success: true, enviados: envios.length });
+    console.log(`[portalNotificarChamado] Enviados 2 emails`);
+    return Response.json({ success: true, enviados: 2 });
   } catch (error) {
     console.error(`[portalNotificarChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
