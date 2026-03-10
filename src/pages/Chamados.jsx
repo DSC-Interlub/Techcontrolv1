@@ -362,24 +362,7 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Enviar email sem aguardar (fire-and-forget)
-    if (chamado.solicitante_email) {
-      const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
-      base44.integrations.Core.SendEmail({
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento 🔧`,
-        html: buildEmailHtml({
-          titulo: "Atendimento Iniciado",
-          corTitulo: "#2563eb",
-          icone: "🔧",
-          nome: chamado.solicitante_nome,
-          numero: chamado.numero_chamado,
-          mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
-          detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
-          linkAcompanhar: portalUrl
-        })
-      }).catch(err => console.error("Erro ao enviar email:", err));
-    }
+    // Email será disparado automaticamente pela automação entity
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
