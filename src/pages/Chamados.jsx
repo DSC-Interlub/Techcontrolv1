@@ -344,10 +344,20 @@ export default function Chamados() {
     await updatePromise;
 
     if (chamado.solicitante_email) {
+      const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
       base44.integrations.Core.SendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento 🔧`,
-        body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi recebido e o atendimento já foi iniciado por ${nomeExibicao}.\n\nEstamos trabalhando para resolver sua solicitação o mais breve possível.\n\nResponsável: ${nomeExibicao}\nTipo: ${getTipoCompleto(chamado)}\nNúmero: ${chamado.numero_chamado}`
+        html: buildEmailHtml({
+          titulo: "Atendimento Iniciado",
+          corTitulo: "#2563eb",
+          icone: "🔧",
+          nome: chamado.solicitante_nome,
+          numero: chamado.numero_chamado,
+          mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
+          detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
+          linkAcompanhar: portalUrl
+        })
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
