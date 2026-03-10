@@ -109,7 +109,7 @@ export default function PortalReservas() {
     }
     createMutation.mutate({
       equipamento_id: selectedNotebook.id,
-      equipamento_tipo: "Notebooks_Externos",
+      equipamento_tipo: selectedNotebook._fonte || "Notebooks_Externos",
       equipamento_nome: `${selectedNotebook.marca} ${selectedNotebook.modelo}`,
       solicitante_nome: colaborador.nome_completo,
       solicitante_email: colaborador.email,
