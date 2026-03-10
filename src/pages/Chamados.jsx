@@ -166,22 +166,10 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    // Enviar email sem aguardar (fire-and-forget)
+    // Email será disparado imediatamente via backend (fire-and-forget)
     if (selectedChamado.solicitante_email && selectedChamado.solucao && !originalChamado.solucao) {
-      const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
-      base44.integrations.Core.SendEmail({
-        to: selectedChamado.solicitante_email,
-        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Solução Registrada`,
-        html: buildEmailHtml({
-          titulo: "Solução Registrada",
-          corTitulo: "#16a34a",
-          icone: "✅",
-          nome: selectedChamado.solicitante_nome,
-          numero: selectedChamado.numero_chamado,
-          mensagem: `A solução para seu chamado foi registrada.`,
-          detalheExtra: `<strong>Solução:</strong><br>${selectedChamado.solucao}`,
-          linkAcompanhar: portalUrl
-        })
+      base44.functions.invoke('enviarEmailSolucao', {
+        chamado_id: selectedChamado.id
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
@@ -350,7 +338,11 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Email será disparado automaticamente pela automação entity
+    // Email será disparado imediatamente via backend (fire-and-forget)
+    base44.functions.invoke('enviarEmailInicio', {
+      chamado_id: chamado.id,
+      responsavel: nomeExibicao
+    }).catch(err => console.error("Erro ao enviar email:", err));
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
@@ -448,13 +440,11 @@ export default function Chamados() {
       historico
     });
 
-    // Enviar email sem aguardar (fire-and-forget)
+    // Email será disparado imediatamente via backend (fire-and-forget)
     if (chamado.solicitante_email) {
-      const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
-      base44.integrations.Core.SendEmail({
-        to: chamado.solicitante_email,
-        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-        html: buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, portalUrl)
+      base44.functions.invoke('enviarEmailConclusao', {
+        chamado_id: chamado.id,
+        responsavel: nomeExibicao
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
