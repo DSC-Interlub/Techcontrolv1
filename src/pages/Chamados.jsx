@@ -76,19 +76,46 @@ export default function Chamados() {
   });
 
   const enviarMsgMutation = useMutation({
-    mutationFn: async (msg) => {
-      return base44.entities.ChamadosChat.create({
+    mutationFn: async ({ msg, anexo }) => {
+      let anexoUrl = null;
+      if (anexo) {
+        const formData = new FormData();
+        formData.append('file', anexo);
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: anexo });
+        anexoUrl = uploadRes.file_url;
+      }
+
+      const novaMsg = {
         chamado_id: selectedChamado.id,
         tipo_remetente: "admin",
         remetente_nome: currentUser.nome_exibicao || currentUser.full_name,
         remetente_email: currentUser.email,
         mensagem: msg,
         data_hora: new Date().toISOString(),
-      });
+      };
+
+      if (anexoUrl) {
+        novaMsg.anexo_url = anexoUrl;
+        novaMsg.anexo_nome = anexo.name;
+      }
+
+      const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
+
+      // Enviar email imediatamente (sem fila)
+      if (selectedChamado.solicitante_email) {
+        base44.integrations.Core.SendEmail({
+          to: selectedChamado.solicitante_email,
+          subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Mensagem`,
+          body: `Olá ${selectedChamado.solicitante_nome},\n\nVocê recebeu uma nova mensagem de ${currentUser.nome_exibicao || currentUser.full_name} no chamado ${selectedChamado.numero_chamado}.\n\nMensagem: "${msg}"\n\nAcesse o portal para ver a resposta completa.`
+        }).catch(err => console.error("Erro ao enviar email:", err));
+      }
+
+      return chatMsg;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
       setNovaMsg("");
+      setAnexoChat(null);
     },
   });
 
