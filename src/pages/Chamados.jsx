@@ -127,7 +127,7 @@ export default function Chamados() {
 
     // Fire and forget - não bloqueia
     if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: selectedChamado.solicitante_email,
         subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
         html: buildEmailHtml({
@@ -141,7 +141,7 @@ export default function Chamados() {
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: null
         })
-      }).catch(err => console.error('Erro ao notificar observação:', err));
+      });
     }
 
     await updatePromise;
