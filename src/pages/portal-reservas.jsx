@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X } from "lucide-react";
+import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X, Clock } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
