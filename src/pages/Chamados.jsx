@@ -1161,24 +1161,67 @@ export default function Chamados() {
                 </div>
 
                 <div>
-                  <Label>Solução Aplicada</Label>
-                  <Textarea
-                    value={selectedChamado.solucao || ""}
-                    onChange={(e) => setSelectedChamado({ ...selectedChamado, solucao: e.target.value })}
-                    placeholder="Descreva a solução aplicada..."
-                    rows={3}
-                  />
-                </div>
+                   <Label>Solução Aplicada</Label>
+                   <Textarea
+                     value={selectedChamado.solucao || ""}
+                     onChange={(e) => setSelectedChamado({ ...selectedChamado, solucao: e.target.value })}
+                     placeholder="Descreva a solução aplicada..."
+                     rows={3}
+                   />
+                 </div>
 
-                <div>
-                  <Label>Observações</Label>
-                  <Textarea
-                    value={selectedChamado.observacoes || ""}
-                    onChange={(e) => setSelectedChamado({ ...selectedChamado, observacoes: e.target.value })}
-                    placeholder="Observações adicionais..."
-                    rows={2}
-                  />
-                </div>
+                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                   <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                     💬 Chat ao Vivo
+                   </h3>
+                   <div className="bg-white border border-blue-200 rounded-lg p-3 h-64 overflow-y-auto mb-3 space-y-3">
+                     {chatMessages.length === 0 ? (
+                       <p className="text-sm text-gray-500 text-center py-8">Nenhuma mensagem ainda. Seja o primeiro a escrever!</p>
+                     ) : (
+                       chatMessages.map((msg) => (
+                         <div key={msg.id} className={`flex ${msg.tipo_remetente === "admin" ? "justify-end" : "justify-start"}`}>
+                           <div className={`max-w-xs rounded-lg p-3 ${
+                             msg.tipo_remetente === "admin" 
+                               ? "bg-blue-100 text-blue-900" 
+                               : "bg-gray-100 text-gray-900"
+                           }`}>
+                             <p className="text-xs font-semibold mb-1">{msg.remetente_nome}</p>
+                             <p className="text-sm">{msg.mensagem}</p>
+                             <p className="text-xs mt-1 opacity-70">
+                               {format(new Date(msg.data_hora), "HH:mm", { locale: ptBR })}
+                             </p>
+                           </div>
+                         </div>
+                       ))
+                     )}
+                   </div>
+                   <div className="flex gap-2">
+                     <input
+                       type="text"
+                       value={novaMsg}
+                       onChange={(e) => setNovaMsg(e.target.value)}
+                       onKeyPress={(e) => {
+                         if (e.key === "Enter" && novaMsg.trim()) {
+                           enviarMsgMutation.mutate(novaMsg);
+                         }
+                       }}
+                       placeholder="Digite sua mensagem..."
+                       className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     />
+                     <Button
+                       onClick={() => {
+                         if (novaMsg.trim()) {
+                           enviarMsgMutation.mutate(novaMsg);
+                         }
+                       }}
+                       disabled={enviarMsgMutation.isPending || !novaMsg.trim()}
+                       className="bg-blue-600 hover:bg-blue-700"
+                       size="sm"
+                     >
+                       <Send className="w-4 h-4" />
+                     </Button>
+                   </div>
+                 </div>
 
                 {selectedChamado.avaliacao_data && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
