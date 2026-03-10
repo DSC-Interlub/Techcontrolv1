@@ -311,7 +311,7 @@ export default function Chamados() {
 
     // Fire and forget - não bloqueia
     if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmail', {
+      base44.functions.invoke('sendEmailAsync', {
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
         html: buildEmailHtml({
@@ -325,7 +325,7 @@ export default function Chamados() {
           linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
           rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
         })
-      }).catch(err => console.error('Erro ao notificar:', err));
+      });
     }
 
     await updatePromise;
