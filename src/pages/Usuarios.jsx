@@ -71,11 +71,14 @@ export default function Usuarios() {
     loadUser();
   }, []);
 
-  // Buscar lista de usuários
+  // Buscar lista de usuários via backend (requer admin)
   const { data: usuarios = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["usuarios"],
-    queryFn: () => base44.entities.User.list(),
-    enabled: !!user,
+    queryFn: async () => {
+      const res = await base44.functions.invoke('listarUsuarios', {});
+      return res.data?.usuarios || [];
+    },
+    enabled: !!user && user.role === 'admin',
   });
 
   // Mutation para convidar usuário
