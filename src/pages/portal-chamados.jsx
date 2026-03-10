@@ -631,15 +631,18 @@ export default function PortalChamados() {
                   {chatMessages.length === 0 ? (
                     <p className="text-center text-gray-400 text-sm py-8">Nenhuma mensagem ainda</p>
                   ) : (
-                    chatMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.tipo_remetente === "solicitante" ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${msg.tipo_remetente === "solicitante" ? "bg-blue-100 text-blue-900" : "bg-gray-200 text-gray-900"}`}>
-                          <p className="font-semibold text-xs mb-1">{msg.remetente_nome}</p>
-                          <p>{msg.mensagem}</p>
-                          <p className="text-xs opacity-60 mt-1">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                        </div>
-                      </div>
-                    ))
+                    chatMessages.map((msg, i) => {
+                       const isMeuaMensagem = msg.tipo_remetente === "solicitante" && msg.remetente_email === colaborador.email;
+                       return (
+                       <div key={i} className={`flex ${isMeuaMensagem ? "justify-end" : "justify-start"}`}>
+                         <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${isMeuaMensagem ? "bg-blue-100 text-blue-900" : "bg-gray-200 text-gray-900"}`}>
+                           <p className="font-semibold text-xs mb-1">{msg.remetente_nome}</p>
+                           <p>{msg.mensagem}</p>
+                           <p className="text-xs opacity-60 mt-1">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                         </div>
+                       </div>
+                     );
+                     })
                   )}
                 </div>
                 <div className="flex gap-2">
