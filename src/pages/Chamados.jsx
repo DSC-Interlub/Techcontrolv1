@@ -344,7 +344,7 @@ export default function Chamados() {
     await updatePromise;
 
     if (chamado.solicitante_email) {
-      await base44.integrations.Core.SendEmail({
+      base44.integrations.Core.SendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento 🔧`,
         body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi recebido e o atendimento já foi iniciado por ${nomeExibicao}.\n\nEstamos trabalhando para resolver sua solicitação o mais breve possível.\n\nResponsável: ${nomeExibicao}\nTipo: ${getTipoCompleto(chamado)}\nNúmero: ${chamado.numero_chamado}`
