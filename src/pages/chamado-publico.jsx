@@ -380,6 +380,89 @@ export default function ChamadoPublico() {
                 </Select>
               </div>
 
+              {/* Subtipo de Sistema */}
+              {formData.tipo_solicitacao === "Sistema" && (
+                <>
+                  <div>
+                    <Label>Sistema *</Label>
+                    <Select required value={formData.sistema_tipo} onValueChange={(v) => setFormData({ ...formData, sistema_tipo: v, sistema_subtipo: "" })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o sistema" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="WMS">WMS</SelectItem>
+                        <SelectItem value="Portal de Vendas">Portal de Vendas</SelectItem>
+                        <SelectItem value="SAP">SAP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.sistema_tipo && (
+                    <div>
+                      <Label>Tipo de Problema *</Label>
+                      <Select required value={formData.sistema_subtipo} onValueChange={(v) => setFormData({ ...formData, sistema_subtipo: v })}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o tipo de problema" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Problema no Sistema">Problema no Sistema</SelectItem>
+                          <SelectItem value="Nova Implementação no Sistema">Nova Implementação no Sistema</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Subtipo de Impressora */}
+              {formData.tipo_solicitacao === "Impressora" && (
+                <div>
+                  <Label>Tipo de Problema *</Label>
+                  <Select required value={formData.impressora_subtipo} onValueChange={(v) => setFormData({ ...formData, impressora_subtipo: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de problema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Troca de Cartucho ou Toner">Troca de Cartucho ou Toner</SelectItem>
+                      <SelectItem value="Problema na Impressora">Problema na Impressora</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Subtipo de Equipamento */}
+              {formData.tipo_solicitacao === "Equipamento" && (
+                <div>
+                  <Label>Tipo de Problema *</Label>
+                  <Select required value={formData.equipamento_subtipo} onValueChange={(v) => setFormData({ ...formData, equipamento_subtipo: v, equipamento_outros_detalhes: "" })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de problema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Lentidão no Computador">Lentidão no Computador</SelectItem>
+                      <SelectItem value="Problema no Monitor, Mouse ou Teclado">Problema no Monitor, Mouse ou Teclado</SelectItem>
+                      <SelectItem value="Problema na Máquina">Problema na Máquina</SelectItem>
+                      <SelectItem value="Formatação">Formatação</SelectItem>
+                      <SelectItem value="Solicitar Troca de Equipamento">Solicitar Troca de Equipamento</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {formData.equipamento_subtipo === "Outros" && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Descreva o problema"
+                      value={formData.equipamento_outros_detalhes}
+                      onChange={(e) => setFormData({ ...formData, equipamento_outros_detalhes: e.target.value })}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Subtipo de Servidor */}
+              {formData.tipo_solicitacao === "Servidor" && (
+                <div>
+                  <Label>Tipo de Problema *</Label>
+                  <Select required value={formData.servidor_subtipo} onValueChange={(v) => setFormData({ ...formData, servidor_subtipo: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de problema" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Rede">Rede</SelectItem>
+                      <SelectItem value="Internet">Internet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {formData.tipo_solicitacao && (
                 <div>
                   <Label>Título do Chamado *</Label>
