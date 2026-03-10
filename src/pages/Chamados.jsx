@@ -340,25 +340,12 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Adiciona à fila (retorna instantaneamente)
     if (chamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: chamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento`,
-        corpo_html: buildEmailHtml({
-          titulo: 'Em Andamento',
-          icone: '🔧',
-          corTitulo: '#2563eb',
-          nome: chamado.solicitante_nome,
-          numero: chamado.numero_chamado,
-          mensagem: `Seu chamado foi recebido e o atendimento já foi iniciado por <strong>${nomeExibicao}</strong>. Estamos trabalhando para resolver sua solicitação o mais breve possível.`,
-          detalheExtra: `<strong>Responsável:</strong> ${nomeExibicao}<br><strong>Tipo:</strong> ${getTipoCompleto(chamado)}`,
-          linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
-          rodapeExtra: `Use o número <strong style="color:#374151;">${chamado.numero_chamado}</strong> para acompanhar seu chamado.`
-        }),
-        tipo_evento: 'atendimento_iniciado',
-        referencia_id: chamado.id
-      });
+      base44.integrations.Core.SendEmail({
+        to: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} - Em Andamento 🔧`,
+        body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi recebido e o atendimento já foi iniciado por ${nomeExibicao}.\n\nEstamos trabalhando para resolver sua solicitação o mais breve possível.\n\nResponsável: ${nomeExibicao}\nTipo: ${getTipoCompleto(chamado)}\nNúmero: ${chamado.numero_chamado}`
+      }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
     await updatePromise;
