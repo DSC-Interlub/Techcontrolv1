@@ -53,11 +53,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Enviar em paralelo para não fazer rate limit
-    await Promise.all(destinatarios.map(dest => enviarEmail(dest.to, dest.subject, dest.html)));
+    // Fire and forget - enviar sem esperar a resposta
+    destinatarios.forEach(dest => {
+      enviarEmail(dest.to, dest.subject, dest.html).catch(err => 
+        console.error(`[notificarNovoChamado] Erro ao enviar para ${dest.to}: ${err.message}`)
+      );
+    });
 
-    console.log(`[notificarNovoChamado] Enviados ${destinatarios.length} emails. Admins: ${adminEmails.join(', ')}`);
-    return Response.json({ success: true, enviados: destinatarios.length, admins: adminEmails });
+    console.log(`[notificarNovoChamado] Iniciados ${destinatarios.length} envios de email. Admins: ${adminEmails.join(', ')}`);
+    return Response.json({ success: true, iniciados: destinatarios.length, admins: adminEmails });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });
