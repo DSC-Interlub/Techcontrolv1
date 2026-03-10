@@ -139,27 +139,6 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    // Adiciona à fila (retorna instantaneamente)
-    if (observacaoAlterada && selectedChamado.solicitante_email) {
-      base44.functions.invoke('adicionarFilaEmail', {
-        destinatario: selectedChamado.solicitante_email,
-        assunto: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Nova Atualização`,
-        corpo_html: buildEmailHtml({
-          titulo: 'Nova Atualização',
-          icone: '📝',
-          corTitulo: '#d97706',
-          nome: selectedChamado.solicitante_nome,
-          numero: selectedChamado.numero_chamado,
-          mensagem: `<strong>${nomeExibicao}</strong> adicionou uma nova observação ao seu chamado.`,
-          detalheExtra: `<strong>Observação:</strong><br><span style="color:#374151;">${selectedChamado.observacoes}</span>`,
-          linkAcompanhar: `${window.location.origin}${createPageUrl('portal-chamados')}`,
-          rodapeExtra: null
-        }),
-        tipo_evento: 'observacao_adicionada',
-        referencia_id: selectedChamado.id
-      });
-    }
-
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
