@@ -200,7 +200,7 @@ export default function PortalChamados() {
         anexos: anexos,
       });
 
-      await base44.functions.invoke('notificarNovoChamado', {
+      await base44.functions.invoke('portalNotificarChamado', {
         chamadoData: { numeroChamado, solicitante_nome: colaborador.nome_completo, tipo_solicitacao: data.tipo_solicitacao, titulo_chamado: data.titulo_chamado, urgencia: data.urgencia },
         solicitanteEmail: colaborador.email,
         acompanharUrl: window.location.origin,

@@ -151,39 +151,23 @@ export default function PortalEquipamentos() {
                       <p>Nenhuma avaliação anterior para este equipamento.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {historicoEq.map((av, idx) => (
-                        <Card key={av.id} className={idx === 0 ? "border-blue-200" : ""}>
-                          <CardContent className="pt-4 pb-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="font-mono">{av.numero_avaliacao || idx + 1}ª Avaliação</Badge>
-                                {idx === 0 && <Badge className="bg-blue-100 text-blue-800">Mais recente</Badge>}
-                              </div>
-                              <Badge className={getClassColor(av.classificacao)}>{av.classificacao}</Badge>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                              <div><p className="text-gray-500">Data</p><p className="font-medium">{new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}</p></div>
-                              <div><p className="text-gray-500">Pontuação</p><p className="font-medium">{av.pontuacao_total}/100</p></div>
-                              <div><p className="text-gray-500">Desempenho</p><p className="font-medium">{av.desempenho || "—"}</p></div>
-                              <div><p className="text-gray-500">Armazenamento</p><p className="font-medium">{av.tipo_armazenamento || "—"}</p></div>
-                              <div><p className="text-gray-500">Antivírus</p><p className="font-medium">{av.antivirus || "—"}</p></div>
-                              <div><p className="text-gray-500">Windows</p><p className="font-medium">{av.versao_windows || "—"}</p></div>
-                            </div>
-                            {av.problemas?.length > 0 && (
-                              <div className="mt-3">
-                                <p className="text-gray-500 text-sm mb-1">Problemas relatados:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {av.problemas.map((p, pi) => <Badge key={pi} variant="outline" className="text-xs text-red-700 border-red-200">{p}</Badge>)}
-                                </div>
-                              </div>
-                            )}
-                            {av.satisfacao && <p className="text-xs text-gray-500 mt-2">Satisfação: {av.satisfacao}</p>}
-                          </CardContent>
-                        </Card>
+                        <div key={av.id}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="font-mono">{av.numero_avaliacao || (historicoEq.length - idx)}ª Avaliação</Badge>
+                            {idx === 0 && <Badge className="bg-blue-100 text-blue-800">Mais recente</Badge>}
+                            <span className="text-xs text-gray-500">{new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <AvaliacaoEquipamento
+                            equipamento={equipamentoSelecionado}
+                            entityType={equipamentoSelecionado.entityType}
+                            avaliacaoExistente={av}
+                            onSalvar={() => {}}
+                            somenteLeitura={true}
+                          />
+                        </div>
                       ))}
-                    </div>
-                  )}
                 </TabsContent>
               </Tabs>
             )}
