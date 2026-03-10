@@ -33,29 +33,33 @@ Deno.serve(async (req) => {
     const allUsers = await base44.asServiceRole.entities.User.list();
     const adminEmails = allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email);
 
-    const promises = [];
+    const destinatarios = [];
 
-    // Email para o solicitante
+    // Email para o solicitante primeiro
     if (solicitanteEmail) {
-      promises.push(enviarEmail(
-        solicitanteEmail,
-        `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
-        buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
-      ));
+      destinatarios.push({
+        to: solicitanteEmail,
+        subject: `[TechControl] Chamado ${chamadoData.numeroChamado} aberto com sucesso`,
+        html: buildEmail(chamadoData.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', chamadoData, acompanharUrl)
+      });
     }
 
-    // Email para cada admin
+    // Emails para admins
     for (const adminEmail of adminEmails) {
-      promises.push(enviarEmail(
-        adminEmail,
-        `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
-        buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
-      ));
+      destinatarios.push({
+        to: adminEmail,
+        subject: `[TechControl] Novo chamado aberto: ${chamadoData.numeroChamado}`,
+        html: buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamadoData.solicitante_nome}</strong> e aguarda atendimento.`, chamadoData, acompanharUrl)
+      });
     }
 
-    await Promise.all(promises);
+    // Enviar sequencialmente com intervalo de 600ms para evitar rate limit do Resend (2 req/s)
+    for (const dest of destinatarios) {
+      await enviarEmail(dest.to, dest.subject, dest.html);
+      await new Promise(resolve => setTimeout(resolve, 600));
+    }
 
-    console.log(`[notificarNovoChamado] Enviados ${promises.length} emails. Admins: ${adminEmails.join(', ')}`);
+    console.log(`[notificarNovoChamado] Enviados ${destinatarios.length} emails. Admins: ${adminEmails.join(', ')}`);
     return Response.json({ success: true, enviados: promises.length, admins: adminEmails });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
