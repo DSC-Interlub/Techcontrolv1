@@ -168,6 +168,8 @@ export default function PortalEquipamentos() {
                           />
                         </div>
                       ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             )}
