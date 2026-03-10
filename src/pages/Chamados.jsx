@@ -1240,17 +1240,21 @@ export default function Chamados() {
                        </div>
                      )}
                      <div className="flex gap-2">
-                       <input
-                         type="text"
+                       <textarea
                          value={novaMsg}
                          onChange={(e) => setNovaMsg(e.target.value)}
-                         onKeyPress={(e) => {
-                           if (e.key === "Enter" && novaMsg.trim()) {
-                             enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                         onKeyDown={(e) => {
+                           if (e.key === "Enter" && !e.shiftKey) {
+                             e.preventDefault();
+                             if (novaMsg.trim()) {
+                               enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                             }
                            }
                          }}
-                         placeholder="Digite sua mensagem..."
-                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
+                         rows={1}
+                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                         style={{ maxHeight: "100px", minHeight: "40px" }}
                        />
                        <label className="cursor-pointer">
                          <input
