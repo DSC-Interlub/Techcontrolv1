@@ -75,6 +75,20 @@ export default function SalaTreinamento() {
     });
   };
 
+  const cancelMutation = useMutation({
+    mutationFn: (id) => base44.entities.ReservasSala.update(id, { status: "Cancelada" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reservas_sala'] });
+      setReservaDetalhes(null);
+    },
+  });
+
+  const handleCancelarReserva = (reserva) => {
+    if (window.confirm(`Cancelar a reserva de ${reserva.solicitante_nome} em ${reserva.data} das ${reserva.hora_inicio} às ${reserva.hora_fim}?`)) {
+      cancelMutation.mutate(reserva.id);
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ReservasSala.create(data),
     onSuccess: () => {
