@@ -197,25 +197,62 @@ export default function PortalReservas() {
                     {loadingNotebooks ? (
                       <div className="flex items-center gap-2 mt-2 text-sm text-gray-500"><Loader2 className="w-4 h-4 animate-spin" />Carregando notebooks...</div>
                     ) : notebooksDisponiveis.length === 0 ? (
-                      <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva. Configure os notebooks em "Notebooks Externos" marcando "Disponível para Reserva".</p>
+                      <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva. Configure notebooks marcando "Disponível para Reserva".</p>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                        {notebooksDisponiveis.map(nb => (
-                          <div
-                            key={nb.id}
-                            onClick={() => { setSelectedNotebook(nb); setConflictError(false); }}
-                            className={`border rounded-lg p-3 cursor-pointer transition-all ${selectedNotebook?.id === nb.id ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Laptop className="w-6 h-6 text-gray-400" />
-                              <div>
-                                <p className="font-medium">{nb.marca} {nb.modelo}</p>
-                                <p className="text-xs text-gray-500">Etiqueta: {nb.etiqueta_interna || "—"}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                        {notebooksDisponiveis.map(nb => {
+                          const nbStatus = getNotebookStatus(nb.id);
+                          const proximaDispo = getProximaDisponibilidade(nb.id);
+                          const isSelected = selectedNotebook?.id === nb.id;
+                          return (
+                            <div
+                              key={nb.id}
+                              onClick={() => { setSelectedNotebook(nb); setConflictError(false); }}
+                              className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'border-purple-500 shadow-lg bg-purple-50' : 'border-gray-200 hover:shadow-md hover:border-purple-300'}`}
+                            >
+                              <div className="flex items-start justify-between mb-3">
+                                <div>
+                                  <p className="font-bold text-gray-900">{nb.marca}</p>
+                                  <p className="text-sm text-gray-500">{nb.modelo}</p>
+                                </div>
+                                <Laptop className="w-7 h-7 text-purple-500 flex-shrink-0" />
                               </div>
-                              {selectedNotebook?.id === nb.id && <CheckCircle className="w-5 h-5 text-purple-600 ml-auto" />}
+                              <div className="space-y-1 text-sm mb-3">
+                                {nb.processador && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Processador:</span>
+                                    <span className="font-medium">{nb.processador}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Etiqueta:</span>
+                                  <span className="font-bold">{nb.etiqueta_interna || "—"}</span>
+                                </div>
+                              </div>
+                              {nbStatus.emUso ? (
+                                <>
+                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso</span>
+                                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
+                                    <p className="font-semibold text-orange-900">Disponível em:</p>
+                                    <p className="text-orange-700">{format(nbStatus.disponivelEm, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                                    <p className="text-orange-600 mt-1">Reserve para depois deste horário</p>
+                                  </div>
+                                </>
+                              ) : proximaDispo ? (
+                                <>
+                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold mb-2">Disponível Agora</span>
+                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs">
+                                    <p className="font-semibold text-blue-900">✅ Disponível para reserva</p>
+                                    <p className="text-blue-700">Já tem uma locação a partir de {format(proximaDispo, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível</span>
+                              )}
+                              {isSelected && <div className="mt-2 flex items-center gap-1 text-purple-700 text-xs font-semibold"><CheckCircle className="w-4 h-4" />Selecionado</div>}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
