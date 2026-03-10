@@ -167,6 +167,14 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
+    if (selectedChamado.solicitante_email && selectedChamado.solucao && !originalChamado.solucao) {
+      base44.integrations.Core.SendEmail({
+        to: selectedChamado.solicitante_email,
+        subject: `[TechControl] Chamado ${selectedChamado.numero_chamado} - Solução Registrada`,
+        body: `Olá ${selectedChamado.solicitante_nome},\n\nA solução para seu chamado foi registrada:\n\n${selectedChamado.solucao}`
+      }).catch(err => console.error("Erro ao enviar email:", err));
+    }
+
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
 
