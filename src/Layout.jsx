@@ -91,6 +91,11 @@ const managementItems = [
     icon: Calendar,
   },
   {
+    title: "Sala de Treinamento",
+    url: createPageUrl("sala-treinamento"),
+    icon: Users,
+  },
+  {
     title: "Chamados",
     url: createPageUrl("Chamados"),
     icon: Headset,
