@@ -134,6 +134,7 @@ export default function Layout({ children }) {
 
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
                        location.pathname.includes('/reserva-publica') ||
+                       location.pathname.includes('/reserva-sala-publica') ||
                        location.pathname.includes('/acompanhar-chamado');
 
   React.useEffect(() => {
