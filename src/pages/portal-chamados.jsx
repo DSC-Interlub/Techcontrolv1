@@ -643,22 +643,30 @@ export default function PortalChamados() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Textarea
-                    placeholder="Digite sua mensagem..."
-                    rows={2}
-                    value={novaMsg}
-                    onChange={(e) => setNovaMsg(e.target.value)}
-                    disabled={enviarMsgMutation.isPending}
-                  />
-                  <Button
-                    size="icon"
-                    className="bg-blue-600 hover:bg-blue-700 h-fit"
-                    disabled={!novaMsg.trim() || enviarMsgMutation.isPending}
-                    onClick={() => enviarMsgMutation.mutate(novaMsg)}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
+                   <Textarea
+                     placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
+                     rows={2}
+                     value={novaMsg}
+                     onChange={(e) => setNovaMsg(e.target.value)}
+                     onKeyDown={(e) => {
+                       if (e.key === "Enter" && !e.shiftKey) {
+                         e.preventDefault();
+                         if (novaMsg.trim()) {
+                           enviarMsgMutation.mutate(novaMsg);
+                         }
+                       }
+                     }}
+                     disabled={enviarMsgMutation.isPending}
+                   />
+                   <Button
+                     size="icon"
+                     className="bg-blue-600 hover:bg-blue-700 h-fit"
+                     disabled={!novaMsg.trim() || enviarMsgMutation.isPending}
+                     onClick={() => enviarMsgMutation.mutate(novaMsg)}
+                   >
+                     <Send className="w-4 h-4" />
+                   </Button>
+                 </div>
               </div>
 
               <AvaliacaoChamado
