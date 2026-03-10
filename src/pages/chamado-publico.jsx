@@ -217,7 +217,6 @@ export default function ChamadoPublico() {
   const createChamadoMutation = useMutation({
     mutationFn: async (data) => {
       const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
-      const acompanharUrl = `${window.location.origin}${createPageUrl("acompanhar-chamado")}`;
 
       const chamado = await base44.entities.Chamados.create({
         ...data,
@@ -228,8 +227,8 @@ export default function ChamadoPublico() {
         anexos: anexos,
       });
 
-      // Aguarda o envio dos emails para garantir entrega
-      await base44.functions.invoke('notificarNovoChamado', {
+      // Enviar email sem aguardar (fire-and-forget)
+      base44.functions.invoke('notificarNovoChamado', {
         chamadoData: {
           numeroChamado,
           solicitante_nome: data.solicitante_nome,
@@ -239,7 +238,7 @@ export default function ChamadoPublico() {
         },
         solicitanteEmail: data.solicitante_email,
         acompanharUrl: `${window.location.origin}${createPageUrl("acompanhar-chamado")}`,
-      });
+      }).catch(err => console.error("Erro ao enviar notificação:", err));
 
       return { chamado, numeroChamado };
     },
