@@ -390,100 +390,20 @@ export default function ChamadoPublico() {
                     <SelectItem value="Melhorias">Melhorias</SelectItem>
                     <SelectItem value="Desenvolvimento">Desenvolvimento</SelectItem>
                     <SelectItem value="Servidor">Servidor</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {formData.tipo_solicitacao === "Sistema" && (
-                <>
-                  <div>
-                    <Label>Qual Sistema? *</Label>
-                    <Select required value={formData.sistema_tipo} onValueChange={(value) => setFormData({ ...formData, sistema_tipo: value })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o sistema" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="WMS">WMS</SelectItem>
-                        <SelectItem value="Portal de Vendas">Portal de Vendas</SelectItem>
-                        <SelectItem value="SAP">SAP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.sistema_tipo && (
-                    <div>
-                      <Label>Tipo de Problema *</Label>
-                      <Select required value={formData.sistema_subtipo} onValueChange={(value) => setFormData({ ...formData, sistema_subtipo: value })}>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Problema no Sistema">Problema no Sistema</SelectItem>
-                          <SelectItem value="Nova Implementação no Sistema">Nova Implementação no Sistema</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {formData.tipo_solicitacao === "Impressora" && (
+              {formData.tipo_solicitacao && (
                 <div>
-                  <Label>Problema com Impressora *</Label>
-                  <Select required value={formData.impressora_subtipo} onValueChange={(value) => setFormData({ ...formData, impressora_subtipo: value })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o problema" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Troca de Cartucho ou Toner">Troca de Cartucho ou Toner</SelectItem>
-                      <SelectItem value="Problema na Impressora">Problema na Impressora</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {formData.tipo_solicitacao === "Equipamento" && (
-                <>
-                  <div>
-                    <Label>Problema com Equipamento *</Label>
-                    <Select required value={formData.equipamento_subtipo} onValueChange={(value) => setFormData({ ...formData, equipamento_subtipo: value })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o problema" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Lentidão no Computador">Lentidão no Computador</SelectItem>
-                        <SelectItem value="Problema no Monitor, Mouse ou Teclado">Problema no Monitor, Mouse ou Teclado</SelectItem>
-                        <SelectItem value="Problema na Máquina">Problema na Máquina</SelectItem>
-                        <SelectItem value="Formatação">Formatação</SelectItem>
-                        <SelectItem value="Solicitar Troca de Equipamento">Solicitar Troca de Equipamento</SelectItem>
-                        <SelectItem value="Outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {formData.equipamento_subtipo === "Outros" && (
-                    <div>
-                      <Label>Descreva o Problema *</Label>
-                      <Textarea required placeholder="Descreva detalhadamente o problema..." value={formData.equipamento_outros_detalhes} onChange={(e) => setFormData({ ...formData, equipamento_outros_detalhes: e.target.value })} rows={3} />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {formData.tipo_solicitacao === "Melhorias" && (
-                <div>
-                  <Label>Descreva a Melhoria Desejada *</Label>
-                  <Textarea required placeholder="Descreva detalhadamente a melhoria que você gostaria de ver implementada..." value={formData.melhorias_detalhes} onChange={(e) => setFormData({ ...formData, melhorias_detalhes: e.target.value })} rows={4} />
-                </div>
-              )}
-
-              {formData.tipo_solicitacao === "Desenvolvimento" && (
-                <div>
-                  <Label>Descreva o Desenvolvimento Necessário *</Label>
-                  <Textarea required placeholder="Descreva detalhadamente o desenvolvimento ou funcionalidade que você precisa..." value={formData.desenvolvimento_detalhes} onChange={(e) => setFormData({ ...formData, desenvolvimento_detalhes: e.target.value })} rows={4} />
-                </div>
-              )}
-
-              {formData.tipo_solicitacao === "Servidor" && (
-                <div>
-                  <Label>Problema com Servidor *</Label>
-                  <Select required value={formData.servidor_subtipo} onValueChange={(value) => setFormData({ ...formData, servidor_subtipo: value })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o problema" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Rede">Rede</SelectItem>
-                      <SelectItem value="Internet">Internet</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Título do Chamado *</Label>
+                  <Input
+                    required
+                    placeholder="Resumo curto do problema ou solicitação"
+                    value={formData.titulo_chamado}
+                    onChange={(e) => setFormData({ ...formData, titulo_chamado: e.target.value })}
+                  />
                 </div>
               )}
 
