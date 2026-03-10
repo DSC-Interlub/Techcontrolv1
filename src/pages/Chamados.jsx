@@ -455,10 +455,11 @@ export default function Chamados() {
     });
 
     if (chamado.solicitante_email) {
+      const portalUrl = `${window.location.origin}${createPageUrl("portal-chamados")}`;
       base44.integrations.Core.SendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Concluído ✅ — Avalie o Atendimento`,
-        body: `Olá ${chamado.solicitante_nome},\n\nSeu chamado foi concluído por ${nomeExibicao}.\n\nSolução: ${chamado.solucao || 'Não informada'}\n\nAcesse o portal para avaliar o atendimento em menos de 1 minuto.\n\nNúmero do Chamado: ${chamado.numero_chamado}`
+        html: buildEmailConclusaoComAvaliacao(chamado, nomeExibicao, portalUrl)
       }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
