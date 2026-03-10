@@ -35,6 +35,7 @@ export default function SalaTreinamento() {
   });
   const [success, setSuccess] = useState(false);
   const [conflictError, setConflictError] = useState(false);
+  const [reservaDetalhes, setReservaDetalhes] = useState(null); // reserva selecionada para ver/cancelar
 
   const queryClient = useQueryClient();
 
