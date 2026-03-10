@@ -119,17 +119,6 @@ export default function Chamados() {
 
     const nomeExibicao = currentUser.nome_exibicao || currentUser.full_name;
     
-    const observacaoAlterada = selectedChamado.observacoes !== originalChamado.observacoes && selectedChamado.observacoes;
-
-    if (observacaoAlterada) {
-      historico.push({
-        data_hora: dataHora,
-        tipo: "observacao",
-        descricao: `Observação adicionada por ${nomeExibicao}: ${selectedChamado.observacoes}`,
-        usuario: nomeExibicao
-      });
-    }
-
     if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
       historico.push({
         data_hora: dataHora,
