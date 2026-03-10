@@ -35,12 +35,21 @@ export default function PortalReservas() {
     if (!loading) requireAuth();
   }, [loading]);
 
-  const { data: notebooksExternos = [], isLoading: loadingNotebooks } = useQuery({
+  const { data: notebooksExternos = [], isLoading: loadingNotebooksExt } = useQuery({
     queryKey: ['portal_nb_ext'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
     enabled: !!colaborador,
     staleTime: 0,
   });
+
+  const { data: pcsInternos = [], isLoading: loadingPcsInternos } = useQuery({
+    queryKey: ['portal_pcs_int'],
+    queryFn: () => base44.entities.PCs_Internos.list(),
+    enabled: !!colaborador,
+    staleTime: 0,
+  });
+
+  const loadingNotebooks = loadingNotebooksExt || loadingPcsInternos;
 
   const { data: todasReservas = [] } = useQuery({
     queryKey: ['portal_todas_reservas'],
