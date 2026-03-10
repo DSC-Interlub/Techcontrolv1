@@ -450,6 +450,15 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
               </Select>
             )}
           </div>
+
+          {!somenteLeitura && (
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSalvar} disabled={salvando} className="gap-2">
+                <Save className="w-4 h-4" />
+                {salvando ? "Salvando..." : "Salvar Avaliação"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
