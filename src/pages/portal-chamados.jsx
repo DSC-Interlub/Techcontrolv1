@@ -12,9 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Upload, X, Image as ImageIcon, Laptop, Monitor } from "lucide-react";
+import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Upload, X, Image as ImageIcon, Laptop, Monitor, Send } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
+import { useState, useEffect, useRef } from "react";
 
 const statusColors = {
   "Aberto": "bg-red-100 text-red-800",
@@ -214,6 +215,32 @@ export default function PortalChamados() {
       setSubmitSuccess(data.numeroChamado);
       setAnexos([]);
       setFormData({ tipo_solicitacao: "", sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "", equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "", melhorias_detalhes: "", desenvolvimento_detalhes: "", servidor_subtipo: "", titulo_chamado: "", descricao_problema: "", urgencia: "Média" });
+    },
+  });
+
+  const { data: chatMessages = [] } = useQuery({
+    queryKey: ['chamados_chat', selectedChamado?.id],
+    queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, '-created_date'),
+    enabled: !!selectedChamado?.id,
+    refetchInterval: 3000,
+  });
+
+  const [novaMsg, setNovaMsg] = useState("");
+
+  const enviarMsgMutation = useMutation({
+    mutationFn: async (msg) => {
+      return base44.entities.ChamadosChat.create({
+        chamado_id: selectedChamado.id,
+        tipo_remetente: "solicitante",
+        remetente_nome: colaborador.nome_completo,
+        remetente_email: colaborador.email,
+        mensagem: msg,
+        data_hora: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
+      setNovaMsg("");
     },
   });
 
@@ -597,6 +624,44 @@ export default function PortalChamados() {
                   </div>
                 </div>
               )}
+
+              {/* Chat */}
+              <div className="mt-6 pt-4 border-t">
+                <p className="text-gray-500 font-semibold mb-3">💬 Conversa</p>
+                <div className="bg-gray-50 rounded-lg p-3 h-64 overflow-y-auto space-y-2 mb-3 border">
+                  {chatMessages.length === 0 ? (
+                    <p className="text-center text-gray-400 text-sm py-8">Nenhuma mensagem ainda</p>
+                  ) : (
+                    chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.tipo_remetente === "solicitante" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${msg.tipo_remetente === "solicitante" ? "bg-blue-100 text-blue-900" : "bg-gray-200 text-gray-900"}`}>
+                          <p className="font-semibold text-xs mb-1">{msg.remetente_nome}</p>
+                          <p>{msg.mensagem}</p>
+                          <p className="text-xs opacity-60 mt-1">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Digite sua mensagem..."
+                    rows={2}
+                    value={novaMsg}
+                    onChange={(e) => setNovaMsg(e.target.value)}
+                    disabled={enviarMsgMutation.isPending}
+                  />
+                  <Button
+                    size="icon"
+                    className="bg-blue-600 hover:bg-blue-700 h-fit"
+                    disabled={!novaMsg.trim() || enviarMsgMutation.isPending}
+                    onClick={() => enviarMsgMutation.mutate(novaMsg)}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
               <AvaliacaoChamado
                 chamado={selectedChamado}
                 loading={avaliacaoMutation.isPending}
