@@ -375,18 +375,18 @@ export default function ReservaPublica() {
                                   </>
                                 ) : proximaDisponibilidade ? (
                                   <>
-                                    <Badge className="bg-yellow-100 text-yellow-800">
-                                      Reservado (Futuro)
+                                    <Badge className="bg-green-100 text-green-800">
+                                      Disponível Agora
                                     </Badge>
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
-                                      <p className="text-xs font-semibold text-yellow-900 mb-1">
-                                        Próxima disponibilidade:
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                                      <p className="text-xs font-semibold text-blue-900 mb-1">
+                                        ✅ Disponível para reserva
                                       </p>
-                                      <p className="text-xs text-yellow-700">
-                                        {format(proximaDisponibilidade, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                      <p className="text-xs text-blue-700">
+                                        Já tem uma locação a partir de {format(proximaDisponibilidade, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                                       </p>
-                                      <p className="text-xs text-yellow-600 mt-2">
-                                        Disponível agora, mas tem reservas futuras
+                                      <p className="text-xs text-blue-600 mt-1">
+                                        Reserve para antes dessa data
                                       </p>
                                     </div>
                                   </>
