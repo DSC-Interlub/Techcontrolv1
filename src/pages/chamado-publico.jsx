@@ -71,6 +71,7 @@ export default function ChamadoPublico() {
         solicitante_area: "",
         solicitante_telefone: "",
         equipamento_atual: "",
+        titulo_chamado: "",
         descricao_problema: "",
         urgencia: "Média",
       });
