@@ -100,8 +100,6 @@ export default function PortalChamados() {
     melhorias_detalhes: "", desenvolvimento_detalhes: "", servidor_subtipo: "",
     titulo_chamado: "", descricao_problema: "", urgencia: "Média",
   });
-  const [anexos, setAnexos] = useState([]);
-  const [uploading, setUploading] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(null);
   const [equipamentosUsuario, setEquipamentosUsuario] = useState([]);
 
@@ -165,22 +163,6 @@ export default function PortalChamados() {
     add(canetas, "Caneta Vibração");
     setEquipamentosUsuario(lista);
   }, [colaborador, pcsInternos, notebooksExternos, smartphones, cameras, coletores, canetas]);
-
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    setUploading(true);
-    const uploaded = [];
-    for (const file of files) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      uploaded.push({ file_url, file_name: file.name, file_type: isImage ? 'image' : isVideo ? 'video' : 'document', mime_type: file.type });
-    }
-    setAnexos(prev => [...prev, ...uploaded]);
-    setUploading(false);
-    e.target.value = "";
-  };
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
