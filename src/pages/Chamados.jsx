@@ -1210,58 +1210,35 @@ export default function Chamados() {
                        })
                      )}
                    </div>
-                   <div className="space-y-2">
-                     {anexoChat && (
-                       <div className="bg-blue-100 border border-blue-300 rounded-lg p-2 text-sm flex items-center justify-between">
-                         <span className="text-blue-900">📎 {anexoChat.name}</span>
-                         <button 
-                           onClick={() => setAnexoChat(null)}
-                           className="text-blue-700 hover:text-blue-900 font-bold"
-                         >
-                           ✕
-                         </button>
-                       </div>
-                     )}
-                     <div className="flex gap-2">
-                       <textarea
-                         value={novaMsg}
-                         onChange={(e) => setNovaMsg(e.target.value)}
-                         onKeyDown={(e) => {
-                           if (e.key === "Enter" && !e.shiftKey) {
-                             e.preventDefault();
-                             if (novaMsg.trim() || anexoChat) {
-                               enviarMsgMutation.mutate({ msg: novaMsg || "📎 Arquivo enviado", anexo: anexoChat });
-                             }
+                   <div className="flex gap-2">
+                     <textarea
+                       value={novaMsg}
+                       onChange={(e) => setNovaMsg(e.target.value)}
+                       onKeyDown={(e) => {
+                         if (e.key === "Enter" && !e.shiftKey) {
+                           e.preventDefault();
+                           if (novaMsg.trim()) {
+                             enviarMsgMutation.mutate({ msg: novaMsg });
                            }
-                         }}
-                         placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
-                         rows={1}
-                         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                         style={{ maxHeight: "100px", minHeight: "40px" }}
-                       />
-                       <label className="cursor-pointer">
-                         <input
-                           type="file"
-                           onChange={(e) => setAnexoChat(e.target.files?.[0] || null)}
-                           className="hidden"
-                         />
-                         <div className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-2 flex items-center justify-center transition-colors">
-                           📎
-                         </div>
-                       </label>
-                       <Button
-                         onClick={() => {
-                           if (novaMsg.trim() || anexoChat) {
-                             enviarMsgMutation.mutate({ msg: novaMsg || "📎 Arquivo enviado", anexo: anexoChat });
-                           }
-                         }}
-                         disabled={enviarMsgMutation.isPending || (!novaMsg.trim() && !anexoChat)}
-                         className="bg-blue-600 hover:bg-blue-700"
-                         size="sm"
-                       >
-                         <Send className="w-4 h-4" />
-                       </Button>
-                     </div>
+                         }
+                       }}
+                       placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
+                       rows={1}
+                       className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                       style={{ maxHeight: "100px", minHeight: "40px" }}
+                     />
+                     <Button
+                       onClick={() => {
+                         if (novaMsg.trim()) {
+                           enviarMsgMutation.mutate({ msg: novaMsg });
+                         }
+                       }}
+                       disabled={enviarMsgMutation.isPending || !novaMsg.trim()}
+                       className="bg-blue-600 hover:bg-blue-700"
+                       size="sm"
+                     >
+                       <Send className="w-4 h-4" />
+                     </Button>
                    </div>
                  </div>
 
