@@ -31,9 +31,9 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const payload = await req.json();
 
-  // Suporta chamada direta com chamado_id OU via automação com payload.data
+  // Suporta chamada direta (chamado_id), via automação (event.entity_id + data) ou payload.data
   let chamado = payload.data || null;
-  const chamadoId = payload.chamado_id || chamado?.id;
+  const chamadoId = payload.chamado_id || payload.event?.entity_id || chamado?.id;
 
   if (chamadoId && !chamado) {
     chamado = await base44.asServiceRole.entities.Chamados.get(chamadoId);
