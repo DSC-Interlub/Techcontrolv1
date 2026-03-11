@@ -53,28 +53,19 @@ Deno.serve(async (req) => {
   // Marca como enviado ANTES de disparar (evita race condition)
   await base44.asServiceRole.entities.Chamados.update(chamado.id, { email_abertura_enviado: true });
 
-  const solicitanteEmailNorm = chamado.solicitante_email.toLowerCase().trim();
-
-  // Dispara emails em paralelo (fire-and-forget)
-  const promises = [
+  // Dispara emails em paralelo para usuário e admin (sempre, mesmo que sejam iguais)
+  Promise.all([
     send(
       chamado.solicitante_email,
       `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`,
       htmlUsuario(chamado)
+    ),
+    send(
+      ADM_EMAIL,
+      `[TechControl] Novo chamado: ${chamado.numero_chamado} — ${chamado.solicitante_nome}`,
+      htmlAdmin(chamado)
     )
-  ];
-
-  if (ADM_EMAIL !== solicitanteEmailNorm) {
-    promises.push(
-      send(
-        ADM_EMAIL,
-        `[TechControl] Novo chamado: ${chamado.numero_chamado} — ${chamado.solicitante_nome}`,
-        htmlAdmin(chamado)
-      )
-    );
-  }
-
-  Promise.all(promises).catch(err => console.error('[sendEmailTicketCreated] Erro:', err.message));
+  ]).catch(err => console.error('[sendEmailTicketCreated] Erro:', err.message));
 
   return Response.json({ success: true });
   } catch (err) {

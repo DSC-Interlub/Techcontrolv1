@@ -1,28 +1,23 @@
 // sendEmailChatMessage
 // Chamado após envio de mensagem no chat.
-// Regras:
-//   - Se admin enviou → notifica o usuário (sempre, imediato)
-//   - Se usuário enviou → notifica o admin (máx 1 email por minuto por chamado, rate limit em memória)
-// Não envia se destinatário for o próprio remetente.
+// - Se admin enviou → notifica o usuário
+// - Se usuário enviou → notifica o admin
+// Sem rate limit. Sempre envia.
 
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY');
 const ADM_EMAIL = 'adm.sp1@interlub.com';
 const PORTAL_URL = 'https://preview-sandbox--691323397a0bc5c15e63e15d.base44.app/portal-chamados';
-const RATE_LIMIT_MS = 60 * 1000; // 1 minuto
-
-// Rate limit em memória: chave = chamado_id, valor = timestamp do último email para admin
-const admLastSent = {};
 
 async function send(to, subject, html) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'TechControl <suporte@techcontrol.site>', to: [to], subject, html }),
+    body: JSON.stringify({ from: 'TechControl <suporte@techcontrol.site>', to: Array.isArray(to) ? to : [to], subject, html }),
   });
   const j = await res.json();
-  console.log(`[sendEmailChatMessage] to=${to} status=${res.status} id=${j.id}`);
+  console.log(`[sendEmailChatMessage] to=${JSON.stringify(to)} status=${res.status} id=${j.id}`);
 }
 
 function buildHtml(nome, remetente, mensagem, numero) {
@@ -30,52 +25,41 @@ function buildHtml(nome, remetente, mensagem, numero) {
 }
 
 Deno.serve(async (req) => {
-  const base44 = createClientFromRequest(req);
-  const { chamado_id, tipo_remetente, remetente_nome, mensagem } = await req.json();
+  try {
+    const base44 = createClientFromRequest(req);
+    const { chamado_id, tipo_remetente, remetente_nome, mensagem } = await req.json();
 
-  // tipo_remetente: "admin" | "solicitante"
-  if (!chamado_id || !tipo_remetente || !mensagem) {
-    return Response.json({ success: false, message: 'Parâmetros inválidos' }, { status: 400 });
-  }
+    if (!chamado_id || !tipo_remetente || !mensagem) {
+      return Response.json({ success: false, message: 'Parâmetros inválidos' }, { status: 400 });
+    }
 
-  const chamado = await base44.asServiceRole.entities.Chamados.get(chamado_id);
+    const chamado = await base44.asServiceRole.entities.Chamados.get(chamado_id);
 
-  if (!chamado?.solicitante_email) {
-    return Response.json({ success: false, message: 'Chamado não encontrado' }, { status: 400 });
-  }
+    if (!chamado?.solicitante_email) {
+      return Response.json({ success: false, message: 'Chamado não encontrado' }, { status: 400 });
+    }
 
-  const solicitanteEmailNorm = chamado.solicitante_email.toLowerCase().trim();
-
-  if (tipo_remetente === 'admin') {
-    // Admin enviou → notifica o usuário (sempre imediato)
-    if (ADM_EMAIL !== solicitanteEmailNorm) {
-      send(
+    if (tipo_remetente === 'admin') {
+      // Admin enviou → notifica o usuário
+      await send(
         chamado.solicitante_email,
         `[TechControl] Chamado ${chamado.numero_chamado} — Nova mensagem do suporte`,
         buildHtml(chamado.solicitante_nome, remetente_nome, mensagem, chamado.numero_chamado)
-      ).catch(err => console.error('[sendEmailChatMessage] Erro usuário:', err.message));
+      );
       console.log(`[sendEmailChatMessage] Usuário notificado: ${chamado.solicitante_email}`);
-    }
-
-  } else {
-    // Usuário enviou → notifica o admin com rate limit de 1 por minuto por chamado
-    const agora = Date.now();
-    const ultimoEnvio = admLastSent[chamado_id] || 0;
-    const elapsed = agora - ultimoEnvio;
-
-    if (elapsed >= RATE_LIMIT_MS) {
-      admLastSent[chamado_id] = agora;
-      send(
+    } else {
+      // Usuário enviou → notifica o admin (sem rate limit)
+      await send(
         ADM_EMAIL,
         `[TechControl] Chamado ${chamado.numero_chamado} — Nova mensagem de ${chamado.solicitante_nome}`,
         buildHtml('Administrador', remetente_nome || chamado.solicitante_nome, mensagem, chamado.numero_chamado)
-      ).catch(err => console.error('[sendEmailChatMessage] Erro admin:', err.message));
+      );
       console.log(`[sendEmailChatMessage] Admin notificado para chamado ${chamado_id}`);
-    } else {
-      const restante = Math.ceil((RATE_LIMIT_MS - elapsed) / 1000);
-      console.log(`[sendEmailChatMessage] Admin rate-limited — ${restante}s para próximo envio (chamado ${chamado_id})`);
     }
-  }
 
-  return Response.json({ success: true });
+    return Response.json({ success: true });
+  } catch (err) {
+    console.error('[sendEmailChatMessage] Erro:', err.message);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 });
