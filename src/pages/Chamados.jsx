@@ -1242,8 +1242,8 @@ export default function Chamados() {
                          onKeyDown={(e) => {
                            if (e.key === "Enter" && !e.shiftKey) {
                              e.preventDefault();
-                             if (novaMsg.trim()) {
-                               enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                             if (novaMsg.trim() || anexoChat) {
+                               enviarMsgMutation.mutate({ msg: novaMsg || "📎 Arquivo enviado", anexo: anexoChat });
                              }
                            }
                          }}
@@ -1264,11 +1264,11 @@ export default function Chamados() {
                        </label>
                        <Button
                          onClick={() => {
-                           if (novaMsg.trim()) {
-                             enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                           if (novaMsg.trim() || anexoChat) {
+                             enviarMsgMutation.mutate({ msg: novaMsg || "📎 Arquivo enviado", anexo: anexoChat });
                            }
                          }}
-                         disabled={enviarMsgMutation.isPending || !novaMsg.trim()}
+                         disabled={enviarMsgMutation.isPending || (!novaMsg.trim() && !anexoChat)}
                          className="bg-blue-600 hover:bg-blue-700"
                          size="sm"
                        >
