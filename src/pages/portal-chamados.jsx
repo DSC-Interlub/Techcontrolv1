@@ -179,7 +179,7 @@ export default function PortalChamados() {
         status: "Aberto",
         data_abertura: new Date().toISOString().split('T')[0],
         equipamentos_usuario: equipamentosParaChamado,
-        anexos: anexos,
+        anexos: [],
       });
 
       // Email disparado automaticamente pela automação entity (notificarNovoChamado)
@@ -188,7 +188,6 @@ export default function PortalChamados() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
       setSubmitSuccess(data.numeroChamado);
-      setAnexos([]);
       setFormData({ tipo_solicitacao: "", sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "", equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "", melhorias_detalhes: "", desenvolvimento_detalhes: "", servidor_subtipo: "", titulo_chamado: "", descricao_problema: "", urgencia: "Média" });
     },
   });
