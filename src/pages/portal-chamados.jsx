@@ -200,7 +200,10 @@ export default function PortalChamados() {
         anexos: anexos,
       });
 
-      // Email disparado automaticamente pela automação entity (notificarNovoChamado)
+      // Disparar email via backend (fire-and-forget)
+      base44.functions.invoke('sendEmailTicketCreated', { chamado_id: chamado.id })
+        .catch(err => console.error("Erro email abertura:", err));
+
       return { chamado, numeroChamado };
     },
     onSuccess: (data) => {
@@ -222,7 +225,7 @@ export default function PortalChamados() {
 
   const enviarMsgMutation = useMutation({
     mutationFn: async (msg) => {
-      return base44.entities.ChamadosChat.create({
+      const chatMsg = await base44.entities.ChamadosChat.create({
         chamado_id: selectedChamado.id,
         tipo_remetente: "solicitante",
         remetente_nome: colaborador.nome_completo,
@@ -230,6 +233,16 @@ export default function PortalChamados() {
         mensagem: msg,
         data_hora: new Date().toISOString(),
       });
+
+      // Notificar admin via backend (rate limit 1/min aplicado no backend)
+      base44.functions.invoke('sendEmailChatMessage', {
+        chamado_id: selectedChamado.id,
+        remetente_nome: colaborador.nome_completo,
+        mensagem: msg,
+        sender_type: 'solicitante'
+      }).catch(err => console.error("Erro email chat:", err));
+
+      return chatMsg;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
