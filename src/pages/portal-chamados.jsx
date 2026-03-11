@@ -200,13 +200,7 @@ export default function PortalChamados() {
         anexos: anexos,
       });
 
-      // Fire and forget - não bloqueia a resposta ao usuário
-      base44.functions.invoke('portalNotificarChamado', {
-        chamadoData: { numeroChamado, solicitante_nome: colaborador.nome_completo, tipo_solicitacao: data.tipo_solicitacao, titulo_chamado: data.titulo_chamado, urgencia: data.urgencia },
-        solicitanteEmail: colaborador.email,
-        acompanharUrl: window.location.origin,
-      }).catch(err => console.error('Erro ao notificar:', err));
-
+      // Email disparado automaticamente pela automação entity (notificarNovoChamado)
       return { chamado, numeroChamado };
     },
     onSuccess: (data) => {
