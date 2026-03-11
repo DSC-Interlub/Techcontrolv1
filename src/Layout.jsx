@@ -281,15 +281,25 @@ export default function Layout({ children }) {
                     </p>
                   </div>
                 </div>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs"
-                >
-                  <LogOut className="w-3 h-3 mr-2" />
-                  Sair do Sistema
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleLogout}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs"
+                  >
+                    <LogOut className="w-3 h-3 mr-2" />
+                    Sair do Sistema
+                  </Button>
+                  <Button
+                    onClick={() => setDarkMode(!darkMode)}
+                    variant="outline"
+                    size="sm"
+                    title={darkMode ? "Modo claro" : "Modo escuro"}
+                  >
+                    {darkMode ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
+                  </Button>
+                </div>
               </div>
             )}
             <div className="text-xs text-gray-600 text-center">
