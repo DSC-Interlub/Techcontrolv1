@@ -76,15 +76,7 @@ export default function Chamados() {
   });
 
   const enviarMsgMutation = useMutation({
-    mutationFn: async ({ msg, anexo }) => {
-      let anexoUrl = null;
-      if (anexo) {
-        const formData = new FormData();
-        formData.append('file', anexo);
-        const uploadRes = await base44.integrations.Core.UploadFile({ file: anexo });
-        anexoUrl = uploadRes.file_url;
-      }
-
+    mutationFn: async ({ msg }) => {
       const novaMsg = {
         chamado_id: selectedChamado.id,
         tipo_remetente: "admin",
@@ -93,11 +85,6 @@ export default function Chamados() {
         mensagem: msg,
         data_hora: new Date().toISOString(),
       };
-
-      if (anexoUrl) {
-        novaMsg.anexo_url = anexoUrl;
-        novaMsg.anexo_nome = anexo.name;
-      }
 
       const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
 

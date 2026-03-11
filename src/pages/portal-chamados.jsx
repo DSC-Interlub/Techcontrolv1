@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Upload, X, Image as ImageIcon, Laptop, Monitor, Send } from "lucide-react";
+import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Monitor, Send } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
