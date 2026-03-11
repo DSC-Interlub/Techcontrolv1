@@ -572,20 +572,6 @@ export default function PortalChamados() {
               {selectedChamado.solucao && (
                 <div><p className="text-gray-500 font-semibold mb-1">Solução</p><p className="bg-green-50 rounded p-3 text-green-800">{selectedChamado.solucao}</p></div>
               )}
-              {/* Anexos */}
-              {selectedChamado.anexos?.length > 0 && (
-                <div>
-                  <p className="text-gray-500 font-semibold mb-2">Anexos</p>
-                  <div className="space-y-1">
-                    {selectedChamado.anexos.map((a, i) => (
-                      <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
-                        <ImageIcon className="w-4 h-4" />{a.file_name}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Chat */}
               <div className="mt-6 pt-4 border-t">
                 <p className="text-gray-500 font-semibold mb-3">💬 Conversa</p>
