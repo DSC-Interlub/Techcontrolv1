@@ -198,8 +198,8 @@ export default function Layout({ children }) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background text-foreground">
-        <Sidebar className="border-r border-gray-200">
-          <SidebarHeader className="border-b border-gray-200 p-4 bg-gradient-to-r from-blue-600 to-blue-700">
+        <Sidebar className="border-r border-border">
+          <SidebarHeader className="border-b border-border p-4 bg-gradient-to-r from-blue-600 to-blue-700">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-md">
                 <Settings className="w-6 h-6 text-blue-600" />
