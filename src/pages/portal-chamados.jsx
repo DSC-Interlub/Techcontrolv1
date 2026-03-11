@@ -459,17 +459,17 @@ export default function PortalChamados() {
   // Lista principal com 4 categorias
   const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => (
     <div
-      className="flex items-center justify-between p-4 bg-white border rounded-lg hover:shadow-sm cursor-pointer transition-all"
+      className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
       onClick={() => setSelectedChamado(chamado)}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-mono text-xs text-gray-500">{chamado.numero_chamado}</span>
+          <span className="font-mono text-xs text-muted-foreground">{chamado.numero_chamado}</span>
           <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"} >{chamado.status}</Badge>
           <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
         </div>
-        <p className="font-medium text-gray-900 truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
-        <p className="text-xs text-gray-500">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
+        <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
+        <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
       </div>
       {showAvaliarBtn && (
         <Button
@@ -502,8 +502,8 @@ export default function PortalChamados() {
                 <Headset className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Meus Chamados</h1>
-                <p className="text-gray-500 mt-1">Acompanhe e abra chamados de suporte</p>
+                <h1 className="text-2xl font-bold text-foreground">Meus Chamados</h1>
+                <p className="text-muted-foreground mt-1">Acompanhe e abra chamados de suporte</p>
               </div>
             </div>
             <Button onClick={() => setView("novo")} className="bg-orange-600 hover:bg-orange-700 gap-2">
@@ -561,21 +561,21 @@ export default function PortalChamados() {
                 <Badge className={selectedChamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>{selectedChamado.urgencia}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-gray-500">Tipo</p><p className="font-medium">{selectedChamado.tipo_solicitacao}</p></div>
-                <div><p className="text-gray-500">Data Abertura</p><p className="font-medium">{selectedChamado.data_abertura || "—"}</p></div>
-                <div><p className="text-gray-500">Responsável</p><p className="font-medium">{selectedChamado.responsavel || "Não atribuído"}</p></div>
-                {selectedChamado.data_conclusao && <div><p className="text-gray-500">Data Conclusão</p><p className="font-medium">{new Date(selectedChamado.data_conclusao).toLocaleDateString('pt-BR')}</p></div>}
+                <div><p className="text-muted-foreground">Tipo</p><p className="font-medium text-foreground">{selectedChamado.tipo_solicitacao}</p></div>
+                <div><p className="text-muted-foreground">Data Abertura</p><p className="font-medium text-foreground">{selectedChamado.data_abertura || "—"}</p></div>
+                <div><p className="text-muted-foreground">Responsável</p><p className="font-medium text-foreground">{selectedChamado.responsavel || "Não atribuído"}</p></div>
+                {selectedChamado.data_conclusao && <div><p className="text-muted-foreground">Data Conclusão</p><p className="font-medium text-foreground">{new Date(selectedChamado.data_conclusao).toLocaleDateString('pt-BR')}</p></div>}
               </div>
               {selectedChamado.descricao_problema && (
-                <div><p className="text-gray-500 font-semibold mb-1">Descrição</p><p className="bg-gray-50 rounded p-3">{selectedChamado.descricao_problema}</p></div>
+                <div><p className="text-muted-foreground font-semibold mb-1">Descrição</p><p className="bg-muted/50 rounded p-3 text-foreground">{selectedChamado.descricao_problema}</p></div>
               )}
               {selectedChamado.solucao && (
-                <div><p className="text-gray-500 font-semibold mb-1">Solução</p><p className="bg-green-50 rounded p-3 text-green-800">{selectedChamado.solucao}</p></div>
+                <div><p className="text-muted-foreground font-semibold mb-1">Solução</p><p className="bg-green-50 dark:bg-green-950 rounded p-3 text-green-800 dark:text-green-200">{selectedChamado.solucao}</p></div>
               )}
               {/* Chat */}
               <div className="mt-6 pt-4 border-t">
-                <p className="text-gray-500 font-semibold mb-3">💬 Conversa</p>
-                <div className="bg-gray-50 rounded-lg p-3 h-64 overflow-y-auto space-y-2 mb-3 border">
+                <p className="text-muted-foreground font-semibold mb-3">💬 Conversa</p>
+                <div className="bg-muted/30 rounded-lg p-3 h-64 overflow-y-auto space-y-2 mb-3 border">
                   {chatMessages.length === 0 ? (
                     <p className="text-center text-gray-400 text-sm py-8">Nenhuma mensagem ainda</p>
                   ) : (
