@@ -238,7 +238,7 @@ export default function Layout({ children }) {
             </SidebarGroup>
 
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-2 mt-2">
+              <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2 mt-2">
                 Gestão
               </SidebarGroupLabel>
               <SidebarGroupContent>
