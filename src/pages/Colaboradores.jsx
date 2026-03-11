@@ -141,7 +141,7 @@ export default function Colaboradores() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Afastados</p>
+                <p className="text-sm text-muted-foreground">Afastados</p>
                 <p className="text-3xl font-bold text-orange-600 mt-1">{stats.afastados}</p>
               </div>
             </CardContent>
