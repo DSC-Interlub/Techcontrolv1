@@ -206,9 +206,9 @@ export default function Colaboradores() {
                         </TableRow>
                       ) : (
                         filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").map((colaborador) => (
-                          <TableRow key={colaborador.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
+                          <TableRow key={colaborador.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
                             <TableCell className="font-medium">{colaborador.nome_completo}</TableCell>
-                            <TableCell className="text-sm text-gray-600">{colaborador.email || "-"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{colaborador.email || "-"}</TableCell>
                             <TableCell>{colaborador.area}</TableCell>
                             <TableCell>
                               <Badge className={
