@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function enviarEmail(to, subject, html) {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
