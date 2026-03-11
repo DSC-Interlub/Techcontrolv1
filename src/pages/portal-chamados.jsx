@@ -598,13 +598,6 @@ export default function PortalChamados() {
                     })
                   )}
                 </div>
-                {anexoChat && (
-                  <div className="flex items-center gap-2 mb-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                    <ImageIcon className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs text-blue-700 flex-1 truncate">{anexoChat.name}</span>
-                    <button onClick={() => setAnexoChat(null)} className="text-blue-400 hover:text-blue-600"><X className="w-3 h-3" /></button>
-                  </div>
-                )}
                 <div className="flex gap-2">
                   <Textarea
                     placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
@@ -614,24 +607,18 @@ export default function PortalChamados() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        if (novaMsg.trim() || anexoChat) {
-                          enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                        if (novaMsg.trim()) {
+                          enviarMsgMutation.mutate({ msg: novaMsg });
                         }
                       }
                     }}
                     disabled={enviarMsgMutation.isPending}
                   />
-                  <label className="cursor-pointer">
-                    <input type="file" onChange={(e) => setAnexoChat(e.target.files?.[0] || null)} className="hidden" />
-                    <div className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-2 flex items-center justify-center transition-colors">
-                      📎
-                    </div>
-                  </label>
                   <Button
                     size="icon"
                     className="bg-blue-600 hover:bg-blue-700 h-fit"
-                    disabled={(!novaMsg.trim() && !anexoChat) || enviarMsgMutation.isPending}
-                    onClick={() => enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat })}
+                    disabled={!novaMsg.trim() || enviarMsgMutation.isPending}
+                    onClick={() => enviarMsgMutation.mutate({ msg: novaMsg })}
                   >
                     <Send className="w-4 h-4" />
                   </Button>
