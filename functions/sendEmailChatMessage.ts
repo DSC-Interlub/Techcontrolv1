@@ -8,7 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
 
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY');
 const ADM_EMAIL = 'adm.sp1@interlub.com';
-const PORTAL_URL = 'https://preview-sandbox--691323397a0bc5c15e63e15d.base44.app/portal-chamados';
+const PORTAL_URL = 'https://techcontrol.site/portal-login';
 
 async function send(to, subject, html) {
   const res = await fetch('https://api.resend.com/emails', {
