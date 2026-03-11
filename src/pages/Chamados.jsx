@@ -36,7 +36,6 @@ export default function Chamados() {
   const [user, setUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [novaMsg, setNovaMsg] = useState("");
-  const [anexoChat, setAnexoChat] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
