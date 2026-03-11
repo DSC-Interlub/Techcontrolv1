@@ -10,10 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { X, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 
 export default function ColaboradorForm({ colaborador, onClose }) {
-  const [formData, setFormData] = useState(colaborador || {
-    senhas_sistemas: []
-  });
+  const [formData, setFormData] = useState(colaborador || { senhas_sistemas: [] });
   const [showSenhas, setShowSenhas] = useState({});
+
+  React.useEffect(() => {
+    setFormData(colaborador || { senhas_sistemas: [] });
+    setShowSenhas({});
+  }, [colaborador?.id]);
 
   const queryClient = useQueryClient();
 
