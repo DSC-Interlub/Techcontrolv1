@@ -219,26 +219,15 @@ export default function PortalChamados() {
   });
 
   const [novaMsg, setNovaMsg] = useState("");
-  const [anexoChat, setAnexoChat] = useState(null);
 
   const enviarMsgMutation = useMutation({
-    mutationFn: async ({ msg, anexo }) => {
-      let anexo_url = null;
-      let anexo_nome = null;
-      if (anexo) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: anexo });
-        anexo_url = file_url;
-        anexo_nome = anexo.name;
-      }
-
+    mutationFn: async ({ msg }) => {
       const chatMsg = await base44.entities.ChamadosChat.create({
         chamado_id: selectedChamado.id,
         tipo_remetente: "solicitante",
         remetente_nome: colaborador.nome_completo,
         remetente_email: colaborador.email,
         mensagem: msg || "",
-        anexo_url,
-        anexo_nome,
         data_hora: new Date().toISOString(),
       });
 
@@ -246,7 +235,7 @@ export default function PortalChamados() {
         chamado_id: selectedChamado.id,
         tipo_remetente: 'solicitante',
         remetente_nome: colaborador.nome_completo,
-        mensagem: mensagemFinal,
+        mensagem: msg,
       }).catch(err => console.error("Erro ao enviar email:", err));
 
       return chatMsg;
@@ -254,7 +243,6 @@ export default function PortalChamados() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
       setNovaMsg("");
-      setAnexoChat(null);
     },
   });
 
