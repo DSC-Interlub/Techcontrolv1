@@ -270,7 +270,7 @@ export default function PortalChamados() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Chamado Aberto!</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Chamado Aberto!</h2>
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 my-4">
             <p className="text-sm text-yellow-800 mb-1 font-semibold">Número do Chamado:</p>
             <p className="text-3xl font-bold font-mono">{submitSuccess}</p>
@@ -299,8 +299,8 @@ export default function PortalChamados() {
                 <Headset className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Abrir Chamado de Suporte</h1>
-                <p className="text-gray-500 text-sm">Solicitante: {colaborador.nome_completo}</p>
+                <h1 className="text-xl font-bold text-foreground">Abrir Chamado de Suporte</h1>
+                <p className="text-muted-foreground text-sm">Solicitante: {colaborador.nome_completo}</p>
               </div>
             </div>
 
