@@ -93,12 +93,12 @@ export default function Colaboradores() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-indigo-600" />
+            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Colaboradores</h1>
-              <p className="text-gray-500 mt-1">Gerenciar colaboradores e suas credenciais</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Colaboradores</h1>
+            <p className="text-muted-foreground mt-1">Gerenciar colaboradores e suas credenciais</p>
             </div>
           </div>
           <div className="flex gap-2">
