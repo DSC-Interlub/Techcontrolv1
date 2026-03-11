@@ -68,10 +68,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Enviar todos em paralelo (sem delay — rápido e sem duplicatas)
-    await Promise.all(envios);
+    // Disparar em background sem bloquear a resposta
+    Promise.all(envios).then(() => {
+      console.log(`[notificarNovoChamado] Chamado ${chamado.numero_chamado} - ${envios.length} email(s) enviado(s)`);
+    }).catch(err => console.error('[notificarNovoChamado] Erro:', err.message));
 
-    console.log(`[notificarNovoChamado] Chamado ${chamado.numero_chamado} - ${envios.length} email(s) enviado(s)`);
     return Response.json({ success: true });
   } catch (error) {
     console.error(`[notificarNovoChamado] Erro: ${error.message}`);
