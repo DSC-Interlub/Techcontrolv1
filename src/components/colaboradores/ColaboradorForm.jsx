@@ -182,17 +182,39 @@ export default function ColaboradorForm({ colaborador, onClose }) {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 pt-6">
-                <input
-                  type="checkbox"
-                  id="bloquear_portal"
-                  checked={formData.acesso_portal_bloqueado || false}
-                  onChange={(e) => setFormData({ ...formData, acesso_portal_bloqueado: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="bloquear_portal" className="text-sm text-gray-700 cursor-pointer">
-                  Bloquear acesso ao portal
-                </label>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="bloquear_portal"
+                    checked={formData.acesso_portal_bloqueado || false}
+                    onChange={(e) => setFormData({ ...formData, acesso_portal_bloqueado: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="bloquear_portal" className="text-sm text-gray-700 cursor-pointer">
+                    Bloquear acesso ao portal
+                  </label>
+                </div>
+                {colaborador && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p className="text-xs text-orange-700 mb-2 font-semibold">Reset de Senha</p>
+                    <p className="text-xs text-orange-600 mb-3">
+                      Defina uma nova senha e marque para forçar o colaborador a trocar no próximo acesso.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="precisa_trocar"
+                        checked={formData.senha_precisa_trocar || false}
+                        onChange={(e) => setFormData({ ...formData, senha_precisa_trocar: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <label htmlFor="precisa_trocar" className="text-sm text-orange-800 cursor-pointer font-medium">
+                        Forçar troca de senha no próximo acesso
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
