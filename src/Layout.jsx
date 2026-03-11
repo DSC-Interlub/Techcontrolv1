@@ -197,7 +197,7 @@ export default function Layout({ children }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
+      <div className="min-h-screen flex w-full bg-background text-foreground">
         <Sidebar className="border-r border-gray-200">
           <SidebarHeader className="border-b border-gray-200 p-4 bg-gradient-to-r from-blue-600 to-blue-700">
             <div className="flex items-center gap-3">
