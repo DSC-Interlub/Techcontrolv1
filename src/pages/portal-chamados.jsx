@@ -440,29 +440,7 @@ export default function PortalChamados() {
                     <Textarea required placeholder="Descreva com detalhes: o que aconteceu, quando começou, mensagens de erro, etc." rows={4} value={formData.descricao_problema} onChange={e => setFormData(p => ({ ...p, descricao_problema: e.target.value }))} />
                   </div>
 
-                  {/* Upload de anexos */}
-                  <div>
-                    <Label>Anexar Fotos, Imagens, Vídeos ou Documentos (opcional)</Label>
-                    <div className="mt-2">
-                      <input type="file" id="portal-file-upload" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileUpload} className="hidden" />
-                      <Button type="button" variant="outline" className="w-full gap-2" disabled={uploading} onClick={() => document.getElementById('portal-file-upload').click()}>
-                        {uploading ? <><Loader2 className="w-4 h-4 animate-spin" />Fazendo upload...</> : <><Upload className="w-4 h-4" />Adicionar Arquivos</>}
-                      </Button>
-                    </div>
-                    {anexos.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {anexos.map((a, i) => (
-                          <div key={i} className="flex items-center justify-between bg-gray-50 border rounded-lg p-2">
-                            <div className="flex items-center gap-2">
-                              <ImageIcon className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm text-gray-700 truncate max-w-xs">{a.file_name}</span>
-                            </div>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setAnexos(prev => prev.filter((_, j) => j !== i))}><X className="w-4 h-4" /></Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+
                 </CardContent>
                 <div className="border-t p-5 flex justify-between">
                   <Button type="button" variant="outline" onClick={() => setView("lista")}>Cancelar</Button>
