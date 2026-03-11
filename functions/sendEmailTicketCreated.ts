@@ -28,6 +28,7 @@ function htmlAdmin(c) {
 }
 
 Deno.serve(async (req) => {
+  try {
   const base44 = createClientFromRequest(req);
   const payload = await req.json();
 
@@ -76,4 +77,8 @@ Deno.serve(async (req) => {
   Promise.all(promises).catch(err => console.error('[sendEmailTicketCreated] Erro:', err.message));
 
   return Response.json({ success: true });
+  } catch (err) {
+    console.error('[sendEmailTicketCreated] Erro fatal:', err.message);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
 });
