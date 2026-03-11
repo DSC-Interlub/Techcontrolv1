@@ -42,11 +42,8 @@ Deno.serve(async (req) => {
 
     const acompanharUrl = 'https://preview-sandbox--691323397a0bc5c15e63e15d.base44.app/portal-chamados';
 
-    // Buscar admins
-    const allUsers = await base44.asServiceRole.entities.User.list();
-    const adminEmails = [...new Set(
-      allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email.toLowerCase().trim())
-    )];
+    // Único admin que recebe notificação de novo chamado
+    const adminEmails = ['adm.sp1@interlub.com'];
 
     const solicitanteEmail = chamado.solicitante_email?.toLowerCase().trim();
 
