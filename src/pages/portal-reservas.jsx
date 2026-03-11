@@ -160,8 +160,8 @@ export default function PortalReservas() {
                 <Calendar className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Reservar Notebook</h1>
-                <p className="text-gray-500 mt-1">Reserve um notebook para uso externo</p>
+                <h1 className="text-2xl font-bold text-foreground">Reservar Notebook</h1>
+                <p className="text-muted-foreground mt-1">Reserve um notebook para uso externo</p>
               </div>
             </div>
             <Button onClick={() => { setShowForm(!showForm); setConflictError(false); }} className="bg-purple-600 hover:bg-purple-700 gap-2">

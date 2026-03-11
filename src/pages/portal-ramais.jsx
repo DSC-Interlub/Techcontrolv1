@@ -46,13 +46,13 @@ export default function PortalRamais() {
               <Phone className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Lista de Ramais</h1>
-              <p className="text-gray-500 mt-1">Consulta de ramais telefônicos da empresa</p>
+              <h1 className="text-2xl font-bold text-foreground">Lista de Ramais</h1>
+              <p className="text-muted-foreground mt-1">Consulta de ramais telefônicos da empresa</p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold text-gray-900">{stats.total}</p><p className="text-sm text-gray-600">Total</p></CardContent></Card>
+            <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold text-foreground">{stats.total}</p><p className="text-sm text-muted-foreground">Total</p></CardContent></Card>
             <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold text-blue-600">{stats.emUso}</p><p className="text-sm text-gray-600">Em Uso</p></CardContent></Card>
             <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold text-green-600">{stats.disponiveis}</p><p className="text-sm text-gray-600">Disponíveis</p></CardContent></Card>
           </div>
@@ -90,7 +90,7 @@ export default function PortalRamais() {
                       <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">Nenhum ramal encontrado</TableCell></TableRow>
                     ) : (
                       filtered.map(r => (
-                        <TableRow key={r.id} className="hover:bg-gray-50">
+                        <TableRow key={r.id}>
                           <TableCell className="font-mono font-bold text-lg">{r.ramal}</TableCell>
                           <TableCell>{r.usuario_atual || <span className="text-gray-400">—</span>}</TableCell>
                           <TableCell>{r.area || <span className="text-gray-400">—</span>}</TableCell>

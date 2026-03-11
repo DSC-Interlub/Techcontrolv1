@@ -189,8 +189,8 @@ export default function PortalEquipamentos() {
               <Activity className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Meus Equipamentos</h1>
-              <p className="text-gray-500 mt-1">Equipamentos atribuídos a você · {minhasAvaliacoes.length} avaliação(ões) realizadas</p>
+              <h1 className="text-2xl font-bold text-foreground">Meus Equipamentos</h1>
+              <p className="text-muted-foreground mt-1">Equipamentos atribuídos a você · {minhasAvaliacoes.length} avaliação(ões) realizadas</p>
             </div>
           </div>
 
@@ -211,12 +211,12 @@ export default function PortalEquipamentos() {
                   <Card key={eq.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-6 h-6 text-gray-600" />
+                        <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
+                           <Icon className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900">{eq.marca} {eq.modelo}</p>
-                          <p className="text-sm text-gray-500">Etiqueta: {eq.etiqueta_interna || "—"}</p>
+                          <p className="font-semibold text-foreground">{eq.marca} {eq.modelo}</p>
+                          <p className="text-sm text-muted-foreground">Etiqueta: {eq.etiqueta_interna || "—"}</p>
                           <div className="flex flex-wrap gap-2 mt-2">
                             <Badge className={
                               eq.status === "Em uso" ? "bg-blue-100 text-blue-800" :

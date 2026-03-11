@@ -119,8 +119,8 @@ export default function PortalSala() {
               <Users className="w-6 h-6 text-teal-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sala de Treinamento</h1>
-              <p className="text-gray-500 mt-1">Clique em um horário disponível para reservar</p>
+              <h1 className="text-2xl font-bold text-foreground">Sala de Treinamento</h1>
+              <p className="text-muted-foreground mt-1">Clique em um horário disponível para reservar</p>
             </div>
           </div>
 
@@ -154,18 +154,18 @@ export default function PortalSala() {
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                   <div className="min-w-[700px]">
-                    <div className="grid grid-cols-6 border-b bg-gray-50">
-                      <div className="p-3 text-xs font-semibold text-gray-500 text-center">Horário</div>
+                    <div className="grid grid-cols-6 border-b bg-muted/50">
+                      <div className="p-3 text-xs font-semibold text-muted-foreground text-center">Horário</div>
                       {diasSemana.map((dia) => (
-                        <div key={dia.toISOString()} className={`p-3 text-center border-l ${isToday(dia) ? 'bg-teal-50' : ''}`}>
-                          <p className="text-xs font-semibold text-gray-500 uppercase">{format(dia, 'EEE', { locale: ptBR })}</p>
-                          <p className={`text-lg font-bold ${isToday(dia) ? 'text-teal-600' : 'text-gray-900'}`}>{format(dia, 'd')}</p>
+                        <div key={dia.toISOString()} className={`p-3 text-center border-l ${isToday(dia) ? 'bg-teal-50 dark:bg-teal-950' : ''}`}>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">{format(dia, 'EEE', { locale: ptBR })}</p>
+                          <p className={`text-lg font-bold ${isToday(dia) ? 'text-teal-600' : 'text-foreground'}`}>{format(dia, 'd')}</p>
                         </div>
                       ))}
                     </div>
                     {HORARIOS.slice(0, -1).map((hora) => (
-                      <div key={hora} className="grid grid-cols-6 border-b hover:bg-gray-50/50">
-                        <div className="p-2 text-xs text-gray-500 text-center font-medium border-r bg-gray-50 flex items-center justify-center">{hora}</div>
+                      <div key={hora} className="grid grid-cols-6 border-b hover:bg-muted/30">
+                      <div className="p-2 text-xs text-muted-foreground text-center font-medium border-r bg-muted/30 flex items-center justify-center">{hora}</div>
                         {diasSemana.map((dia) => {
                           const reserva = getReservaNoSlot(dia, hora);
                           const passado = isSlotPassado(dia, hora);
@@ -176,7 +176,7 @@ export default function PortalSala() {
                               onClick={() => handleSlotClick(dia, hora)}
                               className={`border-l min-h-[40px] p-1 transition-all ${
                                 reserva ? 'bg-teal-100 cursor-not-allowed'
-                                : passado ? 'bg-gray-100 cursor-not-allowed opacity-50'
+                                : passado ? 'bg-muted cursor-not-allowed opacity-50'
                                 : selecionado ? 'bg-teal-200 cursor-pointer ring-2 ring-teal-500'
                                 : 'hover:bg-teal-50 cursor-pointer'
                               }`}
@@ -196,10 +196,10 @@ export default function PortalSala() {
                 </CardContent>
               </Card>
 
-              <div className="flex gap-4 justify-center flex-wrap text-sm text-gray-600">
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-white border-2 border-gray-300" />Disponível</div>
+              <div className="flex gap-4 justify-center flex-wrap text-sm text-muted-foreground">
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-background border-2 border-border" />Disponível</div>
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-teal-100 border-2 border-teal-300" />Reservado</div>
-                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-gray-100 border-2 border-gray-300" />Passado</div>
+                <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-muted border-2 border-border" />Passado</div>
               </div>
 
               {showForm && selectedSlot && (
