@@ -101,12 +101,13 @@ export default function Chamados() {
 
       const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
 
+      // Email via backend — função centralizada
       base44.functions.invoke('sendEmailChatMessage', {
         chamado_id: selectedChamado.id,
+        tipo_remetente: 'admin',
         remetente_nome: currentUser.nome_exibicao || currentUser.full_name,
-        mensagem: msg,
-        sender_type: 'admin'
-      }).catch(err => console.error("Erro ao enviar email chat:", err));
+        mensagem: msg
+      }).catch(err => console.error("Erro ao enviar email:", err));
 
       return chatMsg;
     },
@@ -166,7 +167,7 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-
+    // Sem email aqui — o envio de email de conclusão ocorre apenas em handleFinalizarAtendimento
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
@@ -333,10 +334,11 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
+    // Email via backend — função centralizada
     base44.functions.invoke('sendEmailTicketStarted', {
       chamado_id: chamado.id,
       responsavel: nomeExibicao
-    }).catch(err => console.error("Erro ao enviar email inicio:", err));
+    }).catch(err => console.error("Erro ao enviar email:", err));
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
@@ -434,11 +436,12 @@ export default function Chamados() {
       historico
     });
 
+    // Email via backend — função centralizada
     if (chamado.solicitante_email) {
       base44.functions.invoke('sendEmailTicketClosed', {
         chamado_id: chamado.id,
         responsavel: nomeExibicao
-      }).catch(err => console.error("Erro ao enviar email conclusao:", err));
+      }).catch(err => console.error("Erro ao enviar email:", err));
     }
 
     await updatePromise;
