@@ -88,14 +88,29 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, message: 'Chamado não encontrado' }, { status: 400 });
     }
 
-    // Enviar email imediatamente (fire-and-forget)
-    enviarEmail(
+    const ADM_EMAIL = 'adm.sp1@interlub.com';
+    const solicitanteEmail = chamado.solicitante_email?.toLowerCase().trim();
+    const envios = [];
+
+    // Sempre envia para o solicitante
+    envios.push(enviarEmail(
       chamado.solicitante_email,
       `[TechControl] Chamado ${chamado.numero_chamado} - Nova Mensagem`,
       buildEmail(chamado.solicitante_nome, remetente_nome, mensagem, chamado.numero_chamado)
-    );
+    ));
 
-    // Responder ao frontend imediatamente
+    // Envia para o admin se não for o próprio solicitante
+    if (ADM_EMAIL !== solicitanteEmail) {
+      envios.push(enviarEmail(
+        ADM_EMAIL,
+        `[TechControl] Chamado ${chamado.numero_chamado} - Nova Mensagem`,
+        buildEmail('Administrador', remetente_nome, mensagem, chamado.numero_chamado)
+      ));
+    }
+
+    // Fire-and-forget em paralelo
+    Promise.all(envios).catch(err => console.error('[enviarEmailMensagemChat] Erro:', err.message));
+
     return Response.json({ success: true });
   } catch (error) {
     console.error(`[enviarEmailMensagemChat] Erro: ${error.message}`);
