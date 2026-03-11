@@ -175,7 +175,7 @@ export default function Colaboradores() {
               {/* Colaboradores Internos */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-lg font-semibold text-indigo-900">Colaboradores Internos</h3>
+                  <h3 className="text-lg font-semibold text-indigo-700 dark:text-indigo-400">Colaboradores Internos</h3>
                   <Badge className="bg-indigo-100 text-indigo-800">
                     {filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").length}
                   </Badge>
