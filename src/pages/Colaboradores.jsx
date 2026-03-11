@@ -252,7 +252,7 @@ export default function Colaboradores() {
               {/* Colaboradores Externos */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-lg font-semibold text-purple-900">Colaboradores Externos</h3>
+                  <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-400">Colaboradores Externos</h3>
                   <Badge className="bg-purple-100 text-purple-800">
                     {filteredColaboradores.filter(c => c.tipo_funcionario === "Externo").length}
                   </Badge>
