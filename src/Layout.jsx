@@ -197,6 +197,36 @@ export default function Layout({ children }) {
 
   return (
     <SidebarProvider>
+      <style>{`
+        .dark {
+          --background: 222 20% 13%;
+          --foreground: 210 40% 96%;
+          --card: 222 20% 16%;
+          --card-foreground: 210 40% 96%;
+          --popover: 222 20% 16%;
+          --popover-foreground: 210 40% 96%;
+          --primary: 210 40% 96%;
+          --primary-foreground: 222 20% 13%;
+          --secondary: 222 20% 20%;
+          --secondary-foreground: 210 40% 96%;
+          --muted: 222 20% 20%;
+          --muted-foreground: 215 20% 65%;
+          --accent: 222 20% 22%;
+          --accent-foreground: 210 40% 96%;
+          --destructive: 0 62.8% 40%;
+          --destructive-foreground: 0 0% 98%;
+          --border: 222 20% 22%;
+          --input: 222 20% 22%;
+          --ring: 215 40% 60%;
+          --sidebar-background: 222 25% 10%;
+          --sidebar-foreground: 210 40% 92%;
+          --sidebar-primary: 224.3 76.3% 60%;
+          --sidebar-primary-foreground: 0 0% 100%;
+          --sidebar-accent: 222 20% 18%;
+          --sidebar-accent-foreground: 210 40% 92%;
+          --sidebar-border: 222 20% 18%;
+        }
+      `}</style>
       <div className="min-h-screen flex w-full bg-background text-foreground">
         <Sidebar className="border-r border-border">
           <SidebarHeader className="border-b border-border p-4 bg-gradient-to-r from-blue-600 to-blue-700">
