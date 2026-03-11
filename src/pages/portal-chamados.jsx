@@ -200,10 +200,7 @@ export default function PortalChamados() {
         anexos: anexos,
       });
 
-      // Disparar email via backend (fire-and-forget)
-      base44.functions.invoke('sendEmailTicketCreated', { chamado_id: chamado.id })
-        .catch(err => console.error("Erro email abertura:", err));
-
+      // Email disparado automaticamente pela automação entity (notificarNovoChamado)
       return { chamado, numeroChamado };
     },
     onSuccess: (data) => {
@@ -234,13 +231,13 @@ export default function PortalChamados() {
         data_hora: new Date().toISOString(),
       });
 
-      // Notificar admin via backend (rate limit 1/min aplicado no backend)
+      // Notifica o admin via backend (rate limit de 1 por minuto aplicado no backend)
       base44.functions.invoke('sendEmailChatMessage', {
         chamado_id: selectedChamado.id,
+        tipo_remetente: 'solicitante',
         remetente_nome: colaborador.nome_completo,
         mensagem: msg,
-        sender_type: 'solicitante'
-      }).catch(err => console.error("Erro email chat:", err));
+      }).catch(err => console.error("Erro ao enviar email:", err));
 
       return chatMsg;
     },
