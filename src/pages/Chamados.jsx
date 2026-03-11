@@ -101,7 +101,6 @@ export default function Chamados() {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
       queryClient.invalidateQueries({ queryKey: ['chamados'] });
       setNovaMsg("");
-      setAnexoChat(null);
     },
   });
 
