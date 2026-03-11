@@ -533,10 +533,10 @@ export default function Chamados() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
+          <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
     );
@@ -645,7 +645,7 @@ export default function Chamados() {
   );
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 md:p-8 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
@@ -653,8 +653,8 @@ export default function Chamados() {
               <Headset className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Chamados de Suporte</h1>
-              <p className="text-gray-500 mt-1">Gerenciar solicitações de suporte</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Chamados de Suporte</h1>
+              <p className="text-muted-foreground mt-1">Gerenciar solicitações de suporte</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
