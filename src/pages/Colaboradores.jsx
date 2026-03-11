@@ -117,8 +117,8 @@ export default function Colaboradores() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Total</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
             </CardContent>
           </Card>
