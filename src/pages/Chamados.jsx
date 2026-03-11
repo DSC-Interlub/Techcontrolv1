@@ -1193,19 +1193,19 @@ export default function Chamados() {
                          const isAdminMsg = msg.tipo_remetente === "admin" || msg.remetente_email === currentUser?.email;
                          return (
                          <div key={msg.id} className={`flex ${isAdminMsg ? "justify-end" : "justify-start"}`}>
-                           <div className={`max-w-xs rounded-lg p-3 ${
+                           <div className={`max-w-[75%] rounded-lg p-3 break-words ${
                              isAdminMsg
                                ? "bg-blue-100 text-blue-900" 
                                : "bg-gray-100 text-gray-900"
                            }`}>
                              <p className="text-xs font-semibold mb-1">{msg.remetente_nome}</p>
-                             <p className="text-sm">{msg.mensagem}</p>
+                             {msg.mensagem && <p className="text-sm whitespace-pre-wrap break-words">{msg.mensagem}</p>}
                              {msg.anexo_url && (
                                <a 
                                  href={msg.anexo_url} 
                                  target="_blank" 
                                  rel="noopener noreferrer"
-                                 className={`block mt-2 text-xs underline ${
+                                 className={`flex items-center gap-1 mt-2 text-xs underline break-all ${
                                    isAdminMsg
                                      ? "text-blue-700 hover:text-blue-900" 
                                      : "text-gray-700 hover:text-gray-900"
