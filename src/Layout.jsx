@@ -263,20 +263,20 @@ export default function Layout({ children }) {
             </SidebarGroup>
           </SidebarContent>
 
-          <SidebarFooter className="border-t border-gray-200 p-4 bg-gray-50">
+          <SidebarFooter className="border-t border-border p-4">
             {currentUser && (
-              <div className="mb-3 pb-3 border-b border-gray-200">
+              <div className="mb-3 pb-3 border-b border-border">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-700 font-semibold text-sm">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                    <span className="text-blue-700 dark:text-blue-300 font-semibold text-sm">
                       {currentUser.full_name?.charAt(0).toUpperCase() || "?"}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium truncate">
                       {currentUser.full_name || "Usuário"}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {currentUser.email}
                     </p>
                   </div>

@@ -219,24 +219,30 @@ export default function PortalChamados() {
   });
 
   const [novaMsg, setNovaMsg] = useState("");
+  const [anexoChat, setAnexoChat] = useState(null);
 
   const enviarMsgMutation = useMutation({
-    mutationFn: async (msg) => {
+    mutationFn: async ({ msg, anexo }) => {
+      let mensagemFinal = msg;
+      if (anexo) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: anexo });
+        mensagemFinal = msg ? `${msg}\n📎 [${anexo.name}](${file_url})` : `📎 [${anexo.name}](${file_url})`;
+      }
+
       const chatMsg = await base44.entities.ChamadosChat.create({
         chamado_id: selectedChamado.id,
         tipo_remetente: "solicitante",
         remetente_nome: colaborador.nome_completo,
         remetente_email: colaborador.email,
-        mensagem: msg,
+        mensagem: mensagemFinal,
         data_hora: new Date().toISOString(),
       });
 
-      // Notifica o admin via backend (rate limit de 1 por minuto aplicado no backend)
       base44.functions.invoke('sendEmailChatMessage', {
         chamado_id: selectedChamado.id,
         tipo_remetente: 'solicitante',
         remetente_nome: colaborador.nome_completo,
-        mensagem: msg,
+        mensagem: mensagemFinal,
       }).catch(err => console.error("Erro ao enviar email:", err));
 
       return chatMsg;
@@ -244,6 +250,7 @@ export default function PortalChamados() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
       setNovaMsg("");
+      setAnexoChat(null);
     },
   });
 
@@ -649,31 +656,44 @@ export default function PortalChamados() {
                      })
                   )}
                 </div>
+                {anexoChat && (
+                  <div className="flex items-center gap-2 mb-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                    <ImageIcon className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs text-blue-700 flex-1 truncate">{anexoChat.name}</span>
+                    <button onClick={() => setAnexoChat(null)} className="text-blue-400 hover:text-blue-600"><X className="w-3 h-3" /></button>
+                  </div>
+                )}
                 <div className="flex gap-2">
-                   <Textarea
-                     placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
-                     rows={2}
-                     value={novaMsg}
-                     onChange={(e) => setNovaMsg(e.target.value)}
-                     onKeyDown={(e) => {
-                       if (e.key === "Enter" && !e.shiftKey) {
-                         e.preventDefault();
-                         if (novaMsg.trim()) {
-                           enviarMsgMutation.mutate(novaMsg);
-                         }
-                       }
-                     }}
-                     disabled={enviarMsgMutation.isPending}
-                   />
-                   <Button
-                     size="icon"
-                     className="bg-blue-600 hover:bg-blue-700 h-fit"
-                     disabled={!novaMsg.trim() || enviarMsgMutation.isPending}
-                     onClick={() => enviarMsgMutation.mutate(novaMsg)}
-                   >
-                     <Send className="w-4 h-4" />
-                   </Button>
-                 </div>
+                  <Textarea
+                    placeholder="Digite sua mensagem... (Shift+Enter para quebra de linha)"
+                    rows={2}
+                    value={novaMsg}
+                    onChange={(e) => setNovaMsg(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (novaMsg.trim() || anexoChat) {
+                          enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat });
+                        }
+                      }
+                    }}
+                    disabled={enviarMsgMutation.isPending}
+                  />
+                  <label className="cursor-pointer">
+                    <input type="file" onChange={(e) => setAnexoChat(e.target.files?.[0] || null)} className="hidden" />
+                    <div className="bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg px-3 py-2 flex items-center justify-center transition-colors">
+                      📎
+                    </div>
+                  </label>
+                  <Button
+                    size="icon"
+                    className="bg-blue-600 hover:bg-blue-700 h-fit"
+                    disabled={(!novaMsg.trim() && !anexoChat) || enviarMsgMutation.isPending}
+                    onClick={() => enviarMsgMutation.mutate({ msg: novaMsg, anexo: anexoChat })}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               <AvaliacaoChamado
