@@ -133,7 +133,7 @@ export default function Colaboradores() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-gray-600">Férias</p>
+                <p className="text-sm text-muted-foreground">Férias</p>
                 <p className="text-3xl font-bold text-blue-600 mt-1">{stats.ferias}</p>
               </div>
             </CardContent>
