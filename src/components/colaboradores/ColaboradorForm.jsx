@@ -13,7 +13,7 @@ export default function ColaboradorForm({ colaborador, onClose }) {
   const [formData, setFormData] = useState(colaborador || { senhas_sistemas: [] });
   const [showSenhas, setShowSenhas] = useState({});
 
-  React.useEffect(() => {
+  useEffect(() => {
     setFormData(colaborador || { senhas_sistemas: [] });
     setShowSenhas({});
   }, [colaborador?.id]);
