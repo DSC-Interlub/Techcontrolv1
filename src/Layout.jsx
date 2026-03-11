@@ -213,7 +213,7 @@ export default function Layout({ children }) {
           
           <SidebarContent className="p-2">
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-2">
+              <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
                 Equipamentos
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -302,9 +302,9 @@ export default function Layout({ children }) {
                 </div>
               </div>
             )}
-            <div className="text-xs text-gray-600 text-center">
+            <div className="text-xs text-muted-foreground text-center">
               <p className="font-semibold">Sistema TechControl</p>
-              <p className="text-gray-500">v1.0.0</p>
+              <p>v1.0.0</p>
               <a
                 href={createPageUrl("portal-login")}
                 className="mt-2 inline-block text-blue-600 hover:underline"
@@ -316,10 +316,10 @@ export default function Layout({ children }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="bg-white border-b border-gray-200 px-6 py-4 md:hidden sticky top-0 z-10">
+          <header className="bg-background border-b border-border px-6 py-4 md:hidden sticky top-0 z-10">
             <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-gray-100 p-2 rounded-lg transition-colors duration-200" />
-              <h1 className="text-xl font-bold text-gray-900">TechControl</h1>
+              <SidebarTrigger className="hover:bg-muted p-2 rounded-lg transition-colors duration-200" />
+              <h1 className="text-xl font-bold">TechControl</h1>
             </div>
           </header>
 
