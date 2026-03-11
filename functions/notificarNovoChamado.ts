@@ -44,35 +44,45 @@ Deno.serve(async (req) => {
     const allUsers = await base44.asServiceRole.entities.User.list();
     const adminEmails = [...new Set(allUsers.filter(u => u.role === 'admin' && u.email).map(u => u.email))];
 
-    // Email para o solicitante
+    // Monta lista completa de destinatários (solicitante + admins sem duplicatas)
+    const allRecipients = [];
+
     if (chamado.solicitante_email) {
-      enviarEmail(
-        chamado.solicitante_email,
-        `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`,
-        buildEmail(chamado.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', {
+      allRecipients.push({
+        email: chamado.solicitante_email,
+        subject: `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`,
+        html: buildEmail(chamado.solicitante_nome, 'Seu chamado foi registrado com sucesso. Nossa equipe irá analisar e entrar em contato em breve.', {
           numeroChamado: chamado.numero_chamado,
           solicitante_nome: chamado.solicitante_nome,
           tipo_solicitacao: chamado.tipo_solicitacao,
           titulo_chamado: chamado.titulo_chamado,
           urgencia: chamado.urgencia
         }, '/portal-chamados')
-      ).catch(err => console.error(`[notificarNovoChamado] Erro ao enviar para ${chamado.solicitante_email}: ${err.message}`));
+      });
     }
 
-    // Email para admins (uma vez cada, sem duplicatas)
-    adminEmails.forEach(adminEmail => {
-      enviarEmail(
-        adminEmail,
-        `[TechControl] Novo chamado aberto: ${chamado.numero_chamado}`,
-        buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamado.solicitante_nome}</strong> e aguarda atendimento.`, {
-          numeroChamado: chamado.numero_chamado,
-          solicitante_nome: chamado.solicitante_nome,
-          tipo_solicitacao: chamado.tipo_solicitacao,
-          titulo_chamado: chamado.titulo_chamado,
-          urgencia: chamado.urgencia
-        }, '/portal-chamados')
-      ).catch(err => console.error(`[notificarNovoChamado] Erro ao enviar para ${adminEmail}: ${err.message}`));
-    });
+    // Admins excluindo o solicitante para evitar duplicata
+    for (const adminEmail of adminEmails) {
+      if (adminEmail !== chamado.solicitante_email) {
+        allRecipients.push({
+          email: adminEmail,
+          subject: `[TechControl] Novo chamado aberto: ${chamado.numero_chamado}`,
+          html: buildEmail('Administrador', `Um novo chamado foi aberto por <strong>${chamado.solicitante_nome}</strong> e aguarda atendimento.`, {
+            numeroChamado: chamado.numero_chamado,
+            solicitante_nome: chamado.solicitante_nome,
+            tipo_solicitacao: chamado.tipo_solicitacao,
+            titulo_chamado: chamado.titulo_chamado,
+            urgencia: chamado.urgencia
+          }, '/portal-chamados')
+        });
+      }
+    }
+
+    // Enviar sequencialmente com delay para evitar rate limit (2 req/s)
+    for (const recipient of allRecipients) {
+      await enviarEmail(recipient.email, recipient.subject, recipient.html);
+      await sleep(600);
+    }
 
     console.log(`[notificarNovoChamado] Chamado ${chamado.numero_chamado} - enviado para solicitante e ${adminEmails.length} admin(ins)`);
     return Response.json({ success: true });
