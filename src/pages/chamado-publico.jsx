@@ -227,7 +227,9 @@ export default function ChamadoPublico() {
         anexos: anexos,
       });
 
-      // Email é disparado automaticamente pela automação entity
+      // Disparar email via backend (fire-and-forget)
+      base44.functions.invoke('sendEmailTicketCreated', { chamado_id: chamado.id })
+        .catch(err => console.error("Erro email abertura:", err));
 
       return { chamado, numeroChamado };
     },
