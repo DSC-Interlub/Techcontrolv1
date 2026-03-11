@@ -135,6 +135,17 @@ export default function Layout({ children }) {
   const location = useLocation();
   const [currentUser, setCurrentUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [darkMode, setDarkMode] = React.useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
+
+  React.useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('techcontrol_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('techcontrol_theme', 'light');
+    }
+  }, [darkMode]);
 
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
                        location.pathname.includes('/reserva-publica') ||
