@@ -194,13 +194,13 @@ export default function Colaboradores() {
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             Carregando...
                           </TableCell>
                         </TableRow>
                       ) : filteredColaboradores.filter(c => c.tipo_funcionario === "Interno").length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             Nenhum colaborador interno encontrado
                           </TableCell>
                         </TableRow>
@@ -271,13 +271,13 @@ export default function Colaboradores() {
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             Carregando...
                           </TableCell>
                         </TableRow>
                       ) : filteredColaboradores.filter(c => c.tipo_funcionario === "Externo").length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                             Nenhum colaborador externo encontrado
                           </TableCell>
                         </TableRow>
