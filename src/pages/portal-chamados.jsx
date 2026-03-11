@@ -223,10 +223,12 @@ export default function PortalChamados() {
 
   const enviarMsgMutation = useMutation({
     mutationFn: async ({ msg, anexo }) => {
-      let mensagemFinal = msg;
+      let anexo_url = null;
+      let anexo_nome = null;
       if (anexo) {
         const { file_url } = await base44.integrations.Core.UploadFile({ file: anexo });
-        mensagemFinal = msg ? `${msg}\n📎 [${anexo.name}](${file_url})` : `📎 [${anexo.name}](${file_url})`;
+        anexo_url = file_url;
+        anexo_nome = anexo.name;
       }
 
       const chatMsg = await base44.entities.ChamadosChat.create({
@@ -234,7 +236,9 @@ export default function PortalChamados() {
         tipo_remetente: "solicitante",
         remetente_nome: colaborador.nome_completo,
         remetente_email: colaborador.email,
-        mensagem: mensagemFinal,
+        mensagem: msg || "",
+        anexo_url,
+        anexo_nome,
         data_hora: new Date().toISOString(),
       });
 
@@ -643,17 +647,22 @@ export default function PortalChamados() {
                     <p className="text-center text-gray-400 text-sm py-8">Nenhuma mensagem ainda</p>
                   ) : (
                     chatMessages.map((msg, i) => {
-                       const isMeuaMensagem = msg.tipo_remetente === "solicitante" && msg.remetente_email === colaborador.email;
-                       return (
-                       <div key={i} className={`flex ${isMeuaMensagem ? "justify-end" : "justify-start"}`}>
-                         <div className={`max-w-xs px-3 py-2 rounded-lg text-sm ${isMeuaMensagem ? "bg-blue-100 text-blue-900" : "bg-gray-200 text-gray-900"}`}>
-                           <p className="font-semibold text-xs mb-1">{msg.remetente_nome}</p>
-                           <p>{msg.mensagem}</p>
-                           <p className="text-xs opacity-60 mt-1">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                         </div>
-                       </div>
-                     );
-                     })
+                      const isMeuaMensagem = msg.tipo_remetente === "solicitante" && msg.remetente_email === colaborador.email;
+                      return (
+                      <div key={i} className={`flex ${isMeuaMensagem ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[75%] px-3 py-2 rounded-lg text-sm break-words ${isMeuaMensagem ? "bg-blue-100 text-blue-900" : "bg-gray-200 text-gray-900"}`}>
+                          <p className="font-semibold text-xs mb-1">{msg.remetente_nome}</p>
+                          {msg.mensagem && <p className="whitespace-pre-wrap break-words">{msg.mensagem}</p>}
+                          {msg.anexo_url && (
+                            <a href={msg.anexo_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 mt-1 text-xs underline opacity-80 hover:opacity-100 break-all">
+                              📎 {msg.anexo_nome}
+                            </a>
+                          )}
+                          <p className="text-xs opacity-60 mt-1">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                      </div>
+                    );
+                    })
                   )}
                 </div>
                 {anexoChat && (
