@@ -103,10 +103,10 @@ export default function Portal() {
       <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
               Olá, {colaborador.nome_completo.split(' ')[0]}! 👋
             </h1>
-            <p className="text-gray-500 mt-1">{colaborador.area} · Portal do Colaborador</p>
+            <p className="text-muted-foreground mt-1">{colaborador.area} · Portal do Colaborador</p>
           </div>
 
           {/* Resumo rápido */}
@@ -116,8 +116,8 @@ export default function Portal() {
                 <div className="flex items-center gap-3">
                   <Headset className={`w-8 h-8 ${chamadosAbertos.length > 0 ? "text-orange-600" : "text-gray-400"}`} />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{chamadosAbertos.length}</p>
-                    <p className="text-sm text-gray-600">Chamados em aberto</p>
+                    <p className="text-2xl font-bold text-foreground">{chamadosAbertos.length}</p>
+                    <p className="text-sm text-muted-foreground">Chamados em aberto</p>
                   </div>
                 </div>
               </CardContent>
@@ -127,8 +127,8 @@ export default function Portal() {
                 <div className="flex items-center gap-3">
                   <Calendar className="w-8 h-8 text-purple-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{minhasReservasNb.length}</p>
-                    <p className="text-sm text-gray-600">Reservas de notebook</p>
+                    <p className="text-2xl font-bold text-foreground">{minhasReservasNb.length}</p>
+                    <p className="text-sm text-muted-foreground">Reservas de notebook</p>
                   </div>
                 </div>
               </CardContent>
@@ -138,8 +138,8 @@ export default function Portal() {
                 <div className="flex items-center gap-3">
                   <Users className="w-8 h-8 text-teal-600" />
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">{minhasReservasSala.length}</p>
-                    <p className="text-sm text-gray-600">Reservas de sala</p>
+                    <p className="text-2xl font-bold text-foreground">{minhasReservasSala.length}</p>
+                    <p className="text-sm text-muted-foreground">Reservas de sala</p>
                   </div>
                 </div>
               </CardContent>
@@ -160,8 +160,8 @@ export default function Portal() {
                         <Badge className={card.badgeColor}>{card.badge}</Badge>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900 mb-1">{card.title}</h3>
-                    <p className="text-sm text-gray-500">{card.desc}</p>
+                    <h3 className="font-semibold text-foreground mb-1">{card.title}</h3>
+                    <p className="text-sm text-muted-foreground">{card.desc}</p>
                     <div className="flex items-center gap-1 mt-3 text-blue-600 text-sm font-medium">
                       Acessar <ArrowRight className="w-4 h-4" />
                     </div>
