@@ -101,12 +101,12 @@ export default function Chamados() {
 
       const chatMsg = await base44.entities.ChamadosChat.create(novaMsg);
 
-      // Dispara email imediatamente via backend (sem esperar resposta)
-      base44.functions.invoke('enviarEmailMensagemChat', {
+      base44.functions.invoke('sendEmailChatMessage', {
         chamado_id: selectedChamado.id,
         remetente_nome: currentUser.nome_exibicao || currentUser.full_name,
-        mensagem: msg
-      }).catch(err => console.error("Erro ao enviar email:", err));
+        mensagem: msg,
+        sender_type: 'admin'
+      }).catch(err => console.error("Erro ao enviar email chat:", err));
 
       return chatMsg;
     },
@@ -166,12 +166,7 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(selectedChamado.id, updateData);
 
-    // Email será disparado imediatamente via backend (fire-and-forget)
-    if (selectedChamado.solicitante_email && selectedChamado.solucao && !originalChamado.solucao) {
-      base44.functions.invoke('enviarEmailSolucao', {
-        chamado_id: selectedChamado.id
-      }).catch(err => console.error("Erro ao enviar email:", err));
-    }
+
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
@@ -338,11 +333,10 @@ export default function Chamados() {
 
     const updatePromise = base44.entities.Chamados.update(chamado.id, dataAtualizada);
 
-    // Email será disparado imediatamente via backend (fire-and-forget)
-    base44.functions.invoke('enviarEmailInicio', {
+    base44.functions.invoke('sendEmailTicketStarted', {
       chamado_id: chamado.id,
       responsavel: nomeExibicao
-    }).catch(err => console.error("Erro ao enviar email:", err));
+    }).catch(err => console.error("Erro ao enviar email inicio:", err));
 
     await updatePromise;
     queryClient.invalidateQueries({ queryKey: ['chamados'] });
@@ -440,12 +434,11 @@ export default function Chamados() {
       historico
     });
 
-    // Email será disparado imediatamente via backend (fire-and-forget)
     if (chamado.solicitante_email) {
-      base44.functions.invoke('enviarEmailConclusao', {
+      base44.functions.invoke('sendEmailTicketClosed', {
         chamado_id: chamado.id,
         responsavel: nomeExibicao
-      }).catch(err => console.error("Erro ao enviar email:", err));
+      }).catch(err => console.error("Erro ao enviar email conclusao:", err));
     }
 
     await updatePromise;
