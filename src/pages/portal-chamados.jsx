@@ -102,6 +102,8 @@ export default function PortalChamados() {
   });
   const [submitSuccess, setSubmitSuccess] = useState(null);
   const [equipamentosUsuario, setEquipamentosUsuario] = useState([]);
+  const [anexos, setAnexos] = useState([]);
+  const [uploadingAnexo, setUploadingAnexo] = useState(false);
 
   useEffect(() => {
     if (!loading) requireAuth();
