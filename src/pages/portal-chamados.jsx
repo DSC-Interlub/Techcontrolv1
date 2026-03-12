@@ -443,6 +443,49 @@ export default function PortalChamados() {
                     <Textarea required placeholder="Descreva com detalhes: o que aconteceu, quando começou, mensagens de erro, etc." rows={4} value={formData.descricao_problema} onChange={e => setFormData(p => ({ ...p, descricao_problema: e.target.value }))} />
                   </div>
 
+                  <div>
+                    <Label className="flex items-center gap-2"><Paperclip className="w-4 h-4" />Anexos (opcional)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">Adicione fotos ou imagens que ajudem a descrever o problema</p>
+                    <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed border-border rounded-lg p-4 hover:border-orange-400 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                        className="hidden"
+                        disabled={uploadingAnexo}
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files);
+                          if (!files.length) return;
+                          setUploadingAnexo(true);
+                          const novosAnexos = [...anexos];
+                          for (const file of files) {
+                            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                            novosAnexos.push({ file_url, file_name: file.name, file_type: file.type.startsWith('image') ? 'imagem' : 'arquivo', mime_type: file.type });
+                          }
+                          setAnexos(novosAnexos);
+                          setUploadingAnexo(false);
+                          e.target.value = "";
+                        }}
+                      />
+                      {uploadingAnexo ? (
+                        <><Loader2 className="w-4 h-4 animate-spin text-orange-600" /><span className="text-sm text-orange-600">Enviando arquivo...</span></>
+                      ) : (
+                        <><Paperclip className="w-4 h-4 text-muted-foreground" /><span className="text-sm text-muted-foreground">Clique para selecionar arquivos</span></>
+                      )}
+                    </label>
+                    {anexos.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {anexos.map((a, i) => (
+                          <div key={i} className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5 text-sm">
+                            <span className="truncate">📎 {a.file_name}</span>
+                            <button type="button" onClick={() => setAnexos(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive ml-2 shrink-0">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                 </CardContent>
                 <div className="border-t p-5 flex justify-between">
