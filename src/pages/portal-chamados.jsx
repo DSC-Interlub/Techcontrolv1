@@ -181,7 +181,7 @@ export default function PortalChamados() {
         status: "Aberto",
         data_abertura: new Date().toISOString().split('T')[0],
         equipamentos_usuario: equipamentosParaChamado,
-        anexos: [],
+        anexos: anexos,
       });
 
       // Email disparado automaticamente pela automação entity (notificarNovoChamado)
