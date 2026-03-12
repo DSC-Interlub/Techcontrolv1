@@ -191,6 +191,7 @@ export default function PortalChamados() {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
       setSubmitSuccess(data.numeroChamado);
       setFormData({ tipo_solicitacao: "", sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "", equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "", melhorias_detalhes: "", desenvolvimento_detalhes: "", servidor_subtipo: "", titulo_chamado: "", descricao_problema: "", urgencia: "Média" });
+      setAnexos([]);
     },
   });
 
