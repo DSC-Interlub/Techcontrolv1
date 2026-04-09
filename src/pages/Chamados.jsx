@@ -207,7 +207,7 @@ export default function Chamados() {
       ...(terceiroDados.terceiro_envolvido ? {
         terceiro_empresa: terceiroDados.terceiro_empresa,
         terceiro_numero_chamado: terceiroDados.terceiro_numero_chamado,
-        terceiro_data_abertura: terceiroDados.terceiro_data_abertura ? new Date(terceiroDados.terceiro_data_abertura).toISOString() : null,
+        terceiro_data_abertura: agora, // auto: momento de abertura do chamado com terceiro
       } : {}),
     };
 
@@ -235,7 +235,7 @@ export default function Chamados() {
       tempo_total_minutos = Math.round((fim - inicio) / 60000);
 
       if (chamado.tipo_resolucao === "Terceiro" && chamado.terceiro_data_abertura) {
-        // TI responsável apenas até repasse
+        // TI responsável apenas até o repasse para o terceiro
         const repasse = new Date(chamado.terceiro_data_abertura);
         tempo_util_minutos = calcularMinutosUteis(inicio, repasse < fim ? repasse : fim);
       } else {
@@ -243,6 +243,9 @@ export default function Chamados() {
       }
       tempo_resolucao_minutos = tempo_util_minutos;
     }
+
+    // Se for terceiro, registra data de resolução automaticamente
+    const terceiro_data_resolucao = chamado.tipo_resolucao === "Terceiro" ? agora : chamado.terceiro_data_resolucao;
 
     historico.push({ data_hora: agora, tipo: "conclusao", descricao: `Atendimento finalizado por ${nomeExibicao}. Aguardando avaliação.`, usuario: nomeExibicao });
 
@@ -253,6 +256,7 @@ export default function Chamados() {
       tempo_resolucao_minutos,
       tempo_util_minutos,
       tempo_total_minutos,
+      terceiro_data_resolucao,
       historico
     });
 
@@ -843,8 +847,7 @@ export default function Chamados() {
                 <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-lg p-4">
                   <div><Label>Empresa Terceira</Label><Input value={terceiroDados.terceiro_empresa} onChange={e => setTerceiroDados({...terceiroDados, terceiro_empresa: e.target.value})} placeholder="Nome da empresa" /></div>
                   <div><Label>Número do Chamado Externo</Label><Input value={terceiroDados.terceiro_numero_chamado} onChange={e => setTerceiroDados({...terceiroDados, terceiro_numero_chamado: e.target.value})} placeholder="Ex: INC-00123" /></div>
-                  <div><Label>Data de Abertura (Terceiro)</Label><Input type="datetime-local" value={terceiroDados.terceiro_data_abertura} onChange={e => setTerceiroDados({...terceiroDados, terceiro_data_abertura: e.target.value})} /></div>
-                  <p className="text-xs text-orange-700">Você pode preencher os demais dados depois no modal de detalhes.</p>
+                  <p className="text-xs text-orange-700">A data/hora de abertura com o terceiro será registrada automaticamente. Você pode ajustar depois no modal de detalhes.</p>
                 </div>
               )}
 
