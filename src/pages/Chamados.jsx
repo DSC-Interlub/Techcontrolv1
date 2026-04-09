@@ -169,7 +169,8 @@ export default function Chamados() {
   const handleSaveChanges = async () => {
     if (!selectedChamado || !originalChamado || !currentUser) return;
     const historico = selectedChamado.historico || [];
-    const nomeExibicao = currentUser.full_name;
+    const usuarioAtual = usuarios.find(u => u.email === currentUser.email);
+    const nomeExibicao = usuarioAtual?.full_name || currentUser.full_name;
     if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
       historico.push({ data_hora: new Date().toISOString(), tipo: "solucao", descricao: `Solução registrada por ${nomeExibicao}: ${selectedChamado.solucao}`, usuario: nomeExibicao });
     }
@@ -192,7 +193,8 @@ export default function Chamados() {
     if (terceiroDados.terceiro_envolvido === null) return;
     const chamado = iniciarChamado;
     const agora = new Date().toISOString();
-    const nomeExibicao = currentUser.full_name;
+    const usuarioAtual = usuarios.find(u => u.email === currentUser.email);
+    const nomeExibicao = usuarioAtual?.full_name || currentUser.full_name;
     const historico = [...(chamado.historico || [])];
     historico.push({ data_hora: agora, tipo: "inicio_atendimento", descricao: `Atendimento iniciado por ${nomeExibicao}`, usuario: nomeExibicao });
 
@@ -222,7 +224,8 @@ export default function Chamados() {
     if (!currentUser) return;
     const agora = new Date().toISOString();
     const historico = [...(chamado.historico || [])];
-    const nomeExibicao = currentUser.full_name;
+    const usuarioAtual = usuarios.find(u => u.email === currentUser.email);
+    const nomeExibicao = usuarioAtual?.full_name || currentUser.full_name;
 
     // Tempo corrido
     let tempo_total_minutos = null;
