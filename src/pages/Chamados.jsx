@@ -347,14 +347,18 @@ export default function Chamados() {
     geral: chamadosAvaliadosAba.length > 0 ? chamadosAvaliadosAba.reduce((a, c) => a + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliadosAba.length : 0,
   };
 
-  // Tempo Médio INTERNO (exclui terceiros)
-  const chamadosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao !== "Terceiro");
+  // Tempo Médio calculado de TODOS os chamados do período (independente da aba ativa)
+  const todosChamadosPeriodo = getChamadosFiltradosPeriodo(chamados);
+
+  // Tempo Médio INTERNO — inclui "Aguardando Avaliação" pois o tempo já foi registrado na finalização
+  const statusComTempo = ["Resolvido", "Aguardando Avaliação"];
+  const chamadosResolvidos = todosChamadosPeriodo.filter(c => statusComTempo.includes(c.status) && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao !== "Terceiro");
   const tempoMedioUtil = chamadosResolvidos.length > 0
     ? chamadosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosResolvidos.length
     : 0;
 
   // Tempo Médio TERCEIROS
-  const chamadosTerceirosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao === "Terceiro");
+  const chamadosTerceirosResolvidos = todosChamadosPeriodo.filter(c => statusComTempo.includes(c.status) && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao === "Terceiro");
   const tempoMedioTerceiros = chamadosTerceirosResolvidos.length > 0
     ? chamadosTerceirosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosTerceirosResolvidos.length
     : 0;
