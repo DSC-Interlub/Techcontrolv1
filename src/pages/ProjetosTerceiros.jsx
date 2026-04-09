@@ -68,8 +68,17 @@ export default function ProjetosTerceiros() {
     queryFn: () => base44.entities.Chamados.list('-created_date'),
   });
 
+  // Um chamado é considerado PROJETO quando tem dados financeiros ou marcos definidos.
+  // Chamados com terceiro_envolvido=true mas sem dados de projeto são apenas atendimentos terceirizados,
+  // não aparecem aqui — ficam apenas no módulo de Chamados.
+  const eProjeto = (c) => (
+    (c.projeto_horas_contratadas > 0) ||
+    (c.projeto_valor_hora > 0) ||
+    ((c.projeto_marcos || []).length > 0)
+  );
+
   const projetos = chamados
-    .filter(c => c.terceiro_envolvido)
+    .filter(c => c.terceiro_envolvido && eProjeto(c))
     .map(c => {
       const mes = c.data_abertura ? format(parseISO(c.data_abertura), "yyyy-MM") : "—";
       const mesLabel = c.data_abertura ? format(parseISO(c.data_abertura), "MMMM/yyyy", { locale: ptBR }) : "—";
@@ -119,7 +128,7 @@ export default function ProjetosTerceiros() {
             <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center"><Building2 className="w-6 h-6 text-indigo-600" /></div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">Projetos / Terceiros</h1>
-              <p className="text-muted-foreground mt-1">Relatório mensal de chamados com empresas terceiras</p>
+              <p className="text-muted-foreground mt-1">Chamados com terceiros que possuem horas contratadas, valor/hora ou marcos definidos</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => exportCSV(filtrados)} className="gap-2"><Download className="w-4 h-4" />Exportar CSV</Button>

@@ -347,10 +347,16 @@ export default function Chamados() {
     geral: chamadosAvaliadosAba.length > 0 ? chamadosAvaliadosAba.reduce((a, c) => a + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliadosAba.length : 0,
   };
 
-  // Excluir tipo_resolucao=Terceiro do Tempo Médio (reflete apenas TI interno)
+  // Tempo Médio INTERNO (exclui terceiros)
   const chamadosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao !== "Terceiro");
   const tempoMedioUtil = chamadosResolvidos.length > 0
     ? chamadosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosResolvidos.length
+    : 0;
+
+  // Tempo Médio TERCEIROS
+  const chamadosTerceirosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao === "Terceiro");
+  const tempoMedioTerceiros = chamadosTerceirosResolvidos.length > 0
+    ? chamadosTerceirosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosTerceirosResolvidos.length
     : 0;
 
   const resolvidosSemAvaliacao = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && !c.avaliacao_data);
@@ -363,7 +369,9 @@ export default function Chamados() {
     resolvidos: chamadosAbaAtiva.filter(c => c.status === "Resolvido").length,
     avaliados: chamadosAvaliadosAba.length,
     tempoMedioUtil,
+    tempoMedioTerceiros,
     resolvidosSemAvaliacao: resolvidosSemAvaliacao.length,
+    totalTerceiros: chamadosTerceirosResolvidos.length,
   };
 
   // Top Solicitantes
@@ -496,26 +504,39 @@ export default function Chamados() {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-2">
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Total</p><p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Abertos</p><p className="text-3xl font-bold text-red-600 mt-1">{stats.abertos}</p></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Em Andamento</p><p className="text-3xl font-bold text-blue-600 mt-1">{stats.emAndamento}</p></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Aguard. Avaliação</p><p className="text-3xl font-bold text-orange-600 mt-1">{stats.aguardandoAvaliacao}</p></div></CardContent></Card>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 mb-4">
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Resolvidos</p><p className="text-3xl font-bold text-green-600 mt-1">{stats.resolvidos}</p></div></CardContent></Card>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="flex items-center justify-center gap-1">
-                  <p className="text-sm text-gray-600">Tempo Médio</p>
-                  <span title="Calculado apenas em horas úteis (seg–sex, 07:42–17:30)" className="cursor-help"><Info className="w-3 h-3 text-gray-400" /></span>
+                  <p className="text-sm text-gray-600">Tempo Médio (Interno)</p>
+                  <span title="Calculado apenas em horas úteis (seg–sex, 07:42–17:30). Exclui chamados de terceiros." className="cursor-help"><Info className="w-3 h-3 text-gray-400" /></span>
                 </div>
                 <p className="text-xl font-bold text-purple-600 mt-1">{formatMinutos(Math.round(stats.tempoMedioUtil))}</p>
-                <p className="text-xs text-gray-400">horas úteis</p>
+                <p className="text-xs text-gray-400">{chamadosResolvidos.length} chamado(s)</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-sm text-gray-600">Tempo Médio (3º)</p>
+                  <span title="Tempo útil da TI até o repasse para a empresa terceira. Chamados com tipo_resolucao=Terceiro." className="cursor-help"><Info className="w-3 h-3 text-gray-400" /></span>
+                </div>
+                <p className="text-xl font-bold text-indigo-600 mt-1">{stats.totalTerceiros > 0 ? formatMinutos(Math.round(stats.tempoMedioTerceiros)) : "—"}</p>
+                <p className="text-xs text-gray-400">{stats.totalTerceiros} chamado(s)</p>
               </div>
             </CardContent>
           </Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Avaliados</p><p className="text-3xl font-bold text-yellow-600 mt-1">{stats.avaliados}</p></div></CardContent></Card>
-          <Card title="Chamados encerrados automaticamente após 5 dias úteis sem avaliação"><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Sem Avaliação</p><p className="text-3xl font-bold text-gray-500 mt-1">{stats.resolvidosSemAvaliacao}</p><p className="text-xs text-gray-400">encerrados auto</p></div></CardContent></Card>
         </div>
 
         {/* Top Solicitantes */}
