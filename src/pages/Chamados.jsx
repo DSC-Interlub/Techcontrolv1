@@ -99,14 +99,6 @@ export default function Chamados() {
         const u = await base44.auth.me();
         setCurrentUser(u);
         setUser(u);
-        // Busca o nome_exibicao diretamente da entidade User (separado para não afetar o login)
-        try {
-          const userEntities = await base44.entities.User.filter({ email: u.email });
-          const nome = userEntities?.[0]?.nome_exibicao || u.full_name;
-          setMeuNomeExibicao(nome);
-        } catch {
-          setMeuNomeExibicao(u.full_name);
-        }
       } catch {
         base44.auth.redirectToLogin();
       } finally {
@@ -129,6 +121,17 @@ export default function Chamados() {
     queryFn: () => base44.entities.User.list(),
     enabled: !!user,
   });
+
+  // Assim que usuarios carregar, pega o nome_exibicao do usuário atual
+  useEffect(() => {
+    if (!currentUser || !usuarios.length) return;
+    const encontrado = usuarios.find(u => u.email === currentUser.email);
+    if (encontrado?.nome_exibicao) {
+      setMeuNomeExibicao(encontrado.nome_exibicao);
+    } else if (currentUser.full_name) {
+      setMeuNomeExibicao(currentUser.full_name);
+    }
+  }, [usuarios, currentUser]);
 
   const { data: chatMessages = [] } = useQuery({
     queryKey: ['chamados_chat', selectedChamado?.id],
