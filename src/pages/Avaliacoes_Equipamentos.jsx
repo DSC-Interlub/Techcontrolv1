@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -9,13 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon } from "lucide-react";
+import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AvaliacoesEquipamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
   const [activeTab, setActiveTab] = useState("realizadas");
+  const [sortByPontuacao, setSortByPontuacao] = useState(false);
+  const [expandedAlerts, setExpandedAlerts] = useState({});
 
   const { data: todasAvaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
@@ -54,16 +56,28 @@ export default function AvaliacoesEquipamentos() {
       .map(nb => ({ ...nb, entityType: "Notebooks_Externos" }))
   ];
 
+  // Map equipamento_id -> equipment data for etiqueta/area lookup
+  const equipamentoMap = useMemo(() => {
+    const map = {};
+    pcsInternos.forEach(e => { map[e.id] = e; });
+    notebooksExternos.forEach(e => { map[e.id] = e; });
+    return map;
+  }, [pcsInternos, notebooksExternos]);
+
   const avaliacoesFiltradas = avaliacoes.filter(av => {
     const matchSearch = !searchTerm || 
       av.usuario_equipamento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       av.equipamento_nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      av.avaliador?.toLowerCase().includes(searchTerm.toLowerCase());
+      av.avaliador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      equipamentoMap[av.equipamento_id]?.etiqueta_interna?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchClassificacao = filterClassificacao === "todos" || 
       av.classificacao === filterClassificacao;
 
     return matchSearch && matchClassificacao;
+  }).sort((a, b) => {
+    if (sortByPontuacao) return (a.pontuacao_total || 0) - (b.pontuacao_total || 0);
+    return 0;
   });
 
   const total = avaliacoes.length;
@@ -294,14 +308,22 @@ export default function AvaliacoesEquipamentos() {
                     <TableHead>Usuário</TableHead>
                     <TableHead>Equipamento</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead className="text-center">Pontuação</TableHead>
-                    <TableHead className="text-center">Classificação</TableHead>
+                    <TableHead
+                      className="text-center cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => setSortByPontuacao(v => !v)}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        Pontuação
+                        <ArrowUpDown className={`w-3 h-3 ${sortByPontuacao ? 'text-blue-600' : 'text-gray-400'}`} />
+                      </div>
+                    </TableHead>
+                    <TableHead>Classificação</TableHead>
                     <TableHead>Avaliador</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead className="text-center">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
                   {avaliacoesFiltradas.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center text-gray-500 py-8">
@@ -311,54 +333,67 @@ export default function AvaliacoesEquipamentos() {
                   ) : (
                     avaliacoesFiltradas.map((av) => {
                       const alerts = hasAlerts(av);
+                      const eqData = equipamentoMap[av.equipamento_id];
+                      const etiqueta = eqData?.etiqueta_interna;
+                      const area = eqData?.area || eqData?.uf;
+                      const visibleAlerts = expandedAlerts[av.id] ? alerts : alerts.slice(0, 2);
+                      const hiddenCount = alerts.length - 2;
                       return (
                         <TableRow key={av.id} className={alerts.length > 0 ? "bg-red-50" : ""}>
-                          <TableCell>
-                            {alerts.length > 0 && (
-                              <div 
-                                className="flex items-center gap-2 text-red-600 cursor-help" 
-                                title={alerts.join(", ")}
-                              >
-                                <AlertOctagon className="w-5 h-5" />
-                                <span className="text-xs font-medium">{alerts.length}</span>
-                              </div>
-                            )}
+                          <TableCell className="max-w-[200px]">
+                            <div className="flex flex-wrap gap-1">
+                              {visibleAlerts.map((a, i) => (
+                                <span key={i} className="text-xs px-1.5 py-0.5 rounded font-medium bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">{a}</span>
+                              ))}
+                              {!expandedAlerts[av.id] && hiddenCount > 0 && (
+                                <button
+                                  onClick={() => setExpandedAlerts(prev => ({ ...prev, [av.id]: true }))}
+                                  className="text-xs px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-600 border hover:bg-gray-200"
+                                >+{hiddenCount}</button>
+                              )}
+                              {expandedAlerts[av.id] && hiddenCount > 0 && (
+                                <button
+                                  onClick={() => setExpandedAlerts(prev => ({ ...prev, [av.id]: false }))}
+                                  className="text-xs px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-600 border hover:bg-gray-200">menos</button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
-                           <Badge variant="outline" className="font-mono">
-                             {av.numero_avaliacao || 1}ª
-                           </Badge>
+                           <div className="flex flex-col gap-1">
+                             <Badge variant="outline" className="font-mono w-fit">{av.numero_avaliacao || 1}ª</Badge>
+                             {av.desatualizada && <Badge className="bg-yellow-100 text-yellow-800 text-xs w-fit">Desatualizada</Badge>}
+                           </div>
                           </TableCell>
-                          <TableCell className="font-medium">{av.usuario_equipamento || "—"}</TableCell>
-                          <TableCell>{av.equipamento_nome || "—"}</TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{av.usuario_equipamento || "—"}</p>
+                              {area && <p className="text-xs text-gray-500">{area}</p>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-semibold text-sm">{etiqueta || <span className="text-gray-400 font-normal">Sem etiqueta</span>}</p>
+                              <p className="text-xs text-gray-500">{av.equipamento_nome || "—"}</p>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <Badge variant="outline">
                               {av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className={getPontuacaoColor(av.pontuacao_total)}>
-                              {av.pontuacao_total}
-                            </span>
+                            <span className={getPontuacaoColor(av.pontuacao_total)}>{av.pontuacao_total}</span>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               {getClassificacaoIcon(av.classificacao)}
-                              <Badge className={getClassificacaoColor(av.classificacao)}>
-                                {av.classificacao}
-                              </Badge>
+                              <Badge className={getClassificacaoColor(av.classificacao)}>{av.classificacao}</Badge>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-gray-600">{av.avaliador || "—"}</TableCell>
                           <TableCell className="text-sm text-gray-600">
-                            {av.data_avaliacao 
-                              ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
+                            {av.data_avaliacao
+                              ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
                               : "—"}
                           </TableCell>
                           <TableCell className="text-center">
