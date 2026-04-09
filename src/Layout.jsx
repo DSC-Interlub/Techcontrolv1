@@ -167,7 +167,14 @@ export default function Layout({ children }) {
     const loadUser = async () => {
       try {
         const user = await base44.auth.me();
-        setCurrentUser(user);
+        // Busca o nome atualizado da entidade User
+        try {
+          const usuarios = await base44.entities.User.list();
+          const userEntity = usuarios.find(u => u.email === user.email);
+          setCurrentUser({ ...user, full_name: userEntity?.full_name || user.full_name });
+        } catch {
+          setCurrentUser(user);
+        }
       } catch (err) {
         console.error("Erro ao carregar usuário:", err);
       } finally {
