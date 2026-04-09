@@ -55,7 +55,7 @@ import Colaboradores from './pages/Colaboradores';
 import Coletores from './pages/Coletores';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
-import projetosTerceiros from './pages/ProjetosTerceiros.js';
+import projetosTerceiros from './pages/ProjetosTerceiros';
 import notebooksExternos from './pages/Notebooks_Externos';
 import pcsInternos from './pages/PCs_Internos';
 import Ramais from './pages/Ramais';
