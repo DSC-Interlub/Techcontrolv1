@@ -136,19 +136,21 @@ export default function PortalReservas() {
     return false;
   };
 
-  const getNextFriday = (dataInicio) => {
-    const [y, m, d] = dataInicio.split('-').map(Number);
+  const getLastFriday = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
     const dt = new Date(y, m - 1, d);
-    while (dt.getDay() !== 5) dt.setDate(dt.getDate() + 1);
+    while (dt.getDay() !== 5) dt.setDate(dt.getDate() - 1);
     return format(dt, 'dd/MM/yyyy');
   };
 
-  const getNextMonday = (dataFim) => {
-    const [y, m, d] = dataFim.split('-').map(Number);
+  const getNextMonday = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
     const dt = new Date(y, m - 1, d);
     while (dt.getDay() !== 1) dt.setDate(dt.getDate() + 1);
     return format(dt, 'dd/MM/yyyy');
   };
+
+
 
   const validateForm = (nb, data) => {
     if (!nb || !data.data_inicio || !data.data_fim) return "";
@@ -166,7 +168,7 @@ export default function PortalReservas() {
       const [yF, mF, dF] = data.data_fim.split('-').map(Number);
       const dtI = format(new Date(yI, mI - 1, dI), 'dd/MM/yyyy');
       const dtF = format(new Date(yF, mF - 1, dF), 'dd/MM/yyyy');
-      return `Reservas não podem incluir finais de semana. Por favor, crie reservas separadas: uma até sexta-feira e outra a partir de segunda-feira.\n\nDica: crie uma reserva de ${dtI} até ${getNextFriday(data.data_inicio)} e outra de ${getNextMonday(data.data_fim)} até ${dtF}.`;
+      return `Reservas não podem incluir finais de semana. Divida a reserva em períodos apenas com dias úteis (segunda a sexta).\n\nDica: crie uma reserva de ${dtI} até ${getLastFriday(data.data_fim)} e outra de ${getNextMonday(data.data_fim)} até ${dtF}.`;
     }
     const conflito = getConflictingReserva(nb.id, data.data_inicio, data.hora_inicio, data.data_fim, data.hora_fim);
     if (conflito) {
