@@ -29,9 +29,9 @@ export default function PortalReservas() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [conflictError, setConflictError] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const [selectedNotebook, setSelectedNotebook] = useState(null);
-  const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "08:00", data_fim: "", hora_fim: "18:00", motivo: "" });
+  const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "07:42", data_fim: "", hora_fim: "17:30", motivo: "" });
 
   useEffect(() => {
     if (!loading) requireAuth();
@@ -109,16 +109,74 @@ export default function PortalReservas() {
     return null;
   };
 
-  const checkConflict = (nbId, dataInicio, horaInicio, dataFim, horaFim) => {
+  const getConflictingReserva = (nbId, dataInicio, horaInicio, dataFim, horaFim) => {
     const novoInicio = new Date(`${dataInicio}T${horaInicio}`);
     const novoFim = new Date(`${dataFim}T${horaFim}`);
-    return todasReservas.some(r => {
+    return todasReservas.find(r => {
       if (r.equipamento_id !== nbId) return false;
       if (r.status === "Cancelada" || r.status === "Concluída") return false;
       const rInicio = new Date(`${r.data_inicio}T${r.hora_inicio}`);
       const rFim = new Date(`${r.data_fim}T${r.hora_fim}`);
       return novoInicio < rFim && novoFim > rInicio;
-    });
+    }) || null;
+  };
+
+  const checkWeekend = (dataInicio, dataFim) => {
+    if (!dataInicio || !dataFim) return null;
+    const [yI, mI, dI] = dataInicio.split('-').map(Number);
+    const [yF, mF, dF] = dataFim.split('-').map(Number);
+    const inicio = new Date(yI, mI - 1, dI);
+    const fim = new Date(yF, mF - 1, dF);
+    const cur = new Date(inicio);
+    while (cur <= fim) {
+      const dow = cur.getDay();
+      if (dow === 0 || dow === 6) return true;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return false;
+  };
+
+  const getNextFriday = (dataInicio) => {
+    const [y, m, d] = dataInicio.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    while (dt.getDay() !== 5) dt.setDate(dt.getDate() + 1);
+    return format(dt, 'dd/MM/yyyy');
+  };
+
+  const getNextMonday = (dataFim) => {
+    const [y, m, d] = dataFim.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    while (dt.getDay() !== 1) dt.setDate(dt.getDate() + 1);
+    return format(dt, 'dd/MM/yyyy');
+  };
+
+  const validateForm = (nb, data) => {
+    if (!nb || !data.data_inicio || !data.data_fim) return "";
+    const [hIni] = data.hora_inicio.split(':').map(Number);
+    const [mIni] = data.hora_inicio.split(':').map(Number).slice(1);
+    const [hFim] = data.hora_fim.split(':').map(Number);
+    const [mFim] = data.hora_fim.split(':').map(Number).slice(1);
+    const inicioMinutos = hIni * 60 + mIni;
+    const fimMinutos = hFim * 60 + mFim;
+    if (inicioMinutos < 7 * 60 + 42 || fimMinutos > 17 * 60 + 30) {
+      return "O horário de reserva deve estar dentro do expediente: 07:42 às 17:30.";
+    }
+    if (checkWeekend(data.data_inicio, data.data_fim)) {
+      const [yI, mI, dI] = data.data_inicio.split('-').map(Number);
+      const [yF, mF, dF] = data.data_fim.split('-').map(Number);
+      const dtI = format(new Date(yI, mI - 1, dI), 'dd/MM/yyyy');
+      const dtF = format(new Date(yF, mF - 1, dF), 'dd/MM/yyyy');
+      return `Reservas não podem incluir finais de semana. Por favor, crie reservas separadas: uma até sexta-feira e outra a partir de segunda-feira.\n\nDica: crie uma reserva de ${dtI} até ${getNextFriday(data.data_inicio)} e outra de ${getNextMonday(data.data_fim)} até ${dtF}.`;
+    }
+    const conflito = getConflictingReserva(nb.id, data.data_inicio, data.hora_inicio, data.data_fim, data.hora_fim);
+    if (conflito) {
+      const [yI, mI, dI] = conflito.data_inicio.split('-').map(Number);
+      const [yF, mF, dF] = conflito.data_fim.split('-').map(Number);
+      const dtI = format(new Date(yI, mI - 1, dI), 'dd/MM/yyyy');
+      const dtF = format(new Date(yF, mF - 1, dF), 'dd/MM/yyyy');
+      return `Este equipamento já possui reserva de ${dtI} às ${conflito.hora_inicio} até ${dtF} às ${conflito.hora_fim}. Escolha outro período ou outro equipamento.`;
+    }
+    return "";
   };
 
   const minhasReservas = todasReservas.filter(r =>
@@ -134,10 +192,12 @@ export default function PortalReservas() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (checkConflict(selectedNotebook.id, formData.data_inicio, formData.hora_inicio, formData.data_fim, formData.hora_fim)) {
-      setConflictError(true);
+    const err = validateForm(selectedNotebook, formData);
+    if (err) {
+      setValidationError(err);
       return;
     }
+    setValidationError("");
     createMutation.mutate({
       equipamento_id: selectedNotebook.id,
       equipamento_tipo: selectedNotebook._fonte || "Notebooks_Externos",
@@ -164,7 +224,7 @@ export default function PortalReservas() {
                 <p className="text-muted-foreground mt-1">Reserve um notebook para uso externo</p>
               </div>
             </div>
-            <Button onClick={() => { setShowForm(!showForm); setConflictError(false); }} className="bg-purple-600 hover:bg-purple-700 gap-2">
+            <Button onClick={() => { setShowForm(!showForm); setValidationError(""); }} className="bg-purple-600 hover:bg-purple-700 gap-2">
               <Plus className="w-4 h-4" />
               Nova Reserva
             </Button>
@@ -185,10 +245,10 @@ export default function PortalReservas() {
               </CardHeader>
               <form onSubmit={handleSubmit}>
                 <CardContent className="pt-5 space-y-5">
-                  {conflictError && (
+                  {validationError && (
                     <Alert className="bg-red-50 border-red-200">
                       <AlertCircle className="w-4 h-4 text-red-600" />
-                      <AlertDescription className="text-red-800">Conflito! Este notebook já está reservado nesse período.</AlertDescription>
+                      <AlertDescription className="text-red-800 whitespace-pre-line">{validationError}</AlertDescription>
                     </Alert>
                   )}
 
@@ -207,7 +267,7 @@ export default function PortalReservas() {
                           return (
                             <div
                               key={nb.id}
-                              onClick={() => { setSelectedNotebook(nb); setConflictError(false); }}
+                              onClick={() => { setSelectedNotebook(nb); setValidationError(""); }}
                               className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'border-purple-500 shadow-lg bg-purple-50' : 'border-gray-200 hover:shadow-md hover:border-purple-300'}`}
                             >
                               <div className="flex items-start justify-between mb-3">
@@ -262,19 +322,19 @@ export default function PortalReservas() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
                           <Label>Data Início *</Label>
-                          <Input type="date" required value={formData.data_inicio} onChange={e => setFormData({...formData, data_inicio: e.target.value})} min={new Date().toISOString().split('T')[0]} />
+                          <Input type="date" required value={formData.data_inicio} onChange={e => { const nd = {...formData, data_inicio: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} min={new Date().toISOString().split('T')[0]} />
                         </div>
                         <div>
                           <Label>Hora Início</Label>
-                          <Input type="time" value={formData.hora_inicio} onChange={e => setFormData({...formData, hora_inicio: e.target.value})} />
+                          <Input type="time" value={formData.hora_inicio} min="07:42" max="17:30" onChange={e => { const nd = {...formData, hora_inicio: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} />
                         </div>
                         <div>
                           <Label>Data Fim *</Label>
-                          <Input type="date" required value={formData.data_fim} onChange={e => setFormData({...formData, data_fim: e.target.value})} min={formData.data_inicio || new Date().toISOString().split('T')[0]} />
+                          <Input type="date" required value={formData.data_fim} onChange={e => { const nd = {...formData, data_fim: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} min={formData.data_inicio || new Date().toISOString().split('T')[0]} />
                         </div>
                         <div>
                           <Label>Hora Fim</Label>
-                          <Input type="time" value={formData.hora_fim} onChange={e => setFormData({...formData, hora_fim: e.target.value})} />
+                          <Input type="time" value={formData.hora_fim} min="07:42" max="17:30" onChange={e => { const nd = {...formData, hora_fim: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} />
                         </div>
                       </div>
                       <div>
@@ -314,19 +374,25 @@ export default function PortalReservas() {
                     <TableBody>
                       {minhasReservas.filter(r => r.status !== "Concluída" && r.status !== "Cancelada").length === 0 ? (
                         <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">Nenhuma reserva ativa</TableCell></TableRow>
-                      ) : minhasReservas.filter(r => r.status !== "Concluída" && r.status !== "Cancelada").map(r => (
+                      ) : minhasReservas.filter(r => r.status !== "Concluída" && r.status !== "Cancelada").map(r => {
+                        const nb = todosDispo.find(n => n.id === r.equipamento_id);
+                        const etiqueta = nb?.etiqueta_interna;
+                        const nomeDisplay = etiqueta ? `${etiqueta} — ${r.equipamento_nome}` : r.equipamento_nome;
+                        const [yI, mI, dI] = r.data_inicio.split('-').map(Number);
+                        const [yF, mF, dF] = r.data_fim.split('-').map(Number);
+                        return (
                         <TableRow key={r.id}>
-                          <TableCell className="font-medium">{r.equipamento_nome}</TableCell>
+                          <TableCell className="font-medium">{nomeDisplay}</TableCell>
                           <TableCell className="text-sm">
-                            <p>{r.data_inicio} {r.hora_inicio}</p>
-                            <p className="text-gray-500">até {r.data_fim} {r.hora_fim}</p>
+                            <p>{format(new Date(yI, mI-1, dI), 'dd/MM/yyyy')} às {r.hora_inicio}</p>
+                            <p className="text-gray-500">até {format(new Date(yF, mF-1, dF), 'dd/MM/yyyy')} às {r.hora_fim}</p>
                           </TableCell>
                           <TableCell><Badge className={statusColors[r.status]}>{r.status}</Badge></TableCell>
                           <TableCell>
                             <Button size="sm" variant="destructive" onClick={() => cancelMutation.mutate(r.id)} disabled={cancelMutation.isPending}>Cancelar</Button>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      );})}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -340,19 +406,29 @@ export default function PortalReservas() {
                       <TableRow>
                         <TableHead>Notebook</TableHead>
                         <TableHead>Período</TableHead>
+                        <TableHead>Horário</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {minhasReservas.filter(r => r.status === "Concluída" || r.status === "Cancelada").length === 0 ? (
-                        <TableRow><TableCell colSpan={3} className="text-center py-8 text-gray-500">Sem histórico</TableCell></TableRow>
-                      ) : minhasReservas.filter(r => r.status === "Concluída" || r.status === "Cancelada").map(r => (
+                        <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">Sem histórico</TableCell></TableRow>
+                      ) : minhasReservas.filter(r => r.status === "Concluída" || r.status === "Cancelada").map(r => {
+                        const nb = todosDispo.find(n => n.id === r.equipamento_id);
+                        const etiqueta = nb?.etiqueta_interna;
+                        const nomeDisplay = etiqueta ? `${etiqueta} — ${r.equipamento_nome}` : r.equipamento_nome;
+                        const [yI, mI, dI] = r.data_inicio.split('-').map(Number);
+                        const [yF, mF, dF] = r.data_fim.split('-').map(Number);
+                        const dtI = format(new Date(yI, mI-1, dI), 'dd/MM/yyyy');
+                        const dtF = format(new Date(yF, mF-1, dF), 'dd/MM/yyyy');
+                        return (
                         <TableRow key={r.id}>
-                          <TableCell className="font-medium">{r.equipamento_nome}</TableCell>
-                          <TableCell className="text-sm">{r.data_inicio} – {r.data_fim}</TableCell>
+                          <TableCell className="font-medium">{nomeDisplay}</TableCell>
+                          <TableCell className="text-sm">{dtI} – {dtF}</TableCell>
+                          <TableCell className="text-sm">{r.hora_inicio} – {r.hora_fim}</TableCell>
                           <TableCell><Badge className={statusColors[r.status]}>{r.status}</Badge></TableCell>
                         </TableRow>
-                      ))}
+                      );})}
                     </TableBody>
                   </Table>
                 </CardContent>

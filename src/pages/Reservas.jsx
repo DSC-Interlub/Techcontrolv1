@@ -647,29 +647,34 @@ export default function Reservas() {
                 {getReservasForDate(selectedDate).length === 0 ? (
                   <p className="text-center text-gray-500 py-8">Nenhuma reserva neste dia</p>
                 ) : (
-                  getReservasForDate(selectedDate).map(reserva => (
-                    <Card key={reserva.id}>
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="font-medium">{reserva.solicitante_nome}</p>
-                            <p className="text-sm text-gray-600">{reserva.equipamento_nome}</p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {reserva.hora_inicio} - {reserva.hora_fim}
-                            </p>
-                          </div>
-                          <Badge className={
-                            reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
-                            reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
-                            "bg-gray-100 text-gray-800"
-                          }>
-                            {reserva.status}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
+                  getReservasForDate(selectedDate).map(reserva => {
+                   const nb = notebooks.find(n => n.id === reserva.equipamento_id);
+                   const etiqueta = nb?.etiqueta_interna || "Sem etiqueta";
+                   return (
+                   <Card key={reserva.id}>
+                     <CardContent className="pt-4">
+                       <div className="flex items-start justify-between">
+                         <div className="flex-1">
+                           <p className="font-bold text-purple-700 font-mono text-sm mb-0.5">{etiqueta}</p>
+                           <p className="font-medium">{reserva.solicitante_nome}</p>
+                           <p className="text-sm text-gray-600">{reserva.equipamento_nome}</p>
+                           <p className="text-sm text-gray-500 mt-1">
+                             {reserva.hora_inicio} – {reserva.hora_fim}
+                           </p>
+                         </div>
+                         <Badge className={
+                           reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :
+                           reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" :
+                           "bg-gray-100 text-gray-800"
+                         }>
+                           {reserva.status}
+                         </Badge>
+                       </div>
+                     </CardContent>
+                   </Card>
+                  );
+                  })
+                  )}
               </div>
             </DialogContent>
           </Dialog>
