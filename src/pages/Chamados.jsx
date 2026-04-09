@@ -96,14 +96,10 @@ export default function Chamados() {
     const loadUser = async () => {
       try {
         const u = await base44.auth.me();
-        // Busca o full_name atualizado da entidade User (pode diferir do token de auth)
+        // Busca o nome_exibicao da entidade User
         try {
           const userEntities = await base44.entities.User.filter({ email: u.email });
-          if (userEntities?.length > 0 && userEntities[0].full_name) {
-            u.displayName = userEntities[0].full_name;
-          } else {
-            u.displayName = u.full_name;
-          }
+          u.displayName = userEntities?.[0]?.nome_exibicao || userEntities?.[0]?.full_name || u.full_name;
         } catch {
           u.displayName = u.full_name;
         }
