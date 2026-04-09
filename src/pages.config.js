@@ -55,7 +55,7 @@ import Colaboradores from './pages/Colaboradores';
 import Coletores from './pages/Coletores';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
-import Importar from './pages/Importar';
+import projetosTerceiros from './pages/ProjetosTerceiros.js';
 import notebooksExternos from './pages/Notebooks_Externos';
 import pcsInternos from './pages/PCs_Internos';
 import Ramais from './pages/Ramais';
@@ -88,7 +88,7 @@ export const PAGES = {
     "Coletores": Coletores,
     "Dashboard": Dashboard,
     "Home": Home,
-    "Importar": Importar,
+    "ProjetosTerceiros": projetosTerceiros,
     "Notebooks_Externos": notebooksExternos,
     "PCs_Internos": pcsInternos,
     "Ramais": Ramais,

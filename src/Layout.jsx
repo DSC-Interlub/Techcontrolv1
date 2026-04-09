@@ -12,7 +12,6 @@ import {
   Pen,
   Calendar,
   Headset,
-  Upload,
   FileSpreadsheet,
   Settings,
   Phone,
@@ -20,7 +19,8 @@ import {
   LogOut,
   Activity,
   Sun,
-  Moon
+  Moon,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -118,9 +118,9 @@ const managementItems = [
     icon: Activity,
   },
   {
-    title: "Importar Dados",
-    url: createPageUrl("Importar"),
-    icon: Upload,
+    title: "Projetos / Terceiros",
+    url: createPageUrl("ProjetosTerceiros"),
+    icon: Building2,
   },
   {
     title: "Resumo",
