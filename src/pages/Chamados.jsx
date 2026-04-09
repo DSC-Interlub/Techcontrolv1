@@ -76,6 +76,7 @@ export default function Chamados() {
   const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
   const [user, setUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [meuNomeExibicao, setMeuNomeExibicao] = React.useState("");
   const [novaMsg, setNovaMsg] = useState("");
   const [testeLembreteLoading, setTesteLembreteLoading] = useState(false);
   const [testeLembreteResult, setTesteLembreteResult] = useState(null);
@@ -96,9 +97,12 @@ export default function Chamados() {
     const loadUser = async () => {
       try {
         const u = await base44.auth.me();
-
         setCurrentUser(u);
         setUser(u);
+        // Busca o nome_exibicao diretamente da entidade User
+        const userEntities = await base44.entities.User.filter({ email: u.email });
+        const nome = userEntities?.[0]?.nome_exibicao || u.full_name;
+        setMeuNomeExibicao(nome);
       } catch {
         base44.auth.redirectToLogin();
       } finally {
@@ -170,7 +174,7 @@ export default function Chamados() {
   const handleSaveChanges = async () => {
     if (!selectedChamado || !originalChamado || !currentUser) return;
     const historico = selectedChamado.historico || [];
-    const nomeExibicao = usuarios.find(u => u.email === currentUser.email)?.nome_exibicao || currentUser.full_name;
+    const nomeExibicao = meuNomeExibicao || currentUser.full_name;
     if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
       historico.push({ data_hora: new Date().toISOString(), tipo: "solucao", descricao: `Solução registrada por ${nomeExibicao}: ${selectedChamado.solucao}`, usuario: nomeExibicao });
     }
@@ -193,7 +197,7 @@ export default function Chamados() {
     if (terceiroDados.terceiro_envolvido === null) return;
     const chamado = iniciarChamado;
     const agora = new Date().toISOString();
-    const nomeExibicao = usuarios.find(u => u.email === currentUser.email)?.nome_exibicao || currentUser.full_name;
+    const nomeExibicao = meuNomeExibicao || currentUser.full_name;
     const historico = [...(chamado.historico || [])];
     historico.push({ data_hora: agora, tipo: "inicio_atendimento", descricao: `Atendimento iniciado por ${nomeExibicao}`, usuario: nomeExibicao });
 
@@ -223,7 +227,7 @@ export default function Chamados() {
     if (!currentUser) return;
     const agora = new Date().toISOString();
     const historico = [...(chamado.historico || [])];
-    const nomeExibicao = usuarios.find(u => u.email === currentUser.email)?.nome_exibicao || currentUser.full_name;
+    const nomeExibicao = meuNomeExibicao || currentUser.full_name;
 
     // Tempo corrido
     let tempo_total_minutos = null;
@@ -694,7 +698,7 @@ export default function Chamados() {
                       <Label>Responsável</Label>
                       <Select value={selectedChamado.responsavel || ""} onValueChange={v => setSelectedChamado({...selectedChamado, responsavel: v})}>
                         <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>{usuarios.map(u => <SelectItem key={u.id} value={u.full_name}>{u.full_name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{usuarios.map(u => <SelectItem key={u.id} value={u.nome_exibicao || u.full_name}>{u.nome_exibicao || u.full_name}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div><Label>Solução Aplicada</Label><Textarea value={selectedChamado.solucao || ""} onChange={e => setSelectedChamado({...selectedChamado, solucao: e.target.value})} rows={3} placeholder="Descreva a solução..." /></div>
