@@ -234,13 +234,8 @@ export default function Chamados() {
       const fim = new Date(agora);
       tempo_total_minutos = Math.round((fim - inicio) / 60000);
 
-      if (chamado.tipo_resolucao === "Terceiro" && chamado.terceiro_data_abertura) {
-        // TI responsável apenas até o repasse para o terceiro
-        const repasse = new Date(chamado.terceiro_data_abertura);
-        tempo_util_minutos = calcularMinutosUteis(inicio, repasse < fim ? repasse : fim);
-      } else {
-        tempo_util_minutos = calcularMinutosUteis(inicio, fim);
-      }
+      // Sempre calcula do início ao fim, independente de ser interno ou terceiro
+      tempo_util_minutos = calcularMinutosUteis(inicio, fim);
       tempo_resolucao_minutos = tempo_util_minutos;
     }
 
@@ -752,10 +747,7 @@ export default function Chamados() {
                           <div><Label>Valor/Hora (R$)</Label><Input type="number" value={selectedChamado.projeto_valor_hora || ""} onChange={e => setSelectedChamado({...selectedChamado, projeto_valor_hora: +e.target.value})} placeholder="0" /></div>
                           <div><Label>Total Estimado</Label><p className="font-bold text-indigo-900 mt-2">R$ {((selectedChamado.projeto_horas_contratadas || 0) * (selectedChamado.projeto_valor_hora || 0)).toLocaleString('pt-BR', {minimumFractionDigits:2})}</p></div>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div><Label>Data Abertura (Terceiro)</Label><Input type="datetime-local" value={selectedChamado.terceiro_data_abertura ? selectedChamado.terceiro_data_abertura.slice(0,16) : ""} onChange={e => setSelectedChamado({...selectedChamado, terceiro_data_abertura: e.target.value ? new Date(e.target.value).toISOString() : ""})} /></div>
-                          <div><Label>Data Resolução (Terceiro)</Label><Input type="datetime-local" value={selectedChamado.terceiro_data_resolucao ? selectedChamado.terceiro_data_resolucao.slice(0,16) : ""} onChange={e => setSelectedChamado({...selectedChamado, terceiro_data_resolucao: e.target.value ? new Date(e.target.value).toISOString() : ""})} /></div>
-                        </div>
+
                       </div>
 
                       {/* Marcos */}
