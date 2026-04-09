@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { X, FileText, Activity } from "lucide-react";
+import { X, FileText, Activity, Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
@@ -19,6 +19,8 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
   });
+  const [novaFormatacao, setNovaFormatacao] = useState({ data_formatacao: "", observacoes: "" });
+  const [showFormatacaoForm, setShowFormatacaoForm] = useState(false);
   const [activeTab, setActiveTab] = useState("dados");
   const [avaliacaoExpandida, setAvaliacaoExpandida] = useState(null);
   const queryClient = useQueryClient();
@@ -136,6 +138,36 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     await salvarAvaliacaoMutation.mutateAsync(dadosAvaliacao);
   };
 
+  const calcTempoUso = (acquisitionDate) => {
+    if (!acquisitionDate) return "Data de aquisição não informada";
+    const today = new Date();
+    const acquisition = new Date(acquisitionDate);
+    const diffDays = Math.ceil(Math.abs(today - acquisition) / (1000 * 60 * 60 * 24));
+    if (diffDays < 30) return diffDays === 1 ? "1 dia" : `${diffDays} dias`;
+    if (diffDays < 365) { const m = Math.floor(diffDays / 30); return m === 1 ? "1 mês" : `${m} meses`; }
+    const years = Math.floor(diffDays / 365);
+    const months = Math.floor((diffDays % 365) / 30);
+    return months === 0 ? `${years} ano${years > 1 ? 's' : ''}` : `${years} ano${years > 1 ? 's' : ''} e ${months} mês${months > 1 ? 'es' : ''}`;
+  };
+
+  const adicionarFormatacao = () => {
+    if (!novaFormatacao.data_formatacao) return;
+    const historico = [...(formData.historico_formatacoes || [])];
+    historico.push({ ...novaFormatacao });
+    historico.sort((a, b) => new Date(b.data_formatacao) - new Date(a.data_formatacao));
+    const dataRecente = historico[0]?.data_formatacao || novaFormatacao.data_formatacao;
+    handleChange("historico_formatacoes", historico);
+    handleChange("data_formatacao", dataRecente);
+    setNovaFormatacao({ data_formatacao: "", observacoes: "" });
+    setShowFormatacaoForm(false);
+  };
+
+  const removerFormatacao = (idx) => {
+    const historico = (formData.historico_formatacoes || []).filter((_, i) => i !== idx);
+    handleChange("historico_formatacoes", historico);
+    handleChange("data_formatacao", historico[0]?.data_formatacao || "");
+  };
+
   const podeAvaliar = (entityType === "PCs_Internos" || entityType === "Notebooks_Externos") &&
                        (formData.tipo === "Desktop" || formData.tipo === "Notebook") &&
                        equipamento?.id;
@@ -160,8 +192,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             <div>
               <Label>Tempo de Uso</Label>
               <Input
-                placeholder="Calculado automaticamente"
-                value={formData.tempo_uso || ""}
+                value={calcTempoUso(formData.data_aquisicao)}
                 readOnly
                 className="bg-gray-50"
               />
@@ -377,14 +408,53 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Data de Formatação</Label>
-              <Input
-                type="date"
-                value={formData.data_formatacao || ""}
-                onChange={(e) => handleChange("data_formatacao", e.target.value)}
-              />
+            <div></div>
+          </div>
+
+          {/* Histórico de Formatações */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold">Histórico de Formatações</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowFormatacaoForm(v => !v)} className="gap-1 text-xs">
+                <Plus className="w-3 h-3" />
+                Registrar Formatação
+              </Button>
             </div>
+            {showFormatacaoForm && (
+              <div className="bg-gray-50 rounded p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Data</Label>
+                    <Input type="date" value={novaFormatacao.data_formatacao} onChange={e => setNovaFormatacao(v => ({ ...v, data_formatacao: e.target.value }))} className="h-8" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Observações</Label>
+                    <Input placeholder="Ex: Office 365 instalado" value={novaFormatacao.observacoes} onChange={e => setNovaFormatacao(v => ({ ...v, observacoes: e.target.value }))} className="h-8" />
+                  </div>
+                </div>
+                <Button type="button" size="sm" onClick={adicionarFormatacao} disabled={!novaFormatacao.data_formatacao} className="w-full">
+                  Adicionar
+                </Button>
+              </div>
+            )}
+            {(formData.historico_formatacoes || []).length === 0 ? (
+              <p className="text-xs text-gray-400">Nenhuma formatação registrada</p>
+            ) : (
+              <div className="space-y-1">
+                {(formData.historico_formatacoes || []).map((f, i) => (
+                  <div key={i} className="flex items-center justify-between bg-white border rounded px-3 py-1.5 text-sm">
+                    <div>
+                      <span className="font-medium">{new Date(f.data_formatacao).toLocaleDateString('pt-BR')}</span>
+                      {f.observacoes && <span className="text-gray-500 ml-2">{f.observacoes}</span>}
+                      {i === 0 && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1 rounded">Última</span>}
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removerFormatacao(i)}>
+                      <Trash2 className="w-3 h-3 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <UsuariosAnteriores
