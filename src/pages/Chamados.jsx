@@ -123,14 +123,13 @@ export default function Chamados() {
   });
 
   // Assim que usuarios carregar, pega o nome_exibicao do usuário atual
+  // O SDK pode retornar nome_exibicao no topo OU dentro de .data (ambos são verificados)
   useEffect(() => {
     if (!currentUser || !usuarios.length) return;
     const encontrado = usuarios.find(u => u.email === currentUser.email);
-    if (encontrado?.nome_exibicao) {
-      setMeuNomeExibicao(encontrado.nome_exibicao);
-    } else if (currentUser.full_name) {
-      setMeuNomeExibicao(currentUser.full_name);
-    }
+    const nome = encontrado?.nome_exibicao || encontrado?.data?.nome_exibicao;
+    if (nome) setMeuNomeExibicao(nome);
+    // Não faz fallback para full_name aqui — deixa o handler decidir
   }, [usuarios, currentUser]);
 
   const { data: chatMessages = [] } = useQuery({
