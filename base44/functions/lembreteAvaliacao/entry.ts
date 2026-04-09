@@ -3,6 +3,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY');
 const PORTAL_URL = 'https://techcontrol.site/portal-chamados';
 const ANTI_SPAM_HORAS = 11;
+const DIAS_UTEIS_ENCERRAMENTO = 5;
+
+// Conta dias úteis (seg-sex) entre duas datas
+function contarDiasUteis(inicio, fim) {
+  let count = 0;
+  const cur = new Date(inicio);
+  cur.setHours(0, 0, 0, 0);
+  const end = new Date(fim);
+  end.setHours(0, 0, 0, 0);
+  while (cur < end) {
+    const dow = cur.getDay();
+    if (dow >= 1 && dow <= 5) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
 
 async function enviarEmail(to, subject, html) {
   const res = await fetch('https://api.resend.com/emails', {
@@ -86,8 +102,38 @@ Deno.serve(async (req) => {
     const limiteMs = ANTI_SPAM_HORAS * 60 * 60 * 1000;
     let enviados = 0;
     let pulados = 0;
+    let encerrados = 0;
 
+    // Encerramento automático: chamados com 5+ dias úteis sem avaliação
+    const agora = new Date();
     for (const chamado of aguardando) {
+      if (!chamado.data_conclusao) continue;
+      const diasUteis = contarDiasUteis(new Date(chamado.data_conclusao), agora);
+      if (diasUteis >= DIAS_UTEIS_ENCERRAMENTO) {
+        const historico = [...(chamado.historico || [])];
+        historico.push({
+          data_hora: agora.toISOString(),
+          tipo: 'status',
+          descricao: 'Chamado encerrado automaticamente após 5 dias úteis sem avaliação.',
+          usuario: 'Sistema'
+        });
+        await base44.asServiceRole.entities.Chamados.update(chamado.id, {
+          status: 'Resolvido',
+          historico
+        });
+        console.log(`[lembreteAvaliacao] Encerrado automaticamente: ${chamado.numero_chamado} (${diasUteis} dias úteis)`);
+        encerrados++;
+        continue;
+      }
+    }
+
+    // Re-filtrar após encerramento automático
+    const aguardandoAtivos = aguardando.filter(c => {
+      if (!c.data_conclusao) return true;
+      return contarDiasUteis(new Date(c.data_conclusao), agora) < DIAS_UTEIS_ENCERRAMENTO;
+    });
+
+    for (const chamado of aguardandoAtivos) {
       // Anti-spam: verifica último lembrete
       if (chamado.ultimo_lembrete_enviado) {
         const ultimoMs = new Date(chamado.ultimo_lembrete_enviado).getTime();
@@ -113,8 +159,8 @@ Deno.serve(async (req) => {
       await new Promise(r => setTimeout(r, 600));
     }
 
-    console.log(`[lembreteAvaliacao] Resultado: ${enviados} enviados, ${pulados} pulados (anti-spam)`);
-    return Response.json({ success: true, enviados, pulados, total_aguardando: aguardando.length });
+    console.log(`[lembreteAvaliacao] Resultado: ${enviados} enviados, ${pulados} pulados, ${encerrados} encerrados automaticamente`);
+    return Response.json({ success: true, enviados, pulados, encerrados, total_aguardando: aguardando.length });
   } catch (error) {
     console.error(`[lembreteAvaliacao] Erro: ${error.message}`);
     return Response.json({ error: error.message }, { status: 500 });

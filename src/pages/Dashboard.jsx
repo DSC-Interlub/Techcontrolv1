@@ -15,7 +15,8 @@ import {
   DollarSign,
   AlertCircle,
   Calendar,
-  Headset
+  Headset,
+  Info
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,12 @@ export default function Dashboard() {
   const { data: canetas = [] } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list(),
+    enabled: !!user,
+  });
+
+  const { data: tablets = [] } = useQuery({
+    queryKey: ['tablets'],
+    queryFn: () => base44.entities.Tablets.list(),
     enabled: !!user,
   });
 
@@ -140,7 +147,9 @@ export default function Dashboard() {
 
   const totalEquipamentos = equipmentStats.reduce((sum, stat) => sum + stat.total, 0);
   const totalDisponiveis = equipmentStats.reduce((sum, stat) => sum + stat.disponiveis, 0);
-  const valorTotal = smartphones.reduce((sum, s) => sum + (s.valor || 0), 0);
+
+  const somarValor = (arr) => arr.filter(i => typeof i.valor === 'number' && i.valor > 0).reduce((s, i) => s + i.valor, 0);
+  const valorTotal = somarValor(smartphones) + somarValor(notebooksExternos) + somarValor(tablets) + somarValor(pcsInternos) + somarValor(cameras) + somarValor(coletores);
 
   const chamadosAbertos = chamados.filter(c => c.status === "Aberto").length;
 
@@ -197,13 +206,18 @@ export default function Dashboard() {
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-none shadow-lg">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium opacity-90">Valor Total Investido</CardTitle>
+                <div className="flex items-center gap-1">
+                  <CardTitle className="text-sm font-medium opacity-90">Valor Total Investido</CardTitle>
+                  <span title="Soma o campo 'valor' de: Smartphones, Notebooks Externos, Tablets, PCs Internos, Câmeras e Coletores (apenas registros com valor > 0)">
+                    <Info className="w-3.5 h-3.5 opacity-70 cursor-help" />
+                  </span>
+                </div>
                 <DollarSign className="w-5 h-5 opacity-80" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">R$ {valorTotal.toLocaleString('pt-BR')}</div>
-              <p className="text-xs opacity-80 mt-1">Em smartphones</p>
+              <div className="text-2xl font-bold">{valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              <p className="text-xs opacity-80 mt-1">Smartphones · Notebooks · Tablets · PCs · Câmeras · Coletores</p>
             </CardContent>
           </Card>
 

@@ -304,9 +304,12 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   const colaborador = colaboradores.find(c => c.nome_completo === value);
                   if (colaborador) {
                     handleChange("area", colaborador.area);
+                    handleChange("colaborador_id", colaborador.id);
                     if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
                       handleChange("uf", colaborador.area);
                     }
+                  } else {
+                    handleChange("colaborador_id", "");
                   }
                   // Define data atual como usuario_desde quando atribuir usuário
                   if (value && !formData.usuario_desde) {
@@ -527,6 +530,9 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   const colaborador = colaboradores.find(c => c.nome_completo === value);
                   if (colaborador) {
                     handleChange("area", colaborador.area);
+                    handleChange("colaborador_id", colaborador.id);
+                  } else {
+                    handleChange("colaborador_id", "");
                   }
                   // Define data atual como usuario_desde quando atribuir usuário
                   if (value && !formData.usuario_desde) {

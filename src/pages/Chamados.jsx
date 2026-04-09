@@ -347,10 +347,13 @@ export default function Chamados() {
     geral: chamadosAvaliadosAba.length > 0 ? chamadosAvaliadosAba.reduce((a, c) => a + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliadosAba.length : 0,
   };
 
-  const chamadosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos));
+  // Excluir tipo_resolucao=Terceiro do Tempo Médio (reflete apenas TI interno)
+  const chamadosResolvidos = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao !== "Terceiro");
   const tempoMedioUtil = chamadosResolvidos.length > 0
     ? chamadosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosResolvidos.length
     : 0;
+
+  const resolvidosSemAvaliacao = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && !c.avaliacao_data);
 
   const stats = {
     total: chamadosAbaAtiva.length,
@@ -360,6 +363,7 @@ export default function Chamados() {
     resolvidos: chamadosAbaAtiva.filter(c => c.status === "Resolvido").length,
     avaliados: chamadosAvaliadosAba.length,
     tempoMedioUtil,
+    resolvidosSemAvaliacao: resolvidosSemAvaliacao.length,
   };
 
   // Top Solicitantes
@@ -492,7 +496,7 @@ export default function Chamados() {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-4">
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Total</p><p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Abertos</p><p className="text-3xl font-bold text-red-600 mt-1">{stats.abertos}</p></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Em Andamento</p><p className="text-3xl font-bold text-blue-600 mt-1">{stats.emAndamento}</p></div></CardContent></Card>
@@ -511,6 +515,7 @@ export default function Chamados() {
             </CardContent>
           </Card>
           <Card><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Avaliados</p><p className="text-3xl font-bold text-yellow-600 mt-1">{stats.avaliados}</p></div></CardContent></Card>
+          <Card title="Chamados encerrados automaticamente após 5 dias úteis sem avaliação"><CardContent className="pt-6"><div className="text-center"><p className="text-sm text-gray-600">Sem Avaliação</p><p className="text-3xl font-bold text-gray-500 mt-1">{stats.resolvidosSemAvaliacao}</p><p className="text-xs text-gray-400">encerrados auto</p></div></CardContent></Card>
         </div>
 
         {/* Top Solicitantes */}
