@@ -634,6 +634,7 @@ export default function Chamados() {
                     <p className="font-medium text-blue-800">{format(new Date(selectedChamado.data_inicio_atendimento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                     {selectedChamado.tipo_resolucao && <p className="text-xs text-blue-700 mt-1">Tipo: <strong>{selectedChamado.tipo_resolucao}</strong></p>}
                     {selectedChamado.terceiro_empresa && <p className="text-xs text-blue-700">Empresa terceira: <strong>{selectedChamado.terceiro_empresa}</strong></p>}
+                    {selectedChamado.terceiro_numero_chamado && <p className="text-xs text-blue-700">Nº chamado terceiro: <strong>{selectedChamado.terceiro_numero_chamado}</strong></p>}
                   </div>
                 )}
 
