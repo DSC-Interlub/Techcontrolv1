@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
+import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X, Clock, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
@@ -33,6 +33,8 @@ export default function PortalReservas() {
   const [selectedNotebook, setSelectedNotebook] = useState(null);
   const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "07:42", data_fim: "", hora_fim: "17:30", motivo: "" });
   const [semanaRef, setSemanaRef] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
 
   useEffect(() => {
     if (!loading) requireAuth();
@@ -504,173 +506,116 @@ export default function PortalReservas() {
             </TabsContent>
             <TabsContent value="calendario">
               {(() => {
-                const inicioSemana = startOfWeek(semanaRef, { weekStartsOn: 1 });
-                const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
-
-                // Eixo de tempo: 07:00 às 18:00 = 660 minutos total
-                const HORA_INICIO_GRADE = 7 * 60; // 07:00 em minutos
-                const HORA_FIM_GRADE = 18 * 60;   // 18:00 em minutos
-                const TOTAL_MINUTOS = HORA_FIM_GRADE - HORA_INICIO_GRADE; // 660
-                const ALTURA_GRADE = 600; // px
-
-                const toMinutos = (hhmm) => {
-                  const [h, m] = hhmm.split(':').map(Number);
-                  return h * 60 + m;
+                const parseDateLocal = (dateStr) => {
+                  const [year, month, day] = dateStr.split('-').map(Number);
+                  return new Date(year, month - 1, day);
                 };
+                const monthStart = startOfMonth(currentMonth);
+                const monthEnd = endOfMonth(currentMonth);
+                const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-                const horasEixo = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-
-                // Reservas válidas para exibir no calendário de um dia.
-                // Regra: considera apenas reservas onde data_inicio === dia.
-                // Para reservas cruzadas (data_fim diferente de data_inicio), exibe das hora_inicio até 17:30 (fim do expediente).
-                const getReservasDia = (dia) => {
-                  const diaStr = format(dia, 'yyyy-MM-dd');
-                  return todasReservas
-                    .filter(r => {
-                      if (r.status === "Cancelada" || r.status === "Concluída") return false;
-                      if (r.data_inicio !== diaStr) return false;
-                      if (!r.hora_inicio || !r.hora_fim) return false;
-                      return true;
-                    })
-                    .map(r => {
-                      // Reserva cruzada (data_fim diferente): exibe só até o fim do expediente
-                      if (r.data_fim !== r.data_inicio && r.hora_inicio > r.hora_fim) {
-                        return { ...r, hora_fim: "17:30", _cruzada: true };
-                      }
-                      return r;
-                    })
-                    .filter(r => r.hora_inicio < r.hora_fim); // garante que hora_inicio < hora_fim
-                };
-
-                const handleClickAreaLivre = (dia, e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const clickY = e.clientY - rect.top;
-                  const fracaoClicada = clickY / ALTURA_GRADE;
-                  const minutosClicados = HORA_INICIO_GRADE + Math.floor(fracaoClicada * TOTAL_MINUTOS);
-                  // Arredonda para a hora cheia mais próxima
-                  const hora = Math.max(7, Math.min(17, Math.floor(minutosClicados / 60)));
-                  const horaStr = String(hora).padStart(2, '0') + ':00';
-                  const horaFimSugerida = String(Math.min(hora + 1, 17)).padStart(2, '0') + ':30';
-                  const diaStr = format(dia, 'yyyy-MM-dd');
-                  setFormData(prev => ({ ...prev, data_inicio: diaStr, data_fim: diaStr, hora_inicio: horaStr, hora_fim: horaFimSugerida }));
-                  setShowForm(true);
-                  setValidationError("");
-                  setSelectedNotebook(null);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                const getReservasForDate = (date) => {
+                  return todasReservas.filter(reserva => {
+                    if (reserva.status === "Cancelada") return false;
+                    const dataInicio = parseDateLocal(reserva.data_inicio);
+                    const dataFim = parseDateLocal(reserva.data_fim);
+                    return date >= dataInicio && date <= dataFim;
+                  });
                 };
 
                 return (
-                  <Card>
-                    <CardHeader className="border-b pb-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <CardTitle className="text-base">Disponibilidade Semanal — Todos os Equipamentos</CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="icon" onClick={() => setSemanaRef(subWeeks(semanaRef, 1))}><ChevronLeft className="w-4 h-4" /></Button>
-                          <span className="text-sm font-medium min-w-[160px] text-center">
-                            {format(inicioSemana, "dd/MM")} – {format(addDays(inicioSemana, 4), "dd/MM/yyyy")}
-                          </span>
-                          <Button variant="outline" size="icon" onClick={() => setSemanaRef(addWeeks(semanaRef, 1))}><ChevronRight className="w-4 h-4" /></Button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">Clique em uma área livre para iniciar uma reserva naquele horário.</p>
-                    </CardHeader>
-                    <CardContent className="p-0 overflow-x-auto">
-                      <div className="min-w-[600px]">
-                        {/* Header dos dias */}
-                        <div className="flex border-b">
-                          <div className="w-14 shrink-0" />
-                          {diasSemana.map(dia => (
-                            <div
-                              key={dia.toISOString()}
-                              className={`flex-1 text-center py-2 text-xs font-medium border-l ${isSameDay(dia, new Date()) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'}`}
-                            >
-                              <div className="uppercase">{format(dia, 'EEE', { locale: ptBR })}</div>
-                              <div className={`text-base font-bold ${isSameDay(dia, new Date()) ? 'text-purple-700' : ''}`}>{format(dia, 'dd/MM')}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Grade de tempo */}
-                        <div className="flex" style={{ height: ALTURA_GRADE }}>
-                          {/* Eixo de horas */}
-                          <div className="w-14 shrink-0 relative" style={{ height: ALTURA_GRADE }}>
-                            {horasEixo.map(hora => {
-                              const top = ((hora * 60 - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
-                              return (
-                                <div
-                                  key={hora}
-                                  className="absolute right-1 text-xs text-gray-400 font-mono leading-none"
-                                  style={{ top: top - 6 }}
-                                >
-                                  {String(hora).padStart(2, '0')}:00
-                                </div>
-                              );
-                            })}
+                  <>
+                    <Card className="mb-4">
+                      <CardHeader className="border-b">
+                        <div className="flex items-center justify-between">
+                          <CardTitle>Calendário de Reservas</CardTitle>
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                            <span className="text-lg font-semibold min-w-[200px] text-center">
+                              {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+                            </span>
+                            <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="w-4 h-4" /></Button>
                           </div>
-
-                          {/* Colunas dos dias */}
-                          {diasSemana.map(dia => {
-                            const reservasDia = getReservasDia(dia);
-                            const isPast = dia < new Date() && !isSameDay(dia, new Date());
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-7 gap-2">
+                          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                            <div key={day} className="text-center font-semibold text-sm text-gray-600 p-2">{day}</div>
+                          ))}
+                          {Array.from({ length: monthStart.getDay() }).map((_, idx) => (
+                            <div key={`empty-${idx}`} className="p-2" />
+                          ))}
+                          {daysInMonth.map(day => {
+                            const reservasNoDia = getReservasForDate(day);
+                            const isToday = isSameDay(day, new Date());
                             return (
                               <div
-                                key={dia.toISOString()}
-                                className={`flex-1 relative border-l border-gray-100 ${isSameDay(dia, new Date()) ? 'bg-purple-50/20' : ''} ${isPast ? 'bg-gray-50/50' : ''}`}
-                                style={{ height: ALTURA_GRADE }}
-                                onClick={isPast ? undefined : (e) => handleClickAreaLivre(dia, e)}
+                                key={day.toISOString()}
+                                className={`relative p-2 border rounded-lg cursor-pointer transition-all ${isToday ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'} ${reservasNoDia.length > 0 ? 'hover:bg-purple-100' : 'hover:bg-gray-50'}`}
+                                onClick={() => setSelectedDate(day)}
                               >
-                                {/* Linhas de hora */}
-                                {horasEixo.map(hora => {
-                                  const top = ((hora * 60 - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
-                                  return (
-                                    <div
-                                      key={hora}
-                                      className="absolute left-0 right-0 border-t border-gray-100"
-                                      style={{ top }}
-                                    />
-                                  );
-                                })}
-
-                                {/* Indicador "clique para reservar" em dias futuros sem hover */}
-                                {!isPast && (
-                                  <div className="absolute inset-0 cursor-pointer hover:bg-purple-50/30 transition-colors" />
+                                <div className="text-center">
+                                  <span className={`text-sm ${isToday ? 'font-bold text-purple-600' : 'text-gray-700'}`}>{format(day, 'd')}</span>
+                                </div>
+                                {reservasNoDia.length > 0 && (
+                                  <div className="mt-1 flex flex-col gap-1">
+                                    {reservasNoDia.slice(0, 2).map((reserva, idx) => {
+                                      const nb = todosDispo.find(n => n.id === reserva.equipamento_id);
+                                      return (
+                                        <div key={idx} className={`text-xs px-1 py-0.5 rounded truncate ${reserva.status === "Confirmada" ? "bg-green-100 text-green-800" : reserva.status === "Em Andamento" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}>
+                                          {nb?.etiqueta_interna || reserva.equipamento_nome?.split(' ')[0]}
+                                        </div>
+                                      );
+                                    })}
+                                    {reservasNoDia.length > 2 && (
+                                      <div className="text-xs text-gray-500 text-center">+{reservasNoDia.length - 2}</div>
+                                    )}
+                                  </div>
                                 )}
-
-                                {/* Blocos de reserva — faixas contínuas */}
-                                {reservasDia.map((r, i) => {
-                                  const nb = [...notebooksExternos, ...pcsInternos].find(n => n.id === r.equipamento_id);
-                                  const inicioMin = Math.max(toMinutos(r.hora_inicio), HORA_INICIO_GRADE);
-                                  const fimMin = Math.min(toMinutos(r.hora_fim), HORA_FIM_GRADE);
-                                  const duracaoMin = fimMin - inicioMin;
-                                  if (duracaoMin <= 0) return null;
-                                  const topPx = ((inicioMin - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
-                                  const heightPx = (duracaoMin / TOTAL_MINUTOS) * ALTURA_GRADE;
-                                  const isSmall = duracaoMin < 45;
-                                  return (
-                                    <div
-                                      key={r.id || i}
-                                      className="absolute left-0.5 right-0.5 rounded bg-red-100 border border-red-300 overflow-hidden z-10 shadow-sm"
-                                      style={{ top: topPx, height: Math.max(heightPx, 18) }}
-                                      onClick={e => e.stopPropagation()}
-                                      title={`${nb?.etiqueta_interna || r.equipamento_nome} · ${r.hora_inicio}–${r._cruzada ? r.hora_fim + ' (continua no dia seguinte)' : r.hora_fim}`}
-                                    >
-                                      <div className="p-0.5 leading-tight text-xs h-full flex flex-col justify-start overflow-hidden">
-                                        <p className="font-mono font-bold text-purple-700 truncate">{nb?.etiqueta_interna || ""}</p>
-                                        {!isSmall && (
-                                          <p className="text-gray-600 truncate text-[10px]">{nb?.modelo || r.equipamento_nome}</p>
-                                        )}
-                                        <p className="text-red-600 text-[10px]">{r.hora_inicio}–{r.hora_fim}</p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
                               </div>
                             );
                           })}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+
+                    {/* Modal do dia */}
+                    {selectedDate && (
+                      <Card className="border-purple-200">
+                        <CardHeader className="border-b flex flex-row items-center justify-between">
+                          <CardTitle className="text-base">
+                            Reservas de {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                          </CardTitle>
+                          <Button variant="ghost" size="icon" onClick={() => setSelectedDate(null)}><X className="w-4 h-4" /></Button>
+                        </CardHeader>
+                        <CardContent className="pt-4 space-y-3 max-h-96 overflow-y-auto">
+                          {getReservasForDate(selectedDate).length === 0 ? (
+                            <p className="text-center text-gray-500 py-4">Nenhuma reserva neste dia</p>
+                          ) : getReservasForDate(selectedDate).map(reserva => {
+                            const nb = todosDispo.find(n => n.id === reserva.equipamento_id);
+                            const etiqueta = nb?.etiqueta_interna || "Sem etiqueta";
+                            return (
+                              <div key={reserva.id} className="border rounded-lg p-3 bg-gray-50">
+                                <p className="font-bold text-purple-700 font-mono text-sm">{etiqueta}</p>
+                                <p className="font-medium text-sm">{reserva.solicitante_nome}</p>
+                                <p className="text-xs text-gray-500">{reserva.equipamento_nome}</p>
+                                {reserva.data_inicio === reserva.data_fim ? (
+                                  <p className="text-xs text-gray-500 mt-1">{format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy")} · {reserva.hora_inicio} – {reserva.hora_fim}</p>
+                                ) : (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    <p>De: {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy")} às {reserva.hora_inicio}</p>
+                                    <p>Até: {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy")} às {reserva.hora_fim}</p>
+                                  </div>
+                                )}
+                                <Badge className={`mt-1 text-xs ${statusColors[reserva.status]}`}>{reserva.status}</Badge>
+                              </div>
+                            );
+                          })}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
                 );
               })()}
             </TabsContent>
