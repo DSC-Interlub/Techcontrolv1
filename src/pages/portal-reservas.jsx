@@ -159,9 +159,24 @@ export default function PortalReservas() {
       .filter(r => {
         if (r.equipamento_id !== nbId) return false;
         if (r.status === "Cancelada" || r.status === "Concluída") return false;
-        return r.data_inicio === dataStr || r.data_fim === dataStr;
+        // Apenas reservas onde data_inicio é exatamente o dia selecionado
+        // Ignora reservas históricas com datas cruzadas (data_inicio diferente do dia)
+        if (r.data_inicio !== dataStr) return false;
+        // Validade extra: hora_inicio deve ser menor que hora_fim
+        if (r.hora_inicio >= r.hora_fim) return false;
+        return true;
       })
       .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  };
+
+  // Verifica se um notebook está ocupado em determinado horário (para o calendário)
+  const isNbOcupadoNoHorario = (nbId, dataStr, horaInicio) => {
+    return todasReservas.some(r => {
+      if (r.equipamento_id !== nbId) return false;
+      if (r.status === "Cancelada" || r.status === "Concluída") return false;
+      if (r.data_inicio !== dataStr) return false;
+      return r.hora_inicio <= horaInicio && r.hora_fim > horaInicio;
+    });
   };
 
   const validateForm = (nb, data) => {
@@ -277,68 +292,86 @@ export default function PortalReservas() {
                       <p className="text-sm text-gray-500 mt-1">Nenhum notebook disponível para reserva. Configure notebooks marcando "Disponível para Reserva".</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                        {notebooksDisponiveis.map(nb => {
-                          const nbStatus = getNotebookStatus(nb.id);
-                          const proximaDispo = getProximaDisponibilidade(nb.id);
-                          const isSelected = selectedNotebook?.id === nb.id;
-                          return (
-                            <div
-                              key={nb.id}
-                              onClick={() => { setSelectedNotebook(nb); setValidationError(""); }}
-                              className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'border-purple-500 shadow-lg bg-purple-50' : 'border-gray-200 hover:shadow-md hover:border-purple-300'}`}
-                            >
-                              <div className="flex items-start justify-between mb-3">
-                                <div>
-                                  <p className="font-bold text-gray-900">{nb.marca}</p>
-                                  <p className="text-sm text-gray-500">{nb.modelo}</p>
+                        {(() => {
+                          // Se data e hora de início já definidas (ex: clique no calendário), ordenar por disponibilidade naquele horário
+                          const sorted = [...notebooksDisponiveis].sort((a, b) => {
+                            if (!formData.data_inicio || !formData.hora_inicio) return 0;
+                            const aOcupado = isNbOcupadoNoHorario(a.id, formData.data_inicio, formData.hora_inicio);
+                            const bOcupado = isNbOcupadoNoHorario(b.id, formData.data_inicio, formData.hora_inicio);
+                            return (aOcupado ? 1 : 0) - (bOcupado ? 1 : 0);
+                          });
+                          return sorted.map(nb => {
+                            const nbStatus = getNotebookStatus(nb.id);
+                            const isSelected = selectedNotebook?.id === nb.id;
+                            const periodosNaData = formData.data_inicio ? getPeriodosOcupadosNaData(nb.id, formData.data_inicio) : [];
+                            const ocupadoNoHorario = formData.data_inicio && formData.hora_inicio
+                              ? isNbOcupadoNoHorario(nb.id, formData.data_inicio, formData.hora_inicio)
+                              : false;
+                            return (
+                              <div
+                                key={nb.id}
+                                onClick={() => { if (!ocupadoNoHorario || !formData.hora_inicio) { setSelectedNotebook(nb); setValidationError(""); } }}
+                                className={`border-2 rounded-xl p-4 transition-all ${ocupadoNoHorario && formData.hora_inicio ? 'opacity-60 cursor-not-allowed border-gray-200 bg-gray-50' : isSelected ? 'border-purple-500 shadow-lg bg-purple-50 cursor-pointer' : 'border-gray-200 hover:shadow-md hover:border-purple-300 cursor-pointer'}`}
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div>
+                                    <p className="font-bold text-gray-900">{nb.marca}</p>
+                                    <p className="text-sm text-gray-500">{nb.modelo}</p>
+                                  </div>
+                                  <Laptop className={`w-7 h-7 flex-shrink-0 ${ocupadoNoHorario && formData.hora_inicio ? 'text-gray-400' : 'text-purple-500'}`} />
                                 </div>
-                                <Laptop className="w-7 h-7 text-purple-500 flex-shrink-0" />
-                              </div>
-                              <div className="space-y-1 text-sm mb-3">
-                                {nb.processador && (
+                                <div className="space-y-1 text-sm mb-3">
+                                  {nb.processador && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-500">Processador:</span>
+                                      <span className="font-medium">{nb.processador}</span>
+                                    </div>
+                                  )}
                                   <div className="flex justify-between">
-                                    <span className="text-gray-500">Processador:</span>
-                                    <span className="font-medium">{nb.processador}</span>
+                                    <span className="text-gray-500">Etiqueta:</span>
+                                    <span className="font-bold">{nb.etiqueta_interna || "—"}</span>
+                                  </div>
+                                </div>
+                                {/* Badge de disponibilidade no horário clicado */}
+                                {formData.data_inicio && formData.hora_inicio && (
+                                  <div className="mb-2">
+                                    {ocupadoNoHorario
+                                      ? <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-semibold">Ocupado às {formData.hora_inicio}</span>
+                                      : <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Livre neste horário</span>
+                                    }
                                   </div>
                                 )}
-                                <div className="flex justify-between">
-                                  <span className="text-gray-500">Etiqueta:</span>
-                                  <span className="font-bold">{nb.etiqueta_interna || "—"}</span>
-                                </div>
-                              </div>
-                              {(() => {
-                                const periodosNaData = formData.data_inicio ? getPeriodosOcupadosNaData(nb.id, formData.data_inicio) : [];
-                                if (periodosNaData.length > 0) {
-                                  return (
-                                    <>
-                                      <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso hoje</span>
-                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
+                                {/* Períodos ocupados na data (apenas reservas do mesmo dia, válidas) */}
+                                {(() => {
+                                  if (periodosNaData.length > 0) {
+                                    return (
+                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs mt-1">
                                         <p className="font-semibold text-orange-900 mb-1">Períodos ocupados:</p>
                                         {periodosNaData.map((r, i) => (
                                           <p key={i} className="text-orange-700">• {r.hora_inicio} – {r.hora_fim} <span className="text-orange-500">({r.status})</span></p>
                                         ))}
                                       </div>
-                                    </>
-                                  );
-                                } else if (formData.data_inicio) {
-                                  return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível o dia todo</span>;
-                                } else if (nbStatus.emUso) {
-                                  return (
-                                    <>
-                                      <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso agora</span>
-                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
-                                        <p className="text-orange-700">Disponível a partir de {format(nbStatus.disponivelEm, "dd/MM 'às' HH:mm", { locale: ptBR })}</p>
-                                      </div>
-                                    </>
-                                  );
-                                } else {
-                                  return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível</span>;
-                                }
-                              })()}
-                              {isSelected && <div className="mt-2 flex items-center gap-1 text-purple-700 text-xs font-semibold"><CheckCircle className="w-4 h-4" />Selecionado</div>}
-                            </div>
-                          );
-                        })}
+                                    );
+                                  } else if (formData.data_inicio) {
+                                    return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível o dia todo</span>;
+                                  } else if (nbStatus.emUso) {
+                                    return (
+                                      <>
+                                        <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso agora</span>
+                                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
+                                          <p className="text-orange-700">Disponível a partir de {format(nbStatus.disponivelEm, "dd/MM 'às' HH:mm", { locale: ptBR })}</p>
+                                        </div>
+                                      </>
+                                    );
+                                  } else {
+                                    return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível</span>;
+                                  }
+                                })()}
+                                {isSelected && <div className="mt-2 flex items-center gap-1 text-purple-700 text-xs font-semibold"><CheckCircle className="w-4 h-4" />Selecionado</div>}
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     )}
                   </div>
@@ -473,21 +506,53 @@ export default function PortalReservas() {
               {(() => {
                 const inicioSemana = startOfWeek(semanaRef, { weekStartsOn: 1 });
                 const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
-                const slots = ["07:42","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"];
 
-                const getReservasNoSlot = (dia, hora) => {
+                // Eixo de tempo: 07:00 às 18:00 = 660 minutos total
+                const HORA_INICIO_GRADE = 7 * 60; // 07:00 em minutos
+                const HORA_FIM_GRADE = 18 * 60;   // 18:00 em minutos
+                const TOTAL_MINUTOS = HORA_FIM_GRADE - HORA_INICIO_GRADE; // 660
+                const ALTURA_GRADE = 600; // px
+
+                const toMinutos = (hhmm) => {
+                  const [h, m] = hhmm.split(':').map(Number);
+                  return h * 60 + m;
+                };
+
+                const horasEixo = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+
+                // Reservas válidas (mesmo dia, hora_inicio < hora_fim)
+                const getReservasDia = (dia) => {
+                  const diaStr = format(dia, 'yyyy-MM-dd');
                   return todasReservas.filter(r => {
-                    if (r.status === "Cancelada") return false;
-                    const diaStr = format(dia, 'yyyy-MM-dd');
-                    if (r.data_inicio !== diaStr && r.data_fim !== diaStr) return false;
-                    return r.hora_inicio <= hora && r.hora_fim > hora;
+                    if (r.status === "Cancelada" || r.status === "Concluída") return false;
+                    if (r.data_inicio !== diaStr) return false;
+                    if (!r.hora_inicio || !r.hora_fim) return false;
+                    if (r.hora_inicio >= r.hora_fim) return false; // ignora reservas históricas cruzadas
+                    return true;
                   });
+                };
+
+                const handleClickAreaLivre = (dia, e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickY = e.clientY - rect.top;
+                  const fracaoClicada = clickY / ALTURA_GRADE;
+                  const minutosClicados = HORA_INICIO_GRADE + Math.floor(fracaoClicada * TOTAL_MINUTOS);
+                  // Arredonda para a hora cheia mais próxima
+                  const hora = Math.max(7, Math.min(17, Math.floor(minutosClicados / 60)));
+                  const horaStr = String(hora).padStart(2, '0') + ':00';
+                  const horaFimSugerida = String(Math.min(hora + 1, 17)).padStart(2, '0') + ':30';
+                  const diaStr = format(dia, 'yyyy-MM-dd');
+                  setFormData(prev => ({ ...prev, data_inicio: diaStr, data_fim: diaStr, hora_inicio: horaStr, hora_fim: horaFimSugerida }));
+                  setShowForm(true);
+                  setValidationError("");
+                  setSelectedNotebook(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
 
                 return (
                   <Card>
                     <CardHeader className="border-b pb-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <CardTitle className="text-base">Disponibilidade Semanal — Todos os Equipamentos</CardTitle>
                         <div className="flex items-center gap-2">
                           <Button variant="outline" size="icon" onClick={() => setSemanaRef(subWeeks(semanaRef, 1))}><ChevronLeft className="w-4 h-4" /></Button>
@@ -497,65 +562,103 @@ export default function PortalReservas() {
                           <Button variant="outline" size="icon" onClick={() => setSemanaRef(addWeeks(semanaRef, 1))}><ChevronRight className="w-4 h-4" /></Button>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-400 mt-1">Clique em uma área livre para iniciar uma reserva naquele horário.</p>
                     </CardHeader>
                     <CardContent className="p-0 overflow-x-auto">
-                      <table className="w-full text-xs min-w-[600px]">
-                        <thead>
-                          <tr>
-                            <th className="p-2 text-left text-gray-500 font-medium w-16 border-b">Hora</th>
-                            {diasSemana.map(dia => (
-                              <th key={dia.toISOString()} className={`p-2 text-center font-medium border-b border-l ${isSameDay(dia, new Date()) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'}`}>
-                                <div>{format(dia, 'EEE', { locale: ptBR })}</div>
-                                <div className={`text-base font-bold ${isSameDay(dia, new Date()) ? 'text-purple-700' : ''}`}>{format(dia, 'dd')}</div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {slots.map(hora => (
-                            <tr key={hora} className="border-b">
-                              <td className="p-2 text-gray-400 font-mono text-xs">{hora}</td>
-                              {diasSemana.map(dia => {
-                                const reservasSlot = getReservasNoSlot(dia, hora);
-                                const diaStr = format(dia, 'yyyy-MM-dd');
-                                const isPast = dia < new Date() && !isSameDay(dia, new Date());
-                                return (
-                                  <td key={dia.toISOString()} className={`p-1 border-l align-top ${isSameDay(dia, new Date()) ? 'bg-purple-50/30' : ''}`}>
-                                    {reservasSlot.length > 0 ? (
-                                      <div className="space-y-1">
-                                        {reservasSlot.map((r, i) => {
-                                          const nb = [...notebooksExternos, ...pcsInternos].find(n => n.id === r.equipamento_id);
-                                          return (
-                                            <div key={i} className="bg-red-100 text-red-800 rounded px-1 py-0.5 leading-tight">
-                                              <p className="font-mono font-bold text-purple-700">{nb?.etiqueta_interna || ""}</p>
-                                              <p className="truncate">{nb?.modelo || r.equipamento_nome}</p>
-                                              <p className="text-red-600">{r.hora_inicio}–{r.hora_fim}</p>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    ) : isPast ? (
-                                      <div className="h-6" />
-                                    ) : (
-                                      <button
-                                        className="w-full h-6 rounded bg-green-100 hover:bg-green-200 text-green-700 text-xs transition-colors"
-                                        onClick={() => {
-                                          setFormData(prev => ({ ...prev, data_inicio: diaStr, data_fim: diaStr, hora_inicio: hora }));
-                                          setShowForm(true);
-                                          setValidationError("");
-                                        }}
-                                        title={`Reservar ${format(dia, 'dd/MM')} às ${hora}`}
-                                      >
-                                        livre
-                                      </button>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
+                      <div className="min-w-[600px]">
+                        {/* Header dos dias */}
+                        <div className="flex border-b">
+                          <div className="w-14 shrink-0" />
+                          {diasSemana.map(dia => (
+                            <div
+                              key={dia.toISOString()}
+                              className={`flex-1 text-center py-2 text-xs font-medium border-l ${isSameDay(dia, new Date()) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'}`}
+                            >
+                              <div className="uppercase">{format(dia, 'EEE', { locale: ptBR })}</div>
+                              <div className={`text-base font-bold ${isSameDay(dia, new Date()) ? 'text-purple-700' : ''}`}>{format(dia, 'dd/MM')}</div>
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
+                        </div>
+
+                        {/* Grade de tempo */}
+                        <div className="flex" style={{ height: ALTURA_GRADE }}>
+                          {/* Eixo de horas */}
+                          <div className="w-14 shrink-0 relative" style={{ height: ALTURA_GRADE }}>
+                            {horasEixo.map(hora => {
+                              const top = ((hora * 60 - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
+                              return (
+                                <div
+                                  key={hora}
+                                  className="absolute right-1 text-xs text-gray-400 font-mono leading-none"
+                                  style={{ top: top - 6 }}
+                                >
+                                  {String(hora).padStart(2, '0')}:00
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Colunas dos dias */}
+                          {diasSemana.map(dia => {
+                            const reservasDia = getReservasDia(dia);
+                            const isPast = dia < new Date() && !isSameDay(dia, new Date());
+                            return (
+                              <div
+                                key={dia.toISOString()}
+                                className={`flex-1 relative border-l border-gray-100 ${isSameDay(dia, new Date()) ? 'bg-purple-50/20' : ''} ${isPast ? 'bg-gray-50/50' : ''}`}
+                                style={{ height: ALTURA_GRADE }}
+                                onClick={isPast ? undefined : (e) => handleClickAreaLivre(dia, e)}
+                              >
+                                {/* Linhas de hora */}
+                                {horasEixo.map(hora => {
+                                  const top = ((hora * 60 - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
+                                  return (
+                                    <div
+                                      key={hora}
+                                      className="absolute left-0 right-0 border-t border-gray-100"
+                                      style={{ top }}
+                                    />
+                                  );
+                                })}
+
+                                {/* Indicador "clique para reservar" em dias futuros sem hover */}
+                                {!isPast && (
+                                  <div className="absolute inset-0 cursor-pointer hover:bg-purple-50/30 transition-colors" />
+                                )}
+
+                                {/* Blocos de reserva — faixas contínuas */}
+                                {reservasDia.map((r, i) => {
+                                  const nb = [...notebooksExternos, ...pcsInternos].find(n => n.id === r.equipamento_id);
+                                  const inicioMin = Math.max(toMinutos(r.hora_inicio), HORA_INICIO_GRADE);
+                                  const fimMin = Math.min(toMinutos(r.hora_fim), HORA_FIM_GRADE);
+                                  const duracaoMin = fimMin - inicioMin;
+                                  if (duracaoMin <= 0) return null;
+                                  const topPx = ((inicioMin - HORA_INICIO_GRADE) / TOTAL_MINUTOS) * ALTURA_GRADE;
+                                  const heightPx = (duracaoMin / TOTAL_MINUTOS) * ALTURA_GRADE;
+                                  const isSmall = duracaoMin < 45;
+                                  return (
+                                    <div
+                                      key={r.id || i}
+                                      className="absolute left-0.5 right-0.5 rounded bg-red-100 border border-red-300 overflow-hidden z-10 shadow-sm"
+                                      style={{ top: topPx, height: Math.max(heightPx, 18) }}
+                                      onClick={e => e.stopPropagation()}
+                                      title={`${nb?.etiqueta_interna || r.equipamento_nome} · ${r.hora_inicio}–${r.hora_fim}`}
+                                    >
+                                      <div className="p-0.5 leading-tight text-xs h-full flex flex-col justify-start overflow-hidden">
+                                        <p className="font-mono font-bold text-purple-700 truncate">{nb?.etiqueta_interna || ""}</p>
+                                        {!isSmall && (
+                                          <p className="text-gray-600 truncate text-[10px]">{nb?.modelo || r.equipamento_nome}</p>
+                                        )}
+                                        <p className="text-red-600 text-[10px]">{r.hora_inicio}–{r.hora_fim}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 );

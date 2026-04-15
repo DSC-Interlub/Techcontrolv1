@@ -808,7 +808,7 @@ Ao enviar: muda status para "Resolvido"
 - Não são permitidas reservas em finais de semana
 - Horário deve estar dentro do expediente: 07:42 às 17:30
 - **Card de notebook exibe todos os períodos ocupados na data selecionada**, não apenas a próxima disponibilidade. Se não houver reservas na data, exibe "Disponível o dia todo" em verde.
-- **Aba Calendário:** navegação por semana (anterior/próxima). Clicar em slot livre abre o formulário pré-preenchido com data e hora do slot.
+- **Aba Calendário:** Calendário semanal com faixas contínuas proporcionais à duração de cada reserva (modelo estilo Google Calendar). Cada reserva aparece uma única vez ocupando sua faixa de horário. Clicar em área livre pré-preenche data e hora no formulário e destaca automaticamente quais notebooks estão disponíveis naquele horário.
 
 ---
 
@@ -1498,6 +1498,7 @@ CREATE POLICY "solicitante_own" ON chamados
 | 15/04/2026 | 1.2.0 | Chamados | Correção de exibição: `terceiro_numero_chamado` agora aparece no bloco azul "Atendimento Iniciado" dentro do modal de detalhes |
 | 15/04/2026 | 1.2.0 | Documentação | Atualização completa da documentação técnica refletindo todas as implementações e correções desde a v1.0.1 |
 | 15/04/2026 | 1.3.0 | Reservas + Portal | Módulo de Reservas: bloqueio de reservas entre dias (data_inicio deve ser igual a data_fim), exibição completa de períodos ocupados no card do notebook (todos os slots do dia selecionado), adição de aba "Calendário" com visão semanal geral no portal do colaborador, correção do popup do calendário admin para exibir datas completas (De/Até ou formato simplificado quando mesmo dia) |
+| 15/04/2026 | 1.4.0 | Portal Reservas | Redesenho do calendário semanal para modelo de faixas contínuas proporcionais (estilo Google Calendar); correção da exibição de períodos ocupados que ignorava reservas históricas com datas cruzadas (agora filtra apenas reservas onde data_inicio = data selecionada e hora_inicio < hora_fim); seleção de notebook após clique no calendário agora ordena disponíveis primeiro e exibe badge "Livre neste horário" / "Ocupado"; sugestão de hora_fim automática (+1:30h) ao clicar em slot livre |
 
 ---
 
