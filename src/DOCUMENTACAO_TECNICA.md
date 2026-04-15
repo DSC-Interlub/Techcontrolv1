@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.0.0 | **Data de geração:** 09/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 1.2.0 | **Data de geração:** 15/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -355,8 +355,20 @@ Campos adicionais:
 **Arquivo:** `pages/Chamados.jsx`
 **Objetivo:** Central de helpdesk para a equipe de TI. Gerenciamento completo de chamados.
 
-#### Métricas exibidas (7 cards)
-Total, Abertos, Em Andamento, Aguardando Avaliação, Resolvidos, Tempo Médio de Resolução, Avaliados
+#### Métricas exibidas (8 cards — 2 linhas)
+**Linha 1:** Total | Abertos | Em Andamento | Aguardando Avaliação
+**Linha 2:** Resolvidos | Tempo Médio (Interno) | Tempo Médio (Terceiros) | Avaliados
+
+> ℹ️ O tempo médio é separado em **Interno** e **Terceiros** para análise diferenciada. O tempo interno é calculado apenas em horas úteis (seg–sex, 07:42–17:30).
+
+#### Filtro de Período
+Botões: Todos | 7 dias | 30 dias | 90 dias | Personalizado (data início – data fim)
+Todos os cards e tabelas são filtrados pelo período selecionado.
+
+#### Top Solicitantes
+Dois gráficos de barras horizontais exibidos abaixo dos cards:
+- **Por Colaborador** – Top 5 colaboradores com mais chamados no período
+- **Por Setor** – Top 5 setores com mais chamados no período
 
 #### Abas de Visualização (dinâmicas)
 - **Em Aberto** – Chamados com status "Aberto", "Em Análise" ou sem responsável
@@ -364,50 +376,75 @@ Total, Abertos, Em Andamento, Aguardando Avaliação, Resolvidos, Tempo Médio d
 - **[Nome do Responsável]** – Aba gerada dinamicamente para cada responsável ativo
 
 #### Colunas da Tabela
-Nº Chamado | Solicitante + Área | Tipo Completo | Urgência | Tempo Atendimento | Status | Avaliação | Ações
+Nº Chamado | Solicitante + Área | Data Abertura | Tipo Completo | Urgência | Tempo Atend. | Status | Avaliação | Ações
 
 #### Botões e Ações
 | Botão/Elemento | Ação |
 |----------------|------|
 | 👁️ (linha da tabela) | Abre modal de detalhes |
 | Copiar link público | Copia URL da página pública de chamados |
-| Iniciar Atendimento | Muda status para "Em Andamento", registra `data_inicio_atendimento`, define responsável, envia e-mail, adiciona ao histórico |
-| Finalizar Atendimento | Muda status para "Aguardando Avaliação", calcula `tempo_resolucao_minutos`, envia e-mail de conclusão |
+| Testar Lembrete de Avaliação | Dispara manualmente a função `lembreteAvaliacao` e exibe resultado |
+| Iniciar Atendimento | Abre modal perguntando se é Interno ou Terceiro, depois muda status para "Em Andamento", registra `data_inicio_atendimento`, define responsável, envia e-mail |
+| Finalizar Atendimento | Muda status para "Aguardando Avaliação", calcula tempos de resolução, envia e-mail de conclusão |
 | Avaliar Atendimento | Abre formulário de avaliação por estrelas (1-5) inline no modal |
 | Enviar Avaliação | Salva avaliação, muda status para "Resolvido" |
 | Salvar Alterações | Salva responsável e solução, registra no histórico |
 | Cancelar | Fecha modal sem salvar |
 | Enviar (chat) | Envia mensagem no chat ao vivo (Enter ou botão) |
 
-#### Modal de Detalhes do Chamado
-Campos visíveis:
-- Número do chamado, Status atual (badge colorido)
-- Indicador de "Atendimento Iniciado" com tempo decorrido
-- Tipo de Solicitação completo (tipo + subtipo)
-- Título do chamado
-- Solicitante (nome + email + área)
-- Equipamentos do usuário (array vinculado)
-- Equipamento com problema selecionado
-- Descrição do problema
-- Detalhes adicionais (melhorias, desenvolvimento, outros)
-- Anexos (imagens/vídeos visualizáveis inline)
-- Select de Responsável (lista users do sistema)
-- Textarea de Solução Aplicada
-- **Chat ao vivo** (polling a cada 2s)
-- Avaliação do usuário (quando preenchida)
+#### Modal de Detalhes do Chamado — Abas
+O modal possui abas internas:
+
+| Aba | Conteúdo |
+|-----|----------|
+| **Detalhes** | Tipo de solicitação, título, solicitante, equipamentos, descrição, select responsável, textarea solução, tempos de resolução, avaliação |
+| **💬 Chat** | Chat em tempo real com polling a 2s |
+| **📋 Projeto / Terceiro** | Visível apenas se `terceiro_envolvido = true`. Resumo financeiro, marcos, envolvidos, aprovações |
+| **Histórico** | Timeline de todas as alterações do chamado |
+
+#### Bloco de Atendimento Iniciado (modal)
+Quando `data_inicio_atendimento` está preenchido, exibe card azul com:
+- Data e hora de início
+- Tipo de resolução (Interno ou Terceiro)
+- Empresa terceira (se aplicável)
+- **Número do chamado externo** (`terceiro_numero_chamado`) — exibido para referência rápida
+
+#### Modal de Iniciar Atendimento
+Ao clicar "Iniciar Atendimento", abre um modal secundário perguntando:
+- **Não — Interno**: chamado tratado pela TI
+- **Sim — Terceiro**: exibe campos adicionais (Empresa Terceira, Nº Chamado Externo). A data/hora de abertura com o terceiro é registrada automaticamente.
+
+#### Aba Projeto / Terceiro (modal)
+Disponível apenas quando `terceiro_envolvido = true`:
+- **Resumo Financeiro**: Horas Contratadas, Horas Realizadas, Valor/Hora, Total Estimado (R$)
+- **Marcos**: lista editável de marcos com data, descrição e status (Pendente/Concluído)
+- **Envolvidos**: lista de nomes dos envolvidos no projeto
+- **Anexos de Aprovação**: upload de arquivos de aprovação
 
 #### Formulário de Avaliação (Admin)
 4 critérios com estrelas (1-5): Tempo de Resolução, Qualidade do Atendimento, Qualidade da Solução, Comunicação + campo de comentário.
 
 #### Card de Médias de Avaliação
-Exibido quando há avaliações. Mostra médias de: Geral, Tempo, Atendimento, Solução, Comunicação.
+Exibido quando há avaliações. Mostra Nota Geral (média dos 4 critérios).
+
+#### Cálculo de Tempos de Resolução
+| Campo | Descrição |
+|-------|-----------|
+| `tempo_util_minutos` | Minutos úteis (seg–sex 07:42–17:30) do início ao fim do atendimento |
+| `tempo_total_minutos` | Minutos corridos totais (referência) |
+| `tempo_resolucao_minutos` | Igual a `tempo_util_minutos` (campo principal) |
+| Tempo do terceiro | Calculado na exibição: `terceiro_data_resolucao - terceiro_data_abertura` |
+
+A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, somando apenas os minutos dentro do horário útil.
 
 #### Regras de Negócio
 - O número do chamado é gerado no portal como `CH{últimos 8 dígitos do timestamp}`
-- Histórico de alterações é mantido como array no chamado (`tipo: status | observacao | solucao | responsavel | inicio_atendimento | conclusao`)
-- Tempo de atendimento é calculado em tempo real: `data_conclusao - data_inicio_atendimento` (ou "agora" se não concluído)
+- Histórico de alterações é mantido como array no chamado (`tipo: status | observacao | solucao | responsavel | inicio_atendimento | conclusao | avaliacao`)
+- Tempo de atendimento calculado em tempo real na coluna da tabela: `data_conclusao - data_inicio_atendimento` (ou "agora" se não concluído)
 - E-mails são disparados por funções backend assíncronas (`.catch` para não bloquear o fluxo)
 - Chat tem polling automático a cada 2 segundos
+- O responsável é definido pelo `nome_exibicao` do usuário admin (campo `User.nome_exibicao`) com fallback para `full_name`
+- Chamados com `responsavel = "Kauan"` foram migrados em massa para `"adm.sp1"` (operação de abril/2026)
 
 ---
 
@@ -553,6 +590,7 @@ Exibido quando há avaliações. Mostra médias de: Geral, Tempo, Atendimento, S
 - Apenas usuários com `role = 'admin'` visualizam a lista completa
 - `base44.users.inviteUser(email, role)` é o método de convite
 - Não é possível criar usuários diretamente – apenas convidar por email
+- O campo `nome_exibicao` é usado como identidade do admin nos chamados (responsável, histórico, chat). O sistema busca `nome_exibicao` na lista de usuários filtrando por email, verificando também `user.data.nome_exibicao` (campo aninhado). Se não encontrado, faz fallback para `full_name`.
 
 ---
 
@@ -572,6 +610,34 @@ Exibido quando há avaliações. Mostra médias de: Geral, Tempo, Atendimento, S
 - Exportação para PDF (jsPDF) e CSV
 - Totalizadores por categoria de equipamento
 - Visão de custo (valor total dos smartphones)
+
+---
+
+### 4.17b Projetos / Terceiros (`/ProjetosTerceiros`)
+**Arquivo:** `pages/ProjetosTerceiros.jsx`
+**Objetivo:** Dashboard analítico de chamados envolvendo empresas terceiras.
+
+#### Métricas exibidas
+- Total de projetos terceiros
+- Custo total estimado (R$)
+- Horas totais realizadas
+- Tempo médio de resolução pelo terceiro
+
+#### Filtros
+- Por período (7d / 30d / 90d / Todos)
+- Por empresa terceira
+- Por status do chamado
+
+#### Dados exibidos por projeto
+- Nº do chamado, título, empresa terceira, nº chamado externo
+- Datas de abertura e resolução com terceiro
+- Tempo do terceiro (em horas úteis)
+- Horas contratadas vs realizadas, valor/hora, custo total
+- Marcos do projeto e envolvidos
+- Link direto para abrir o chamado correspondente
+
+#### Exportação
+- Botão "Exportar CSV" gera arquivo com todos os projetos terceiros do período
 
 ---
 
@@ -963,6 +1029,21 @@ created_by   – string (email do criador)
 | Campo | Tipo | Obs |
 |-------|------|-----|
 | numero_chamado | string | Gerado pelo portal: CH{8 dígitos} |
+| terceiro_envolvido | boolean | Se há empresa terceira |
+| terceiro_empresa | string | Nome da empresa terceira |
+| terceiro_numero_chamado | string | Nº do chamado na empresa terceira |
+| terceiro_data_abertura | datetime | Auto-preenchido ao iniciar atendimento com terceiro |
+| terceiro_data_resolucao | datetime | Auto-preenchido ao finalizar chamado terceiro |
+| tipo_resolucao | enum: Interno, Terceiro | Definido ao iniciar atendimento |
+| tempo_util_minutos | number | Minutos úteis (seg–sex 07:42–17:30) |
+| tempo_total_minutos | number | Minutos corridos totais |
+| projeto_horas_contratadas | number | Horas acordadas com terceiro |
+| projeto_horas_realizadas | number | Horas efetivamente realizadas |
+| projeto_valor_hora | number | Valor/hora em R$ |
+| projeto_envolvidos | array[string] | Nomes dos envolvidos |
+| projeto_marcos | array[{data, descricao, status}] | Marcos do projeto |
+| projeto_aprovacoes | array[{file_url, file_name}] | Anexos de aprovação |
+| ultimo_lembrete_enviado | datetime | Timestamp do último lembrete (anti-spam) |
 | tipo_solicitacao | enum: Sistema, Impressora, Equipamento, Melhorias, Desenvolvimento, Servidor, Outros | |
 | titulo_chamado | string | |
 | sistema_tipo | enum: WMS, Portal de Vendas, SAP | condicional |
@@ -1383,6 +1464,19 @@ CREATE POLICY "solicitante_own" ON chamados
 |------|--------|----------------|-----------|
 | 09/04/2026 | 1.0.0 | Sistema completo | Documentação técnica inicial gerada via auditoria completa de código |
 | 09/04/2026 | 1.0.1 | Sistema completo | Documentação expandida com auditoria detalhada: todos os botões, campos, fluxos, status, automações, templates de e-mail e relacionamentos mapeados |
+| 09/04/2026 | 1.1.0 | Chamados | Implementação de chamados para empresas terceiras: modal de iniciar atendimento com seleção Interno/Terceiro, campos `terceiro_empresa`, `terceiro_numero_chamado`, `terceiro_data_abertura`, `terceiro_data_resolucao`, `tipo_resolucao` |
+| 09/04/2026 | 1.1.1 | Chamados | Separação do tempo médio de resolução em "Interno" e "Terceiros" nos cards de métricas |
+| 09/04/2026 | 1.1.2 | Chamados | Implementação de cálculo de tempo útil (`calcularMinutosUteis`) — seg–sex, 07:42–17:30 — nos campos `tempo_util_minutos` e `tempo_total_minutos` |
+| 09/04/2026 | 1.1.3 | Chamados | Adicionada aba "📋 Projeto / Terceiro" no modal de detalhes: resumo financeiro, marcos, envolvidos, anexos de aprovação |
+| 09/04/2026 | 1.1.4 | Chamados | Adicionado filtro de período (7d / 30d / 90d / Personalizado) afetando cards e tabelas |
+| 09/04/2026 | 1.1.5 | Chamados | Adicionados gráficos de "Top Solicitantes por Colaborador" e "Top Setores" |
+| 09/04/2026 | 1.1.6 | Chamados | Adicionada coluna "Data Abertura" na tabela de chamados |
+| 09/04/2026 | 1.1.7 | Chamados | Botão "Testar Lembrete de Avaliação" no header para disparar `lembreteAvaliacao` manualmente |
+| 09/04/2026 | 1.1.8 | Chamados | Adicionada lógica para exibir `nome_exibicao` do admin no histórico/responsável; verifica `user.nome_exibicao` e `user.data.nome_exibicao` |
+| 09/04/2026 | 1.2.0 | ProjetosTerceiros | Nova página `/ProjetosTerceiros` — dashboard analítico de chamados de terceiros com métricas financeiras, filtros e exportação CSV |
+| 09/04/2026 | 1.2.0 | Chamados/DB | Migração em massa: 75 chamados com `responsavel = "Kauan"` transferidos para `"adm.sp1"` |
+| 15/04/2026 | 1.2.0 | Chamados | Correção de exibição: `terceiro_numero_chamado` agora aparece no bloco azul "Atendimento Iniciado" dentro do modal de detalhes |
+| 15/04/2026 | 1.2.0 | Documentação | Atualização completa da documentação técnica refletindo todas as implementações e correções desde a v1.0.1 |
 
 ---
 
