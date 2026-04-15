@@ -520,16 +520,26 @@ export default function PortalReservas() {
 
                 const horasEixo = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 
-                // Reservas válidas (mesmo dia, hora_inicio < hora_fim)
+                // Reservas válidas para exibir no calendário de um dia.
+                // Regra: considera apenas reservas onde data_inicio === dia.
+                // Para reservas cruzadas (data_fim diferente de data_inicio), exibe das hora_inicio até 17:30 (fim do expediente).
                 const getReservasDia = (dia) => {
                   const diaStr = format(dia, 'yyyy-MM-dd');
-                  return todasReservas.filter(r => {
-                    if (r.status === "Cancelada" || r.status === "Concluída") return false;
-                    if (r.data_inicio !== diaStr) return false;
-                    if (!r.hora_inicio || !r.hora_fim) return false;
-                    if (r.hora_inicio >= r.hora_fim) return false; // ignora reservas históricas cruzadas
-                    return true;
-                  });
+                  return todasReservas
+                    .filter(r => {
+                      if (r.status === "Cancelada" || r.status === "Concluída") return false;
+                      if (r.data_inicio !== diaStr) return false;
+                      if (!r.hora_inicio || !r.hora_fim) return false;
+                      return true;
+                    })
+                    .map(r => {
+                      // Reserva cruzada (data_fim diferente): exibe só até o fim do expediente
+                      if (r.data_fim !== r.data_inicio && r.hora_inicio > r.hora_fim) {
+                        return { ...r, hora_fim: "17:30", _cruzada: true };
+                      }
+                      return r;
+                    })
+                    .filter(r => r.hora_inicio < r.hora_fim); // garante que hora_inicio < hora_fim
                 };
 
                 const handleClickAreaLivre = (dia, e) => {
@@ -642,7 +652,7 @@ export default function PortalReservas() {
                                       className="absolute left-0.5 right-0.5 rounded bg-red-100 border border-red-300 overflow-hidden z-10 shadow-sm"
                                       style={{ top: topPx, height: Math.max(heightPx, 18) }}
                                       onClick={e => e.stopPropagation()}
-                                      title={`${nb?.etiqueta_interna || r.equipamento_nome} · ${r.hora_inicio}–${r.hora_fim}`}
+                                      title={`${nb?.etiqueta_interna || r.equipamento_nome} · ${r.hora_inicio}–${r._cruzada ? r.hora_fim + ' (continua no dia seguinte)' : r.hora_fim}`}
                                     >
                                       <div className="p-0.5 leading-tight text-xs h-full flex flex-col justify-start overflow-hidden">
                                         <p className="font-mono font-bold text-purple-700 truncate">{nb?.etiqueta_interna || ""}</p>
