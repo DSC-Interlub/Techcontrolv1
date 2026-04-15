@@ -653,14 +653,21 @@ export default function Reservas() {
                    return (
                    <Card key={reserva.id}>
                      <CardContent className="pt-4">
-                       <div className="flex items-start justify-between">
+                       <div className="flex items-start justify-between gap-3">
                          <div className="flex-1">
                            <p className="font-bold text-purple-700 font-mono text-sm mb-0.5">{etiqueta}</p>
                            <p className="font-medium">{reserva.solicitante_nome}</p>
                            <p className="text-sm text-gray-600">{reserva.equipamento_nome}</p>
-                           <p className="text-sm text-gray-500 mt-1">
-                             {reserva.hora_inicio} – {reserva.hora_fim}
-                           </p>
+                           {reserva.data_inicio === reserva.data_fim ? (
+                             <p className="text-sm text-gray-500 mt-1">
+                               {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy")} · {reserva.hora_inicio} – {reserva.hora_fim}
+                             </p>
+                           ) : (
+                             <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                               <p>De: {format(parseDateLocal(reserva.data_inicio), "dd/MM/yyyy")} às {reserva.hora_inicio}</p>
+                               <p>Até: {format(parseDateLocal(reserva.data_fim), "dd/MM/yyyy")} às {reserva.hora_fim}</p>
+                             </div>
+                           )}
                          </div>
                          <Badge className={
                            reserva.status === "Confirmada" ? "bg-green-100 text-green-800" :

@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { Calendar, Plus, CheckCircle, AlertCircle, Loader2, Laptop, X, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
@@ -32,6 +32,7 @@ export default function PortalReservas() {
   const [validationError, setValidationError] = useState("");
   const [selectedNotebook, setSelectedNotebook] = useState(null);
   const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "07:42", data_fim: "", hora_fim: "17:30", motivo: "" });
+  const [semanaRef, setSemanaRef] = useState(new Date());
 
   useEffect(() => {
     if (!loading) requireAuth();
@@ -152,31 +153,45 @@ export default function PortalReservas() {
 
 
 
+  const getPeriodosOcupadosNaData = (nbId, dataStr) => {
+    if (!dataStr) return [];
+    return todasReservas
+      .filter(r => {
+        if (r.equipamento_id !== nbId) return false;
+        if (r.status === "Cancelada" || r.status === "Concluída") return false;
+        return r.data_inicio === dataStr || r.data_fim === dataStr;
+      })
+      .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  };
+
   const validateForm = (nb, data) => {
     if (!nb || !data.data_inicio || !data.data_fim) return "";
+    // Nova regra: mesma data
+    if (data.data_inicio !== data.data_fim) {
+      return "As reservas devem ser feitas dentro do mesmo dia. Se você precisar do equipamento por mais de um dia, crie uma reserva separada para cada dia.";
+    }
     const [hIni] = data.hora_inicio.split(':').map(Number);
     const [mIni] = data.hora_inicio.split(':').map(Number).slice(1);
     const [hFim] = data.hora_fim.split(':').map(Number);
     const [mFim] = data.hora_fim.split(':').map(Number).slice(1);
     const inicioMinutos = hIni * 60 + mIni;
     const fimMinutos = hFim * 60 + mFim;
+    if (inicioMinutos >= fimMinutos) {
+      return "O horário de início deve ser anterior ao horário de fim.";
+    }
     if (inicioMinutos < 7 * 60 + 42 || fimMinutos > 17 * 60 + 30) {
       return "O horário de reserva deve estar dentro do expediente: 07:42 às 17:30.";
     }
-    if (checkWeekend(data.data_inicio, data.data_fim)) {
-      const [yI, mI, dI] = data.data_inicio.split('-').map(Number);
-      const [yF, mF, dF] = data.data_fim.split('-').map(Number);
-      const dtI = format(new Date(yI, mI - 1, dI), 'dd/MM/yyyy');
-      const dtF = format(new Date(yF, mF - 1, dF), 'dd/MM/yyyy');
-      return `Reservas não podem incluir finais de semana. Divida a reserva em períodos apenas com dias úteis (segunda a sexta).\n\nDica: crie uma reserva de ${dtI} até ${getLastFriday(data.data_fim)} e outra de ${getNextMonday(data.data_fim)} até ${dtF}.`;
+    const [yI, mI, dI] = data.data_inicio.split('-').map(Number);
+    const dow = new Date(yI, mI - 1, dI).getDay();
+    if (dow === 0 || dow === 6) {
+      return "Reservas não são permitidas em finais de semana.";
     }
     const conflito = getConflictingReserva(nb.id, data.data_inicio, data.hora_inicio, data.data_fim, data.hora_fim);
     if (conflito) {
-      const [yI, mI, dI] = conflito.data_inicio.split('-').map(Number);
-      const [yF, mF, dF] = conflito.data_fim.split('-').map(Number);
-      const dtI = format(new Date(yI, mI - 1, dI), 'dd/MM/yyyy');
-      const dtF = format(new Date(yF, mF - 1, dF), 'dd/MM/yyyy');
-      return `Este equipamento já possui reserva de ${dtI} às ${conflito.hora_inicio} até ${dtF} às ${conflito.hora_fim}. Escolha outro período ou outro equipamento.`;
+      const [ycI, mcI, dcI] = conflito.data_inicio.split('-').map(Number);
+      const dtI = format(new Date(ycI, mcI - 1, dcI), 'dd/MM/yyyy');
+      return `Este equipamento já possui reserva no dia ${dtI} das ${conflito.hora_inicio} às ${conflito.hora_fim}. Escolha outro horário ou equipamento.`;
     }
     return "";
   };
@@ -291,26 +306,35 @@ export default function PortalReservas() {
                                   <span className="font-bold">{nb.etiqueta_interna || "—"}</span>
                                 </div>
                               </div>
-                              {nbStatus.emUso ? (
-                                <>
-                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso</span>
-                                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
-                                    <p className="font-semibold text-orange-900">Disponível em:</p>
-                                    <p className="text-orange-700">{format(nbStatus.disponivelEm, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-                                    <p className="text-orange-600 mt-1">Reserve para depois deste horário</p>
-                                  </div>
-                                </>
-                              ) : proximaDispo ? (
-                                <>
-                                  <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold mb-2">Disponível Agora</span>
-                                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-xs">
-                                    <p className="font-semibold text-blue-900">✅ Disponível para reserva</p>
-                                    <p className="text-blue-700">Já tem uma locação a partir de {format(proximaDispo, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-                                  </div>
-                                </>
-                              ) : (
-                                <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível</span>
-                              )}
+                              {(() => {
+                                const periodosNaData = formData.data_inicio ? getPeriodosOcupadosNaData(nb.id, formData.data_inicio) : [];
+                                if (periodosNaData.length > 0) {
+                                  return (
+                                    <>
+                                      <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso hoje</span>
+                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
+                                        <p className="font-semibold text-orange-900 mb-1">Períodos ocupados:</p>
+                                        {periodosNaData.map((r, i) => (
+                                          <p key={i} className="text-orange-700">• {r.hora_inicio} – {r.hora_fim} <span className="text-orange-500">({r.status})</span></p>
+                                        ))}
+                                      </div>
+                                    </>
+                                  );
+                                } else if (formData.data_inicio) {
+                                  return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível o dia todo</span>;
+                                } else if (nbStatus.emUso) {
+                                  return (
+                                    <>
+                                      <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-semibold mb-2">Em Uso agora</span>
+                                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-xs">
+                                        <p className="text-orange-700">Disponível a partir de {format(nbStatus.disponivelEm, "dd/MM 'às' HH:mm", { locale: ptBR })}</p>
+                                      </div>
+                                    </>
+                                  );
+                                } else {
+                                  return <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-semibold">Disponível</span>;
+                                }
+                              })()}
                               {isSelected && <div className="mt-2 flex items-center gap-1 text-purple-700 text-xs font-semibold"><CheckCircle className="w-4 h-4" />Selecionado</div>}
                             </div>
                           );
@@ -323,16 +347,24 @@ export default function PortalReservas() {
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
-                          <Label>Data Início *</Label>
-                          <Input type="date" required value={formData.data_inicio} onChange={e => { const nd = {...formData, data_inicio: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} min={new Date().toISOString().split('T')[0]} />
+                          <Label>Data *</Label>
+                          <Input type="date" required value={formData.data_inicio} onChange={e => {
+                            const nd = {...formData, data_inicio: e.target.value, data_fim: e.target.value};
+                            setFormData(nd);
+                            setValidationError(validateForm(selectedNotebook, nd));
+                          }} min={new Date().toISOString().split('T')[0]} />
+                          <p className="text-xs text-gray-500 mt-1">A devolução deve ser no mesmo dia.</p>
                         </div>
                         <div>
                           <Label>Hora Início</Label>
                           <Input type="time" value={formData.hora_inicio} min="07:42" max="17:30" onChange={e => { const nd = {...formData, hora_inicio: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} />
                         </div>
                         <div>
-                          <Label>Data Fim *</Label>
-                          <Input type="date" required value={formData.data_fim} onChange={e => { const nd = {...formData, data_fim: e.target.value}; setFormData(nd); setValidationError(validateForm(selectedNotebook, nd)); }} min={formData.data_inicio || new Date().toISOString().split('T')[0]} />
+                          <Label>Data Devolução</Label>
+                          <Input type="date" value={formData.data_fim} readOnly className="bg-gray-50 cursor-not-allowed" />
+                          {formData.data_fim && formData.data_inicio !== formData.data_fim && (
+                            <p className="text-xs text-red-600 mt-1">A data de devolução deve ser o mesmo dia do início da reserva.</p>
+                          )}
                         </div>
                         <div>
                           <Label>Hora Fim</Label>
@@ -357,9 +389,10 @@ export default function PortalReservas() {
           )}
 
           <Tabs defaultValue="ativas">
-            <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4">
-              <TabsTrigger value="ativas">Ativas</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 max-w-sm mb-4">
+              <TabsTrigger value="ativas">Minhas Reservas</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
+              <TabsTrigger value="calendario">Calendário</TabsTrigger>
             </TabsList>
             <TabsContent value="ativas">
               <Card>
@@ -435,6 +468,98 @@ export default function PortalReservas() {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="calendario">
+              {(() => {
+                const inicioSemana = startOfWeek(semanaRef, { weekStartsOn: 1 });
+                const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
+                const slots = ["07:42","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"];
+
+                const getReservasNoSlot = (dia, hora) => {
+                  return todasReservas.filter(r => {
+                    if (r.status === "Cancelada") return false;
+                    const diaStr = format(dia, 'yyyy-MM-dd');
+                    if (r.data_inicio !== diaStr && r.data_fim !== diaStr) return false;
+                    return r.hora_inicio <= hora && r.hora_fim > hora;
+                  });
+                };
+
+                return (
+                  <Card>
+                    <CardHeader className="border-b pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">Disponibilidade Semanal — Todos os Equipamentos</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="icon" onClick={() => setSemanaRef(subWeeks(semanaRef, 1))}><ChevronLeft className="w-4 h-4" /></Button>
+                          <span className="text-sm font-medium min-w-[160px] text-center">
+                            {format(inicioSemana, "dd/MM")} – {format(addDays(inicioSemana, 4), "dd/MM/yyyy")}
+                          </span>
+                          <Button variant="outline" size="icon" onClick={() => setSemanaRef(addWeeks(semanaRef, 1))}><ChevronRight className="w-4 h-4" /></Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0 overflow-x-auto">
+                      <table className="w-full text-xs min-w-[600px]">
+                        <thead>
+                          <tr>
+                            <th className="p-2 text-left text-gray-500 font-medium w-16 border-b">Hora</th>
+                            {diasSemana.map(dia => (
+                              <th key={dia.toISOString()} className={`p-2 text-center font-medium border-b border-l ${isSameDay(dia, new Date()) ? 'bg-purple-50 text-purple-700' : 'text-gray-700'}`}>
+                                <div>{format(dia, 'EEE', { locale: ptBR })}</div>
+                                <div className={`text-base font-bold ${isSameDay(dia, new Date()) ? 'text-purple-700' : ''}`}>{format(dia, 'dd')}</div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {slots.map(hora => (
+                            <tr key={hora} className="border-b">
+                              <td className="p-2 text-gray-400 font-mono text-xs">{hora}</td>
+                              {diasSemana.map(dia => {
+                                const reservasSlot = getReservasNoSlot(dia, hora);
+                                const diaStr = format(dia, 'yyyy-MM-dd');
+                                const isPast = dia < new Date() && !isSameDay(dia, new Date());
+                                return (
+                                  <td key={dia.toISOString()} className={`p-1 border-l align-top ${isSameDay(dia, new Date()) ? 'bg-purple-50/30' : ''}`}>
+                                    {reservasSlot.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {reservasSlot.map((r, i) => {
+                                          const nb = [...notebooksExternos, ...pcsInternos].find(n => n.id === r.equipamento_id);
+                                          return (
+                                            <div key={i} className="bg-red-100 text-red-800 rounded px-1 py-0.5 leading-tight">
+                                              <p className="font-mono font-bold text-purple-700">{nb?.etiqueta_interna || ""}</p>
+                                              <p className="truncate">{nb?.modelo || r.equipamento_nome}</p>
+                                              <p className="text-red-600">{r.hora_inicio}–{r.hora_fim}</p>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : isPast ? (
+                                      <div className="h-6" />
+                                    ) : (
+                                      <button
+                                        className="w-full h-6 rounded bg-green-100 hover:bg-green-200 text-green-700 text-xs transition-colors"
+                                        onClick={() => {
+                                          setFormData(prev => ({ ...prev, data_inicio: diaStr, data_fim: diaStr, hora_inicio: hora }));
+                                          setShowForm(true);
+                                          setValidationError("");
+                                        }}
+                                        title={`Reservar ${format(dia, 'dd/MM')} às ${hora}`}
+                                      >
+                                        livre
+                                      </button>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </div>

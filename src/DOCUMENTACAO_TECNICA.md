@@ -452,6 +452,10 @@ A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, soma
 **Arquivo:** `pages/Reservas.jsx`
 **Objetivo:** Gestão administrativa de reservas de equipamentos (notebooks/PCs).
 
+#### Regras de Negócio (Atualizadas)
+- **Reservas devem obrigatoriamente começar e terminar no mesmo dia.** Reservas entre dias diferentes não são permitidas para novos cadastros. Dados históricos (reservas antigas entre dias) são mantidos apenas em modo leitura.
+- O popup do calendário exibe cada reserva com data completa: se mesmo dia → `DD/MM/YYYY · HH:MM – HH:MM`; se dias diferentes (histórico) → linhas "De: DD/MM/YYYY às HH:MM" e "Até: DD/MM/YYYY às HH:MM".
+
 #### Campos do Formulário
 | Campo | Tipo | Obrigatório |
 |-------|------|-------------|
@@ -782,23 +786,29 @@ Ao enviar: muda status para "Resolvido"
 | Campo | Tipo | Obrigatório |
 |-------|------|-------------|
 | Equipamento | Select (cards clicáveis) | ✅ |
-| Data Início | Input data | ✅ |
+| Data | Input data (única — início e fim iguais) | ✅ |
 | Hora Início | Input hora | ✅ |
-| Data Fim | Input data | ✅ |
+| Data Devolução | Preenchida automaticamente = Data de início (readonly) | Auto |
 | Hora Fim | Input hora | ✅ |
 | Motivo | Textarea | Não |
 
 **Botões:**
-- "Reservar" → verifica conflito → cria reserva
+- "Confirmar Reserva" → verifica conflito → cria reserva
 - "Cancelar" (reserva ativa) → muda status para "Cancelada"
+- Slots livres no Calendário → pré-preenche data e hora no formulário
 
 **Abas:**
 - **Minhas Reservas** – Reservas ativas do colaborador (Pendente, Confirmada, Em Andamento)
 - **Histórico** – Reservas concluídas/canceladas
+- **Calendário** – Visão semanal de todas as reservas de todos os equipamentos disponíveis (seg–sex). Slots livres em verde (clicáveis), ocupados em vermelho com etiqueta + modelo + horário.
 
 **Regras de Negócio:**
-- Verificação de conflito: não permite sobreposição de datas/horários para o mesmo equipamento
-- Exibe quando um equipamento estará disponível novamente se estiver reservado
+- **Reservas devem obrigatoriamente começar e terminar no mesmo dia.** Ao selecionar a data de início, a data de devolução é preenchida automaticamente com o mesmo valor (readonly). Se houver divergência, o submit é bloqueado com mensagem: *"As reservas devem ser feitas dentro do mesmo dia. Se você precisar do equipamento por mais de um dia, crie uma reserva separada para cada dia."*
+- Verificação de conflito: não permite sobreposição de horários para o mesmo equipamento no mesmo dia
+- Não são permitidas reservas em finais de semana
+- Horário deve estar dentro do expediente: 07:42 às 17:30
+- **Card de notebook exibe todos os períodos ocupados na data selecionada**, não apenas a próxima disponibilidade. Se não houver reservas na data, exibe "Disponível o dia todo" em verde.
+- **Aba Calendário:** navegação por semana (anterior/próxima). Clicar em slot livre abre o formulário pré-preenchido com data e hora do slot.
 
 ---
 
@@ -944,14 +954,24 @@ Admin acessa módulo de equipamento
 
 ```
 Colaborador acessa /portal-reservas
-    → Vê lista de equipamentos disponíveis
-    → Clica em um equipamento
-    → Preenche datas e horários
-    → Sistema verifica conflito:
-        → busca todas as reservas do equipamento
-        → verifica sobreposição de datas/horas
-        → se conflito: exibe mensagem de erro
-    → Reserva criada com status "Pendente" ou "Confirmada"
+    → [OPCIONAL] Acessa aba "Calendário"
+        → Vê grade semanal com todos os equipamentos
+        → Identifica slot livre (verde) no dia/hora desejado
+        → Clica no slot → formulário pré-preenchido com data e hora
+    → [OU] Clica "Nova Reserva" diretamente
+    → Seleciona equipamento (card)
+        → Card exibe períodos ocupados na data selecionada
+        → Se data não selecionada: exibe status geral do equipamento
+    → Seleciona a DATA (única — início e fim iguais automaticamente)
+    → Define Hora Início e Hora Fim (mesmo dia, dentro do expediente 07:42–17:30)
+    → Sistema valida:
+        → data_inicio === data_fim (mesmo dia — obrigatório)
+        → hora_inicio < hora_fim
+        → dentro do horário de expediente
+        → não é fim de semana
+        → sem conflito com outras reservas no mesmo horário
+        → se qualquer falha: exibe mensagem de erro, bloqueia submit
+    → Reserva criada com status "Confirmada"
     → Colaborador pode cancelar na aba "Minhas Reservas"
 ```
 
@@ -1477,6 +1497,7 @@ CREATE POLICY "solicitante_own" ON chamados
 | 09/04/2026 | 1.2.0 | Chamados/DB | Migração em massa: 75 chamados com `responsavel = "Kauan"` transferidos para `"adm.sp1"` |
 | 15/04/2026 | 1.2.0 | Chamados | Correção de exibição: `terceiro_numero_chamado` agora aparece no bloco azul "Atendimento Iniciado" dentro do modal de detalhes |
 | 15/04/2026 | 1.2.0 | Documentação | Atualização completa da documentação técnica refletindo todas as implementações e correções desde a v1.0.1 |
+| 15/04/2026 | 1.3.0 | Reservas + Portal | Módulo de Reservas: bloqueio de reservas entre dias (data_inicio deve ser igual a data_fim), exibição completa de períodos ocupados no card do notebook (todos os slots do dia selecionado), adição de aba "Calendário" com visão semanal geral no portal do colaborador, correção do popup do calendário admin para exibir datas completas (De/Até ou formato simplificado quando mesmo dia) |
 
 ---
 
