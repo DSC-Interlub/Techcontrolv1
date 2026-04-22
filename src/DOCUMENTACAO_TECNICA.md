@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.5.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 1.6.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -101,6 +101,7 @@ O banco é **NoSQL orientado a documentos** (sem schema rígido, sem FK formais)
 | `/Usuarios` | `Usuarios` | Admin | Gestão de usuários do sistema |
 | `/Avaliacoes_Equipamentos` | `Avaliacoes_Equipamentos` | Admin | Avaliações técnicas de equipamentos |
 | `/ProjetosTerceiros` | `ProjetosTerceiros` | Admin | Dashboard analítico de projetos terceiros |
+| `/Comunicados` | `Comunicados` | Admin / Comunicados | Gestão de artes de comunicados e visão de datas de eventos |
 | `/Importar` | `Importar` | Admin | Importação de dados em massa |
 | `/Resumo` | `Resumo` | Admin | Relatório consolidado exportável |
 | `/portal-login` | `portal-login` | Público | Login do Portal do Colaborador |
@@ -114,6 +115,16 @@ O banco é **NoSQL orientado a documentos** (sem schema rígido, sem FK formais)
 | `/acompanhar-chamado` | `acompanhar-chamado` | Público | Acompanhamento público de chamados |
 | `/reserva-publica` | `reserva-publica` | Público | Reserva pública de equipamentos |
 | `/reserva-sala-publica` | `reserva-sala-publica` | Público | Reserva pública da sala |
+
+### Acesso por Role (páginas admin)
+
+| Role | Páginas acessíveis | Sidebar exibido |
+|------|--------------------|-----------------|
+| `admin` | Todas | Completo (Equipamentos + Gestão) |
+| `user` | Todas | Completo (Equipamentos + Gestão) |
+| `comunicados_arte` | Apenas `/Comunicados` | Simplificado: só "Comunicados" |
+| `comunicados_gestao` | `/Comunicados` (aba visão geral) + `/Colaboradores` (somente leitura, sem senhas) | Simplificado: "Comunicados" + "Colaboradores" |
+| `comunicados_dp` | `/Comunicados` (visão geral + botões Boas-Vindas/Despedida) + `/Colaboradores` (somente leitura, sem senhas) | Simplificado: "Comunicados" + "Colaboradores" |
 
 ### Identificação de Páginas Públicas (sem autenticação)
 O layout detecta rotas públicas por pathname e remove o sidebar admin, exibindo apenas o conteúdo:
@@ -614,7 +625,103 @@ A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, soma
 
 ---
 
-### 4.17b Projetos / Terceiros (`/ProjetosTerceiros`)
+### 4.17b Comunicados (`/Comunicados`)
+**Arquivo:** `pages/Comunicados.jsx`
+**Objetivo:** Módulo de gestão de comunicados internos automatizados (aniversários, tempo de empresa, boas-vindas, despedida). Controla as artes visuais cadastradas e monitora os eventos de colaboradores.
+
+#### Abas (visibilidade por role)
+
+| Aba | Visível para |
+|-----|-------------|
+| **Visão Geral** | `admin`, `user`, `comunicados_gestao`, `comunicados_dp` |
+| **Artes e Programação** | `admin`, `user`, `comunicados_arte` |
+
+> `comunicados_arte` vê **apenas** a aba "Artes e Programação". `comunicados_gestao` e `comunicados_dp` veem **apenas** a aba "Visão Geral".
+
+---
+
+#### Aba: Visão Geral
+
+Exibe cards agrupados por tipo de comunicado, mostrando os próximos eventos dos colaboradores:
+
+| Card | Fonte | Regra de exibição |
+|------|-------|-------------------|
+| 🎂 Aniversários Colaboradores | `data_nascimento` | Próximos 30 dias |
+| 💑 Aniversários Cônjuges | `conjuge_data_nascimento` | Próximos 30 dias |
+| 🎈 1 Aninho – Filhos | `filhos[].filho_data_nascimento` | Crianças que completam 1 ano nos próximos 30 dias |
+| 🏆 Tempo de Empresa | `data_admissao` | Marco de anos (1, 2, 3, 5, 10, 15, 20) nos próximos 30 dias |
+| 👋 Boas-Vindas Pendentes | `comunicado_boas_vindas_enviado = false` | Ativos, `incluir_comunicados = true` |
+| 💼 Despedidas Pendentes | `comunicado_despedida_enviado = false` | Status "Desligado" |
+
+**Botões na Visão Geral (controle por role):**
+
+| Botão | Visível para | Ação |
+|-------|-------------|------|
+| 👋 Enviar Boas-Vindas | `admin`, `user`, `comunicados_dp` | Dispara `enviarBoasVindas` para aquele colaborador específico |
+| 💼 Enviar Despedida | `admin`, `user`, `comunicados_dp` | Dispara `enviarDespedida` para aquele colaborador específico |
+
+---
+
+#### Aba: Artes e Programação
+
+Gerencia as imagens/artes visuais usadas nos e-mails de comunicado.
+
+**Tipos de comunicado gerenciáveis:**
+
+| Tipo (enum) | Descrição |
+|-------------|-----------|
+| `aniversario_colaborador` | Arte de aniversário do colaborador |
+| `aniversario_conjuge` | Arte de aniversário do cônjuge |
+| `aniversario_filho_1ano` | Arte de 1 aninho do filho |
+| `tempo_empresa_1ano` | Arte de 1 ano de empresa |
+| `tempo_empresa_5anos` | Arte de 5 anos de empresa |
+| `tempo_empresa_10anos` | Arte de 10 anos de empresa |
+| `boas_vindas` | Arte de boas-vindas |
+| `despedida` | Arte de despedida |
+
+**Campos de cada arte:**
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| titulo | string | Nome interno (ex: "Arte Aniversário Abril 2026") |
+| tipo_comunicado | enum | Tipo do comunicado (lista acima) |
+| imagem_url | string | URL da imagem/arte após upload |
+| ativa | boolean | Se esta arte está em uso (default: false) |
+| data_inicio_vigencia | date | A partir de quando usar |
+| data_fim_vigencia | date | Até quando usar (opcional) |
+| criado_por | string | Quem cadastrou |
+| observacoes | string | Observações gerais |
+
+**Regra de arte ativa:** Apenas **uma** arte pode estar ativa por tipo de comunicado. Ao ativar uma, as demais do mesmo tipo são automaticamente desativadas.
+
+**Botões e Ações:**
+
+| Botão | Ação |
+|-------|------|
+| + Nova Arte | Abre formulário de cadastro |
+| Upload de Imagem | Envia imagem via `UploadFile` e preenche `imagem_url` |
+| Ativar | Define `ativa = true` para esta arte (desativa as outras do mesmo tipo) |
+| ✏️ Editar | Abre formulário preenchido |
+| 🗑️ Excluir | Remove arte com confirmação |
+
+---
+
+#### Entidade: `Comunicados_Artes`
+
+| Campo | Tipo | Obrigatório |
+|-------|------|-------------|
+| tipo_comunicado | enum | ✅ Sim |
+| titulo | string | ✅ Sim |
+| imagem_url | string | Não (preenchido via upload) |
+| ativa | boolean | default: false |
+| data_inicio_vigencia | date | Não |
+| data_fim_vigencia | date | Não |
+| criado_por | string | Não |
+| observacoes | string | Não |
+
+---
+
+### 4.17c Projetos / Terceiros (`/ProjetosTerceiros`)
 **Arquivo:** `pages/ProjetosTerceiros.jsx`
 **Objetivo:** Dashboard analítico de chamados envolvendo empresas terceiras.
 
@@ -999,7 +1106,7 @@ Admin acessa /Avaliacoes_Equipamentos
 
 ## 6. BANCO DE DADOS
 
-### Lista Completa de Coleções (16 total)
+### Lista Completa de Coleções (17 total)
 
 | # | Entidade | Descrição | Arquivo Schema |
 |---|----------|-----------|----------------|
@@ -1018,7 +1125,8 @@ Admin acessa /Avaliacoes_Equipamentos
 | 13 | `Avaliacoes` | Avaliações técnicas de equipamentos | `entities/Avaliacoes.json` |
 | 14 | `Ramais` | Ramais telefônicos | `entities/Ramais.json` |
 | 15 | `FilaEmails` | Fila de e-mails a enviar | `entities/FilaEmails.json` |
-| 16 | `User` | Usuários admin (built-in Base44) | – |
+| 16 | `Comunicados_Artes` | Artes visuais dos comunicados internos | `entities/Comunicados_Artes.json` |
+| 17 | `User` | Usuários admin (built-in Base44) | – |
 
 ### Campos Built-in (todos os registros automaticamente)
 ```
@@ -1179,6 +1287,8 @@ created_by   – string (email do criador)
 
 ### Backend Functions (Deno Deploy via Base44)
 
+#### Funções de Chamados e Notificações
+
 | Arquivo | Nome da Função | Trigger | Descrição |
 |---------|---------------|---------|-----------|
 | `functions/sendEmailTicketCreated.js` | `sendEmailTicketCreated` | Entity automation (create Chamados) | Envia e-mail de abertura para solicitante e admin. Controle via `email_abertura_enviado` |
@@ -1191,6 +1301,42 @@ created_by   – string (email do criador)
 | `functions/sendEmailAsync.js` | `sendEmailAsync` | Utilitário | Envio assíncrono desacoplado |
 | `functions/lembreteAvaliacao.js` | `lembreteAvaliacao` | Automação agendada | Envia lembretes de avaliação a cada 6h para chamados em "Aguardando Avaliação" |
 | `functions/listarUsuarios.js` | `listarUsuarios` | Chamada do frontend | Lista usuários do sistema (necessário service role) |
+
+#### Funções de Comunicados Internos
+
+| Arquivo | Nome da Função | Trigger | Descrição |
+|---------|---------------|---------|-----------|
+| `functions/enviarAniversariosColaboradores.js` | `enviarAniversariosColaboradores` | Automação agendada (diária) | Detecta colaboradores que fazem aniversário hoje; envia e-mail para todos os ativos. Controle de duplicatas via `comunicados_historico` (ano). |
+| `functions/enviarAniversarioConjuge.js` | `enviarAniversarioConjuge` | Automação agendada (diária) | Detecta cônjuges de colaboradores que fazem aniversário hoje. Envia para o colaborador, cônjuge e responsável. |
+| `functions/enviarAniversarioFilho1Ano.js` | `enviarAniversarioFilho1Ano` | Automação agendada (diária) | Detecta filhos de colaboradores que completam exatamente 1 ano hoje. Envia para colaborador, cônjuge e responsável. |
+| `functions/enviarAniversarioTempoEmpresa.js` | `enviarAniversarioTempoEmpresa` | Automação agendada (diária) | Detecta marcos de tempo de empresa (1, 2, 3, 5, 10, 15, 20 anos) pela `data_admissao`. Escolhe a arte mais adequada ao marco. |
+| `functions/enviarBoasVindas.js` | `enviarBoasVindas` | Automação agendada (diária) ou chamada manual | Sem `colaborador_id`: processa todos com `comunicado_boas_vindas_enviado = false`. Com `colaborador_id` no body: envia apenas para aquele colaborador. |
+| `functions/enviarDespedida.js` | `enviarDespedida` | Chamada manual pelo painel | Exige `colaborador_id` no body. Envia e-mail de despedida para todos os colaboradores ativos. Marca `comunicado_despedida_enviado = true`. |
+
+#### Lógica Compartilhada das Funções de Comunicados
+
+Cada função de comunicado implementa internamente (sem módulo compartilhado, inline em cada arquivo):
+
+| Função auxiliar | Descrição |
+|----------------|-----------|
+| `getArteAtiva(base44, tipo)` | Busca em `Comunicados_Artes` a arte com `ativa = true` para o tipo. Retorna `null` se nenhuma encontrada. |
+| `buildComunicadoHtml(assunto, arteUrl)` | Gera o HTML do e-mail: envelope minimalista com a imagem da arte ocupando 100% da largura (640px max) + rodapé "© 2026 [EMPRESA] · Todos os direitos reservados". **Sem header, sem banner colorido, sem botão CTA, sem texto além do rodapé.** |
+| `jaEnviouEsteAno(colaborador, tipo)` | Verifica em `comunicados_historico` se já foi enviado o tipo no ano atual (anti-duplicata). |
+| `registrarHistorico(colaborador, tipo, destinatarios, assunto)` | Retorna novo array `comunicados_historico` com entrada adicionada. |
+| `ehHoje(dateStr)` | Verifica se a data (YYYY-MM-DD) corresponde ao dia e mês de hoje (ignora ano — para aniversários). |
+
+**Guard de arte ausente:** Se `getArteAtiva()` retornar `null`, a função **não envia o e-mail**, registra no log `console.log("E-mail de [tipo] não enviado em [ISO date] — nenhuma arte ativa cadastrada para este tipo.")` e retorna resposta de sucesso com `msg: "Nenhuma arte ativa cadastrada para este tipo."`.
+
+#### Parâmetros das Funções de Comunicados
+
+| Função | Body esperado | Comportamento |
+|--------|--------------|---------------|
+| `enviarBoasVindas` | `{}` (sem body) ou `{ "colaborador_id": "string" }` | Sem ID: processa todos pendentes. Com ID: envia apenas para aquele. |
+| `enviarDespedida` | `{ "colaborador_id": "string" }` (obrigatório) | Sem ID: retorna 400. |
+| `enviarAniversariosColaboradores` | `{}` | Processa automaticamente |
+| `enviarAniversarioConjuge` | `{}` | Processa automaticamente |
+| `enviarAniversarioFilho1Ano` | `{}` | Processa automaticamente |
+| `enviarAniversarioTempoEmpresa` | `{}` | Processa automaticamente |
 
 ### Chamadas SDK do Frontend
 
@@ -1271,6 +1417,26 @@ base44.entities.{Entidade}.subscribe(callback)
 |--------|------|-------------|
 | Administrador | `admin` | Acesso total a todos os módulos. Pode convidar usuários. Pode ver dados de todos os colaboradores. Pode gerenciar roles. |
 | Usuário | `user` | Acesso a módulos operacionais. Não pode gerenciar usuários do sistema. |
+| Arte Comunicados | `comunicados_arte` | Acesso exclusivo à aba "Artes e Programação" de `/Comunicados`. Sem acesso a outros módulos. |
+| Gestão Comunicados | `comunicados_gestao` | Leitura da aba "Visão Geral" de `/Comunicados` e da página `/Colaboradores` (somente leitura, sem senhas, sem botões de edição/exclusão/criação). |
+| DP Comunicados | `comunicados_dp` | Tudo de `comunicados_gestao` + pode disparar manualmente os botões "Enviar Boas-Vindas" e "Enviar Despedida" em `/Comunicados`. |
+
+### Comportamento de Sidebar por Role
+
+| Role | Grupo Equipamentos | Grupo Gestão | Sidebar Comunicados |
+|------|-------------------|--------------|---------------------|
+| `admin` / `user` | ✅ Completo | ✅ Completo | Dentro do Grupo Gestão |
+| `comunicados_arte` | ❌ | ❌ | Apenas link "Comunicados" |
+| `comunicados_gestao` | ❌ | ❌ | Links "Comunicados" + "Colaboradores" |
+| `comunicados_dp` | ❌ | ❌ | Links "Comunicados" + "Colaboradores" |
+
+### Comportamento de Colaboradores por Role (somente leitura)
+
+Para roles `comunicados_gestao` e `comunicados_dp`, a página `/Colaboradores` e seus componentes aplicam restrições:
+- Botão "Adicionar Colaborador" → **oculto**
+- Botões "Editar" e "Excluir" por linha → **ocultos**
+- `ColaboradorDetalhes`: aba "Senhas e Acessos" → **oculta**; status do portal → **oculto**; botão "Editar" dentro do detalhe → **oculto**
+- Aba padrão no detalhe é "Equipamentos" (em vez de "Senhas")
 
 ### Segurança Base44 (RLS automático)
 - A plataforma Base44 aplica segurança por role automaticamente
@@ -1299,12 +1465,20 @@ base44.entities.{Entidade}.subscribe(callback)
 | Notificar Novo Chamado | Entity | Create em `Chamados` | `sendEmailTicketCreated` | Dispara e-mail imediatamente ao criar chamado |
 | Processar Fila de E-mails | Scheduled | Agendado (intervalo) | `processarFilaEmails` | Processa e-mails pendentes na FilaEmails |
 | Lembrete de Avaliação | Scheduled | A cada 6h | `lembreteAvaliacao` | Envia lembrete para chamados em "Aguardando Avaliação" |
+| Envio de Aniversários Colaboradores | Scheduled | Diário (manhã) | `enviarAniversariosColaboradores` | Detecta aniversariantes do dia e envia e-mail para todos os colaboradores ativos |
+| Envio de Aniversários Cônjuges | Scheduled | Diário (manhã) | `enviarAniversarioConjuge` | Detecta cônjuges aniversariantes do dia e envia e-mail |
+| Envio de 1 Aninho – Filhos | Scheduled | Diário (manhã) | `enviarAniversarioFilho1Ano` | Detecta filhos completando 1 ano hoje e envia e-mail |
+| Envio de Tempo de Empresa | Scheduled | Diário (manhã) | `enviarAniversarioTempoEmpresa` | Detecta marcos de tempo de empresa (1, 2, 3, 5, 10, 15, 20 anos) e envia e-mail |
+| Envio de Boas-Vindas (automático) | Scheduled / Manual | Diário ou chamada manual | `enviarBoasVindas` | Envia para colaboradores com `comunicado_boas_vindas_enviado = false`; pode ser disparado manualmente com `colaborador_id` no body |
+| Envio de Despedida (manual) | Manual | Chamada manual pelo painel | `enviarDespedida` | Exige `colaborador_id` no body; envia e-mail de despedida para todos os ativos |
 
 ---
 
 ## 10. TEMPLATES DE E-MAIL
 
-Todos os e-mails usam um template HTML centralizado (`buildEmailHtml` em `pages/Chamados.jsx`) com:
+### 10.1 E-mails de Chamados (helpdesk)
+
+Template HTML centralizado (`buildEmailHtml` em `pages/Chamados.jsx`):
 - Header azul com logo "⚙ TechControl"
 - Banner de status colorido (cor varia por evento)
 - Card branco com número do chamado em destaque (fonte mono)
@@ -1320,6 +1494,48 @@ Todos os e-mails usam um template HTML centralizado (`buildEmailHtml` em `pages/
 
 O e-mail de conclusão possui bloco especial de avaliação em amarelo com botão âmbar.
 Rodapé dos e-mails: "© 2026 TechControl · Todos os direitos reservados"
+
+---
+
+### 10.2 E-mails de Comunicados Internos
+
+Template gerado pela função `buildComunicadoHtml(assunto, arteUrl)` (inline em cada função de comunicado). Estrutura **minimalista** — a imagem/arte já contém toda a mensagem visual:
+
+```html
+<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background:#ffffff;">
+    <div style="max-width:640px;margin:0 auto;background:#ffffff;">
+      <!-- Imagem da arte: 100% da largura, sem padding, sem bordas -->
+      <img src="{arteUrl}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" />
+      <!-- Rodapé discreto: 11px, cinza, 12px padding vertical -->
+      <div style="padding:12px 0;text-align:center;">
+        <p style="margin:0;font-size:11px;color:#9ca3af;">© 2026 [EMPRESA] · Todos os direitos reservados</p>
+      </div>
+    </div>
+  </body>
+</html>
+```
+
+**Princípios do template de comunicados:**
+- ❌ Sem header colorido
+- ❌ Sem banner de status
+- ❌ Sem botão CTA
+- ❌ Sem texto ao redor da imagem
+- ✅ Imagem da arte ocupa 100% da largura (max 640px)
+- ✅ Rodapé discreto com 11px, cinza (#9ca3af)
+- ✅ O `assunto` do e-mail é o único texto variável por tipo
+
+**Assuntos por tipo de comunicado:**
+
+| Tipo | Subject line |
+|------|-------------|
+| `aniversario_colaborador` | `Feliz Aniversário, [NOME]! 🎉` |
+| `aniversario_conjuge` | `Parabéns, [NOME DO CÔNJUGE]! 🎂` |
+| `aniversario_filho_1ano` | `Feliz 1 Aninho, [NOME DO FILHO]! 🎈` |
+| `tempo_empresa_*anos` | `[NOME] está completando [N] ano(s) conosco!` |
+| `boas_vindas` | `Boas-vindas, [NOME]! Seja muito bem-vindo(a)!` |
+| `despedida` | `Até logo, [NOME] — obrigado por tudo!` |
 
 ---
 
@@ -1505,6 +1721,15 @@ CREATE POLICY "solicitante_own" ON chamados
 | 15/04/2026 | 1.4.0 | Portal Reservas | Redesenho do calendário semanal para modelo de faixas contínuas proporcionais (estilo Google Calendar); correção da exibição de períodos ocupados que ignorava reservas históricas com datas cruzadas (agora filtra apenas reservas onde data_inicio = data selecionada e hora_inicio < hora_fim); seleção de notebook após clique no calendário agora ordena disponíveis primeiro e exibe badge "Livre neste horário" / "Ocupado"; sugestão de hora_fim automática (+1:30h) ao clicar em slot livre |
 | 22/04/2026 | 1.5.0 | Portal Reservas | Substituição do calendário semanal (faixas) pelo calendário **mensal** idêntico ao do painel admin: grade mensal com navegação por mês, clique no dia exibe painel inline com detalhes de todas as reservas do dia (etiqueta, solicitante, equipamento, horários, status), botão X para fechar o painel. Comportamento e visual 100% consistentes entre admin e portal. |
 | 22/04/2026 | 1.5.0 | Documentação | Documentação completa atualizada: seção 4.11 (Reservas admin) detalhada com calendário mensal e modal do dia; seção 4.18 (Portal Reservas) revisada refletindo o novo calendário mensal e remoção do calendário semanal de faixas; fluxo 5.5 atualizado; versão bumped para 1.5.0. |
+| 22/04/2026 | 1.6.0 | Comunicados – Módulo completo | Implementação do módulo `/Comunicados` com duas abas: **Visão Geral** (próximos eventos de aniversários, cônjuges, filhos, tempo de empresa, boas-vindas e despedidas pendentes) e **Artes e Programação** (CRUD de artes visuais por tipo de comunicado, com upload de imagem e controle de arte ativa). |
+| 22/04/2026 | 1.6.0 | Comunicados – Entidade `Comunicados_Artes` | Nova entidade com campos: `tipo_comunicado` (enum com 8 tipos), `titulo`, `imagem_url`, `ativa`, `data_inicio_vigencia`, `data_fim_vigencia`, `criado_por`, `observacoes`. Regra: apenas uma arte ativa por tipo — ao ativar uma, as demais do mesmo tipo são desativadas automaticamente. |
+| 22/04/2026 | 1.6.0 | Comunicados – Roles e RBAC | Criação de 3 novos roles no sistema: `comunicados_arte` (acesso exclusivo à aba "Artes e Programação"), `comunicados_gestao` (aba "Visão Geral" + Colaboradores somente leitura sem senhas), `comunicados_dp` (idem gestão + botões manuais de Boas-Vindas e Despedida). Adicionados ao seletor de role no convite de usuários (`Usuarios.jsx`) com badges coloridos. |
+| 22/04/2026 | 1.6.0 | Layout – Sidebar adaptativo | Sidebar exibe menu simplificado (só "Comunicados" ± "Colaboradores") para roles `comunicados_*`. Sidebar completo mantido para `admin` e `user`. Detecção via `isComunicadosRole`. |
+| 22/04/2026 | 1.6.0 | Colaboradores – Modo somente leitura | Para roles `comunicados_gestao` e `comunicados_dp`: botões "Adicionar", "Editar" e "Excluir" ocultos; `ColaboradorDetalhes` oculta aba "Senhas e Acessos" e status do portal; botão "Editar" dentro do detalhe oculto; aba padrão muda para "Equipamentos". Prop `hideSenhas` e `onEdit` condicionais no componente. |
+| 22/04/2026 | 1.6.0 | Funções de Comunicados – Refactor de template | Todas as 6 funções de envio (`enviarAniversariosColaboradores`, `enviarAniversarioConjuge`, `enviarAniversarioFilho1Ano`, `enviarAniversarioTempoEmpresa`, `enviarBoasVindas`, `enviarDespedida`) refatoradas para usar `buildComunicadoHtml(assunto, arteUrl)`. HTML antigo (com foto, tabela de dados, texto, header colorido) substituído pelo envelope minimalista: apenas imagem 100% largura + rodapé discreto. |
+| 22/04/2026 | 1.6.0 | Funções de Comunicados – Guard de arte ausente | Todas as funções agora verificam se `getArteAtiva()` retornou `null` **antes** de enviar. Se nulo: não envia, registra log padronizado e retorna resposta de sucesso com `msg`. Para `enviarAniversarioTempoEmpresa`, o guard é por colaborador (dentro do loop), pois cada marco pode usar uma arte diferente. |
+| 22/04/2026 | 1.6.0 | Funções de Comunicados – Assuntos padronizados | Assuntos dos e-mails atualizados: emojis movidos para o final, frases padronizadas conforme especificação (ex: "Boas-vindas, [NOME]! Seja muito bem-vindo(a)!", "Até logo, [NOME] — obrigado por tudo!"). |
+| 22/04/2026 | 1.6.0 | Documentação | Atualização completa: nova seção 4.17b (Comunicados), tabela de access por role, nova entidade `Comunicados_Artes` no banco (17 coleções), perfis de permissão expandidos, tabela de automações de comunicados, seção 10.2 (template minimalista de comunicados), funções backend documentadas com lógica interna, CHANGELOG atualizado. Versão bumped para 1.6.0. |
 
 ---
 
