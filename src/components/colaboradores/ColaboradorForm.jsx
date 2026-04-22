@@ -16,6 +16,7 @@ const PERMISSOES_COMUNICADOS = [
   { value: "cadastrar_artes", label: "Cadastrar Artes", desc: "Pode fazer upload das artes de comunicado para cada colaborador" },
   { value: "enviar_boas_vindas", label: "Enviar Boas-Vindas", desc: "Pode disparar manualmente o e-mail de boas-vindas" },
   { value: "enviar_despedida", label: "Enviar Despedida", desc: "Pode confirmar saída e disparar o e-mail de despedida" },
+  { value: "gerir_colaboradores", label: "Gerir Colaboradores", desc: "Pode cadastrar novos colaboradores e registrar desligamentos pelo portal" },
 ];
 
 export default function ColaboradorForm({ colaborador, onClose, currentUserRole }) {

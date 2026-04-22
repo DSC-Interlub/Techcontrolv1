@@ -114,7 +114,8 @@
           "ver_visao_geral",
           "cadastrar_artes",
           "enviar_boas_vindas",
-          "enviar_despedida"
+          "enviar_despedida",
+          "gerir_colaboradores"
         ]
       }
     },

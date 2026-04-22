@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import PortalLayout from "../components/portal/PortalLayout";
+import AbaVisaoAnual from "../components/portal/AbaVisaoAnual";
+import GestaoColaboradoresPortal from "../components/portal/GestaoColaboradoresPortal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,8 +264,8 @@ function AbaArtes({ colaboradores, currentColabName }) {
   );
 }
 
-// ─── Aba Visão Geral ────────────────────────────────────────────────────────────
-function AbaVisaoGeral({ permissoes, colaboradorLogadoId }) {
+// ─── Aba Visão Geral (mês corrente) ────────────────────────────────────────────
+function AbaVisaoMes({ permissoes, colaboradorLogadoId }) {
   const queryClient = useQueryClient();
   const podeEnviarBV = permissoes.includes("enviar_boas_vindas");
   const podeEnviarDep = permissoes.includes("enviar_despedida");
@@ -414,16 +416,17 @@ export default function PortalComunicados() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
   }
 
-  // Buscar permissões do colaborador logado a partir dos dados completos
+  // Ler permissões do banco (já atualizadas pelo usePortalAuth) e também da query
   const colabCompleto = colaboradores.find(c => c.id === colaborador.id);
-  const permissoes = colabCompleto?.permissoes_comunicados || [];
+  const permissoes = colabCompleto?.permissoes_comunicados || colaborador.permissoes_comunicados || [];
 
   const podeVerVisao = permissoes.includes("ver_visao_geral");
   const podeCadastrarArtes = permissoes.includes("cadastrar_artes");
+  const podeGerirColabs = permissoes.includes("gerir_colaboradores");
 
-  if (!podeVerVisao && !podeCadastrarArtes) {
+  if (!podeVerVisao && !podeCadastrarArtes && !podeGerirColabs) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout}>
+      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={permissoes}>
         <div className="p-8 text-center text-gray-500">
           <p className="text-lg font-medium">Sem permissão de acesso</p>
           <p className="text-sm mt-1">Você não tem permissões de comunicados configuradas. Contate o administrador.</p>
@@ -432,28 +435,40 @@ export default function PortalComunicados() {
     );
   }
 
-  const defaultTab = podeVerVisao ? "visao" : "artes";
+  const defaultTab = podeVerVisao ? "visao_mes" : podeCadastrarArtes ? "artes" : "colabs";
 
   return (
-    <PortalLayout colaborador={colaborador} onLogout={logout}>
+    <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={permissoes}>
       <div className="p-4 md:p-6 max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Comunicados</h1>
           <p className="text-sm text-gray-500 mt-1">Gestão de artes e eventos de comunicação interna</p>
         </div>
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="mb-6">
-            {podeVerVisao && <TabsTrigger value="visao">📅 Visão Geral</TabsTrigger>}
-            {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Artes e Programação</TabsTrigger>}
+          <TabsList className="mb-6 flex-wrap gap-1">
+            {podeVerVisao && <TabsTrigger value="visao_mes">📅 Este Mês</TabsTrigger>}
+            {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
+            {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Artes</TabsTrigger>}
+            {podeGerirColabs && <TabsTrigger value="colabs">👥 Colaboradores</TabsTrigger>}
           </TabsList>
           {podeVerVisao && (
-            <TabsContent value="visao">
-              <AbaVisaoGeral permissoes={permissoes} colaboradorLogadoId={colaborador.id} />
+            <TabsContent value="visao_mes">
+              <AbaVisaoMes permissoes={permissoes} colaboradorLogadoId={colaborador.id} />
+            </TabsContent>
+          )}
+          {podeVerVisao && (
+            <TabsContent value="visao_anual">
+              <AbaVisaoAnual />
             </TabsContent>
           )}
           {podeCadastrarArtes && (
             <TabsContent value="artes">
               <AbaArtes colaboradores={colaboradores} currentColabName={colaborador.nome_completo} />
+            </TabsContent>
+          )}
+          {podeGerirColabs && (
+            <TabsContent value="colabs">
+              <GestaoColaboradoresPortal />
             </TabsContent>
           )}
         </Tabs>
