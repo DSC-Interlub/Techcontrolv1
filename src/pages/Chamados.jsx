@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, Copy, Check, Eye, Laptop, Star, Clock, Send, Zap, Info, Plus, Trash2, Upload } from "lucide-react";
+import { Headset, Copy, Check, Eye, Laptop, Star, Clock, Send, Zap, Info, Plus, Trash2, Upload, FileText, Download, Image } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -701,6 +701,41 @@ export default function Chamados() {
                     <div><Label>Descrição</Label><p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.descricao_problema}</p></div>
                     {selectedChamado.melhorias_detalhes && <div><Label>Detalhes da Melhoria</Label><p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.melhorias_detalhes}</p></div>}
                     {selectedChamado.desenvolvimento_detalhes && <div><Label>Detalhes do Desenvolvimento</Label><p className="text-sm bg-gray-50 p-3 rounded-lg">{selectedChamado.desenvolvimento_detalhes}</p></div>}
+
+                    {/* Anexos do Chamado */}
+                    <div>
+                      <Label>Anexos do Chamado</Label>
+                      {(() => {
+                        const anexos = selectedChamado.anexos;
+                        if (!anexos || anexos.length === 0) {
+                          return <p className="text-sm text-gray-400 mt-1">Nenhum anexo enviado</p>;
+                        }
+                        const isImagem = (item) => {
+                          if (item.mime_type?.startsWith('image/')) return true;
+                          if (item.file_type === 'imagem') return true;
+                          const url = item.file_url || '';
+                          return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
+                        };
+                        return (
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            {anexos.map((item, idx) => (
+                              isImagem(item) ? (
+                                <a key={idx} href={item.file_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-gray-200 hover:border-orange-400 transition-colors group">
+                                  <img src={item.file_url} alt={item.file_name || 'anexo'} className="w-full h-28 object-cover group-hover:opacity-90 transition-opacity" />
+                                  <p className="text-xs text-gray-500 truncate px-2 py-1 bg-gray-50">{item.file_name || 'imagem'}</p>
+                                </a>
+                              ) : (
+                                <a key={idx} href={item.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                                  <FileText className="w-5 h-5 text-gray-400 shrink-0" />
+                                  <span className="text-xs text-gray-700 truncate flex-1">{item.file_name || 'arquivo'}</span>
+                                  <Download className="w-4 h-4 text-gray-400 shrink-0" />
+                                </a>
+                              )
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <div>
                       <Label>Responsável</Label>
                       <Select value={selectedChamado.responsavel || ""} onValueChange={v => setSelectedChamado({...selectedChamado, responsavel: v})}>
@@ -800,12 +835,24 @@ export default function Chamados() {
 
                       {/* Aprovações */}
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Anexos de Aprovação</h4>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                          {(selectedChamado.projeto_aprovacoes || []).map((a, i) => (
-                            <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="border rounded p-2 text-xs text-blue-700 hover:bg-gray-50 truncate">📎 {a.file_name}</a>
-                          ))}
-                        </div>
+                       <h4 className="font-semibold text-gray-900 mb-2">Anexos de Aprovação</h4>
+                       <div className="grid grid-cols-2 gap-2 mb-2">
+                         {(selectedChamado.projeto_aprovacoes || []).map((a, i) => {
+                           const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(a.file_url || '');
+                           return isImg ? (
+                             <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg overflow-hidden border border-gray-200 hover:border-indigo-400 transition-colors group">
+                               <img src={a.file_url} alt={a.file_name || 'aprovação'} className="w-full h-24 object-cover group-hover:opacity-90" />
+                               <p className="text-xs text-gray-500 truncate px-2 py-1 bg-gray-50">{a.file_name || 'imagem'}</p>
+                             </a>
+                           ) : (
+                             <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 hover:border-indigo-400 hover:bg-indigo-50 transition-colors">
+                               <FileText className="w-5 h-5 text-gray-400 shrink-0" />
+                               <span className="text-xs text-gray-700 truncate flex-1">{a.file_name || 'arquivo'}</span>
+                               <Download className="w-4 h-4 text-gray-400 shrink-0" />
+                             </a>
+                           );
+                         })}
+                       </div>
                         <label className="flex items-center gap-2 cursor-pointer border-2 border-dashed border-gray-300 rounded p-3 hover:border-indigo-400">
                           <input type="file" className="hidden" disabled={uploadingAprovacao} onChange={handleUploadAprovacao} />
                           {uploadingAprovacao ? <span className="text-sm text-gray-500">Enviando...</span> : <><Upload className="w-4 h-4 text-gray-400" /><span className="text-sm text-gray-500">Adicionar arquivo de aprovação</span></>}
