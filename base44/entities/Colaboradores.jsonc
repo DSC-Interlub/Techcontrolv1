@@ -115,6 +115,33 @@
       "default": false,
       "description": "Controle interno: comunicado de despedida j\u00e1 enviado"
     },
+    "comunicados_historico": {
+      "type": "array",
+      "description": "Hist\u00f3rico de comunicados enviados para/sobre este colaborador",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "data_envio": {
+            "type": "string"
+          },
+          "ano": {
+            "type": "number"
+          },
+          "destinatarios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assunto": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "senha_portal": {
       "type": "string",
       "description": "Senha de acesso ao portal do colaborador"

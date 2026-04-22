@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -357,8 +357,21 @@ function AbaVisaoGeral() {
     [colaboradores]
   );
 
-  const marcarBoasVindas = (c) => updateColabMut.mutate({ id: c.id, data: { comunicado_boas_vindas_enviado: true } });
-  const marcarDespedida = (c) => updateColabMut.mutate({ id: c.id, data: { comunicado_despedida_enviado: true } });
+  const [enviandoId, setEnviandoId] = useState(null);
+
+  const enviarBoasVindas = async (c) => {
+    setEnviandoId(c.id);
+    await base44.functions.invoke('enviarBoasVindas', { colaborador_id: c.id });
+    queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
+    setEnviandoId(null);
+  };
+
+  const enviarDespedida = async (c) => {
+    setEnviandoId(c.id);
+    await base44.functions.invoke('enviarDespedida', { colaborador_id: c.id });
+    queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
+    setEnviandoId(null);
+  };
 
   const anoMarcoLabel = { 1: "🥇 1 Ano", 5: "🏆 5 Anos", 10: "🌟 10 Anos" };
 
@@ -460,8 +473,8 @@ function AbaVisaoGeral() {
                   <p className="font-medium text-sm text-gray-800">{c.nome_completo}</p>
                   <p className="text-xs text-gray-500">{c.area} · Admissão: {c.data_admissao || "—"}</p>
                 </div>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => marcarBoasVindas(c)}>
-                  <CheckCircle className="w-3 h-3 mr-1" />Marcar Enviado
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => enviarBoasVindas(c)} disabled={enviandoId === c.id}>
+                  <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Boas-Vindas"}
                 </Button>
               </div>
             ))}
@@ -479,8 +492,8 @@ function AbaVisaoGeral() {
                   <p className="font-medium text-sm text-gray-800">{c.nome_completo}</p>
                   <p className="text-xs text-gray-500">{c.area}</p>
                 </div>
-                <Button size="sm" variant="outline" className="text-gray-700" onClick={() => marcarDespedida(c)}>
-                  <CheckCircle className="w-3 h-3 mr-1" />Marcar Enviado
+                <Button size="sm" variant="outline" className="text-gray-700" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
+                  <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Despedida"}
                 </Button>
               </div>
             ))}
