@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.2.0 | **Data de geração:** 15/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 1.5.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -48,7 +48,7 @@ O TechControl é um sistema de gestão de TI corporativa que centraliza o contro
 | Cache / Fetch | TanStack React Query | 5.84.1 |
 | Datas | date-fns (ptBR) | 3.6.0 |
 | Build Tool | Vite | Latest |
-| Backend as a Service | Base44 Platform | 0.8.24 |
+| Backend as a Service | Base44 Platform | 0.8.25+ |
 | Banco de Dados | Base44 (NoSQL – documentos) | – |
 | Backend Functions | Deno Deploy (via Base44) | – |
 | Auth Admin | Base44 Auth (JWT) | – |
@@ -100,6 +100,7 @@ O banco é **NoSQL orientado a documentos** (sem schema rígido, sem FK formais)
 | `/Ramais` | `Ramais` | Admin | Gestão de ramais telefônicos |
 | `/Usuarios` | `Usuarios` | Admin | Gestão de usuários do sistema |
 | `/Avaliacoes_Equipamentos` | `Avaliacoes_Equipamentos` | Admin | Avaliações técnicas de equipamentos |
+| `/ProjetosTerceiros` | `ProjetosTerceiros` | Admin | Dashboard analítico de projetos terceiros |
 | `/Importar` | `Importar` | Admin | Importação de dados em massa |
 | `/Resumo` | `Resumo` | Admin | Relatório consolidado exportável |
 | `/portal-login` | `portal-login` | Público | Login do Portal do Colaborador |
@@ -444,7 +445,6 @@ A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, soma
 - E-mails são disparados por funções backend assíncronas (`.catch` para não bloquear o fluxo)
 - Chat tem polling automático a cada 2 segundos
 - O responsável é definido pelo `nome_exibicao` do usuário admin (campo `User.nome_exibicao`) com fallback para `full_name`
-- Chamados com `responsavel = "Kauan"` foram migrados em massa para `"adm.sp1"` (operação de abril/2026)
 
 ---
 
@@ -452,30 +452,27 @@ A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, soma
 **Arquivo:** `pages/Reservas.jsx`
 **Objetivo:** Gestão administrativa de reservas de equipamentos (notebooks/PCs).
 
-#### Regras de Negócio (Atualizadas)
-- **Reservas devem obrigatoriamente começar e terminar no mesmo dia.** Reservas entre dias diferentes não são permitidas para novos cadastros. Dados históricos (reservas antigas entre dias) são mantidos apenas em modo leitura.
-- O popup do calendário exibe cada reserva com data completa: se mesmo dia → `DD/MM/YYYY · HH:MM – HH:MM`; se dias diferentes (histórico) → linhas "De: DD/MM/YYYY às HH:MM" e "Até: DD/MM/YYYY às HH:MM".
+#### Abas
+- **Reservas Ativas** – Calendário mensal + lista filtrada por status
+- **Histórico Completo** – Tabela com busca e filtro por status
 
-#### Campos do Formulário
-| Campo | Tipo | Obrigatório |
-|-------|------|-------------|
-| Equipamento | Select (lista disponíveis) | Não |
-| Equipamento Tipo | Texto (preenchido auto) | Auto |
-| Solicitante Nome | Input texto | Não |
-| Solicitante Email | Input email | Não |
-| Solicitante Área | Input texto | Não |
-| Data Início | Input data | Não |
-| Hora Início | Input hora | Não |
-| Data Fim | Input data | Não |
-| Hora Fim | Input hora | Não |
-| Motivo | Textarea | Não |
-| Status | Select | Não | Pendente, Confirmada, Em Andamento, Concluída, Cancelada |
-| Observações | Textarea | Não |
+#### Calendário Admin (Mensal)
+- Grade de calendário mensal com navegação por mês (anterior/próximo)
+- Cada dia exibe até 2 reservas sobrepostas (nome do solicitante abreviado) com badge de status colorido
+- Clique em qualquer dia → modal com todas as reservas do dia
+- Modal do dia exibe: etiqueta do equipamento, nome do solicitante, modelo, datas/horários, badge de status
+- Formato de data no modal: mesmo dia → `DD/MM/YYYY · HH:MM – HH:MM`; dias diferentes → "De: / Até:"
 
-#### Visualizações
-- **Calendário** – Visão semanal/mensal das reservas
-- **Lista** – Tabela com todas as reservas e filtros
-- Modal de configuração de notebooks disponíveis para reserva pública
+#### Configuração de Notebooks para Reserva
+- Modal acessível pelo botão "Configurar Notebooks"
+- Lista todos os notebooks (Notebooks_Externos + PCs_Internos tipo Notebook)
+- Switch por linha para ativar/desativar `disponivel_para_reserva`
+- Contador de notebooks atualmente disponíveis
+
+#### Regras de Negócio
+- **Reservas devem obrigatoriamente começar e terminar no mesmo dia** (para novos cadastros). Dados históricos são mantidos em leitura.
+- Status atualizado automaticamente no carregamento: `Confirmada → Em Andamento → Concluída` com base em data/hora atual
+- Admin pode cancelar qualquer reserva não concluída/cancelada via botão "Cancelar" na tabela ou no modal de detalhes
 
 ---
 
@@ -780,7 +777,7 @@ Ao enviar: muda status para "Resolvido"
 #### Portal – Reservas (`/portal-reservas`)
 **Arquivo:** `pages/portal-reservas.jsx`
 
-**Equipamentos disponíveis:** Une notebooks externos (`disponivel_para_reserva = true`) e PCs internos (`disponivel_para_reserva = true`)
+**Equipamentos disponíveis:** Une notebooks externos (`disponivel_para_reserva = true`) e PCs internos tipo Notebook (`disponivel_para_reserva = true`)
 
 **Formulário de Reserva:**
 | Campo | Tipo | Obrigatório |
@@ -795,12 +792,19 @@ Ao enviar: muda status para "Resolvido"
 **Botões:**
 - "Confirmar Reserva" → verifica conflito → cria reserva
 - "Cancelar" (reserva ativa) → muda status para "Cancelada"
-- Slots livres no Calendário → pré-preenche data e hora no formulário
 
 **Abas:**
 - **Minhas Reservas** – Reservas ativas do colaborador (Pendente, Confirmada, Em Andamento)
 - **Histórico** – Reservas concluídas/canceladas
-- **Calendário** – Visão semanal de todas as reservas de todos os equipamentos disponíveis (seg–sex). Slots livres em verde (clicáveis), ocupados em vermelho com etiqueta + modelo + horário.
+- **Calendário** – Calendário **mensal** de todas as reservas de todos os equipamentos (idêntico ao do painel admin)
+
+**Calendário Portal (Mensal — idêntico ao Admin):**
+- Grade de calendário mensal com navegação por mês (anterior/próximo)
+- Cada dia exibe até 2 reservas com etiqueta do equipamento e badge de status colorido
+- Clique em qualquer dia → painel inline abaixo do calendário listando todas as reservas do dia
+- Painel do dia exibe: etiqueta (font-mono), nome do solicitante, modelo do equipamento, datas/horários, badge de status
+- Formato: mesmo dia → `DD/MM/YYYY · HH:MM – HH:MM`; dias diferentes → "De: / Até:"
+- O painel pode ser fechado clicando no botão X no cabeçalho
 
 **Regras de Negócio:**
 - **Reservas devem obrigatoriamente começar e terminar no mesmo dia.** Ao selecionar a data de início, a data de devolução é preenchida automaticamente com o mesmo valor (readonly). Se houver divergência, o submit é bloqueado com mensagem: *"As reservas devem ser feitas dentro do mesmo dia. Se você precisar do equipamento por mais de um dia, crie uma reserva separada para cada dia."*
@@ -808,7 +812,6 @@ Ao enviar: muda status para "Resolvido"
 - Não são permitidas reservas em finais de semana
 - Horário deve estar dentro do expediente: 07:42 às 17:30
 - **Card de notebook exibe todos os períodos ocupados na data selecionada**, não apenas a próxima disponibilidade. Se não houver reservas na data, exibe "Disponível o dia todo" em verde.
-- **Aba Calendário:** Calendário semanal com faixas contínuas proporcionais à duração de cada reserva (modelo estilo Google Calendar). Cada reserva aparece uma única vez ocupando sua faixa de horário. Clicar em área livre pré-preenche data e hora no formulário e destaca automaticamente quais notebooks estão disponíveis naquele horário.
 
 ---
 
@@ -955,9 +958,10 @@ Admin acessa módulo de equipamento
 ```
 Colaborador acessa /portal-reservas
     → [OPCIONAL] Acessa aba "Calendário"
-        → Vê grade semanal com todos os equipamentos
-        → Identifica slot livre (verde) no dia/hora desejado
-        → Clica no slot → formulário pré-preenchido com data e hora
+        → Vê grade mensal com todas as reservas de todos os equipamentos
+        → Clica em um dia → painel inline exibe reservas do dia selecionado
+        → Identifica dia/horário desejado
+        → Clica "Nova Reserva" para iniciar o formulário
     → [OU] Clica "Nova Reserva" diretamente
     → Seleciona equipamento (card)
         → Card exibe períodos ocupados na data selecionada
@@ -1499,6 +1503,8 @@ CREATE POLICY "solicitante_own" ON chamados
 | 15/04/2026 | 1.2.0 | Documentação | Atualização completa da documentação técnica refletindo todas as implementações e correções desde a v1.0.1 |
 | 15/04/2026 | 1.3.0 | Reservas + Portal | Módulo de Reservas: bloqueio de reservas entre dias (data_inicio deve ser igual a data_fim), exibição completa de períodos ocupados no card do notebook (todos os slots do dia selecionado), adição de aba "Calendário" com visão semanal geral no portal do colaborador, correção do popup do calendário admin para exibir datas completas (De/Até ou formato simplificado quando mesmo dia) |
 | 15/04/2026 | 1.4.0 | Portal Reservas | Redesenho do calendário semanal para modelo de faixas contínuas proporcionais (estilo Google Calendar); correção da exibição de períodos ocupados que ignorava reservas históricas com datas cruzadas (agora filtra apenas reservas onde data_inicio = data selecionada e hora_inicio < hora_fim); seleção de notebook após clique no calendário agora ordena disponíveis primeiro e exibe badge "Livre neste horário" / "Ocupado"; sugestão de hora_fim automática (+1:30h) ao clicar em slot livre |
+| 22/04/2026 | 1.5.0 | Portal Reservas | Substituição do calendário semanal (faixas) pelo calendário **mensal** idêntico ao do painel admin: grade mensal com navegação por mês, clique no dia exibe painel inline com detalhes de todas as reservas do dia (etiqueta, solicitante, equipamento, horários, status), botão X para fechar o painel. Comportamento e visual 100% consistentes entre admin e portal. |
+| 22/04/2026 | 1.5.0 | Documentação | Documentação completa atualizada: seção 4.11 (Reservas admin) detalhada com calendário mensal e modal do dia; seção 4.18 (Portal Reservas) revisada refletindo o novo calendário mensal e remoção do calendário semanal de faixas; fluxo 5.5 atualizado; versão bumped para 1.5.0. |
 
 ---
 
