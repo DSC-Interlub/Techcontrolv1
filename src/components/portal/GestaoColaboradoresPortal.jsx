@@ -169,12 +169,18 @@ export default function GestaoColaboradoresPortal() {
 
   const ativos = colaboradores.filter(c => c.status === "Ativo").length;
   const desligados = colaboradores.filter(c => c.status === "Desligado").length;
-  const bvPendentes = colaboradores.filter(c => c.status === "Ativo" && !c.comunicado_boas_vindas_enviado).length;
+  const total = colaboradores.length;
 
   return (
     <div className="space-y-4">
       {/* Métricas */}
       <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="pt-4 pb-4 text-center">
+            <p className="text-2xl font-bold text-indigo-600">{total}</p>
+            <p className="text-xs text-gray-500">Total</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-4 pb-4 text-center">
             <p className="text-2xl font-bold text-green-600">{ativos}</p>
@@ -185,12 +191,6 @@ export default function GestaoColaboradoresPortal() {
           <CardContent className="pt-4 pb-4 text-center">
             <p className="text-2xl font-bold text-red-600">{desligados}</p>
             <p className="text-xs text-gray-500">Desligados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-4 text-center">
-            <p className="text-2xl font-bold text-orange-500">{bvPendentes}</p>
-            <p className="text-xs text-gray-500">Boas-vindas pendentes</p>
           </CardContent>
         </Card>
       </div>

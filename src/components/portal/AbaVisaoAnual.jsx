@@ -2,9 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
-import { getMonth, getYear, differenceInYears } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { format } from "date-fns";
+import { getMonth, getYear } from "date-fns";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -16,7 +14,6 @@ const TIPO_COR = {
   tempo_empresa_1ano: "bg-yellow-100 text-yellow-800",
   tempo_empresa_5anos: "bg-yellow-100 text-yellow-900",
   tempo_empresa_10anos: "bg-amber-100 text-amber-900",
-  boas_vindas: "bg-green-100 text-green-800",
   despedida: "bg-gray-100 text-gray-700",
 };
 
@@ -27,7 +24,6 @@ const TIPO_LABEL_CURTO = {
   tempo_empresa_1ano: "🥇 1 Ano Emp.",
   tempo_empresa_5anos: "🏆 5 Anos Emp.",
   tempo_empresa_10anos: "🌟 10 Anos Emp.",
-  boas_vindas: "👋 Boas-Vindas",
   despedida: "💼 Despedida",
 };
 
@@ -64,32 +60,26 @@ function calcularEventosPorMes(colaboradores) {
       if (m >= 0) porMes[m].push({ colaborador: c, tipo: "aniversario_conjuge" });
     }
 
-    // Filhos completando 1 ano
+    // Filhos completando 1 ano neste ano (nasceram no ano passado)
     (c.filhos || []).forEach(f => {
       if (!f.filho_data_nascimento) return;
-      const anos = differenceInYears(new Date(), new Date(f.filho_data_nascimento + "T00:00:00"));
-      if (anos === 0) { // completa 1 ano neste ano
-        const m = mesNasce(f.filho_data_nascimento);
-        if (m >= 0) porMes[m].push({ colaborador: c, tipo: "aniversario_filho_1ano", extra: f.filho_nome });
+      const dt = new Date(f.filho_data_nascimento + "T00:00:00");
+      if (dt.getFullYear() === anoAtual - 1) {
+        // Completa 1 ano no mês de nascimento, neste ano
+        const m = getMonth(dt);
+        porMes[m].push({ colaborador: c, tipo: "aniversario_filho_1ano", extra: f.filho_nome });
       }
     });
 
     // Tempo de empresa (marcos neste ano)
     if (c.data_admissao) {
-      const anosEmpresa = differenceInYears(new Date(`${anoAtual}-12-31`), new Date(c.data_admissao + "T00:00:00"));
+      const dataAdm = new Date(c.data_admissao + "T00:00:00");
+      const anosEmpresa = anoAtual - dataAdm.getFullYear();
       if ([1, 2, 3, 5, 10, 15, 20].includes(anosEmpresa)) {
-        const m = mesNasce(c.data_admissao);
-        if (m >= 0) {
-          const tipo = anosEmpresa >= 10 ? "tempo_empresa_10anos" : anosEmpresa >= 5 ? "tempo_empresa_5anos" : "tempo_empresa_1ano";
-          porMes[m].push({ colaborador: c, tipo, extra: `${anosEmpresa} anos` });
-        }
+        const m = getMonth(dataAdm);
+        const tipo = anosEmpresa >= 10 ? "tempo_empresa_10anos" : anosEmpresa >= 5 ? "tempo_empresa_5anos" : "tempo_empresa_1ano";
+        porMes[m].push({ colaborador: c, tipo, extra: `${anosEmpresa} ano${anosEmpresa > 1 ? "s" : ""}` });
       }
-    }
-
-    // Boas-vindas pendentes (aparece no mês de admissão ou mês atual)
-    if (!c.comunicado_boas_vindas_enviado && c.status === "Ativo") {
-      const m = c.data_admissao ? mesNasce(c.data_admissao) : getMonth(new Date());
-      if (m >= 0) porMes[m].push({ colaborador: c, tipo: "boas_vindas" });
     }
   });
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
@@ -24,8 +24,17 @@ const staticNavItems = [
   { title: "Lista de Ramais", url: createPageUrl("portal-ramais"), icon: Phone },
 ];
 
-export default function PortalLayout({ children, colaborador, onLogout, permissoesComunicados }) {
+export default function PortalLayout({ children, colaborador, onLogout }) {
   const location = useLocation();
+  // Lê permissões diretamente do sessionStorage para garantir que qualquer página
+  // que use PortalLayout exiba o menu correto, sem depender de prop
+  const permissoesComunicados = React.useMemo(() => {
+    try {
+      const data = sessionStorage.getItem('portal_colaborador');
+      if (!data) return [];
+      return JSON.parse(data)?.permissoes_comunicados || [];
+    } catch { return []; }
+  }, []);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
   const [showTrocarSenha, setShowTrocarSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");

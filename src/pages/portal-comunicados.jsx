@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Pencil, Trash2, Upload, CheckCircle, Search, Users, Heart, Baby, Star, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, CheckCircle, Search, Users, Heart, Baby, Star, UserX, Loader2 } from "lucide-react";
 import { format, getMonth, getDate, getYear, differenceInYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -267,20 +267,12 @@ function AbaArtes({ colaboradores, currentColabName }) {
 // ─── Aba Visão Geral (mês corrente) ────────────────────────────────────────────
 function AbaVisaoMes({ permissoes, colaboradorLogadoId }) {
   const queryClient = useQueryClient();
-  const podeEnviarBV = permissoes.includes("enviar_boas_vindas");
   const podeEnviarDep = permissoes.includes("enviar_despedida");
 
   const { data: colaboradores = [] } = useQuery({ queryKey: ["portal_comu_colabs"], queryFn: () => base44.entities.Colaboradores.list() });
   const { data: artes = [] } = useQuery({ queryKey: ["portal_artes"], queryFn: () => base44.entities.Comunicados_Artes.list() });
 
   const [enviandoId, setEnviandoId] = useState(null);
-
-  const enviarBoasVindas = async (c) => {
-    setEnviandoId(c.id + "_bv");
-    await base44.functions.invoke('enviarBoasVindas', { colaborador_id: c.id });
-    queryClient.invalidateQueries({ queryKey: ["portal_comu_colabs"] });
-    setEnviandoId(null);
-  };
 
   const enviarDespedida = async (c) => {
     setEnviandoId(c.id + "_dep");
@@ -290,10 +282,23 @@ function AbaVisaoMes({ permissoes, colaboradorLogadoId }) {
   };
 
   const aniversariantesMes = useMemo(() => colaboradores.filter(c => c.status !== "Desligado" && mesNasce(c.data_nascimento) === mesAtual), [colaboradores]);
-  const tempoEmpresa = useMemo(() => colaboradores.filter(c => { if (!c.data_admissao || c.status === "Desligado") return false; if (mesNasce(c.data_admissao) !== mesAtual) return false; const anos = differenceInYears(hoje, new Date(c.data_admissao + "T00:00:00")); return [1, 2, 3, 5, 10, 15, 20].includes(anos); }).map(c => ({ ...c, anos: differenceInYears(hoje, new Date(c.data_admissao + "T00:00:00")) })), [colaboradores]);
+  const tempoEmpresa = useMemo(() => colaboradores.filter(c => {
+    if (!c.data_admissao || c.status === "Desligado") return false;
+    if (mesNasce(c.data_admissao) !== mesAtual) return false;
+    const anos = differenceInYears(hoje, new Date(c.data_admissao + "T00:00:00"));
+    return [1, 2, 3, 5, 10, 15, 20].includes(anos);
+  }).map(c => ({ ...c, anos: differenceInYears(hoje, new Date(c.data_admissao + "T00:00:00")) })), [colaboradores]);
   const conjugesMes = useMemo(() => colaboradores.filter(c => c.status !== "Desligado" && mesNasce(c.conjuge_data_nascimento) === mesAtual), [colaboradores]);
-  const filhos1Ano = useMemo(() => colaboradores.filter(c => { if (c.status === "Desligado") return false; return (c.filhos || []).some(f => { if (!f.filho_data_nascimento) return false; const anos = differenceInYears(hoje, new Date(f.filho_data_nascimento + "T00:00:00")); return anos === 1 && mesNasce(f.filho_data_nascimento) === mesAtual; }); }), [colaboradores]);
-  const boasVindasPendentes = useMemo(() => colaboradores.filter(c => c.status === "Ativo" && !c.comunicado_boas_vindas_enviado), [colaboradores]);
+  const filhos1Ano = useMemo(() => colaboradores.filter(c => {
+    if (c.status === "Desligado") return false;
+    return (c.filhos || []).some(f => {
+      if (!f.filho_data_nascimento) return false;
+      const dt = new Date(f.filho_data_nascimento + "T00:00:00");
+      // O filho completa 1 ano: nasceu no ano passado, no mesmo mês/dia
+      const anoNasc = dt.getFullYear();
+      return (anoNasc === anoAtual - 1) && getMonth(dt) === mesAtual;
+    });
+  }), [colaboradores]);
   const desligados = useMemo(() => colaboradores.filter(c => c.status === "Desligado" && !c.comunicado_despedida_enviado), [colaboradores]);
 
   const tipoTempoLabel = (anos) => { if (anos >= 20) return "🌟 20 Anos"; if (anos >= 15) return "🌟 15 Anos"; if (anos >= 10) return "🌟 10 Anos"; if (anos >= 5) return "🏆 5 Anos"; return "🥇 1 Ano"; };
@@ -347,7 +352,7 @@ function AbaVisaoMes({ permissoes, colaboradorLogadoId }) {
       <SecaoCard icon={Baby} titulo="Filhos que Completam 1 Ano este Mês" cor="text-purple-700">
         {filhos1Ano.length === 0 ? <p className="text-sm text-gray-400">Nenhum este mês.</p> : (
           <div className="space-y-2">{filhos1Ano.map(c => {
-            const filhosAniv = (c.filhos || []).filter(f => { if (!f.filho_data_nascimento) return false; const anos = differenceInYears(hoje, new Date(f.filho_data_nascimento + "T00:00:00")); return anos === 1 && mesNasce(f.filho_data_nascimento) === mesAtual; });
+            const filhosAniv = (c.filhos || []).filter(f => { if (!f.filho_data_nascimento) return false; const dt = new Date(f.filho_data_nascimento + "T00:00:00"); return dt.getFullYear() === anoAtual - 1 && getMonth(dt) === mesAtual; });
             return filhosAniv.map((f, i) => (
               <div key={`${c.id}-${i}`} className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-lg p-3">
                 <div className="flex-1"><p className="font-medium text-sm">{c.nome_completo}</p><p className="text-xs text-gray-500">Filho(a): <strong>{f.filho_nome || "—"}</strong></p></div>
@@ -358,24 +363,6 @@ function AbaVisaoMes({ permissoes, colaboradorLogadoId }) {
               </div>
             ));
           })}</div>
-        )}
-      </SecaoCard>
-
-      <SecaoCard icon={UserCheck} titulo="Boas-Vindas Pendentes" cor="text-green-700">
-        {boasVindasPendentes.length === 0 ? <p className="text-sm text-gray-400">Nenhuma pendente. ✅</p> : (
-          <div className="space-y-2">{boasVindasPendentes.map(c => (
-            <div key={c.id} className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-lg p-3">
-              <div className="flex-1"><p className="font-medium text-sm">{c.nome_completo}</p><p className="text-xs text-gray-500">{c.area} · Admissão: {c.data_admissao || "—"}</p></div>
-              <div className="flex items-center gap-2">
-                <ArteStatusBadge artes={artes} colaboradorId={c.id} tipo="boas_vindas" />
-                {podeEnviarBV && (
-                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => enviarBoasVindas(c)} disabled={enviandoId === c.id + "_bv"}>
-                    <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id + "_bv" ? "Enviando..." : "Enviar"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}</div>
         )}
       </SecaoCard>
 
@@ -406,6 +393,7 @@ export default function PortalComunicados() {
 
   useEffect(() => { if (!loading) requireAuth(); }, [loading]);
 
+  // Carregar todos os colaboradores (para AbaArtes que precisa da lista)
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["portal_comu_colabs_all"],
     queryFn: () => base44.entities.Colaboradores.list(),
@@ -416,9 +404,9 @@ export default function PortalComunicados() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
   }
 
-  // Ler permissões do banco (já atualizadas pelo usePortalAuth) e também da query
-  const colabCompleto = colaboradores.find(c => c.id === colaborador.id);
-  const permissoes = colabCompleto?.permissoes_comunicados || colaborador.permissoes_comunicados || [];
+  // Permissões lidas diretamente do colaborador da sessão (já atualizado pelo usePortalAuth)
+  // Sem depender da query de colaboradores para evitar race condition
+  const permissoes = colaborador.permissoes_comunicados || [];
 
   const podeVerVisao = permissoes.includes("ver_visao_geral");
   const podeCadastrarArtes = permissoes.includes("cadastrar_artes");
@@ -426,7 +414,7 @@ export default function PortalComunicados() {
 
   if (!podeVerVisao && !podeCadastrarArtes && !podeGerirColabs) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={permissoes}>
+      <PortalLayout colaborador={colaborador} onLogout={logout}>
         <div className="p-8 text-center text-gray-500">
           <p className="text-lg font-medium">Sem permissão de acesso</p>
           <p className="text-sm mt-1">Você não tem permissões de comunicados configuradas. Contate o administrador.</p>
@@ -438,14 +426,14 @@ export default function PortalComunicados() {
   const defaultTab = podeVerVisao ? "visao_mes" : podeCadastrarArtes ? "artes" : "colabs";
 
   return (
-    <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={permissoes}>
+    <PortalLayout colaborador={colaborador} onLogout={logout}>
       <div className="p-4 md:p-6 max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Comunicados</h1>
           <p className="text-sm text-gray-500 mt-1">Gestão de artes e eventos de comunicação interna</p>
         </div>
         <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="mb-6 flex-wrap gap-1">
+          <TabsList className="mb-6 flex-wrap gap-1 h-auto">
             {podeVerVisao && <TabsTrigger value="visao_mes">📅 Este Mês</TabsTrigger>}
             {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
             {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Artes</TabsTrigger>}
