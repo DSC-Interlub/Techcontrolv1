@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.6.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 1.7.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -111,6 +111,7 @@ O banco é **NoSQL orientado a documentos** (sem schema rígido, sem FK formais)
 | `/portal-sala` | `portal-sala` | Portal | Reservas da sala de treinamento |
 | `/portal-equipamentos` | `portal-equipamentos` | Portal | Equipamentos do colaborador |
 | `/portal-ramais` | `portal-ramais` | Portal | Lista de ramais (somente leitura) |
+| `/portal-comunicados` | `portal-comunicados` | Portal (permissão) | Módulo de comunicados para colaboradores autorizados |
 | `/chamado-publico` | `chamado-publico` | Público | Página pública para chamados externos |
 | `/acompanhar-chamado` | `acompanhar-chamado` | Público | Acompanhamento público de chamados |
 | `/reserva-publica` | `reserva-publica` | Público | Reserva pública de equipamentos |
@@ -132,7 +133,7 @@ O layout detecta rotas públicas por pathname e remove o sidebar admin, exibindo
 /chamado-publico | /reserva-publica | /reserva-sala-publica |
 /acompanhar-chamado | /portal-login | /portal-chamados |
 /portal-reservas | /portal-sala | /portal-equipamentos |
-/portal-ramais | /portal
+/portal-ramais | /portal | /portal-comunicados
 ```
 
 ---
@@ -753,14 +754,17 @@ Gerencia as imagens/artes visuais usadas nos e-mails de comunicado.
 
 #### Layout do Portal (`components/portal/PortalLayout.jsx`)
 **Sidebar com navegação:**
-| Item | Rota | Ícone |
-|------|------|-------|
-| Início | `/portal` | LayoutDashboard |
-| Meus Chamados | `/portal-chamados` | Headset |
-| Reservar Notebook | `/portal-reservas` | Calendar |
-| Sala de Treinamento | `/portal-sala` | Users |
-| Meus Equipamentos | `/portal-equipamentos` | Activity |
-| Lista de Ramais | `/portal-ramais` | Phone |
+| Item | Rota | Ícone | Condicional |
+|------|------|-------|-------------|
+| Início | `/portal` | LayoutDashboard | Sempre visível |
+| Meus Chamados | `/portal-chamados` | Headset | Sempre visível |
+| Reservar Notebook | `/portal-reservas` | Calendar | Sempre visível |
+| Sala de Treinamento | `/portal-sala` | Users | Sempre visível |
+| Meus Equipamentos | `/portal-equipamentos` | Activity | Sempre visível |
+| Lista de Ramais | `/portal-ramais` | Phone | Sempre visível |
+| Comunicados | `/portal-comunicados` | Megaphone | Apenas se `permissoes_comunicados.length > 0` |
+
+**Prop `permissoesComunicados`:** O `PortalLayout` recebe a prop `permissoesComunicados` (array de strings) e exibe o item "Comunicados" condicionalmente. Todas as páginas do portal passam `colaborador.permissoes_comunicados || []` para esta prop.
 
 **Rodapé do sidebar:**
 - Avatar com inicial do nome + nome completo + área
@@ -956,6 +960,32 @@ Ao enviar: muda status para "Resolvido"
 
 ---
 
+#### Portal – Comunicados (`/portal-comunicados`)
+**Arquivo:** `pages/portal-comunicados.jsx`
+**Acesso restrito:** Apenas colaboradores com pelo menos uma permissão em `permissoes_comunicados`.
+
+Espelha funcionalidades do módulo administrativo `/Comunicados`, com controle granular por permissão individual do colaborador (campo `permissoes_comunicados` na entidade `Colaboradores`).
+
+**Abas disponíveis (controladas por permissão):**
+
+| Aba | Permissão necessária | Conteúdo |
+|-----|---------------------|---------|
+| **📅 Visão Geral** | `ver_visao_geral` | Aniversariantes do mês, tempo de empresa, cônjuges, filhos 1 ano, boas-vindas e despedidas pendentes com badge de status de arte |
+| **🎨 Artes e Programação** | `cadastrar_artes` | CRUD completo de artes (upload, editar, excluir), filtro por tipo |
+
+**Botões condicionais na Visão Geral:**
+| Botão | Permissão |
+|-------|-----------|
+| Enviar Boas-Vindas | `enviar_boas_vindas` |
+| Enviar Despedida | `enviar_despedida` |
+
+**Comportamento:**
+- Se colaborador não tiver nenhuma permissão → exibe mensagem "Sem permissão de acesso"
+- A aba padrão é "Visão Geral" se `ver_visao_geral` estiver presente; caso contrário, "Artes e Programação"
+- Menu lateral do portal exibe o item "Comunicados" (ícone Megaphone) **apenas** se `permissoes_comunicados.length > 0`
+
+---
+
 ## 5. FLUXOS E JORNADAS
 
 ### 5.1 Fluxo Completo de Chamado
@@ -1148,6 +1178,7 @@ created_by   – string (email do criador)
 | telefone | string | |
 | data_admissao | date | |
 | status | enum: Ativo, Férias, Afastado, Desligado | default: Ativo |
+| permissoes_comunicados | array[enum] | Permissões para acessar `/portal-comunicados`. Valores: `ver_visao_geral`, `cadastrar_artes`, `enviar_boas_vindas`, `enviar_despedida`. Array vazio = sem acesso |
 | senha_portal | string | Texto plano ⚠️ |
 | senha_precisa_trocar | boolean | default: false |
 | acesso_portal_bloqueado | boolean | default: false |
@@ -1447,11 +1478,27 @@ Para roles `comunicados_gestao` e `comunicados_dp`, a página `/Colaboradores` e
 | Aspecto | Detalhe |
 |---------|---------|
 | Sistema de auth | Independente do admin – credenciais em `Colaboradores` |
-| Sessão | `sessionStorage['portal_colaborador']` – limpa ao fechar aba |
+| Sessão | `sessionStorage['portal_colaborador']` – limpa ao fechar aba. Inclui o campo `permissoes_comunicados` salvo no login |
 | Escopo de dados | Colaborador vê apenas seus próprios chamados (filtro por nome) e reservas |
 | Bloqueio | `acesso_portal_bloqueado = true` impede qualquer login |
 | Troca de senha forçada | `senha_precisa_trocar = true` → tela de nova senha antes de entrar |
 | Senhas | Armazenadas em texto plano ⚠️ (vulnerabilidade conhecida) |
+| Módulo Comunicados | Acesso condicional via `permissoes_comunicados`. Menu exibido apenas se houver ao menos 1 permissão. |
+
+### Permissões de Comunicados do Colaborador (Portal)
+
+Campo `permissoes_comunicados` na entidade `Colaboradores` – array de strings. Configurável **apenas por `admin`** na tela de edição do colaborador (`ColaboradorForm`, seção "Permissões de Comunicados no Portal").
+
+| Permissão | O que permite |
+|-----------|--------------|
+| `ver_visao_geral` | Ver aba "Visão Geral" em `/portal-comunicados` |
+| `cadastrar_artes` | Ver aba "Artes e Programação" e fazer upload/edição/exclusão de artes |
+| `enviar_boas_vindas` | Botão "Enviar" visível nas boas-vindas pendentes |
+| `enviar_despedida` | Botão "Enviar" visível nas despedidas pendentes |
+
+**Segurança backend:** As funções `enviarBoasVindas` e `enviarDespedida` verificam o header `x-portal-colaborador-id` quando chamadas do portal. Se presente, consultam o banco e retornam **403** caso a permissão correspondente (`enviar_boas_vindas` / `enviar_despedida`) não esteja no array do colaborador.
+
+**Badge visual:** Na listagem de colaboradores (`/Colaboradores`), colaboradores com `permissoes_comunicados.length > 0` exibem o badge "Acesso Comunicados" (índigo) ao lado do nome, nas tabelas de Internos e Externos.
 
 ### Páginas Públicas (sem qualquer autenticação)
 `/portal-login`, `/chamado-publico`, `/acompanhar-chamado`, `/reserva-publica`, `/reserva-sala-publica`
@@ -1730,6 +1777,14 @@ CREATE POLICY "solicitante_own" ON chamados
 | 22/04/2026 | 1.6.0 | Funções de Comunicados – Guard de arte ausente | Todas as funções agora verificam se `getArteAtiva()` retornou `null` **antes** de enviar. Se nulo: não envia, registra log padronizado e retorna resposta de sucesso com `msg`. Para `enviarAniversarioTempoEmpresa`, o guard é por colaborador (dentro do loop), pois cada marco pode usar uma arte diferente. |
 | 22/04/2026 | 1.6.0 | Funções de Comunicados – Assuntos padronizados | Assuntos dos e-mails atualizados: emojis movidos para o final, frases padronizadas conforme especificação (ex: "Boas-vindas, [NOME]! Seja muito bem-vindo(a)!", "Até logo, [NOME] — obrigado por tudo!"). |
 | 22/04/2026 | 1.6.0 | Documentação | Atualização completa: nova seção 4.17b (Comunicados), tabela de access por role, nova entidade `Comunicados_Artes` no banco (17 coleções), perfis de permissão expandidos, tabela de automações de comunicados, seção 10.2 (template minimalista de comunicados), funções backend documentadas com lógica interna, CHANGELOG atualizado. Versão bumped para 1.6.0. |
+| 22/04/2026 | 1.7.0 | Portal – Comunicados | Nova página `/portal-comunicados` com abas "Visão Geral" e "Artes e Programação" espelhando o módulo admin, com controle granular por permissões individuais do colaborador. |
+| 22/04/2026 | 1.7.0 | Colaboradores – Campo `permissoes_comunicados` | Novo campo array na entidade `Colaboradores` com 4 valores possíveis: `ver_visao_geral`, `cadastrar_artes`, `enviar_boas_vindas`, `enviar_despedida`. Configurável apenas por admins no `ColaboradorForm` via checkboxes. |
+| 22/04/2026 | 1.7.0 | ColaboradorForm – Seção permissões | Nova seção "Permissões de Comunicados no Portal" com 4 checkboxes, visível apenas para usuários com `role === 'admin'`. |
+| 22/04/2026 | 1.7.0 | Portal Login – Sessão | `permissoes_comunicados` agora é salvo no `sessionStorage` ao fazer login no portal (em ambos os fluxos: login normal e pós-troca de senha). |
+| 22/04/2026 | 1.7.0 | PortalLayout – Menu condicional | Item "Comunicados" (ícone Megaphone) adicionado ao sidebar do portal, exibido apenas quando `permissoesComunicados.length > 0`. Prop `permissoesComunicados` passada em todas as páginas do portal. |
+| 22/04/2026 | 1.7.0 | Colaboradores – Badge visual | Badge "Acesso Comunicados" (índigo) exibido nas tabelas de Internos e Externos quando colaborador possui pelo menos uma permissão no array `permissoes_comunicados`. |
+| 22/04/2026 | 1.7.0 | Segurança backend | `enviarBoasVindas` e `enviarDespedida` verificam header `x-portal-colaborador-id` e retornam 403 se o colaborador não tiver a permissão correspondente no banco de dados. |
+| 22/04/2026 | 1.7.0 | Documentação | Atualização completa: rota `/portal-comunicados` adicionada, seção "Portal – Comunicados" criada (4.18), campo `permissoes_comunicados` na entidade `Colaboradores`, permissões granulares do portal documentadas, `PortalLayout` atualizado com prop e item condicional, CHANGELOG atualizado. Versão bumped para 1.7.0. |
 
 ---
 
