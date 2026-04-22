@@ -11,12 +11,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { X, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 
-export default function ColaboradorForm({ colaborador, onClose }) {
-  const [formData, setFormData] = useState(colaborador || { senhas_sistemas: [], filhos: [], incluir_comunicados: true });
+const PERMISSOES_COMUNICADOS = [
+  { value: "ver_visao_geral", label: "Ver Visão Geral", desc: "Acesso à visão geral de aniversariantes, tempo de empresa e eventos pendentes" },
+  { value: "cadastrar_artes", label: "Cadastrar Artes", desc: "Pode fazer upload das artes de comunicado para cada colaborador" },
+  { value: "enviar_boas_vindas", label: "Enviar Boas-Vindas", desc: "Pode disparar manualmente o e-mail de boas-vindas" },
+  { value: "enviar_despedida", label: "Enviar Despedida", desc: "Pode confirmar saída e disparar o e-mail de despedida" },
+];
+
+export default function ColaboradorForm({ colaborador, onClose, currentUserRole }) {
+  const [formData, setFormData] = useState(colaborador || { senhas_sistemas: [], filhos: [], incluir_comunicados: true, permissoes_comunicados: [] });
   const [showSenhas, setShowSenhas] = useState({});
 
   useEffect(() => {
-    setFormData(colaborador || { senhas_sistemas: [], filhos: [], incluir_comunicados: true });
+    setFormData(colaborador || { senhas_sistemas: [], filhos: [], incluir_comunicados: true, permissoes_comunicados: [] });
     setShowSenhas({});
   }, [colaborador?.id]);
 
@@ -240,6 +247,32 @@ export default function ColaboradorForm({ colaborador, onClose }) {
                   </label>
                 </div>
               </div>
+
+              {/* Permissões de Comunicados no Portal — apenas admin */}
+              {currentUserRole === 'admin' && (
+                <div className="border-t pt-5">
+                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Permissões de Comunicados no Portal</h4>
+                  <p className="text-xs text-gray-500 mb-3">Define o que este colaborador pode acessar na seção "Comunicados" do portal dele.</p>
+                  <div className="space-y-3">
+                    {PERMISSOES_COMUNICADOS.map(p => {
+                      const checked = (formData.permissoes_comunicados || []).includes(p.value);
+                      const toggle = () => {
+                        const atual = formData.permissoes_comunicados || [];
+                        set('permissoes_comunicados', checked ? atual.filter(v => v !== p.value) : [...atual, p.value]);
+                      };
+                      return (
+                        <div key={p.value} className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                          <input type="checkbox" id={`perm_${p.value}`} checked={checked} onChange={toggle} className="w-4 h-4 mt-0.5 accent-indigo-600" />
+                          <label htmlFor={`perm_${p.value}`} className="cursor-pointer">
+                            <p className="text-sm font-medium text-indigo-900">{p.label}</p>
+                            <p className="text-xs text-indigo-700 mt-0.5">{p.desc}</p>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             {/* ── SEÇÃO 3: SENHAS E ACESSOS ── */}

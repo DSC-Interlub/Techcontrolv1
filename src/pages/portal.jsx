@@ -99,7 +99,7 @@ export default function Portal() {
   ];
 
   return (
-    <PortalLayout colaborador={colaborador} onLogout={logout}>
+    <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
       <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           <div className="mb-8">

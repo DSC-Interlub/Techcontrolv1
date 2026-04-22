@@ -44,11 +44,11 @@
     },
     "cargo": {
       "type": "string",
-      "description": "Cargo do colaborador (ex: Analista de TI, Gerente Comercial)"
+      "description": "Cargo do colaborador"
     },
     "local_trabalho": {
       "type": "string",
-      "description": "Local / Unidade de trabalho (ex: Matriz SP, Filial RJ)"
+      "description": "Local / Unidade de trabalho"
     },
     "data_nascimento": {
       "type": "string",
@@ -61,7 +61,7 @@
     },
     "resumo_experiencia": {
       "type": "string",
-      "description": "Resumo de experi\u00eancia profissional (at\u00e9 500 chars)"
+      "description": "Resumo de experi\u00eancia profissional"
     },
     "contato_responsavel_nome": {
       "type": "string",
@@ -105,6 +105,19 @@
       "default": true,
       "description": "Incluir nos comunicados autom\u00e1ticos"
     },
+    "permissoes_comunicados": {
+      "type": "array",
+      "description": "Permiss\u00f5es de acesso ao m\u00f3dulo Comunicados no portal do colaborador",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ver_visao_geral",
+          "cadastrar_artes",
+          "enviar_boas_vindas",
+          "enviar_despedida"
+        ]
+      }
+    },
     "comunicado_boas_vindas_enviado": {
       "type": "boolean",
       "default": false,
@@ -117,7 +130,7 @@
     },
     "comunicados_historico": {
       "type": "array",
-      "description": "Hist\u00f3rico de comunicados enviados para/sobre este colaborador",
+      "description": "Hist\u00f3rico de comunicados enviados",
       "items": {
         "type": "object",
         "properties": {

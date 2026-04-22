@@ -48,6 +48,17 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const { colaborador_id } = body;
 
+  // Verificar se chamada vem de colaborador do portal com permissão
+  // Se há header de colaborador portal, verificar permissão
+  const portalColabId = req.headers.get('x-portal-colaborador-id');
+  if (portalColabId) {
+    const callerColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
+    const caller = callerColabs.find(c => c.id === portalColabId);
+    if (!caller || !(caller.permissoes_comunicados || []).includes('enviar_boas_vindas')) {
+      return Response.json({ error: 'Permissão negada' }, { status: 403 });
+    }
+  }
+
   const todosAtivos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo', incluir_comunicados: true });
   const destinatarios = todosAtivos.map(c => c.email).filter(Boolean);
 

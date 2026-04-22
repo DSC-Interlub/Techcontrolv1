@@ -268,7 +268,7 @@ export default function PortalChamados() {
   // Tela de sucesso após abrir chamado
   if (view === "novo" && submitSuccess) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout}>
+      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
         <div className="p-8 max-w-md mx-auto text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -290,7 +290,7 @@ export default function PortalChamados() {
   // Tela de abertura de chamado
   if (view === "novo") {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout}>
+      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
         <div className="p-4 md:p-8">
           <div className="max-w-2xl mx-auto">
             <Button variant="outline" className="mb-6 gap-2" onClick={() => setView("lista")}>
@@ -539,7 +539,7 @@ export default function PortalChamados() {
   );
 
   return (
-    <PortalLayout colaborador={colaborador} onLogout={logout}>
+    <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
       <div className="p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

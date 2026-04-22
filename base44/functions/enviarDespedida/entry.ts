@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const { colaborador_id } = body;
 
+  // Verificar se chamada vem de colaborador do portal com permissão
+  const portalColabId = req.headers.get('x-portal-colaborador-id');
+  if (portalColabId) {
+    const callerColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
+    const caller = callerColabs.find(c => c.id === portalColabId);
+    if (!caller || !(caller.permissoes_comunicados || []).includes('enviar_despedida')) {
+      return Response.json({ error: 'Permissão negada' }, { status: 403 });
+    }
+  }
+
   if (!colaborador_id) {
     return Response.json({ error: 'colaborador_id é obrigatório' }, { status: 400 });
   }

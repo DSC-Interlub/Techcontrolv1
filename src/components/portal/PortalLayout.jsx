@@ -4,7 +4,7 @@ import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, Headset, Calendar, Users, Phone, Activity,
-  Settings, LogOut, Sun, Moon, KeyRound, X, Eye, EyeOff
+  Settings, LogOut, Sun, Moon, KeyRound, X, Eye, EyeOff, Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   SidebarHeader, SidebarFooter, SidebarProvider, SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-const navItems = [
+const staticNavItems = [
   { title: "Início", url: createPageUrl("portal"), icon: LayoutDashboard },
   { title: "Meus Chamados", url: createPageUrl("portal-chamados"), icon: Headset },
   { title: "Reservar Notebook", url: createPageUrl("portal-reservas"), icon: Calendar },
@@ -24,7 +24,7 @@ const navItems = [
   { title: "Lista de Ramais", url: createPageUrl("portal-ramais"), icon: Phone },
 ];
 
-export default function PortalLayout({ children, colaborador, onLogout }) {
+export default function PortalLayout({ children, colaborador, onLogout, permissoesComunicados }) {
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
   const [showTrocarSenha, setShowTrocarSenha] = useState(false);
@@ -116,7 +116,7 @@ export default function PortalLayout({ children, colaborador, onLogout }) {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {navItems.map((item) => (
+                  {staticNavItems.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
@@ -131,6 +131,22 @@ export default function PortalLayout({ children, colaborador, onLogout }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  {/* Comunicados — visível apenas se tiver permissão */}
+                  {permissoesComunicados && permissoesComunicados.length > 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        className={`hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200 rounded-lg mb-1 ${
+                          location.pathname.includes('portal-comunicados') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
+                        }`}
+                      >
+                        <Link to={createPageUrl("portal-comunicados")} className="flex items-center gap-3 px-3 py-2">
+                          <Megaphone className="w-4 h-4" />
+                          <span>Comunicados</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

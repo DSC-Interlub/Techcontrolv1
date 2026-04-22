@@ -93,6 +93,7 @@ export default function PortalLogin() {
         email: colaborador.email,
         area: colaborador.area,
         tipo_funcionario: colaborador.tipo_funcionario,
+        permissoes_comunicados: colaborador.permissoes_comunicados || [],
       }));
 
       window.location.href = createPageUrl("portal");
@@ -127,6 +128,7 @@ export default function PortalLogin() {
       email: colaboradorLogando.email,
       area: colaboradorLogando.area,
       tipo_funcionario: colaboradorLogando.tipo_funcionario,
+      permissoes_comunicados: colaboradorLogando.permissoes_comunicados || [],
     }));
 
     setSalvandoSenha(false);
