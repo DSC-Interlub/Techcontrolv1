@@ -20,7 +20,8 @@ import {
   Activity,
   Sun,
   Moon,
-  Building2
+  Building2,
+  Megaphone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,6 +122,11 @@ const managementItems = [
     title: "Projetos / Terceiros",
     url: createPageUrl("ProjetosTerceiros"),
     icon: Building2,
+  },
+  {
+    title: "Comunicados",
+    url: createPageUrl("Comunicados"),
+    icon: Megaphone,
   },
   {
     title: "Resumo",

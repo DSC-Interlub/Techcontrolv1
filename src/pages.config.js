@@ -76,6 +76,7 @@ import portal from './pages/portal';
 import reservaPublica from './pages/reserva-publica';
 import reservaSalaPublica from './pages/reserva-sala-publica';
 import salaTreinamento from './pages/sala-treinamento';
+import Comunicados from './pages/Comunicados';
 import __Layout from './Layout.jsx';
 
 
@@ -109,6 +110,7 @@ export const PAGES = {
     "reserva-publica": reservaPublica,
     "reserva-sala-publica": reservaSalaPublica,
     "sala-treinamento": salaTreinamento,
+    "Comunicados": Comunicados,
 }
 
 export const pagesConfig = {

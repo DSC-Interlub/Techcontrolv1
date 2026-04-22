@@ -1,0 +1,55 @@
+{
+  "name": "Comunicados_Artes",
+  "type": "object",
+  "properties": {
+    "tipo_comunicado": {
+      "type": "string",
+      "enum": [
+        "aniversario_colaborador",
+        "aniversario_conjuge",
+        "aniversario_filho_1ano",
+        "tempo_empresa_1ano",
+        "tempo_empresa_5anos",
+        "tempo_empresa_10anos",
+        "boas_vindas",
+        "despedida"
+      ],
+      "description": "Tipo do comunicado"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "Nome interno da arte (ex: Arte Anivers\u00e1rio Abril 2026)"
+    },
+    "imagem_url": {
+      "type": "string",
+      "description": "URL da imagem/arte enviada"
+    },
+    "ativa": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indica se esta arte est\u00e1 em uso para envios autom\u00e1ticos"
+    },
+    "data_inicio_vigencia": {
+      "type": "string",
+      "format": "date",
+      "description": "A partir de quando usar esta arte"
+    },
+    "data_fim_vigencia": {
+      "type": "string",
+      "format": "date",
+      "description": "At\u00e9 quando usar esta arte (opcional)"
+    },
+    "criado_por": {
+      "type": "string",
+      "description": "Quem cadastrou a arte"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es gerais"
+    }
+  },
+  "required": [
+    "tipo_comunicado",
+    "titulo"
+  ]
+}
