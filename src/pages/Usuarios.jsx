@@ -159,6 +159,22 @@ export default function Usuarios() {
     return matchesSearch && matchesRole;
   });
 
+  const ROLE_LABELS = {
+    admin: "Admin",
+    user: "Usuário",
+    comunicados_arte: "Comunicados — Arte",
+    comunicados_gestao: "Comunicados — Gestão",
+    comunicados_dp: "Comunicados — DP",
+  };
+
+  const getRoleBadgeClass = (role) => {
+    if (role === "admin") return "bg-blue-100 text-blue-800";
+    if (role === "comunicados_arte") return "bg-purple-100 text-purple-800";
+    if (role === "comunicados_gestao") return "bg-orange-100 text-orange-800";
+    if (role === "comunicados_dp") return "bg-pink-100 text-pink-800";
+    return "bg-gray-100 text-gray-800";
+  };
+
   // Estatísticas
   const stats = {
     total: usuarios.length,
@@ -268,6 +284,9 @@ export default function Usuarios() {
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="admin">Administradores</SelectItem>
                   <SelectItem value="user">Usuários</SelectItem>
+                  <SelectItem value="comunicados_arte">Comunicados — Arte</SelectItem>
+                  <SelectItem value="comunicados_gestao">Comunicados — Gestão</SelectItem>
+                  <SelectItem value="comunicados_dp">Comunicados — DP</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -304,21 +323,9 @@ export default function Usuarios() {
                         </TableCell>
                         <TableCell className="text-gray-600">{usuario.email}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={usuario.role === "admin" ? "default" : "secondary"}
-                            className={usuario.role === "admin" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}
-                          >
-                            {usuario.role === "admin" ? (
-                              <>
-                                <Shield className="w-3 h-3 mr-1" />
-                                Admin
-                              </>
-                            ) : (
-                              <>
-                                <User className="w-3 h-3 mr-1" />
-                                Usuário
-                              </>
-                            )}
+                          <Badge className={getRoleBadgeClass(usuario.role)}>
+                            {usuario.role === "admin" ? <Shield className="w-3 h-3 mr-1 inline" /> : <User className="w-3 h-3 mr-1 inline" />}
+                            {ROLE_LABELS[usuario.role] || usuario.role}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -370,8 +377,11 @@ export default function Usuarios() {
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Usuário</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="user">Usuário (TI)</SelectItem>
+                  <SelectItem value="admin">Administrador (TI)</SelectItem>
+                  <SelectItem value="comunicados_arte">Comunicados — Arte (Marketing)</SelectItem>
+                  <SelectItem value="comunicados_gestao">Comunicados — Gestão (DP/RH)</SelectItem>
+                  <SelectItem value="comunicados_dp">Comunicados — DP (envio boas-vindas/despedida)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -293,7 +293,7 @@ function SecaoCard({ icon: Icon, titulo, cor, children }) {
 }
 
 // ─── Aba Visão Geral ──────────────────────────────────────────────────────────
-function AbaVisaoGeral() {
+function AbaVisaoGeral({ podeEnviarMensagens = true }) {
   const queryClient = useQueryClient();
 
   const { data: colaboradores = [] } = useQuery({
@@ -473,9 +473,11 @@ function AbaVisaoGeral() {
                   <p className="font-medium text-sm text-gray-800">{c.nome_completo}</p>
                   <p className="text-xs text-gray-500">{c.area} · Admissão: {c.data_admissao || "—"}</p>
                 </div>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => enviarBoasVindas(c)} disabled={enviandoId === c.id}>
-                  <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Boas-Vindas"}
-                </Button>
+                {podeEnviarMensagens && (
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => enviarBoasVindas(c)} disabled={enviandoId === c.id}>
+                    <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Boas-Vindas"}
+                  </Button>
+                )}
               </div>
             ))}
           </div>}
@@ -492,9 +494,11 @@ function AbaVisaoGeral() {
                   <p className="font-medium text-sm text-gray-800">{c.nome_completo}</p>
                   <p className="text-xs text-gray-500">{c.area}</p>
                 </div>
-                <Button size="sm" variant="outline" className="text-gray-700" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
-                  <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Despedida"}
-                </Button>
+                {podeEnviarMensagens && (
+                  <Button size="sm" variant="outline" className="text-gray-700" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
+                    <CheckCircle className="w-3 h-3 mr-1" />{enviandoId === c.id ? "Enviando..." : "Enviar Despedida"}
+                  </Button>
+                )}
               </div>
             ))}
           </div>}
@@ -505,6 +509,19 @@ function AbaVisaoGeral() {
 
 // ─── Página Principal ──────────────────────────────────────────────────────────
 export default function Comunicados() {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  const role = currentUser?.role;
+  const podeVerArtes = !role || ['admin', 'comunicados_arte', 'comunicados_gestao', 'comunicados_dp'].includes(role);
+  const podeEnviarMensagens = !role || ['admin', 'comunicados_dp'].includes(role);
+
+  // Tab padrão: se só pode ver visão geral (comunicados_gestao sem artes), começa em visao
+  const defaultTab = role === 'comunicados_gestao' ? 'visao' : 'artes';
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -517,13 +534,13 @@ export default function Comunicados() {
         </div>
       </div>
 
-      <Tabs defaultValue="artes" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="artes">🎨 Artes e Programação</TabsTrigger>
+          {podeVerArtes && <TabsTrigger value="artes">🎨 Artes e Programação</TabsTrigger>}
           <TabsTrigger value="visao">📅 Visão Geral</TabsTrigger>
         </TabsList>
-        <TabsContent value="artes"><AbaArtes /></TabsContent>
-        <TabsContent value="visao"><AbaVisaoGeral /></TabsContent>
+        {podeVerArtes && <TabsContent value="artes"><AbaArtes /></TabsContent>}
+        <TabsContent value="visao"><AbaVisaoGeral podeEnviarMensagens={podeEnviarMensagens} /></TabsContent>
       </Tabs>
     </div>
   );

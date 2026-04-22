@@ -10,12 +10,21 @@ import { Input } from "@/components/ui/input";
 import ColaboradorDetalhes from "../components/colaboradores/ColaboradorDetalhes";
 import ColaboradorForm from "../components/colaboradores/ColaboradorForm";
 
+const COMUNICADOS_READONLY_ROLES = ['comunicados_gestao', 'comunicados_dp'];
+
 export default function Colaboradores() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingColaborador, setEditingColaborador] = useState(null);
   const [selectedColaborador, setSelectedColaborador] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [currentUser, setCurrentUser] = useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  const isReadonly = currentUser && COMUNICADOS_READONLY_ROLES.includes(currentUser.role);
 
   const queryClient = useQueryClient();
 
@@ -79,7 +88,8 @@ export default function Colaboradores() {
       <ColaboradorDetalhes
         colaborador={selectedColaborador}
         onClose={() => setSelectedColaborador(null)}
-        onEdit={(colaborador) => {
+        hideSenhas={isReadonly}
+        onEdit={isReadonly ? null : (colaborador) => {
           setEditingColaborador(colaborador);
           setSelectedColaborador(null);
           setShowForm(true);
@@ -106,10 +116,12 @@ export default function Colaboradores() {
               <Download className="w-4 h-4" />
               Exportar
             </Button>
-            <Button onClick={() => { setEditingColaborador(null); setShowForm(true); }} className="bg-indigo-600 hover:bg-indigo-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar
-            </Button>
+            {!isReadonly && (
+              <Button onClick={() => { setEditingColaborador(null); setShowForm(true); }} className="bg-indigo-600 hover:bg-indigo-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar
+              </Button>
+            )}
           </div>
         </div>
 
@@ -225,20 +237,24 @@ export default function Colaboradores() {
                                 <Button size="sm" variant="ghost" onClick={() => setSelectedColaborador(colaborador)}>
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
-                                      deleteMutation.mutate(colaborador.id);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
+                                {!isReadonly && (
+                                  <>
+                                    <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
+                                          deleteMutation.mutate(colaborador.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -302,20 +318,24 @@ export default function Colaboradores() {
                                 <Button size="sm" variant="ghost" onClick={() => setSelectedColaborador(colaborador)}>
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
-                                      deleteMutation.mutate(colaborador.id);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </Button>
+                                {!isReadonly && (
+                                  <>
+                                    <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => {
+                                        if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
+                                          deleteMutation.mutate(colaborador.id);
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-red-600" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

@@ -153,6 +153,9 @@ export default function Layout({ children }) {
     }
   }, [darkMode]);
 
+  const comunicadosRoles = ['comunicados_arte', 'comunicados_gestao', 'comunicados_dp'];
+  const isComunicadosRole = currentUser && comunicadosRoles.includes(currentUser.role);
+
   const isPublicPage = location.pathname.includes('/chamado-publico') || 
                        location.pathname.includes('/reserva-publica') ||
                        location.pathname.includes('/reserva-sala-publica') ||
@@ -248,55 +251,99 @@ export default function Layout({ children }) {
           </SidebarHeader>
           
           <SidebarContent className="p-2">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
-                Equipamentos
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigationItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className={`hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 rounded-lg mb-1 ${
-                          location.pathname === item.url ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium' : ''
+            {isComunicadosRole ? (
+              // ── Sidebar simplificado para perfis de Comunicados ──
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
+                  Comunicados
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        className={`hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200 rounded-lg mb-1 ${
+                          location.pathname.includes('/Comunicados') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
                         }`}
                       >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
-                          <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
+                        <Link to={createPageUrl("Comunicados")} className="flex items-center gap-3 px-3 py-2">
+                          <Megaphone className="w-4 h-4" />
+                          <span>Comunicados</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                    {['comunicados_gestao', 'comunicados_dp'].includes(currentUser?.role) && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          className={`hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200 rounded-lg mb-1 ${
+                            location.pathname.includes('/Colaboradores') ? 'bg-indigo-50 text-indigo-700 font-medium' : ''
+                          }`}
+                        >
+                          <Link to={createPageUrl("Colaboradores")} className="flex items-center gap-3 px-3 py-2">
+                            <Users className="w-4 h-4" />
+                            <span>Colaboradores</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : (
+              // ── Sidebar completo para admin / user ──
+              <>
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
+                    Equipamentos
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {navigationItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton 
+                            asChild 
+                            className={`hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 rounded-lg mb-1 ${
+                              location.pathname === item.url ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium' : ''
+                            }`}
+                          >
+                            <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2 mt-2">
-                Gestão
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {managementItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton 
-                        asChild 
-                        className={`hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200 rounded-lg mb-1 ${
-                          location.pathname === item.url ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 font-medium' : ''
-                        }`}
-                      >
-                        <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
-                          <item.icon className="w-4 h-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2 mt-2">
+                    Gestão
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {managementItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton 
+                            asChild 
+                            className={`hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200 rounded-lg mb-1 ${
+                              location.pathname === item.url ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 font-medium' : ''
+                            }`}
+                          >
+                            <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </SidebarContent>
 
           <SidebarFooter className="border-t border-border p-4">

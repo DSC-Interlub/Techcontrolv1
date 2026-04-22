@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowLeft, Pencil, Monitor, Laptop, Smartphone, Camera, Barcode, Pen, Phone, Headset, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
+export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hideSenhas = false }) {
   const [showSenhas, setShowSenhas] = useState({});
   const [copied, setCopied] = useState({});
 
@@ -116,22 +116,24 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
             Voltar
           </Button>
 
-          {/* Status de acesso portal */}
-          <div className={`mb-3 px-4 py-2 rounded-lg border text-sm flex items-center gap-2 ${
-            !colaborador.senha_portal ? 'bg-gray-50 border-gray-200 text-gray-600' :
-            colaborador.acesso_portal_bloqueado ? 'bg-red-50 border-red-200 text-red-700' :
-            'bg-green-50 border-green-200 text-green-700'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${
-              !colaborador.senha_portal ? 'bg-gray-400' :
-              colaborador.acesso_portal_bloqueado ? 'bg-red-500' : 'bg-green-500'
-            }`} />
-            Portal: {
-              !colaborador.senha_portal ? "Senha não configurada" :
-              colaborador.acesso_portal_bloqueado ? "Acesso bloqueado" :
-              "Acesso liberado"
-            }
-          </div>
+          {/* Status de acesso portal — oculto para roles de comunicados */}
+          {!hideSenhas && (
+            <div className={`mb-3 px-4 py-2 rounded-lg border text-sm flex items-center gap-2 ${
+              !colaborador.senha_portal ? 'bg-gray-50 border-gray-200 text-gray-600' :
+              colaborador.acesso_portal_bloqueado ? 'bg-red-50 border-red-200 text-red-700' :
+              'bg-green-50 border-green-200 text-green-700'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                !colaborador.senha_portal ? 'bg-gray-400' :
+                colaborador.acesso_portal_bloqueado ? 'bg-red-500' : 'bg-green-500'
+              }`} />
+              Portal: {
+                !colaborador.senha_portal ? "Senha não configurada" :
+                colaborador.acesso_portal_bloqueado ? "Acesso bloqueado" :
+                "Acesso liberado"
+              }
+            </div>
+          )}
           
           <Card>
             <CardHeader className="border-b">
@@ -164,10 +166,12 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
                     </div>
                   </div>
                 </div>
-                <Button onClick={() => onEdit(colaborador)} className="bg-indigo-600 hover:bg-indigo-700">
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
+                {onEdit && (
+                  <Button onClick={() => onEdit(colaborador)} className="bg-indigo-600 hover:bg-indigo-700">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Editar
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -195,9 +199,9 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit }) {
           </Card>
         </div>
 
-        <Tabs defaultValue="senhas" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="senhas">Senhas e Acessos</TabsTrigger>
+        <Tabs defaultValue={hideSenhas ? "equipamentos" : "senhas"} className="space-y-6">
+          <TabsList className={`grid w-full ${hideSenhas ? 'grid-cols-2' : 'grid-cols-3'}`}>
+            {!hideSenhas && <TabsTrigger value="senhas">Senhas e Acessos</TabsTrigger>}
             <TabsTrigger value="equipamentos">Equipamentos ({totalEquipamentos})</TabsTrigger>
             <TabsTrigger value="chamados">Chamados ({chamadosColaborador.length})</TabsTrigger>
           </TabsList>
