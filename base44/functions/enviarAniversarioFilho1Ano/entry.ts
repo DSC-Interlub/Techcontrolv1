@@ -4,11 +4,6 @@ import { Resend } from 'npm:resend@4.0.0';
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 const EMPRESA = 'sua empresa';
 
-async function getArteAtiva(base44, tipo_comunicado) {
-  const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({ tipo_comunicado, ativa: true });
-  return artes.length > 0 ? artes[0].imagem_url : null;
-}
-
 function buildComunicadoHtml(assunto, arteUrl) {
   return `<!DOCTYPE html>
 <html>
@@ -36,22 +31,14 @@ Deno.serve(async (req) => {
   const anoAtual = hoje.getFullYear();
 
   const todos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo' });
-
-  const arteUrl = await getArteAtiva(base44, TIPO);
-  if (!arteUrl) {
-    console.log(`E-mail de ${TIPO} não enviado em ${new Date().toISOString()} — nenhuma arte ativa cadastrada para este tipo.`);
-    return Response.json({ ok: true, msg: 'Nenhuma arte ativa cadastrada para este tipo.', enviados: [] });
-  }
-
   const enviados = [];
+  const semArte = [];
 
   for (const colab of todos) {
     const filhos1Ano = (colab.filhos || []).filter(f => {
       if (!f.filho_data_nascimento) return false;
       const d = new Date(f.filho_data_nascimento + 'T00:00:00');
-      const completaHoje = d.getDate() === hoje.getDate() && d.getMonth() === hoje.getMonth();
-      const completa1Ano = anoAtual - d.getFullYear() === 1;
-      return completaHoje && completa1Ano;
+      return d.getDate() === hoje.getDate() && d.getMonth() === hoje.getMonth() && (anoAtual - d.getFullYear()) === 1;
     });
 
     for (const filho of filhos1Ano) {
@@ -59,11 +46,31 @@ Deno.serve(async (req) => {
       const jaEnviou = (colab.comunicados_historico || []).some(h => h.tipo === tipoChave && h.ano === anoAtual);
       if (jaEnviou) continue;
 
+      // Buscar arte individual para este colaborador
+      const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+        colaborador_id: colab.id,
+        tipo_comunicado: TIPO,
+        ano_referencia: anoAtual,
+        status_envio: 'pendente',
+      });
+
+      if (!artes || artes.length === 0) {
+        console.log(`Arte não encontrada para ${colab.nome_completo} (filho: ${filho.filho_nome}) — tipo ${TIPO} — ano ${anoAtual}. E-mail não enviado.`);
+        semArte.push(`${colab.nome_completo} → ${filho.filho_nome}`);
+        continue;
+      }
+
+      const arte = artes[0];
       const assunto = `Feliz 1 Aninho, ${filho.filho_nome || 'bebê'}! 🎈`;
-      const html = buildComunicadoHtml(assunto, arteUrl);
+      const html = buildComunicadoHtml(assunto, arte.imagem_url);
 
       const dests = [colab.email, colab.conjuge_email, colab.contato_responsavel_email].filter(Boolean);
       await resend.emails.send({ from: 'Comunicados <comunicados@resend.dev>', to: dests, subject: assunto, html });
+
+      await base44.asServiceRole.entities.Comunicados_Artes.update(arte.id, {
+        status_envio: 'enviado',
+        data_envio: new Date().toISOString(),
+      });
 
       const novoHistorico = registrarHistorico(colab, tipoChave, dests, assunto);
       await base44.asServiceRole.entities.Colaboradores.update(colab.id, { comunicados_historico: novoHistorico });
@@ -71,5 +78,5 @@ Deno.serve(async (req) => {
     }
   }
 
-  return Response.json({ ok: true, enviados });
+  return Response.json({ ok: true, enviados, semArte });
 });

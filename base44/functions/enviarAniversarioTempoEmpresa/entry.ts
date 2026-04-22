@@ -5,11 +5,6 @@ const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 const EMPRESA = 'sua empresa';
 const MARCOS = [1, 2, 3, 5, 10, 15, 20];
 
-async function getArteAtiva(base44, tipo_comunicado) {
-  const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({ tipo_comunicado, ativa: true });
-  return artes.length > 0 ? artes[0].imagem_url : null;
-}
-
 function buildComunicadoHtml(assunto, arteUrl) {
   return `<!DOCTYPE html>
 <html>
@@ -35,6 +30,13 @@ function registrarHistorico(colaborador, tipo, destinatarios, assunto) {
   return [...historico, { tipo, data_envio: new Date().toISOString(), ano: new Date().getFullYear(), destinatarios, assunto }];
 }
 
+// Mapeia anos para o tipo de arte mais próximo disponível
+function tipoArteParaAnos(anos) {
+  if (anos >= 10) return 'tempo_empresa_10anos';
+  if (anos >= 5) return 'tempo_empresa_5anos';
+  return 'tempo_empresa_1ano';
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const hoje = new Date();
@@ -43,18 +45,8 @@ Deno.serve(async (req) => {
   const todos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo', incluir_comunicados: true });
   const destinatarios = todos.map(c => c.email).filter(Boolean);
 
-  // Buscar artes por marco
-  const arte1Ano  = await getArteAtiva(base44, 'tempo_empresa_1ano');
-  const arte5Anos = await getArteAtiva(base44, 'tempo_empresa_5anos');
-  const arte10Anos = await getArteAtiva(base44, 'tempo_empresa_10anos');
-
-  function escolherArte(anos) {
-    if (anos >= 10) return arte10Anos || arte5Anos || arte1Ano;
-    if (anos >= 5)  return arte5Anos || arte1Ano;
-    return arte1Ano;
-  }
-
   const enviados = [];
+  const semArte = [];
 
   for (const colab of todos) {
     if (!colab.data_admissao) continue;
@@ -68,21 +60,57 @@ Deno.serve(async (req) => {
     const TIPO = `tempo_empresa_${anosCompletos}anos`;
     if (jaEnviouEsteAno(colab, TIPO)) continue;
 
-    const arteUrl = escolherArte(anosCompletos);
-    if (!arteUrl) {
-      console.log(`E-mail de ${TIPO} não enviado em ${new Date().toISOString()} — nenhuma arte ativa cadastrada para este tipo.`);
+    // Tentar arte específica do colaborador, depois fallback para tipo mais próximo
+    const tiposParaTentar = [
+      tipoArteParaAnos(anosCompletos),
+      'tempo_empresa_5anos',
+      'tempo_empresa_1ano',
+    ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+    let arteEncontrada = null;
+    for (const tipoArte of tiposParaTentar) {
+      const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+        colaborador_id: colab.id,
+        tipo_comunicado: tipoArte,
+        ano_referencia: anoAtual,
+        status_envio: 'pendente',
+      });
+      if (artes && artes.length > 0) { arteEncontrada = artes[0]; break; }
+    }
+
+    // Se não achou personalizada, buscar genérica (colaborador_id vazio)
+    if (!arteEncontrada) {
+      for (const tipoArte of tiposParaTentar) {
+        const artesGen = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+          colaborador_id: '',
+          tipo_comunicado: tipoArte,
+          ano_referencia: anoAtual,
+          status_envio: 'pendente',
+        });
+        if (artesGen && artesGen.length > 0) { arteEncontrada = artesGen[0]; break; }
+      }
+    }
+
+    if (!arteEncontrada) {
+      console.log(`Arte não encontrada para ${colab.nome_completo} — tipo ${TIPO} — ano ${anoAtual}. E-mail não enviado.`);
+      semArte.push(`${colab.nome_completo} (${anosCompletos} anos)`);
       continue;
     }
 
     const assunto = `${colab.nome_completo} está completando ${anosCompletos} ano${anosCompletos > 1 ? 's' : ''} conosco!`;
-    const html = buildComunicadoHtml(assunto, arteUrl);
+    const html = buildComunicadoHtml(assunto, arteEncontrada.imagem_url);
 
     await resend.emails.send({ from: 'Comunicados <comunicados@resend.dev>', to: destinatarios, subject: assunto, html });
+
+    await base44.asServiceRole.entities.Comunicados_Artes.update(arteEncontrada.id, {
+      status_envio: 'enviado',
+      data_envio: new Date().toISOString(),
+    });
 
     const novoHistorico = registrarHistorico(colab, TIPO, destinatarios, assunto);
     await base44.asServiceRole.entities.Colaboradores.update(colab.id, { comunicados_historico: novoHistorico });
     enviados.push(`${colab.nome_completo} (${anosCompletos} anos)`);
   }
 
-  return Response.json({ ok: true, enviados });
+  return Response.json({ ok: true, enviados, semArte });
 });

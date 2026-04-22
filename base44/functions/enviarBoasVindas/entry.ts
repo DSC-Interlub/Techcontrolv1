@@ -4,11 +4,6 @@ import { Resend } from 'npm:resend@4.0.0';
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 const EMPRESA = 'sua empresa';
 
-async function getArteAtiva(base44, tipo_comunicado) {
-  const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({ tipo_comunicado, ativa: true });
-  return artes.length > 0 ? artes[0].imagem_url : null;
-}
-
 function buildComunicadoHtml(assunto, arteUrl) {
   return `<!DOCTYPE html>
 <html>
@@ -24,9 +19,31 @@ function buildComunicadoHtml(assunto, arteUrl) {
 </html>`;
 }
 
+async function buscarArte(base44, colaboradorId, anoAtual) {
+  const TIPO = 'boas_vindas';
+  // 1. Arte personalizada para o colaborador
+  if (colaboradorId) {
+    const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+      colaborador_id: colaboradorId,
+      tipo_comunicado: TIPO,
+      ano_referencia: anoAtual,
+      status_envio: 'pendente',
+    });
+    if (artes && artes.length > 0) return artes[0];
+  }
+  // 2. Arte genérica (colaborador_id vazio)
+  const artesGen = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+    colaborador_id: '',
+    tipo_comunicado: TIPO,
+    status_envio: 'pendente',
+  });
+  return artesGen && artesGen.length > 0 ? artesGen[0] : null;
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const TIPO = 'boas_vindas';
+  const anoAtual = new Date().getFullYear();
 
   const body = await req.json().catch(() => ({}));
   const { colaborador_id } = body;
@@ -36,28 +53,41 @@ Deno.serve(async (req) => {
 
   let alvos = [];
   if (colaborador_id) {
-    const colab = await base44.asServiceRole.entities.Colaboradores.get('Colaboradores', colaborador_id);
+    const colabs = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo' });
+    const colab = colabs.find(c => c.id === colaborador_id);
     if (colab) alvos = [colab];
   } else {
     alvos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo', comunicado_boas_vindas_enviado: false });
   }
 
-  const arteUrl = await getArteAtiva(base44, TIPO);
-  if (!arteUrl) {
-    console.log(`E-mail de ${TIPO} não enviado em ${new Date().toISOString()} — nenhuma arte ativa cadastrada para este tipo.`);
-    return Response.json({ ok: true, msg: 'Nenhuma arte ativa cadastrada para este tipo.', enviados: [] });
-  }
-
   const enviados = [];
+  const semArte = [];
 
   for (const colab of alvos) {
+    const arte = await buscarArte(base44, colab.id, anoAtual);
+
+    if (!arte) {
+      console.log(`Arte não encontrada para ${colab.nome_completo} — tipo ${TIPO} — ano ${anoAtual}. E-mail não enviado.`);
+      semArte.push(colab.nome_completo);
+      continue;
+    }
+
     const assunto = `Boas-vindas, ${colab.nome_completo}! Seja muito bem-vindo(a)!`;
-    const html = buildComunicadoHtml(assunto, arteUrl);
+    const html = buildComunicadoHtml(assunto, arte.imagem_url);
 
     await resend.emails.send({ from: 'Comunicados <comunicados@resend.dev>', to: destinatarios, subject: assunto, html });
+
+    // Marcar arte como enviada apenas se for personalizada (genérica pode ser reutilizada)
+    if (arte.colaborador_id) {
+      await base44.asServiceRole.entities.Comunicados_Artes.update(arte.id, {
+        status_envio: 'enviado',
+        data_envio: new Date().toISOString(),
+      });
+    }
+
     await base44.asServiceRole.entities.Colaboradores.update(colab.id, { comunicado_boas_vindas_enviado: true });
     enviados.push(colab.nome_completo);
   }
 
-  return Response.json({ ok: true, enviados });
+  return Response.json({ ok: true, enviados, semArte });
 });
