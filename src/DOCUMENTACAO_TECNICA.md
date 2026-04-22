@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.7.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 1.8.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -764,7 +764,7 @@ Gerencia as imagens/artes visuais usadas nos e-mails de comunicado.
 | Lista de Ramais | `/portal-ramais` | Phone | Sempre visível |
 | Comunicados | `/portal-comunicados` | Megaphone | Apenas se `permissoes_comunicados.length > 0` |
 
-**Prop `permissoesComunicados`:** O `PortalLayout` recebe a prop `permissoesComunicados` (array de strings) e exibe o item "Comunicados" condicionalmente. Todas as páginas do portal passam `colaborador.permissoes_comunicados || []` para esta prop.
+**Menu Comunicados (condicional):** O `PortalLayout` lê as permissões diretamente do `sessionStorage` internamente (sem depender de prop externa) e exibe o item "Comunicados" condicionalmente quando `permissoes_comunicados.length > 0`. Isso garante que o item persista ao navegar entre páginas do portal sem necessidade de prop passada por cada página.
 
 **Rodapé do sidebar:**
 - Avatar com inicial do nome + nome completo + área
@@ -970,19 +970,21 @@ Espelha funcionalidades do módulo administrativo `/Comunicados`, com controle g
 
 | Aba | Permissão necessária | Conteúdo |
 |-----|---------------------|---------|
-| **📅 Visão Geral** | `ver_visao_geral` | Aniversariantes do mês, tempo de empresa, cônjuges, filhos 1 ano, boas-vindas e despedidas pendentes com badge de status de arte |
-| **🎨 Artes e Programação** | `cadastrar_artes` | CRUD completo de artes (upload, editar, excluir), filtro por tipo |
+| **📅 Este Mês** | `ver_visao_geral` | Aniversariantes do mês, tempo de empresa, cônjuges, filhos 1 ano e despedidas pendentes com badge de status de arte |
+| **📆 Planejamento Anual** | `ver_visao_geral` | Visão anual mês a mês de todos os eventos (aniversários, cônjuges, filhos, tempo de empresa, despedidas) com acordeão por mês |
+| **🎨 Artes** | `cadastrar_artes` | CRUD completo de artes (upload, editar, excluir), filtro por tipo |
+| **👥 Colaboradores** | `gerir_colaboradores` | Gestão de status de colaboradores diretamente pelo portal, sem acesso ao painel admin |
 
-**Botões condicionais na Visão Geral:**
+**Botão condicional na Visão Geral:**
 | Botão | Permissão |
 |-------|-----------|
-| Enviar Boas-Vindas | `enviar_boas_vindas` |
 | Enviar Despedida | `enviar_despedida` |
 
 **Comportamento:**
 - Se colaborador não tiver nenhuma permissão → exibe mensagem "Sem permissão de acesso"
-- A aba padrão é "Visão Geral" se `ver_visao_geral` estiver presente; caso contrário, "Artes e Programação"
+- A aba padrão é "Este Mês" se `ver_visao_geral` estiver presente; depois "Artes" se `cadastrar_artes`; por último "Colaboradores" se `gerir_colaboradores`
 - Menu lateral do portal exibe o item "Comunicados" (ícone Megaphone) **apenas** se `permissoes_comunicados.length > 0`
+- Permissões são lidas diretamente do `colaborador` da sessão (já sincronizado com o banco pelo `usePortalAuth`), evitando race conditions com queries paralelas
 
 ---
 
@@ -1491,10 +1493,11 @@ Campo `permissoes_comunicados` na entidade `Colaboradores` – array de strings.
 
 | Permissão | O que permite |
 |-----------|--------------|
-| `ver_visao_geral` | Ver aba "Visão Geral" em `/portal-comunicados` |
-| `cadastrar_artes` | Ver aba "Artes e Programação" e fazer upload/edição/exclusão de artes |
-| `enviar_boas_vindas` | Botão "Enviar" visível nas boas-vindas pendentes |
+| `ver_visao_geral` | Ver abas "Este Mês" e "Planejamento Anual" em `/portal-comunicados` |
+| `cadastrar_artes` | Ver aba "Artes" e fazer upload/edição/exclusão de artes |
+| `enviar_boas_vindas` | (reservado para uso futuro — botão de boas-vindas foi removido do portal) |
 | `enviar_despedida` | Botão "Enviar" visível nas despedidas pendentes |
+| `gerir_colaboradores` | Ver aba "Colaboradores" e gerenciar status/desligamento de colaboradores diretamente pelo portal |
 
 **Segurança backend:** As funções `enviarBoasVindas` e `enviarDespedida` verificam o header `x-portal-colaborador-id` quando chamadas do portal. Se presente, consultam o banco e retornam **403** caso a permissão correspondente (`enviar_boas_vindas` / `enviar_despedida`) não esteja no array do colaborador.
 
@@ -1785,6 +1788,15 @@ CREATE POLICY "solicitante_own" ON chamados
 | 22/04/2026 | 1.7.0 | Colaboradores – Badge visual | Badge "Acesso Comunicados" (índigo) exibido nas tabelas de Internos e Externos quando colaborador possui pelo menos uma permissão no array `permissoes_comunicados`. |
 | 22/04/2026 | 1.7.0 | Segurança backend | `enviarBoasVindas` e `enviarDespedida` verificam header `x-portal-colaborador-id` e retornam 403 se o colaborador não tiver a permissão correspondente no banco de dados. |
 | 22/04/2026 | 1.7.0 | Documentação | Atualização completa: rota `/portal-comunicados` adicionada, seção "Portal – Comunicados" criada (4.18), campo `permissoes_comunicados` na entidade `Colaboradores`, permissões granulares do portal documentadas, `PortalLayout` atualizado com prop e item condicional, CHANGELOG atualizado. Versão bumped para 1.7.0. |
+| 22/04/2026 | 1.8.0 | Portal Comunicados – Remoção de Boas-Vindas | Seção "Boas-Vindas Pendentes" removida da aba "Este Mês" e do "Planejamento Anual". O fluxo de boas-vindas permanece apenas no painel admin (`/Comunicados`). Permissão `enviar_boas_vindas` mantida no schema como reserva para uso futuro. |
+| 22/04/2026 | 1.8.0 | Portal Comunicados – Abas renomeadas | "Visão Geral" → "Este Mês" (📅); nova aba "Planejamento Anual" (📆) criada com componente `AbaVisaoAnual`; "Artes e Programação" → "Artes" (🎨); nova aba "Colaboradores" (👥) via componente `GestaoColaboradoresPortal` controlada pela permissão `gerir_colaboradores`. |
+| 22/04/2026 | 1.8.0 | AbaVisaoAnual – Componente novo | Componente `components/portal/AbaVisaoAnual.jsx` implementa visão anual por mês (acordeão). Exibe: aniversários de colaboradores, cônjuges, filhos completando 1 ano (nascidos no ano anterior), marcos de tempo de empresa e desligamentos com despedida pendente. Badge de status de arte associado a cada evento. |
+| 22/04/2026 | 1.8.0 | AbaVisaoAnual – Correção lógica filhos 1 ano | Lógica corrigida: filhos completando 1 ano são aqueles nascidos no ano `anoAtual - 1` (não baseado em `differenceInYears`, que retornava 0 antes do aniversário). Mesma correção aplicada na aba "Este Mês". |
+| 22/04/2026 | 1.8.0 | GestaoColaboradoresPortal – Componente novo | Componente `components/portal/GestaoColaboradoresPortal.jsx` permite que colaboradores com permissão `gerir_colaboradores` gerenciem o status de colaboradores (incluindo desligamentos) diretamente pelo portal, sem acesso ao painel admin. Métricas: Total, Ativos, Desligados. |
+| 22/04/2026 | 1.8.0 | PortalLayout – Remoção de prop `permissoesComunicados` | O `PortalLayout` passou a ler as permissões diretamente do `sessionStorage` internamente, eliminando a necessidade de prop externa. Correção de bug onde o menu "Comunicados" sumia ao navegar entre páginas do portal. |
+| 22/04/2026 | 1.8.0 | usePortalAuth – Sincronização em tempo real | Hook refatorado para buscar dados e permissões do colaborador diretamente no banco de dados a cada carregamento de página, atualizando o `sessionStorage` com dados frescos. Elimina inconsistências de permissão por dados desatualizados na sessão. |
+| 22/04/2026 | 1.8.0 | Portal Comunicados – Race condition corrigida | Permissões lidas diretamente do objeto `colaborador` da sessão (já sincronizado pelo `usePortalAuth`) antes de qualquer query de dados, eliminando race condition onde a página exibia "sem permissão" até a query de colaboradores terminar. |
+| 22/04/2026 | 1.8.0 | Documentação | Atualização completa: abas do portal comunicados revisadas, nova permissão `gerir_colaboradores` documentada, `PortalLayout` sem prop externa, correções de lógica de filhos 1 ano documentadas, componentes novos descritos. Versão bumped para 1.8.0. |
 
 ---
 
