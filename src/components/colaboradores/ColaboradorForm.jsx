@@ -37,7 +37,11 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Colaboradores.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['colaboradores'] }); onClose(); },
+    onSuccess: (result, { data }) => {
+      console.log('[ColaboradorForm] Salvo com sucesso. permissoes_comunicados:', data.permissoes_comunicados);
+      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+      onClose();
+    },
   });
 
   const handleSubmit = (e) => {

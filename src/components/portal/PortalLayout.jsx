@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
+import { usePortalColaborador } from "./usePortalColaborador";
 import {
   LayoutDashboard, Headset, Calendar, Users, Phone, Activity,
   Settings, LogOut, Sun, Moon, KeyRound, X, Eye, EyeOff, Megaphone
@@ -24,17 +25,13 @@ const staticNavItems = [
   { title: "Lista de Ramais", url: createPageUrl("portal-ramais"), icon: Phone },
 ];
 
-export default function PortalLayout({ children, colaborador, onLogout }) {
+export default function PortalLayout({ children, colaborador: colaboradorProp, onLogout }) {
   const location = useLocation();
-  // Lê permissões diretamente do sessionStorage para garantir que qualquer página
-  // que use PortalLayout exiba o menu correto, sem depender de prop
-  const permissoesComunicados = React.useMemo(() => {
-    try {
-      const data = sessionStorage.getItem('portal_colaborador');
-      if (!data) return [];
-      return JSON.parse(data)?.permissoes_comunicados || [];
-    } catch { return []; }
-  }, []);
+  // Usa o hook centralizado que retorna dados do sessionStorage imediatamente
+  // (staleTime 5min no React Query — sem rebuscar a cada troca de rota)
+  const { colaborador: colaboradorHook, temAcessoComunicados } = usePortalColaborador();
+  // Usa dados da prop se disponível (compatibilidade), senão usa o hook
+  const colaborador = colaboradorProp || colaboradorHook;
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
   const [showTrocarSenha, setShowTrocarSenha] = useState(false);
   const [senhaAtual, setSenhaAtual] = useState("");
@@ -44,7 +41,7 @@ export default function PortalLayout({ children, colaborador, onLogout }) {
   const [mensagem, setMensagem] = useState(null);
   const [salvando, setSalvando] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('techcontrol_theme', 'dark');
@@ -140,8 +137,8 @@ export default function PortalLayout({ children, colaborador, onLogout }) {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
-                  {/* Comunicados — visível apenas se tiver permissão */}
-                  {permissoesComunicados && permissoesComunicados.length > 0 && (
+                  {/* Comunicados — visível apenas se tiver permissão (usa hook com cache, sem piscar) */}
+                  {temAcessoComunicados && (
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         asChild

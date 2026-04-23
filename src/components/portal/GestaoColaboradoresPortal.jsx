@@ -4,11 +4,12 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, UserX, Search, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, UserX, Search, Loader2, AlertTriangle, Pencil } from "lucide-react";
 
 const STATUS_COR = {
   Ativo: "bg-green-100 text-green-800",
@@ -93,6 +94,112 @@ function FormNovoColaborador({ onClose }) {
   );
 }
 
+// ── Formulário simplificado de edição (sem campos de TI/senhas) ──────────────
+function FormEditarColaborador({ colaborador, onClose }) {
+  const [form, setForm] = useState({
+    nome_completo: colaborador.nome_completo || "",
+    email: colaborador.email || "",
+    area: colaborador.area || "",
+    cargo: colaborador.cargo || "",
+    telefone: colaborador.telefone || "",
+    tipo_funcionario: colaborador.tipo_funcionario || "Interno",
+    local_trabalho: colaborador.local_trabalho || "",
+    data_admissao: colaborador.data_admissao || "",
+    data_nascimento: colaborador.data_nascimento || "",
+    status: colaborador.status || "Ativo",
+    observacoes: colaborador.observacoes || "",
+  });
+  const queryClient = useQueryClient();
+
+  const updateMut = useMutation({
+    mutationFn: (d) => base44.entities.Colaboradores.update(colaborador.id, d),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portal_gestao_colabs"] });
+      queryClient.invalidateQueries({ queryKey: ["portal_comu_colabs"] });
+      onClose();
+    },
+  });
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.nome_completo.trim() || !form.area.trim()) return alert("Nome e Área são obrigatórios.");
+    updateMut.mutate(form);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <Label>Nome Completo *</Label>
+          <Input value={form.nome_completo} onChange={e => set("nome_completo", e.target.value)} className="mt-1" required />
+        </div>
+        <div>
+          <Label>E-mail</Label>
+          <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Área / Departamento *</Label>
+          <Input value={form.area} onChange={e => set("area", e.target.value)} className="mt-1" required />
+        </div>
+        <div>
+          <Label>Cargo</Label>
+          <Input value={form.cargo} onChange={e => set("cargo", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Telefone / Ramal</Label>
+          <Input value={form.telefone} onChange={e => set("telefone", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Tipo</Label>
+          <Select value={form.tipo_funcionario} onValueChange={v => set("tipo_funcionario", v)}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Interno">Interno</SelectItem>
+              <SelectItem value="Externo">Externo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Local / Unidade</Label>
+          <Input value={form.local_trabalho} onChange={e => set("local_trabalho", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Data de Admissão</Label>
+          <Input type="date" value={form.data_admissao} onChange={e => set("data_admissao", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Data de Nascimento</Label>
+          <Input type="date" value={form.data_nascimento} onChange={e => set("data_nascimento", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Status</Label>
+          <Select value={form.status} onValueChange={v => set("status", v)}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Ativo">Ativo</SelectItem>
+              <SelectItem value="Férias">Férias</SelectItem>
+              <SelectItem value="Afastado">Afastado</SelectItem>
+              <SelectItem value="Desligado">Desligado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="md:col-span-2">
+          <Label>Observações</Label>
+          <Textarea value={form.observacoes} onChange={e => set("observacoes", e.target.value)} rows={2} className="mt-1" />
+        </div>
+      </div>
+      <div className="flex justify-end gap-3 pt-2 border-t">
+        <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={updateMut.isPending}>
+          {updateMut.isPending ? "Salvando..." : "Salvar Alterações"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function ConfirmarDesligamento({ colaborador, onClose }) {
   const [confirmNome, setConfirmNome] = useState("");
   const queryClient = useQueryClient();
@@ -150,6 +257,7 @@ export default function GestaoColaboradoresPortal() {
   const [filtroStatus, setFiltroStatus] = useState("Ativo");
   const [showNovo, setShowNovo] = useState(false);
   const [desligando, setDesligando] = useState(null);
+  const [editando, setEditando] = useState(null);
 
   const { data: colaboradores = [], isLoading } = useQuery({
     queryKey: ["portal_gestao_colabs"],
@@ -257,11 +365,16 @@ export default function GestaoColaboradoresPortal() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{c.data_admissao || "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    {c.status !== "Desligado" && (
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7" onClick={() => setDesligando(c)}>
-                        <UserX className="w-3 h-3 mr-1" />Desligar
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs h-7" onClick={() => setEditando(c)}>
+                        <Pencil className="w-3 h-3 mr-1" />Editar
                       </Button>
-                    )}
+                      {c.status !== "Desligado" && (
+                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7" onClick={() => setDesligando(c)}>
+                          <UserX className="w-3 h-3 mr-1" />Desligar
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -283,6 +396,14 @@ export default function GestaoColaboradoresPortal() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Confirmar Desligamento</DialogTitle></DialogHeader>
           {desligando && <ConfirmarDesligamento colaborador={desligando} onClose={() => setDesligando(null)} />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Colaborador */}
+      <Dialog open={!!editando} onOpenChange={v => !v && setEditando(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar Colaborador</DialogTitle></DialogHeader>
+          {editando && <FormEditarColaborador colaborador={editando} onClose={() => setEditando(null)} />}
         </DialogContent>
       </Dialog>
     </div>
