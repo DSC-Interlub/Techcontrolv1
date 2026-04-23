@@ -1,97 +1,89 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { Resend } from 'npm:resend@4.0.0';
+import { Resend } from 'npm:resend@2.0.0';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-const EMPRESA = 'sua empresa';
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-function buildComunicadoHtml(assunto, arteUrl) {
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#ffffff;">
-  <div style="max-width:640px;margin:0 auto;background:#ffffff;">
-    <img src="${arteUrl}" alt="${assunto}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" />
-    <div style="padding:12px 0;text-align:center;">
-      <p style="margin:0;font-family:sans-serif;font-size:11px;color:#9ca3af;">© 2026 ${EMPRESA} · Todos os direitos reservados</p>
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-async function buscarArte(base44, colaboradorId, anoAtual) {
-  const TIPO = 'despedida';
-  // 1. Arte personalizada para o colaborador
-  if (colaboradorId) {
-    const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({
-      colaborador_id: colaboradorId,
-      tipo_comunicado: TIPO,
-      ano_referencia: anoAtual,
-      status_envio: 'pendente',
-    });
-    if (artes && artes.length > 0) return artes[0];
-  }
-  // 2. Arte genérica
-  const artesGen = await base44.asServiceRole.entities.Comunicados_Artes.filter({
-    colaborador_id: '',
-    tipo_comunicado: TIPO,
-    status_envio: 'pendente',
-  });
-  return artesGen && artesGen.length > 0 ? artesGen[0] : null;
+function buildComunicadoHtml(arteUrl) {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff;">
+<div style="max-width:640px;margin:0 auto;background:#ffffff;">
+<img src="${arteUrl}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" />
+<div style="padding:12px 0;text-align:center;">
+<p style="margin:0;font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} · Todos os direitos reservados</p>
+</div></div></body></html>`;
 }
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-  const TIPO = 'despedida';
-  const anoAtual = new Date().getFullYear();
 
-  const body = await req.json().catch(() => ({}));
-  const { colaborador_id } = body;
+  // Verificar permissão: admin, user, comunicados_dp ou colaborador com permissão
+  let user = null;
+  const portalColabId = req.headers.get("x-portal-colaborador-id");
 
-  // Verificar se chamada vem de colaborador do portal com permissão
-  const portalColabId = req.headers.get('x-portal-colaborador-id');
   if (portalColabId) {
-    const callerColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
-    const caller = callerColabs.find(c => c.id === portalColabId);
-    if (!caller || !(caller.permissoes_comunicados || []).includes('enviar_despedida')) {
-      return Response.json({ error: 'Permissão negada' }, { status: 403 });
+    const colabChamador = await base44.asServiceRole.entities.Colaboradores.filter({ id: portalColabId });
+    const c = colabChamador[0];
+    if (!c || !(c.permissoes_comunicados || []).includes("enviar_despedida")) {
+      return Response.json({ error: "Sem permissão" }, { status: 403 });
+    }
+  } else {
+    try { user = await base44.auth.me(); } catch (_) {}
+    if (user && !["admin", "user", "comunicados_dp"].includes(user.role)) {
+      return Response.json({ error: "Sem permissão" }, { status: 403 });
     }
   }
 
+  let body = {};
+  try { body = await req.json(); } catch (_) {}
+  const { colaborador_id } = body;
+
   if (!colaborador_id) {
-    return Response.json({ error: 'colaborador_id é obrigatório' }, { status: 400 });
+    return Response.json({ error: "colaborador_id é obrigatório" }, { status: 400 });
   }
 
-  const colabs = await base44.asServiceRole.entities.Colaboradores.filter({});
-  const colab = colabs.find(c => c.id === colaborador_id);
-  if (!colab) {
-    return Response.json({ error: 'Colaborador não encontrado' }, { status: 404 });
+  const colaboradores = await base44.asServiceRole.entities.Colaboradores.filter({ id: colaborador_id });
+  const colaborador = colaboradores[0];
+  if (!colaborador) {
+    return Response.json({ error: "Colaborador não encontrado" }, { status: 404 });
   }
 
-  const arte = await buscarArte(base44, colaborador_id, anoAtual);
+  // Buscar arte de despedida para este colaborador (status = arte_carregada)
+  const demandas = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+    colaborador_id,
+    tipo_comunicado: "despedida",
+    status_arte: "arte_carregada",
+  });
 
-  if (!arte) {
-    console.log(`Arte não encontrada para ${colab.nome_completo} — tipo ${TIPO} — ano ${anoAtual}. E-mail não enviado.`);
-    return Response.json({ ok: false, msg: `Arte não encontrada para ${colab.nome_completo}. Cadastre a arte antes de enviar.` });
+  if (demandas.length === 0) {
+    return Response.json({
+      ok: false,
+      msg: "Nenhuma arte de despedida carregada para este colaborador. Carregue a arte antes de enviar.",
+    }, { status: 400 });
   }
 
-  const todosAtivos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo', incluir_comunicados: true });
-  const destinatarios = todosAtivos.map(c => c.email).filter(Boolean);
+  const demanda = demandas[0];
 
-  const assunto = `Até logo, ${colab.nome_completo} — obrigado por tudo!`;
-  const html = buildComunicadoHtml(assunto, arte.imagem_url);
+  // Buscar destinatários (todos os colaboradores ativos)
+  const todosColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
+  const destinatarios = todosColabs
+    .filter(c => c.status !== "Desligado" && c.email && c.incluir_comunicados)
+    .map(c => c.email);
 
-  await resend.emails.send({ from: 'Comunicados <comunicados@resend.dev>', to: destinatarios, subject: assunto, html });
+  const assunto = `Até logo, ${colaborador.nome_completo} — obrigado por tudo! 💼`;
+  const html = buildComunicadoHtml(demanda.imagem_url);
 
-  // Marcar arte como enviada se for personalizada
-  if (arte.colaborador_id) {
-    await base44.asServiceRole.entities.Comunicados_Artes.update(arte.id, {
-      status_envio: 'enviado',
-      data_envio: new Date().toISOString(),
-    });
+  for (const email of destinatarios) {
+    await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
   }
 
-  await base44.asServiceRole.entities.Colaboradores.update(colab.id, { comunicado_despedida_enviado: true });
+  // Atualizar demanda e colaborador
+  await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
+    status_arte: "enviado",
+    data_envio: new Date().toISOString(),
+  });
+  await base44.asServiceRole.entities.Colaboradores.update(colaborador_id, {
+    comunicado_despedida_enviado: true,
+  });
 
-  return Response.json({ ok: true, enviado: colab.nome_completo });
+  console.log(`[enviarDespedida] Enviado para ${colaborador.nome_completo} (${destinatarios.length} dest.).`);
+  return Response.json({ ok: true, enviados: destinatarios.length });
 });

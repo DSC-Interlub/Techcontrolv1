@@ -627,98 +627,119 @@ A função `calcularMinutosUteis()` percorre dia a dia entre início e fim, soma
 ---
 
 ### 4.17b Comunicados (`/Comunicados`)
+> **Versão do módulo:** 2.0 — modelo de demandas individuais com upload vinculado
+
+
 **Arquivo:** `pages/Comunicados.jsx`
-**Objetivo:** Módulo de gestão de comunicados internos automatizados (aniversários, tempo de empresa, boas-vindas, despedida). Controla as artes visuais cadastradas e monitora os eventos de colaboradores.
+**Objetivo:** Módulo de gestão de comunicados internos. Opera no modelo de **demandas individuais** geradas automaticamente pelo sistema — cada colaborador com evento no mês ganha uma demanda; a responsável pelas artes faz o upload dentro de cada demanda; na data do evento, a automação verifica se há arte e envia.
 
 #### Abas (visibilidade por role)
 
 | Aba | Visível para |
 |-----|-------------|
-| **Visão Geral** | `admin`, `user`, `comunicados_gestao`, `comunicados_dp` |
-| **Artes e Programação** | `admin`, `user`, `comunicados_arte` |
-
-> `comunicados_arte` vê **apenas** a aba "Artes e Programação". `comunicados_gestao` e `comunicados_dp` veem **apenas** a aba "Visão Geral".
-
----
-
-#### Aba: Visão Geral
-
-Exibe cards agrupados por tipo de comunicado, mostrando os próximos eventos dos colaboradores:
-
-| Card | Fonte | Regra de exibição |
-|------|-------|-------------------|
-| 🎂 Aniversários Colaboradores | `data_nascimento` | Próximos 30 dias |
-| 💑 Aniversários Cônjuges | `conjuge_data_nascimento` | Próximos 30 dias |
-| 🎈 1 Aninho – Filhos | `filhos[].filho_data_nascimento` | Crianças que completam 1 ano nos próximos 30 dias |
-| 🏆 Tempo de Empresa | `data_admissao` | Marco de anos (1, 2, 3, 5, 10, 15, 20) nos próximos 30 dias |
-| 👋 Boas-Vindas Pendentes | `comunicado_boas_vindas_enviado = false` | Ativos, `incluir_comunicados = true` |
-| 💼 Despedidas Pendentes | `comunicado_despedida_enviado = false` | Status "Desligado" |
-
-**Botões na Visão Geral (controle por role):**
-
-| Botão | Visível para | Ação |
-|-------|-------------|------|
-| 👋 Enviar Boas-Vindas | `admin`, `user`, `comunicados_dp` | Dispara `enviarBoasVindas` para aquele colaborador específico |
-| 💼 Enviar Despedida | `admin`, `user`, `comunicados_dp` | Dispara `enviarDespedida` para aquele colaborador específico |
+| **🎨 Artes e Demandas** | `admin`, `user`, `comunicados_arte`, `comunicados_gestao`, `comunicados_dp` |
+| **📅 Este Mês** | `admin`, `user`, `comunicados_gestao`, `comunicados_dp` |
+| **📆 Planejamento Anual** | `admin`, `user`, `comunicados_gestao`, `comunicados_dp` |
 
 ---
 
-#### Aba: Artes e Programação
+#### Componentes compartilhados (admin + portal)
 
-Gerencia as imagens/artes visuais usadas nos e-mails de comunicado.
+| Componente | Arquivo | Uso |
+|------------|---------|-----|
+| `ListaDemandas` | `components/comunicados/ListaDemandas.jsx` | Aba Artes/Demandas em `/Comunicados` e `/portal-comunicados` |
+| `VisaoEventos` | `components/comunicados/VisaoEventos.jsx` | Abas "Este Mês" e "Planejamento Anual" em ambos os portais |
 
-**Tipos de comunicado gerenciáveis:**
-
-| Tipo (enum) | Descrição |
-|-------------|-----------|
-| `aniversario_colaborador` | Arte de aniversário do colaborador |
-| `aniversario_conjuge` | Arte de aniversário do cônjuge |
-| `aniversario_filho_1ano` | Arte de 1 aninho do filho |
-| `tempo_empresa_1ano` | Arte de 1 ano de empresa |
-| `tempo_empresa_5anos` | Arte de 5 anos de empresa |
-| `tempo_empresa_10anos` | Arte de 10 anos de empresa |
-| `boas_vindas` | Arte de boas-vindas |
-| `despedida` | Arte de despedida |
-
-**Campos de cada arte:**
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| titulo | string | Nome interno (ex: "Arte Aniversário Abril 2026") |
-| tipo_comunicado | enum | Tipo do comunicado (lista acima) |
-| imagem_url | string | URL da imagem/arte após upload |
-| ativa | boolean | Se esta arte está em uso (default: false) |
-| data_inicio_vigencia | date | A partir de quando usar |
-| data_fim_vigencia | date | Até quando usar (opcional) |
-| criado_por | string | Quem cadastrou |
-| observacoes | string | Observações gerais |
-
-**Regra de arte ativa:** Apenas **uma** arte pode estar ativa por tipo de comunicado. Ao ativar uma, as demais do mesmo tipo são automaticamente desativadas.
-
-**Botões e Ações:**
-
-| Botão | Ação |
-|-------|------|
-| + Nova Arte | Abre formulário de cadastro |
-| Upload de Imagem | Envia imagem via `UploadFile` e preenche `imagem_url` |
-| Ativar | Define `ativa = true` para esta arte (desativa as outras do mesmo tipo) |
-| ✏️ Editar | Abre formulário preenchido |
-| 🗑️ Excluir | Remove arte com confirmação |
+Ambos leem e escrevem na mesma entidade `Comunicados_Artes`, garantindo **sincronização total** entre painel admin e portal do colaborador.
 
 ---
 
-#### Entidade: `Comunicados_Artes`
+#### Aba: 🎨 Artes e Demandas (`ListaDemandas`)
 
-| Campo | Tipo | Obrigatório |
-|-------|------|-------------|
-| tipo_comunicado | enum | ✅ Sim |
-| titulo | string | ✅ Sim |
-| imagem_url | string | Não (preenchido via upload) |
-| ativa | boolean | default: false |
-| data_inicio_vigencia | date | Não |
-| data_fim_vigencia | date | Não |
-| criado_por | string | Não |
-| observacoes | string | Não |
+Interface de demandas por mês com upload de arte vinculado à demanda.
+
+**Banner de alerta:** Se houver demandas com `status_arte = "sem_arte"` e `data_evento` nos próximos 7 dias, exibe banner vermelho com nomes dos colaboradores afetados.
+
+**Navegação de mês:** Botões ◀ ▶ para navegar entre meses. Stats do mês: Total / Sem arte / Arte pronta / Enviado.
+
+**Botão "Gerar Demandas do Mês":** Dispara a função `gerarDemandasComunicados` para o mês visualizado. Exibe feedback com quantidade criada.
+
+**Filtros:** Por status (Todos / Sem arte / Arte pronta / Enviado) e por tipo.
+
+**Item de demanda exibe:**
+- Foto + nome + tipo do evento + badge de subtipo (anos de empresa, nome do filho)
+- Descrição textual gerada automaticamente + data do evento + dias restantes
+- Status badge colorido
+- Se `status_arte = "sem_arte"`: botão **Carregar Arte** → upload → atualiza `imagem_url` e `status_arte = "arte_carregada"`
+- Se `status_arte = "arte_carregada"`: thumbnail + botão Substituir + botão Remover
+- Se `status_arte = "enviado"`: thumbnail + data de envio
+
+---
+
+#### Aba: 📅 Este Mês / 📆 Planejamento Anual (`VisaoEventos`)
+
+Visão de eventos por mês com badge de status de arte baseado nas demandas reais da entidade.
+
+**Cards do mês atual:** Aniversariantes / Tempo de empresa / Cônjuges / Filhos 1 ano / Desligamentos.  
+**Visão anual:** Acordeão mês a mês com contagem de eventos e alertas de "sem arte".
+
+---
+
+#### Entidade: `Comunicados_Artes` (v2.0)
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `colaborador_id` | string | Não (exceto despedida) | ID do colaborador |
+| `colaborador_nome` | string | — | Preenchido automaticamente |
+| `tipo_comunicado` | enum | ✅ | `aniversario_colaborador`, `aniversario_conjuge`, `aniversario_filho_1ano`, `tempo_empresa`, `despedida` |
+| `data_evento` | date | — | Data do envio automático (YYYY-MM-DD) |
+| `descricao_evento` | string | — | Texto descritivo gerado automaticamente |
+| `imagem_url` | string | — | URL da arte após upload (vazio = sem arte) |
+| `status_arte` | enum | — | `sem_arte` (padrão), `arte_carregada`, `enviado`, `erro_envio` |
+| `criado_por` | string | — | Preenchido automaticamente |
+| `observacoes` | string | — | Campo livre |
+| `ano_referencia` | number | — | Ano do evento |
+| `anos_empresa` | number | — | Anos de empresa (só para `tempo_empresa`) |
+| `filho_nome` | string | — | Nome do filho (só para `aniversario_filho_1ano`) |
+| `data_envio` | datetime | — | Timestamp do envio bem-sucedido |
+
+---
+
+#### Geração automática de demandas
+
+**Função:** `gerarDemandasComunicados`  
+**Trigger:** Automação agendada (cron `0 9 1 * *` = dia 1 de cada mês às 06:00 BRT) + botão manual nos dois portais.
+
+**Lógica:**
+1. Busca colaboradores com `status ≠ Desligado` e `incluir_comunicados = true`
+2. Para cada colaborador, detecta eventos no mês alvo (próximo mês por padrão; mês atual se `mes_atual: true`)
+3. Verifica duplicatas por `(colaborador_id, tipo_comunicado, data_evento)` — nunca duplica
+4. Cria registros com `status_arte = "sem_arte"`
+5. Retorna resumo: `{ criadas, ja_existiam, total_colaboradores, mes_gerado }`
+
+**Marcos detectados para `tempo_empresa`:** 1, 2, 3, 5, 10, 15, 20 anos.
+
+---
+
+#### Fluxo completo de uma demanda
+
+```
+[Dia 1 do mês] automação dispara gerarDemandasComunicados
+    → cria demandas com status_arte = "sem_arte"
+
+[Responsável de artes] acessa /Comunicados → aba "Artes e Demandas"
+    → vê lista de demandas do mês com badge "⚠️ Sem arte"
+    → clica "Carregar Arte" em cada demanda
+    → upload via UploadFile → status_arte = "arte_carregada"
+
+[Data do evento] automação diária dispara (ex: enviarAniversariosColaboradores)
+    → busca demandas: tipo + data_evento = hoje + status_arte = "arte_carregada"
+    → se encontrar: envia e-mail, marca status_arte = "enviado"
+    → se não encontrar: loga alerta, NÃO envia
+
+[Portais] admin e colaborador veem status sincronizado em tempo real
+    → banner de alerta para demandas urgentes sem arte
+```
 
 ---
 
@@ -1520,7 +1541,8 @@ Campo `permissoes_comunicados` na entidade `Colaboradores` – array de strings.
 | Envio de 1 Aninho – Filhos | Scheduled | Diário (manhã) | `enviarAniversarioFilho1Ano` | Detecta filhos completando 1 ano hoje e envia e-mail |
 | Envio de Tempo de Empresa | Scheduled | Diário (manhã) | `enviarAniversarioTempoEmpresa` | Detecta marcos de tempo de empresa (1, 2, 3, 5, 10, 15, 20 anos) e envia e-mail |
 | Envio de Boas-Vindas (automático) | Scheduled / Manual | Diário ou chamada manual | `enviarBoasVindas` | Envia para colaboradores com `comunicado_boas_vindas_enviado = false`; pode ser disparado manualmente com `colaborador_id` no body |
-| Envio de Despedida (manual) | Manual | Chamada manual pelo painel | `enviarDespedida` | Exige `colaborador_id` no body; envia e-mail de despedida para todos os ativos |
+| Envio de Despedida (manual) | Manual | Chamada manual pelo painel | `enviarDespedida` | Exige `colaborador_id` no body; busca arte com `status_arte = "arte_carregada"` — retorna 400 se não houver arte |
+| Gerar Demandas de Comunicados | Scheduled (mensal) | Cron `0 9 1 * *` + chamada manual | `gerarDemandasComunicados` | Gera demandas de artes para o próximo mês (ou mês atual se `mes_atual: true`). Anti-duplicata por `(colaborador_id, tipo, data_evento)` |
 
 ---
 
@@ -1797,6 +1819,13 @@ CREATE POLICY "solicitante_own" ON chamados
 | 22/04/2026 | 1.8.0 | usePortalAuth – Sincronização em tempo real | Hook refatorado para buscar dados e permissões do colaborador diretamente no banco de dados a cada carregamento de página, atualizando o `sessionStorage` com dados frescos. Elimina inconsistências de permissão por dados desatualizados na sessão. |
 | 22/04/2026 | 1.8.0 | Portal Comunicados – Race condition corrigida | Permissões lidas diretamente do objeto `colaborador` da sessão (já sincronizado pelo `usePortalAuth`) antes de qualquer query de dados, eliminando race condition onde a página exibia "sem permissão" até a query de colaboradores terminar. |
 | 22/04/2026 | 1.8.0 | Documentação | Atualização completa: abas do portal comunicados revisadas, nova permissão `gerir_colaboradores` documentada, `PortalLayout` sem prop externa, correções de lógica de filhos 1 ano documentadas, componentes novos descritos. Versão bumped para 1.8.0. |
+| 23/04/2026 | 2.0.0 | Comunicados — Reestruturação completa | Substituição do modelo de "arte genérica por tipo com campo ativa" pelo modelo de **demandas individuais** vinculadas a cada colaborador/evento. Entidade `Comunicados_Artes` reformulada: removidos `ativa`, `data_inicio_vigencia`, `data_fim_vigencia`, `titulo`; adicionados `data_evento`, `descricao_evento`, `status_arte` (enum: sem_arte/arte_carregada/enviado/erro_envio), `anos_empresa`, `filho_nome`, `data_envio`. Tipo `tempo_empresa` unificado (era 3 tipos separados). |
+| 23/04/2026 | 2.0.0 | Comunicados — `gerarDemandasComunicados` | Nova função backend que gera demandas automaticamente para o mês seguinte. Anti-duplicata por `(colaborador_id, tipo_comunicado, data_evento)`. Automação agendada mensal (cron `0 9 1 * *`). Botão manual disponível em ambos os portais. |
+| 23/04/2026 | 2.0.0 | Comunicados — Componentes compartilhados | Criados `components/comunicados/ListaDemandas.jsx` e `components/comunicados/VisaoEventos.jsx` — usados em `/Comunicados` (admin) e `/portal-comunicados` (portal), lendo e escrevendo na mesma entidade, garantindo sincronização total. |
+| 23/04/2026 | 2.0.0 | Comunicados — Funções de envio refatoradas | `enviarAniversariosColaboradores`, `enviarAniversarioConjuge`, `enviarAniversarioFilho1Ano`, `enviarAniversarioTempoEmpresa`, `enviarDespedida` atualizadas para buscar demandas com `status_arte = "arte_carregada"` e `data_evento = hoje`. Se arte carregada: envia e marca `enviado`. Se não: loga e não envia. |
+| 23/04/2026 | 2.0.0 | Comunicados — Banner de alerta urgente | `ListaDemandas` exibe banner vermelho quando há demandas `sem_arte` com `data_evento` nos próximos 7 dias, visível em ambos os portais. |
+| 23/04/2026 | 2.0.0 | Comunicados — Queries padronizadas | Todas as queries de comunicados usam `queryKey: ["comunicados_artes"]` e `queryKey: ["colaboradores"]` para invalidação centralizada e cache compartilhado entre componentes. |
+| 23/04/2026 | 2.0.0 | Documentação | Seção 4.17b completamente reescrita documentando o novo modelo v2.0. Tabela de automações atualizada com `gerarDemandasComunicados`. CHANGELOG atualizado. Versão bumped para 2.0.0. |
 
 ---
 

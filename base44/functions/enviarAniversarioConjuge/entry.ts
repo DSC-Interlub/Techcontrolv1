@@ -1,89 +1,67 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { Resend } from 'npm:resend@4.0.0';
+import { Resend } from 'npm:resend@2.0.0';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-const EMPRESA = 'sua empresa';
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-function buildComunicadoHtml(assunto, arteUrl) {
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#ffffff;">
-  <div style="max-width:640px;margin:0 auto;background:#ffffff;">
-    <img src="${arteUrl}" alt="${assunto}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" />
-    <div style="padding:12px 0;text-align:center;">
-      <p style="margin:0;font-family:sans-serif;font-size:11px;color:#9ca3af;">© 2026 ${EMPRESA} · Todos os direitos reservados</p>
-    </div>
-  </div>
-</body>
-</html>`;
+function buildComunicadoHtml(arteUrl) {
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff;">
+<div style="max-width:640px;margin:0 auto;background:#ffffff;">
+<img src="${arteUrl}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" />
+<div style="padding:12px 0;text-align:center;">
+<p style="margin:0;font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} · Todos os direitos reservados</p>
+</div></div></body></html>`;
 }
 
-function jaEnviouEsteAno(colaborador, tipo) {
-  const anoAtual = new Date().getFullYear();
-  return (colaborador.comunicados_historico || []).some(h => h.tipo === tipo && h.ano === anoAtual);
-}
-
-function registrarHistorico(colaborador, tipo, destinatarios, assunto) {
-  const historico = colaborador.comunicados_historico || [];
-  return [...historico, { tipo, data_envio: new Date().toISOString(), ano: new Date().getFullYear(), destinatarios, assunto }];
-}
-
-function ehHoje(dateStr) {
+function ehHojeMesDia(dateStr) {
   if (!dateStr) return false;
   const hoje = new Date();
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.getDate() === hoje.getDate() && d.getMonth() === hoje.getMonth();
+  const dt = new Date(dateStr + "T00:00:00");
+  return dt.getMonth() === hoje.getMonth() && dt.getDate() === hoje.getDate();
 }
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-  const TIPO = 'aniversario_conjuge';
-  const anoAtual = new Date().getFullYear();
+  const hoje = new Date();
+  const hojeStr = hoje.toISOString().split("T")[0];
 
-  const todos = await base44.asServiceRole.entities.Colaboradores.filter({ status: 'Ativo' });
-  const comConjuge = todos.filter(c => ehHoje(c.conjuge_data_nascimento) && c.conjuge_nome);
+  const demandas = await base44.asServiceRole.entities.Comunicados_Artes.filter({
+    tipo_comunicado: "aniversario_conjuge",
+    data_evento: hojeStr,
+    status_arte: "arte_carregada",
+  });
 
-  if (comConjuge.length === 0) {
-    return Response.json({ ok: true, msg: 'Nenhum cônjuge aniversariante hoje.' });
+  if (demandas.length === 0) {
+    console.log(`[enviarAniversarioConjuge] Nenhuma demanda com arte para hoje (${hojeStr}).`);
+    return Response.json({ ok: true, enviados: 0, msg: "Nenhuma demanda com arte para hoje." });
   }
 
-  const enviados = [];
-  const semArte = [];
+  const todosColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
+  let enviados = 0;
 
-  for (const colab of comConjuge) {
-    if (jaEnviouEsteAno(colab, TIPO)) continue;
+  for (const demanda of demandas) {
+    const colaborador = todosColabs.find(c => c.id === demanda.colaborador_id);
+    if (!colaborador || !colaborador.conjuge_data_nascimento) continue;
+    if (!ehHojeMesDia(colaborador.conjuge_data_nascimento)) continue;
 
-    // Buscar arte individual para este colaborador
-    const artes = await base44.asServiceRole.entities.Comunicados_Artes.filter({
-      colaborador_id: colab.id,
-      tipo_comunicado: TIPO,
-      ano_referencia: anoAtual,
-      status_envio: 'pendente',
-    });
+    const nomeConjuge = colaborador.conjuge_nome || "cônjuge";
+    const assunto = `Parabéns, ${nomeConjuge}! 🎂`;
+    const html = buildComunicadoHtml(demanda.imagem_url);
 
-    if (!artes || artes.length === 0) {
-      console.log(`Arte não encontrada para ${colab.nome_completo} — tipo ${TIPO} — ano ${anoAtual}. E-mail não enviado.`);
-      semArte.push(colab.nome_completo);
-      continue;
+    const destinatarios = [colaborador.email, colaborador.conjuge_email, colaborador.contato_responsavel_email]
+      .filter(Boolean);
+
+    for (const email of destinatarios) {
+      await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
     }
 
-    const arte = artes[0];
-    const assunto = `Parabéns, ${colab.conjuge_nome}! 🎂`;
-    const html = buildComunicadoHtml(assunto, arte.imagem_url);
-
-    const dests = [colab.email, colab.conjuge_email, colab.contato_responsavel_email].filter(Boolean);
-    await resend.emails.send({ from: 'Comunicados <comunicados@resend.dev>', to: dests, subject: assunto, html });
-
-    await base44.asServiceRole.entities.Comunicados_Artes.update(arte.id, {
-      status_envio: 'enviado',
+    await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
+      status_arte: "enviado",
       data_envio: new Date().toISOString(),
     });
 
-    const novoHistorico = registrarHistorico(colab, TIPO, dests, assunto);
-    await base44.asServiceRole.entities.Colaboradores.update(colab.id, { comunicados_historico: novoHistorico });
-    enviados.push(colab.nome_completo);
+    enviados++;
+    console.log(`[enviarAniversarioConjuge] Enviado para cônjuge de ${colaborador.nome_completo}.`);
   }
 
-  return Response.json({ ok: true, enviados, semArte });
+  return Response.json({ ok: true, enviados });
 });

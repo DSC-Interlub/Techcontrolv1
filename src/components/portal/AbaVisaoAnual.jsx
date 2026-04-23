@@ -89,8 +89,8 @@ function calcularEventosPorMes(colaboradores) {
 function ArteStatusDot({ artes, colaboradorId, tipo }) {
   const status = useMemo(() => {
     if (!artes || !colaboradorId) return "sem";
-    if (artes.some(a => a.colaborador_id === colaboradorId && a.tipo_comunicado === tipo && a.ano_referencia === anoAtual && a.status_envio === "enviado")) return "enviado";
-    if (artes.some(a => a.colaborador_id === colaboradorId && a.tipo_comunicado === tipo && a.ano_referencia === anoAtual && a.status_envio === "pendente")) return "pronta";
+    if (artes.some(a => a.colaborador_id === colaboradorId && a.tipo_comunicado === tipo && a.ano_referencia === anoAtual && a.status_arte === "enviado")) return "enviado";
+    if (artes.some(a => a.colaborador_id === colaboradorId && a.tipo_comunicado === tipo && a.ano_referencia === anoAtual && a.status_arte === "arte_carregada")) return "pronta";
     return "sem";
   }, [artes, colaboradorId, tipo]);
 
@@ -103,13 +103,15 @@ export default function AbaVisaoAnual() {
   const [mesExpandido, setMesExpandido] = useState(getMonth(new Date()));
 
   const { data: colaboradores = [] } = useQuery({
-    queryKey: ["portal_comu_colabs"],
+    queryKey: ["colaboradores"],
     queryFn: () => base44.entities.Colaboradores.list(),
+    staleTime: 60_000,
   });
 
   const { data: artes = [] } = useQuery({
-    queryKey: ["portal_artes"],
+    queryKey: ["comunicados_artes"],
     queryFn: () => base44.entities.Comunicados_Artes.list(),
+    staleTime: 30_000,
   });
 
   const eventosPorMes = useMemo(() => calcularEventosPorMes(colaboradores), [colaboradores]);
@@ -126,8 +128,8 @@ export default function AbaVisaoAnual() {
         const isAtual = idx === mesAtualIdx;
         const isOpen = mesExpandido === idx;
         const semArte = eventos.filter(ev => {
-          const enviado = artes.some(a => a.colaborador_id === ev.colaborador.id && a.tipo_comunicado === ev.tipo && a.ano_referencia === anoAtual && a.status_envio !== "erro");
-          return !enviado;
+          const demanda = artes.find(a => a.colaborador_id === ev.colaborador.id && a.tipo_comunicado === ev.tipo && a.ano_referencia === anoAtual);
+          return !demanda || demanda.status_arte === "sem_arte" || demanda.status_arte === "erro_envio";
         }).length;
 
         return (
