@@ -4,10 +4,9 @@
  * Props:
  *   modo: "mes" | "anual"
  *   podeEnviarDespedida: boolean
- *   nomeUsuario: string
  */
 import React, { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Heart, Baby, Star, UserX, CheckCircle, Loader2 } from "lucide-react";
 import { format, getMonth, getDate, getYear, differenceInYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import UploadArteModal from "./UploadArteModal";
 
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -23,6 +23,7 @@ const hoje = new Date();
 const mesAtual = getMonth(hoje);
 const anoAtual = getYear(hoje);
 const diaAtual = getDate(hoje);
+const hojeStr = hoje.toISOString().split("T")[0];
 
 function mesNasce(d) { if (!d) return -1; return getMonth(new Date(d + "T00:00:00")); }
 function diaNasce(d) { if (!d) return -1; return getDate(new Date(d + "T00:00:00")); }
@@ -32,27 +33,75 @@ function isHoje(d) {
   return getMonth(dt) === mesAtual && getDate(dt) === diaAtual;
 }
 
-// Badge de status baseado nas demandas reais da entidade Comunicados_Artes
-function ArteStatusBadge({ demandas, colaboradorId, tipo, dataEventoMes }) {
-  const status = useMemo(() => {
-    if (!demandas || !colaboradorId) return "sem_arte";
-    const demanda = demandas.find(d =>
-      d.colaborador_id === colaboradorId &&
-      d.tipo_comunicado === tipo &&
-      d.ano_referencia === anoAtual &&
-      (!dataEventoMes || (d.data_evento && new Date(d.data_evento + "T00:00:00").getMonth() === dataEventoMes))
-    );
-    return demanda?.status_arte || "sem_arte";
-  }, [demandas, colaboradorId, tipo, dataEventoMes]);
-
-  if (status === "arte_carregada") return <Badge className="bg-green-100 text-green-800 text-xs shrink-0">✅ Arte pronta</Badge>;
-  if (status === "enviado") return <Badge className="bg-gray-100 text-gray-500 text-xs shrink-0">📤 Enviado</Badge>;
-  if (status === "erro_envio") return <Badge className="bg-red-100 text-red-700 text-xs shrink-0">❌ Erro</Badge>;
-  return <Badge className="bg-orange-100 text-orange-700 border border-orange-300 text-xs shrink-0">⚠️ Sem arte</Badge>;
+// Formata data como DD/MM
+function fmtDiaMes(d) {
+  if (!d) return null;
+  const dt = new Date(d + "T00:00:00");
+  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function SecaoCard({ icon, titulo, cor, children }) {
-  const IconComp = icon;
+// Retorna a demanda do banco para um colaborador + tipo + ano
+function findDemanda(demandas, colaboradorId, tipo, mesFiltro) {
+  return demandas.find(d =>
+    d.colaborador_id === colaboradorId &&
+    d.tipo_comunicado === tipo &&
+    d.ano_referencia === anoAtual &&
+    (mesFiltro === undefined || (d.data_evento && new Date(d.data_evento + "T00:00:00").getMonth() === mesFiltro))
+  );
+}
+
+// Badge de status + botão de upload se sem arte
+function ArteBadge({ demanda, colaborador, tipo, onUpload }) {
+  if (!demanda || demanda.status_arte === "sem_arte") {
+    return (
+      <button
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-orange-100 text-orange-700 border border-orange-300 text-xs font-medium hover:bg-orange-200 transition-colors cursor-pointer"
+        onClick={() => onUpload && onUpload()}
+        title="Clique para carregar arte"
+      >
+        ⚠️ Sem arte
+      </button>
+    );
+  }
+  if (demanda.status_arte === "arte_carregada") return <Badge className="bg-green-100 text-green-800 text-xs shrink-0">✅ Arte pronta</Badge>;
+  if (demanda.status_arte === "enviado") return <Badge className="bg-gray-100 text-gray-500 text-xs shrink-0">📤 Enviado</Badge>;
+  if (demanda.status_arte === "erro_envio") return <Badge className="bg-red-100 text-red-700 text-xs shrink-0">❌ Erro</Badge>;
+  return null;
+}
+
+// Coluna Detalhe para o Planejamento Anual
+function DetalheCell({ ev }) {
+  const { colaborador, tipo, extra } = ev;
+
+  if (tipo === "aniversario_colaborador") {
+    const data = fmtDiaMes(colaborador.data_nascimento);
+    return data ? <span className="text-gray-600">{data}</span> : <span className="text-orange-500 text-xs font-medium">📅 Data não cadastrada</span>;
+  }
+  if (tipo === "aniversario_conjuge") {
+    const data = fmtDiaMes(colaborador.conjuge_data_nascimento);
+    return data ? <span className="text-gray-600">{data}</span> : <span className="text-orange-500 text-xs font-medium">📅 Data não cadastrada</span>;
+  }
+  if (tipo === "aniversario_filho_1ano") {
+    const filho = (colaborador.filhos || []).find(f => {
+      if (!f.filho_data_nascimento) return false;
+      const dt = new Date(f.filho_data_nascimento + "T00:00:00");
+      return dt.getFullYear() === anoAtual - 1;
+    });
+    const data = fmtDiaMes(filho?.filho_data_nascimento);
+    return data ? <span className="text-gray-600">{data} <span className="text-gray-400">(1 ano)</span></span>
+      : <span className="text-orange-500 text-xs font-medium">📅 Data não cadastrada</span>;
+  }
+  if (tipo === "tempo_empresa") {
+    const data = fmtDiaMes(colaborador.data_admissao);
+    return data
+      ? <span className="text-gray-600">{data} — {extra}</span>
+      : <span className="text-orange-500 text-xs font-medium">📅 Data não cadastrada</span>;
+  }
+  return <span className="text-gray-400">—</span>;
+}
+
+// ── Seção card reutilizável
+function SecaoCard({ icon: IconComp, titulo, cor, children }) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -69,6 +118,7 @@ function SecaoCard({ icon, titulo, cor, children }) {
 function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
   const queryClient = useQueryClient();
   const [enviandoId, setEnviandoId] = useState(null);
+  const [uploadModal, setUploadModal] = useState(null); // { colaborador, tipo, demanda }
 
   const enviarDespedida = async (c) => {
     setEnviandoId(c.id);
@@ -120,26 +170,40 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
 
   return (
     <div className="space-y-5">
+      {uploadModal && (
+        <UploadArteModal
+          open={!!uploadModal}
+          onClose={() => setUploadModal(null)}
+          colaborador={uploadModal.colaborador}
+          tipo={uploadModal.tipo}
+          anoReferencia={anoAtual}
+          demandaExistente={uploadModal.demanda}
+        />
+      )}
+
       <SecaoCard icon={Users} titulo={`Aniversariantes do Mês (${format(hoje, "MMMM", { locale: ptBR })})`} cor="text-pink-700">
         {aniversariantesMes.length === 0
           ? <p className="text-sm text-gray-400">Nenhum aniversariante este mês.</p>
           : <div className="space-y-2">
-            {aniversariantesMes.map(c => (
-              <div key={c.id} className="flex items-center gap-3 bg-pink-50 border border-pink-100 rounded-lg p-3">
-                {c.foto_url
-                  ? <img src={c.foto_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
-                  : <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-sm shrink-0">{c.nome_completo?.charAt(0)}</div>}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{c.nome_completo}</p>
-                  <p className="text-xs text-gray-500">{c.area}{c.cargo && ` · ${c.cargo}`}</p>
+            {aniversariantesMes.map(c => {
+              const demanda = findDemanda(demandas, c.id, "aniversario_colaborador", mesAtual);
+              return (
+                <div key={c.id} className="flex items-center gap-3 bg-pink-50 border border-pink-100 rounded-lg p-3">
+                  {c.foto_url
+                    ? <img src={c.foto_url} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    : <div className="w-10 h-10 rounded-full bg-pink-200 flex items-center justify-center text-pink-700 font-bold text-sm shrink-0">{c.nome_completo?.charAt(0)}</div>}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{c.nome_completo}</p>
+                    <p className="text-xs text-gray-500">{c.area}{c.cargo && ` · ${c.cargo}`}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {c.data_nascimento ? <span className="text-xs text-gray-500">{fmtDiaMes(c.data_nascimento)}</span> : <span className="text-xs text-orange-500">Data não cadastrada</span>}
+                    {isHoje(c.data_nascimento) && <Badge className="bg-pink-500 text-white text-xs">🎂 Hoje!</Badge>}
+                    <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_colaborador" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_colaborador", demanda })} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-500">{diaNasce(c.data_nascimento)}/{mesAtual + 1}</span>
-                  {isHoje(c.data_nascimento) && <Badge className="bg-pink-500 text-white text-xs">🎂 Hoje!</Badge>}
-                  <ArteStatusBadge demandas={demandas} colaboradorId={c.id} tipo="aniversario_colaborador" dataEventoMes={mesAtual} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>}
       </SecaoCard>
 
@@ -147,18 +211,21 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
         {tempoEmpresa.length === 0
           ? <p className="text-sm text-gray-400">Nenhum este mês.</p>
           : <div className="space-y-2">
-            {tempoEmpresa.map(c => (
-              <div key={c.id} className="flex items-center gap-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3">
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{c.nome_completo}</p>
-                  <p className="text-xs text-gray-500">Admissão: {c.data_admissao}</p>
+            {tempoEmpresa.map(c => {
+              const demanda = findDemanda(demandas, c.id, "tempo_empresa", mesAtual);
+              return (
+                <div key={c.id} className="flex items-center gap-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{c.nome_completo}</p>
+                    <p className="text-xs text-gray-500">Admissão: {fmtDiaMes(c.data_admissao) || c.data_admissao || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-yellow-400 text-yellow-900 text-xs">{tipoTempoLabel(c.anos)}</Badge>
+                    <ArteBadge demanda={demanda} colaborador={c} tipo="tempo_empresa" onUpload={() => setUploadModal({ colaborador: c, tipo: "tempo_empresa", demanda })} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-yellow-400 text-yellow-900 text-xs">{tipoTempoLabel(c.anos)}</Badge>
-                  <ArteStatusBadge demandas={demandas} colaboradorId={c.id} tipo="tempo_empresa" dataEventoMes={mesAtual} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>}
       </SecaoCard>
 
@@ -166,18 +233,22 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
         {conjugesMes.length === 0
           ? <p className="text-sm text-gray-400">Nenhum este mês.</p>
           : <div className="space-y-2">
-            {conjugesMes.map(c => (
-              <div key={c.id} className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-lg p-3">
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{c.nome_completo}</p>
-                  <p className="text-xs text-gray-500">Cônjuge: <strong>{c.conjuge_nome || "—"}</strong></p>
+            {conjugesMes.map(c => {
+              const demanda = findDemanda(demandas, c.id, "aniversario_conjuge", mesAtual);
+              return (
+                <div key={c.id} className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-lg p-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{c.nome_completo}</p>
+                    <p className="text-xs text-gray-500">Cônjuge: <strong>{c.conjuge_nome || "—"}</strong></p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {c.conjuge_data_nascimento ? <span className="text-xs text-gray-500">{fmtDiaMes(c.conjuge_data_nascimento)}</span> : null}
+                    {isHoje(c.conjuge_data_nascimento) && <Badge className="bg-red-500 text-white text-xs">🎂 Hoje!</Badge>}
+                    <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_conjuge" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_conjuge", demanda })} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {isHoje(c.conjuge_data_nascimento) && <Badge className="bg-red-500 text-white text-xs">🎂 Hoje!</Badge>}
-                  <ArteStatusBadge demandas={demandas} colaboradorId={c.id} tipo="aniversario_conjuge" dataEventoMes={mesAtual} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>}
       </SecaoCard>
 
@@ -191,18 +262,22 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                 const dt = new Date(f.filho_data_nascimento + "T00:00:00");
                 return dt.getFullYear() === anoAtual - 1 && dt.getMonth() === mesAtual;
               });
-              return filhosAniv.map((f, i) => (
-                <div key={`${c.id}-${i}`} className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-lg p-3">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{c.nome_completo}</p>
-                    <p className="text-xs text-gray-500">Filho(a): <strong>{f.filho_nome || "—"}</strong></p>
+              return filhosAniv.map((f, i) => {
+                const demanda = findDemanda(demandas, c.id, "aniversario_filho_1ano", mesAtual);
+                return (
+                  <div key={`${c.id}-${i}`} className="flex items-center gap-3 bg-purple-50 border border-purple-100 rounded-lg p-3">
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{c.nome_completo}</p>
+                      <p className="text-xs text-gray-500">Filho(a): <strong>{f.filho_nome || "—"}</strong></p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {f.filho_data_nascimento && <span className="text-xs text-gray-500">{fmtDiaMes(f.filho_data_nascimento)}</span>}
+                      {isHoje(f.filho_data_nascimento) && <Badge className="bg-purple-500 text-white text-xs">🎈 Hoje!</Badge>}
+                      <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_filho_1ano" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_filho_1ano", demanda })} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isHoje(f.filho_data_nascimento) && <Badge className="bg-purple-500 text-white text-xs">🎈 Hoje!</Badge>}
-                    <ArteStatusBadge demandas={demandas} colaboradorId={c.id} tipo="aniversario_filho_1ano" dataEventoMes={mesAtual} />
-                  </div>
-                </div>
-              ));
+                );
+              });
             })}
           </div>}
       </SecaoCard>
@@ -211,23 +286,26 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
         {desligados.length === 0
           ? <p className="text-sm text-gray-400">Nenhuma pendente. ✅</p>
           : <div className="space-y-2">
-            {desligados.map(c => (
-              <div key={c.id} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{c.nome_completo}</p>
-                  <p className="text-xs text-gray-500">{c.area}</p>
+            {desligados.map(c => {
+              const demanda = findDemanda(demandas, c.id, "despedida");
+              return (
+                <div key={c.id} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{c.nome_completo}</p>
+                    <p className="text-xs text-gray-500">{c.area}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ArteBadge demanda={demanda} colaborador={c} tipo="despedida" onUpload={() => setUploadModal({ colaborador: c, tipo: "despedida", demanda })} />
+                    {podeEnviarDespedida && (
+                      <Button size="sm" variant="outline" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        {enviandoId === c.id ? "Enviando..." : "Enviar"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ArteStatusBadge demandas={demandas} colaboradorId={c.id} tipo="despedida" />
-                  {podeEnviarDespedida && (
-                    <Button size="sm" variant="outline" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      {enviandoId === c.id ? "Enviando..." : "Enviar"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>}
       </SecaoCard>
     </div>
@@ -287,10 +365,22 @@ const TIPO_LABEL_CURTO = {
 
 function VisaoAnual({ colaboradores, demandas }) {
   const [mesExpandido, setMesExpandido] = useState(mesAtual);
+  const [uploadModal, setUploadModal] = useState(null);
   const eventosPorMes = useMemo(() => calcularEventosPorMes(colaboradores), [colaboradores]);
 
   return (
     <div className="space-y-3">
+      {uploadModal && (
+        <UploadArteModal
+          open={!!uploadModal}
+          onClose={() => setUploadModal(null)}
+          colaborador={uploadModal.colaborador}
+          tipo={uploadModal.tipo}
+          anoReferencia={anoAtual}
+          demandaExistente={uploadModal.demanda}
+        />
+      )}
+
       <p className="text-sm text-gray-500">
         Planejamento anual de {anoAtual} — clique em um mês para ver os eventos.
       </p>
@@ -299,11 +389,7 @@ function VisaoAnual({ colaboradores, demandas }) {
         const isAtual = idx === mesAtual;
         const isOpen = mesExpandido === idx;
         const semArte = eventos.filter(ev => {
-          const d = demandas.find(d =>
-            d.colaborador_id === ev.colaborador.id &&
-            d.tipo_comunicado === ev.tipo &&
-            d.ano_referencia === anoAtual
-          );
+          const d = findDemanda(demandas, ev.colaborador.id, ev.tipo, idx);
           return !d || d.status_arte === "sem_arte";
         }).length;
 
@@ -325,7 +411,7 @@ function VisaoAnual({ colaboradores, demandas }) {
               <span className="text-gray-400 text-xs">{isOpen ? "▲" : "▼"}</span>
             </button>
             {isOpen && eventos.length > 0 && (
-              <div className="border-t">
+              <div className="border-t overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
@@ -336,23 +422,33 @@ function VisaoAnual({ colaboradores, demandas }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {eventos.map((ev, i) => (
-                      <tr key={i} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-2">
-                          <p className="font-medium text-gray-800">{ev.colaborador.nome_completo}</p>
-                          <p className="text-xs text-gray-400">{ev.colaborador.area}</p>
-                        </td>
-                        <td className="px-4 py-2">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${TIPO_COR[ev.tipo] || "bg-gray-100 text-gray-700"}`}>
-                            {TIPO_LABEL_CURTO[ev.tipo] || ev.tipo}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-xs text-gray-500">{ev.extra || "—"}</td>
-                        <td className="px-4 py-2 text-center">
-                          <ArteStatusBadge demandas={demandas} colaboradorId={ev.colaborador.id} tipo={ev.tipo} dataEventoMes={idx} />
-                        </td>
-                      </tr>
-                    ))}
+                    {eventos.map((ev, i) => {
+                      const demanda = findDemanda(demandas, ev.colaborador.id, ev.tipo, idx);
+                      return (
+                        <tr key={i} className="border-t hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            <p className="font-medium text-gray-800">{ev.colaborador.nome_completo}</p>
+                            <p className="text-xs text-gray-400">{ev.colaborador.area}</p>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${TIPO_COR[ev.tipo] || "bg-gray-100 text-gray-700"}`}>
+                              {TIPO_LABEL_CURTO[ev.tipo] || ev.tipo}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-xs">
+                            <DetalheCell ev={ev} />
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <ArteBadge
+                              demanda={demanda}
+                              colaborador={ev.colaborador}
+                              tipo={ev.tipo}
+                              onUpload={() => setUploadModal({ colaborador: ev.colaborador, tipo: ev.tipo, demanda })}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
