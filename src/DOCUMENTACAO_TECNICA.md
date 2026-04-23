@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 1.8.0 | **Data de geração:** 22/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 2.1.0 | **Data de geração:** 23/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -311,41 +311,68 @@ Campos adicionais:
 **Arquivo:** `pages/Colaboradores.jsx`
 **Componentes:** `components/colaboradores/ColaboradorForm.jsx`, `ColaboradorDetalhes.jsx`
 
-#### Campos do Formulário
+#### Formulário de Colaborador — 4 Abas (`ColaboradorForm.jsx`)
+
+O formulário é organizado em **4 abas** com validação inline e botão Salvar desabilitado enquanto campos obrigatórios não estiverem preenchidos.
+
+**ABA 1 — Profissional:**
 | Campo | Tipo | Obrigatório |
 |-------|------|-------------|
-| Nome Completo | Input texto | ✅ Sim |
-| Email | Input email | Não |
-| Área/Departamento | Input texto | ✅ Sim |
-| Tipo de Funcionário | Select | Não | Interno, Externo |
-| Telefone/Ramal | Input texto | Não |
+| Nome Completo | Input texto | ✅ mín. 3 chars |
+| E-mail | Input email | Não (valida formato se preenchido) |
+| Área / Departamento | Input texto | ✅ |
+| Cargo | Input texto | Não |
+| Telefone / Ramal | Input texto | Não |
+| Tipo de Funcionário | Select: Interno / Externo | Não |
+| Local / Unidade | Input texto | Não |
 | Data de Admissão | Input data | Não |
-| Status | Select | Não | Ativo, Férias, Afastado, Desligado |
-| Senha Portal | Input senha | Não |
-| Senha Precisa Trocar | Switch | Não |
-| Acesso Portal Bloqueado | Switch | Não |
-| Senha Microsoft | Input senha | Não |
-| Senha Login Máquina | Input senha | Não |
-| Sistemas (array) | Formulário dinâmico | Não |
-| → Sistema | Input texto | – |
-| → Usuário | Input texto | – |
-| → Senha | Input senha | – |
-| → Observações | Input texto | – |
-| Foto URL | Input texto | Não |
-| Observações | Textarea | Não |
+| Status | Select: Ativo / Férias / Afastado / Desligado | Não |
+| Switch: Incluir nos Comunicados Automáticos | Switch | default: true |
+
+**ABA 2 — Pessoal:**
+| Campo | Tipo | Obrigatório |
+|-------|------|-------------|
+| Foto | Upload de imagem (via UploadFile) com preview circular | Não |
+| Data de Nascimento | Input data (não aceita futuras) | Não |
+| Graduação / Formação | Input texto | Não |
+| Resumo de Experiência | Textarea (máx 500 chars) | Não |
+| Nome do Responsável / Gestor | Input texto | Não |
+| E-mail do Responsável / Gestor | Input email | Não |
+
+**ABA 3 — Família:**
+| Campo | Tipo | Obrigatório |
+|-------|------|-------------|
+| Nome do Cônjuge | Input texto | Não |
+| E-mail do Cônjuge | Input email | Não |
+| Data de Nascimento do Cônjuge | Input data (não aceita futuras) | Não |
+| Filhos (lista dinâmica) | Array: Nome + Data Nascimento por filho | Não |
+| Botão "+ Adicionar Filho" | Adiciona linha ao array | – |
+| Botão Remover (por filho) | Remove linha | – |
+
+**ABA 4 — Acesso e Segurança** *(visível apenas para roles não-comunicados)*:
+| Campo | Tipo | Obrigatório |
+|-------|------|-------------|
+| Senha do Portal | Input password com toggle visibilidade | Não |
+| Bloquear acesso ao portal | Checkbox | Não |
+| Forçar troca de senha | Checkbox | Não |
+| Senha Microsoft / Office 365 | Input password | Não |
+| Senha Login Máquina | Input password | Não |
+| Senhas de Sistemas (array dinâmico) | Sistema / Usuário / Senha / Obs | Não |
+| Permissões de Comunicados no Portal | 5 checkboxes (apenas admin) | Não |
+| Observações Gerais | Textarea | Não |
+
+> **Importante:** Para roles `comunicados_arte`, `comunicados_gestao`, `comunicados_dp`, a aba 4 fica oculta. O formulário exibe apenas 3 abas.
 
 #### Botões e Ações
 | Botão | Ação |
 |-------|------|
 | + Novo Colaborador | Exibe formulário |
-| Salvar | Cria ou atualiza colaborador |
+| Salvar / Criar | Cria ou atualiza colaborador (desabilitado se campos obrigatórios vazios) |
 | Cancelar | Fecha formulário |
 | Ver Detalhes | Abre painel de detalhes do colaborador |
 | ✏️ Editar | Abre formulário preenchido |
 | 🗑️ Excluir | Remove com confirmação |
 | Exportar CSV | Gera arquivo CSV com todos os colaboradores |
-| + Adicionar Sistema | Adiciona linha de sistema na lista de senhas |
-| 🗑️ (sistema) | Remove linha de sistema |
 
 #### Abas de Detalhes do Colaborador
 1. **Senhas e Acessos** – Exibe senhas do portal, Microsoft, máquina e sistemas. Botão de copiar e toggle de visibilidade para cada senha
@@ -357,10 +384,19 @@ Campos adicionais:
 - Filtro por status (Ativo, Férias, Afastado, Desligado)
 - Filtro por tipo (Interno, Externo)
 
+#### Validação (ambos os formulários)
+- Nome Completo: obrigatório, mínimo 3 caracteres
+- Área/Departamento: obrigatório
+- E-mail: formato válido se preenchido
+- Datas (nascimento, cônjuge, filhos): não aceita datas futuras
+- Mensagem de erro inline abaixo do campo inválido
+- Botão de salvar desabilitado enquanto campos obrigatórios não estão preenchidos
+
 #### Regras de Negócio
 - `senha_precisa_trocar = true` → colaborador é redirecionado para tela de troca de senha ao fazer login no portal
 - `acesso_portal_bloqueado = true` → bloqueia completamente o acesso ao portal
 - Senhas são armazenadas em **texto plano** na coleção (sem hash – ponto de atenção de segurança)
+- Upload de foto via `base44.integrations.Core.UploadFile` — armazena URL no campo `foto_url`
 
 ---
 
@@ -680,8 +716,34 @@ Interface de demandas por mês com upload de arte vinculado à demanda.
 
 Visão de eventos por mês com badge de status de arte baseado nas demandas reais da entidade.
 
-**Cards do mês atual:** Aniversariantes / Tempo de empresa / Cônjuges / Filhos 1 ano / Desligamentos.  
-**Visão anual:** Acordeão mês a mês com contagem de eventos e alertas de "sem arte".
+**Cards do mês atual:** Aniversariantes / Tempo de empresa / Cônjuges / Filhos 1 ano / Desligamentos.
+
+Para cada card, exibe: foto do colaborador + nome + data do evento formatada (DD/MM) + badge de arte.
+O badge "⚠️ Sem arte" é um **botão clicável** que abre o `UploadArteModal` para upload imediato.
+
+**Visão anual (Planejamento Anual):**
+- Acordeão mês a mês com contagem de eventos e alertas de "sem arte"
+- Tabela expandida com colunas: Colaborador | Evento | Detalhe | Arte
+- **Coluna Detalhe** exibe dado específico por tipo:
+  - `aniversario_colaborador`: data de nascimento em DD/MM
+  - `aniversario_conjuge`: data de nascimento do cônjuge em DD/MM
+  - `aniversario_filho_1ano`: data de nascimento do filho em DD/MM + "(1 ano)"
+  - `tempo_empresa`: data de admissão em DD/MM + anos completados (ex: "03/07 — 5 anos")
+  - Se campo não preenchido: exibe "📅 Data não cadastrada" em laranja
+- **Coluna Arte**: badge clicável que abre `UploadArteModal`
+
+#### Componente `UploadArteModal` (`components/comunicados/UploadArteModal.jsx`)
+
+Modal de upload de arte para uma demanda específica. Funciona tanto no admin quanto no portal.
+
+| Elemento | Comportamento |
+|----------|---------------|
+| Título | "Carregar Arte — [NOME] — [TIPO DO EVENTO]" |
+| Área de upload | Click para selecionar / drag-and-drop visual. Aceita: jpg, jpeg, png, gif, webp |
+| Preview | Exibe imagem selecionada antes de confirmar |
+| Botão "Confirmar Upload" | Faz upload via UploadFile; se demanda existe: atualiza `imagem_url` + `status_arte = "arte_carregada"`; se não existe: cria novo registro com todos os campos obrigatórios |
+| Botão "Cancelar" | Fecha sem salvar |
+| Após upload | Invalida query `["comunicados_artes"]` — badge muda para "✅ Arte pronta" imediatamente sem recarregar |
 
 ---
 
@@ -991,10 +1053,10 @@ Espelha funcionalidades do módulo administrativo `/Comunicados`, com controle g
 
 | Aba | Permissão necessária | Conteúdo |
 |-----|---------------------|---------|
-| **📅 Este Mês** | `ver_visao_geral` | Aniversariantes do mês, tempo de empresa, cônjuges, filhos 1 ano e despedidas pendentes com badge de status de arte |
-| **📆 Planejamento Anual** | `ver_visao_geral` | Visão anual mês a mês de todos os eventos (aniversários, cônjuges, filhos, tempo de empresa, despedidas) com acordeão por mês |
-| **🎨 Artes** | `cadastrar_artes` | CRUD completo de artes (upload, editar, excluir), filtro por tipo |
-| **👥 Colaboradores** | `gerir_colaboradores` | Gestão de status de colaboradores diretamente pelo portal, sem acesso ao painel admin |
+| **📅 Este Mês** | `ver_visao_geral` | Aniversariantes do mês, tempo de empresa, cônjuges, filhos 1 ano e despedidas pendentes com badge de status de arte. Badge "Sem arte" clicável abre `UploadArteModal`. |
+| **📆 Planejamento Anual** | `ver_visao_geral` | Visão anual mês a mês de todos os eventos com acordeão por mês. Coluna "Detalhe" exibe data do evento formatada (DD/MM) por tipo. Badge "Sem arte" clicável abre `UploadArteModal`. |
+| **🎨 Artes** | `cadastrar_artes` | Lista de demandas com upload vinculado por demanda (componente `ListaDemandas`) |
+| **👥 Colaboradores** | `gerir_colaboradores` | Gestão completa de colaboradores pelo portal: formulário com 3 abas (Profissional + Pessoal + Família), sem campos de senhas/segurança. Cadastro e edição completos. |
 
 **Botão condicional na Visão Geral:**
 | Botão | Permissão |
@@ -1006,6 +1068,22 @@ Espelha funcionalidades do módulo administrativo `/Comunicados`, com controle g
 - A aba padrão é "Este Mês" se `ver_visao_geral` estiver presente; depois "Artes" se `cadastrar_artes`; por último "Colaboradores" se `gerir_colaboradores`
 - Menu lateral do portal exibe o item "Comunicados" (ícone Megaphone) **apenas** se `permissoes_comunicados.length > 0`
 - Permissões são lidas diretamente do `colaborador` da sessão (já sincronizado com o banco pelo `usePortalAuth`), evitando race conditions com queries paralelas
+
+#### Portal – Gestão de Colaboradores (`components/portal/GestaoColaboradoresPortal.jsx`)
+
+Componente usado na aba "👥 Colaboradores" do portal-comunicados. Oferece **formulário completo de 3 abas** (idêntico ao admin exceto pela aba 4 de senhas):
+
+**Formulário de Cadastro:**
+- Abas: Profissional | Pessoal | Família
+- Data de Admissão pré-preenchida com data de hoje
+- Após criar com sucesso: exibe mensagem "Colaborador cadastrado! Os dados de acesso ao portal precisam ser configurados pela equipe de TI."
+- Inclui upload de foto via UploadFile
+
+**Formulário de Edição:**
+- Mesmas 3 abas, todos os campos editáveis e salvos via `Colaboradores.update(id, dados)`
+- Inclui campo Status (permitindo alterar Ativo/Férias/Afastado/Desligado)
+
+**Desligamento:** Modal de confirmação exige digitar o nome completo do colaborador. Define `status = "Desligado"` e `acesso_portal_bloqueado = true`.
 
 ---
 
@@ -1201,14 +1279,29 @@ created_by   – string (email do criador)
 | telefone | string | |
 | data_admissao | date | |
 | status | enum: Ativo, Férias, Afastado, Desligado | default: Ativo |
-| permissoes_comunicados | array[enum] | Permissões para acessar `/portal-comunicados`. Valores: `ver_visao_geral`, `cadastrar_artes`, `enviar_boas_vindas`, `enviar_despedida`. Array vazio = sem acesso |
+| cargo | string | Cargo do colaborador |
+| local_trabalho | string | Local / Unidade de trabalho |
+| data_nascimento | date | Data de nascimento — usado nos comunicados de aniversário |
+| graduacao | string | Graduação / Formação acadêmica |
+| resumo_experiencia | string | Resumo de experiência profissional |
+| contato_responsavel_nome | string | Nome do responsável / gestor direto |
+| contato_responsavel_email | string | E-mail do responsável / gestor direto |
+| conjuge_nome | string | Nome do cônjuge |
+| conjuge_email | string | E-mail do cônjuge |
+| conjuge_data_nascimento | date | Data de nascimento do cônjuge — usado nos comunicados de cônjuge |
+| filhos | array[{filho_nome, filho_data_nascimento}] | Lista de filhos — usada nos comunicados de 1 aninho |
+| incluir_comunicados | boolean | default: true — se false, colaborador não entra nas demandas automáticas |
+| permissoes_comunicados | array[enum] | Permissões para acessar `/portal-comunicados`. Valores: `ver_visao_geral`, `cadastrar_artes`, `enviar_boas_vindas`, `enviar_despedida`, `gerir_colaboradores`. Array vazio = sem acesso |
+| comunicado_boas_vindas_enviado | boolean | default: false — controle interno de envio |
+| comunicado_despedida_enviado | boolean | default: false — controle interno de envio |
+| comunicados_historico | array[{tipo, data_envio, ano, destinatarios, assunto}] | Histórico de comunicados enviados (anti-duplicata por ano) |
 | senha_portal | string | Texto plano ⚠️ |
 | senha_precisa_trocar | boolean | default: false |
 | acesso_portal_bloqueado | boolean | default: false |
 | senha_microsoft | string | |
 | senha_login_maquina | string | |
 | senhas_sistemas | array[{sistema, usuario, senha, observacoes}] | |
-| foto_url | string | |
+| foto_url | string | URL da foto — carregada via UploadFile |
 | observacoes | string | |
 
 #### Chamados
@@ -1826,6 +1919,20 @@ CREATE POLICY "solicitante_own" ON chamados
 | 23/04/2026 | 2.0.0 | Comunicados — Banner de alerta urgente | `ListaDemandas` exibe banner vermelho quando há demandas `sem_arte` com `data_evento` nos próximos 7 dias, visível em ambos os portais. |
 | 23/04/2026 | 2.0.0 | Comunicados — Queries padronizadas | Todas as queries de comunicados usam `queryKey: ["comunicados_artes"]` e `queryKey: ["colaboradores"]` para invalidação centralizada e cache compartilhado entre componentes. |
 | 23/04/2026 | 2.0.0 | Documentação | Seção 4.17b completamente reescrita documentando o novo modelo v2.0. Tabela de automações atualizada com `gerarDemandasComunicados`. CHANGELOG atualizado. Versão bumped para 2.0.0. |
+| 23/04/2026 | 2.1.0 | Colaboradores — Schema da entidade | Adicionados campos pessoais e família à entidade `Colaboradores`: `cargo`, `local_trabalho`, `data_nascimento`, `graduacao`, `resumo_experiencia`, `contato_responsavel_nome`, `contato_responsavel_email`, `conjuge_nome`, `conjuge_email`, `conjuge_data_nascimento`, `filhos` (array), `incluir_comunicados` (boolean), `comunicados_historico` (array), `comunicado_boas_vindas_enviado`, `comunicado_despedida_enviado`. Campo `permissoes_comunicados` atualizado com 5º valor `gerir_colaboradores`. |
+| 23/04/2026 | 2.1.0 | ColaboradorForm — Reorganização em 4 abas | Formulário do painel admin reestruturado em 4 abas: "Profissional" (dados de trabalho + switch de comunicados), "Pessoal" (foto com upload, nascimento, graduação, experiência, gestor), "Família" (cônjuge + filhos dinâmicos), "Acesso e Segurança" (senhas, credenciais, sistemas, permissões comunicados). Aba 4 oculta para roles de comunicados. Validação inline com mensagens de erro por campo. Botão salvar desabilitado até campos obrigatórios preenchidos. Upload de foto via `UploadFile` com preview circular. |
+| 23/04/2026 | 2.1.0 | GestaoColaboradoresPortal — Formulário completo | Formulários de cadastro e edição no portal refatorados com 3 abas completas (Profissional + Pessoal + Família), sem campos de senhas/segurança. Inclui upload de foto, dados do cônjuge, lista dinâmica de filhos, campo de resumo de experiência. Cadastro exibe mensagem orientando configuração de acesso pela equipe de TI. |
+| 23/04/2026 | 2.1.0 | VisaoEventos — Coluna Detalhe corrigida | Coluna "Detalhe" no Planejamento Anual agora exibe a data do evento formatada (DD/MM) por tipo: nascimento do colaborador, cônjuge, filho (+1 ano), data de admissão (+anos completados). Se campo não preenchido exibe "📅 Data não cadastrada" em laranja. |
+| 23/04/2026 | 2.1.0 | VisaoEventos + UploadArteModal — Badge "Sem arte" funcional | Badge "⚠️ Sem arte" na coluna Arte e nas seções do mês atual tornou-se botão clicável. Abre novo componente `UploadArteModal` com preview da imagem, upload via UploadFile, e criação/atualização automática da demanda em `Comunicados_Artes`. Após upload: invalida query e badge muda para "✅ Arte pronta" imediatamente. Funciona identicamente em admin e portal. |
+| 23/04/2026 | 2.1.0 | UploadArteModal — Novo componente | `components/comunicados/UploadArteModal.jsx` implementa modal de upload de arte para uma demanda específica. Aceita jpg/jpeg/png/gif/webp. Exibe preview antes de confirmar. Se demanda existe: atualiza; se não existe: cria com campos obrigatórios. |
+| 23/04/2026 | 2.1.0 | Documentação | Atualização completa: seção 4.9 (ColaboradorForm com 4 abas), seção 6 (schema completo de Colaboradores com 30+ campos), seção 4.18 (portal-comunicados e GestaoColaboradoresPortal), seção 4.17b (VisaoEventos com coluna Detalhe e UploadArteModal), seção 8 (permissões atualizadas). Versão bumped para 2.1.0. |
+| 23/04/2026 | 2.1.0 | Colaboradores — Schema da entidade | Adicionados campos pessoais e família à entidade `Colaboradores`: `cargo`, `local_trabalho`, `data_nascimento`, `graduacao`, `resumo_experiencia`, `contato_responsavel_nome`, `contato_responsavel_email`, `conjuge_nome`, `conjuge_email`, `conjuge_data_nascimento`, `filhos` (array), `incluir_comunicados` (boolean), `comunicados_historico` (array), `comunicado_boas_vindas_enviado`, `comunicado_despedida_enviado`. Campo `permissoes_comunicados` atualizado com 5º valor `gerir_colaboradores`. |
+| 23/04/2026 | 2.1.0 | ColaboradorForm — Reorganização em 4 abas | Formulário do painel admin reestruturado em 4 abas: "Profissional" (dados de trabalho + switch de comunicados), "Pessoal" (foto com upload, nascimento, graduação, experiência, gestor), "Família" (cônjuge + filhos dinâmicos), "Acesso e Segurança" (senhas, credenciais, sistemas, permissões comunicados). Aba 4 oculta para roles de comunicados. Validação inline com mensagens de erro por campo. Botão salvar desabilitado até campos obrigatórios preenchidos. Upload de foto via `UploadFile` com preview circular. |
+| 23/04/2026 | 2.1.0 | GestaoColaboradoresPortal — Formulário completo | Formulários de cadastro e edição no portal refatorados com 3 abas completas (Profissional + Pessoal + Família), sem campos de senhas/segurança. Inclui upload de foto, dados do cônjuge, lista dinâmica de filhos, campo de resumo de experiência. Cadastro exibe mensagem orientando configuração de acesso pela equipe de TI. |
+| 23/04/2026 | 2.1.0 | VisaoEventos — Coluna Detalhe corrigida | Coluna "Detalhe" no Planejamento Anual agora exibe a data do evento formatada (DD/MM) por tipo: nascimento do colaborador, cônjuge, filho (+1 ano), data de admissão (+anos completados). Se campo não preenchido exibe "📅 Data não cadastrada" em laranja. |
+| 23/04/2026 | 2.1.0 | VisaoEventos + UploadArteModal — Badge "Sem arte" funcional | Badge "⚠️ Sem arte" na coluna Arte e nas seções do mês atual tornou-se botão clicável. Abre novo componente `UploadArteModal` com preview da imagem, upload via UploadFile, e criação/atualização automática da demanda em `Comunicados_Artes`. Após upload: invalida query e badge muda para "✅ Arte pronta" imediatamente. Funciona identicamente em admin e portal. |
+| 23/04/2026 | 2.1.0 | UploadArteModal — Novo componente | `components/comunicados/UploadArteModal.jsx` implementa modal de upload de arte para uma demanda específica. Aceita jpg/jpeg/png/gif/webp. Exibe preview antes de confirmar. Se demanda existe: atualiza; se não existe: cria com campos obrigatórios. |
+| 23/04/2026 | 2.1.0 | Documentação | Atualização completa: seção 4.9 (ColaboradorForm com 4 abas), seção 6 (schema completo de Colaboradores com 30+ campos), seção 4.18 (portal-comunicados e GestaoColaboradoresPortal), seção 4.17b (VisaoEventos com coluna Detalhe e UploadArteModal), seção 8 (permissões atualizadas). Versão bumped para 2.1.0. |
 
 ---
 
