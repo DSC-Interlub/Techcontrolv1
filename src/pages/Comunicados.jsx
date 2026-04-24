@@ -4,6 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone } from "lucide-react";
 import ListaDemandas from "../components/comunicados/ListaDemandas";
 import VisaoEventos from "../components/comunicados/VisaoEventos";
+import AbaEnvios from "../components/comunicados/AbaEnvios";
+import AbaConfiguracoes from "../components/comunicados/AbaConfiguracoes";
 
 export default function Comunicados() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -13,7 +15,6 @@ export default function Comunicados() {
     base44.auth.me().then(u => {
       setCurrentUser(u);
       const role = u?.role;
-      // comunicados_gestao e comunicados_dp veem a visão geral por padrão
       if (role === "comunicados_gestao" || role === "comunicados_dp") {
         setActiveTab("visao_mes");
       } else {
@@ -25,10 +26,12 @@ export default function Comunicados() {
   if (!activeTab) return null;
 
   const role = currentUser?.role;
-  const podeVerArtes = !role || ["admin", "user", "comunicados_arte", "comunicados_gestao", "comunicados_dp"].includes(role);
-  const podeVerVisao = !role || ["admin", "user", "comunicados_gestao", "comunicados_dp"].includes(role);
-  const podeCriarArte = !role || ["admin", "user", "comunicados_arte"].includes(role);
-  const podeEnviarDespedida = !role || ["admin", "user", "comunicados_dp"].includes(role);
+  const isAdmin = role === "admin";
+  const podeVerArtes = ["admin", "user", "comunicados_arte", "comunicados_gestao", "comunicados_dp"].includes(role);
+  const podeVerVisao = ["admin", "user", "comunicados_gestao", "comunicados_dp"].includes(role);
+  const podeCriarArte = ["admin", "user", "comunicados_arte"].includes(role);
+  const podeEnviarDespedida = ["admin", "user", "comunicados_dp"].includes(role);
+  const podeVerEnvios = ["admin", "user", "comunicados_gestao", "comunicados_dp"].includes(role);
 
   const nomeUsuario = currentUser?.full_name || currentUser?.email || "";
 
@@ -49,6 +52,8 @@ export default function Comunicados() {
           {podeVerArtes && <TabsTrigger value="artes">🎨 Artes e Demandas</TabsTrigger>}
           {podeVerVisao && <TabsTrigger value="visao_mes">📅 Este Mês</TabsTrigger>}
           {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
+          {podeVerEnvios && <TabsTrigger value="envios">⚙️ Envios</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="config">🔧 Configurações</TabsTrigger>}
         </TabsList>
 
         {podeVerArtes && (
@@ -64,6 +69,16 @@ export default function Comunicados() {
         {podeVerVisao && (
           <TabsContent value="visao_anual">
             <VisaoEventos modo="anual" podeEnviarDespedida={false} />
+          </TabsContent>
+        )}
+        {podeVerEnvios && (
+          <TabsContent value="envios">
+            <AbaEnvios />
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="config">
+            <AbaConfiguracoes />
           </TabsContent>
         )}
       </Tabs>

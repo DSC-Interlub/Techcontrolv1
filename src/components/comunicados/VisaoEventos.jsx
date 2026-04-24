@@ -1,12 +1,18 @@
 /**
  * VisaoEventos — componente compartilhado entre /Comunicados e /portal-comunicados.
  * Exibe visão geral de eventos por mês com status de arte para cada demanda.
+ *
+ * CORREÇÃO DE BUG: O UploadArteModal foi movido para o nível RAIZ do componente
+ * exportado (VisaoEventos), fora de qualquer acordeão ou lista. Isso evita o erro
+ * "message channel closed before a response was received" causado pela desmontagem
+ * do componente pai durante o upload assíncrono.
+ *
  * Props:
  *   modo: "mes" | "anual"
  *   podeEnviarDespedida: boolean
  */
 import React, { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,24 +29,19 @@ const hoje = new Date();
 const mesAtual = getMonth(hoje);
 const anoAtual = getYear(hoje);
 const diaAtual = getDate(hoje);
-const hojeStr = hoje.toISOString().split("T")[0];
 
 function mesNasce(d) { if (!d) return -1; return getMonth(new Date(d + "T00:00:00")); }
-function diaNasce(d) { if (!d) return -1; return getDate(new Date(d + "T00:00:00")); }
 function isHoje(d) {
   if (!d) return false;
   const dt = new Date(d + "T00:00:00");
   return getMonth(dt) === mesAtual && getDate(dt) === diaAtual;
 }
-
-// Formata data como DD/MM
 function fmtDiaMes(d) {
   if (!d) return null;
   const dt = new Date(d + "T00:00:00");
   return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Retorna a demanda do banco para um colaborador + tipo + ano
 function findDemanda(demandas, colaboradorId, tipo, mesFiltro) {
   return demandas.find(d =>
     d.colaborador_id === colaboradorId &&
@@ -50,13 +51,13 @@ function findDemanda(demandas, colaboradorId, tipo, mesFiltro) {
   );
 }
 
-// Badge de status + botão de upload se sem arte
-function ArteBadge({ demanda, colaborador, tipo, onUpload }) {
+// Badge de status — ao clicar "Sem arte", chama onUpload (não renderiza modal aqui)
+function ArteBadge({ demanda, onUpload }) {
   if (!demanda || demanda.status_arte === "sem_arte") {
     return (
       <button
         className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-orange-100 text-orange-700 border border-orange-300 text-xs font-medium hover:bg-orange-200 transition-colors cursor-pointer"
-        onClick={() => onUpload && onUpload()}
+        onClick={(e) => { e.stopPropagation(); onUpload && onUpload(); }}
         title="Clique para carregar arte"
       >
         ⚠️ Sem arte
@@ -72,7 +73,6 @@ function ArteBadge({ demanda, colaborador, tipo, onUpload }) {
 // Coluna Detalhe para o Planejamento Anual
 function DetalheCell({ ev }) {
   const { colaborador, tipo, extra } = ev;
-
   if (tipo === "aniversario_colaborador") {
     const data = fmtDiaMes(colaborador.data_nascimento);
     return data ? <span className="text-gray-600">{data}</span> : <span className="text-orange-500 text-xs font-medium">📅 Data não cadastrada</span>;
@@ -84,8 +84,7 @@ function DetalheCell({ ev }) {
   if (tipo === "aniversario_filho_1ano") {
     const filho = (colaborador.filhos || []).find(f => {
       if (!f.filho_data_nascimento) return false;
-      const dt = new Date(f.filho_data_nascimento + "T00:00:00");
-      return dt.getFullYear() === anoAtual - 1;
+      return new Date(f.filho_data_nascimento + "T00:00:00").getFullYear() === anoAtual - 1;
     });
     const data = fmtDiaMes(filho?.filho_data_nascimento);
     return data ? <span className="text-gray-600">{data} <span className="text-gray-400">(1 ano)</span></span>
@@ -100,7 +99,6 @@ function DetalheCell({ ev }) {
   return <span className="text-gray-400">—</span>;
 }
 
-// ── Seção card reutilizável
 function SecaoCard({ icon: IconComp, titulo, cor, children }) {
   return (
     <Card>
@@ -115,10 +113,10 @@ function SecaoCard({ icon: IconComp, titulo, cor, children }) {
 }
 
 // ─── Visão do mês atual ───────────────────────────────────────────────────────
-function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
+// Recebe setModalUpload para abrir o modal NO NÍVEL RAIZ
+function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida, setModalUpload }) {
   const queryClient = useQueryClient();
   const [enviandoId, setEnviandoId] = useState(null);
-  const [uploadModal, setUploadModal] = useState(null); // { colaborador, tipo, demanda }
 
   const enviarDespedida = async (c) => {
     setEnviandoId(c.id);
@@ -168,19 +166,13 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
     return "🥇 1 Ano";
   };
 
+  const abrirUpload = (colaborador, tipo) => {
+    const demanda = findDemanda(demandas, colaborador.id, tipo, mesAtual);
+    setModalUpload({ colaborador, tipo, demanda });
+  };
+
   return (
     <div className="space-y-5">
-      {uploadModal && (
-        <UploadArteModal
-          open={!!uploadModal}
-          onClose={() => setUploadModal(null)}
-          colaborador={uploadModal.colaborador}
-          tipo={uploadModal.tipo}
-          anoReferencia={anoAtual}
-          demandaExistente={uploadModal.demanda}
-        />
-      )}
-
       <SecaoCard icon={Users} titulo={`Aniversariantes do Mês (${format(hoje, "MMMM", { locale: ptBR })})`} cor="text-pink-700">
         {aniversariantesMes.length === 0
           ? <p className="text-sm text-gray-400">Nenhum aniversariante este mês.</p>
@@ -199,7 +191,7 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                   <div className="flex items-center gap-2 flex-wrap">
                     {c.data_nascimento ? <span className="text-xs text-gray-500">{fmtDiaMes(c.data_nascimento)}</span> : <span className="text-xs text-orange-500">Data não cadastrada</span>}
                     {isHoje(c.data_nascimento) && <Badge className="bg-pink-500 text-white text-xs">🎂 Hoje!</Badge>}
-                    <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_colaborador" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_colaborador", demanda })} />
+                    <ArteBadge demanda={demanda} onUpload={() => abrirUpload(c, "aniversario_colaborador")} />
                   </div>
                 </div>
               );
@@ -217,11 +209,11 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                 <div key={c.id} className="flex items-center gap-3 bg-yellow-50 border border-yellow-100 rounded-lg p-3">
                   <div className="flex-1">
                     <p className="font-medium text-sm">{c.nome_completo}</p>
-                    <p className="text-xs text-gray-500">Admissão: {fmtDiaMes(c.data_admissao) || c.data_admissao || "—"}</p>
+                    <p className="text-xs text-gray-500">Admissão: {fmtDiaMes(c.data_admissao) || "—"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-yellow-400 text-yellow-900 text-xs">{tipoTempoLabel(c.anos)}</Badge>
-                    <ArteBadge demanda={demanda} colaborador={c} tipo="tempo_empresa" onUpload={() => setUploadModal({ colaborador: c, tipo: "tempo_empresa", demanda })} />
+                    <ArteBadge demanda={demanda} onUpload={() => abrirUpload(c, "tempo_empresa")} />
                   </div>
                 </div>
               );
@@ -244,7 +236,7 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                   <div className="flex items-center gap-2">
                     {c.conjuge_data_nascimento ? <span className="text-xs text-gray-500">{fmtDiaMes(c.conjuge_data_nascimento)}</span> : null}
                     {isHoje(c.conjuge_data_nascimento) && <Badge className="bg-red-500 text-white text-xs">🎂 Hoje!</Badge>}
-                    <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_conjuge" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_conjuge", demanda })} />
+                    <ArteBadge demanda={demanda} onUpload={() => abrirUpload(c, "aniversario_conjuge")} />
                   </div>
                 </div>
               );
@@ -273,7 +265,7 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                     <div className="flex items-center gap-2">
                       {f.filho_data_nascimento && <span className="text-xs text-gray-500">{fmtDiaMes(f.filho_data_nascimento)}</span>}
                       {isHoje(f.filho_data_nascimento) && <Badge className="bg-purple-500 text-white text-xs">🎈 Hoje!</Badge>}
-                      <ArteBadge demanda={demanda} colaborador={c} tipo="aniversario_filho_1ano" onUpload={() => setUploadModal({ colaborador: c, tipo: "aniversario_filho_1ano", demanda })} />
+                      <ArteBadge demanda={demanda} onUpload={() => abrirUpload(c, "aniversario_filho_1ano")} />
                     </div>
                   </div>
                 );
@@ -295,7 +287,7 @@ function VisaoMesAtual({ colaboradores, demandas, podeEnviarDespedida }) {
                     <p className="text-xs text-gray-500">{c.area}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ArteBadge demanda={demanda} colaborador={c} tipo="despedida" onUpload={() => setUploadModal({ colaborador: c, tipo: "despedida", demanda })} />
+                    <ArteBadge demanda={demanda} onUpload={() => abrirUpload(c, "despedida")} />
                     {podeEnviarDespedida && (
                       <Button size="sm" variant="outline" onClick={() => enviarDespedida(c)} disabled={enviandoId === c.id}>
                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -317,9 +309,7 @@ function calcularEventosPorMes(colaboradores) {
   const porMes = Array.from({ length: 12 }, () => []);
   colaboradores.forEach(c => {
     if (c.status === "Desligado") {
-      if (!c.comunicado_despedida_enviado) {
-        porMes[mesAtual].push({ colaborador: c, tipo: "despedida" });
-      }
+      if (!c.comunicado_despedida_enviado) porMes[mesAtual].push({ colaborador: c, tipo: "despedida" });
       return;
     }
     if (c.data_nascimento) {
@@ -363,24 +353,18 @@ const TIPO_LABEL_CURTO = {
   despedida: "💼 Despedida",
 };
 
-function VisaoAnual({ colaboradores, demandas }) {
+// Recebe setModalUpload para abrir modal NO NÍVEL RAIZ (fora do acordeão)
+function VisaoAnual({ colaboradores, demandas, setModalUpload }) {
   const [mesExpandido, setMesExpandido] = useState(mesAtual);
-  const [uploadModal, setUploadModal] = useState(null);
   const eventosPorMes = useMemo(() => calcularEventosPorMes(colaboradores), [colaboradores]);
+
+  const abrirUpload = (colaborador, tipo, idx) => {
+    const demanda = findDemanda(demandas, colaborador.id, tipo, idx);
+    setModalUpload({ colaborador, tipo, demanda });
+  };
 
   return (
     <div className="space-y-3">
-      {uploadModal && (
-        <UploadArteModal
-          open={!!uploadModal}
-          onClose={() => setUploadModal(null)}
-          colaborador={uploadModal.colaborador}
-          tipo={uploadModal.tipo}
-          anoReferencia={anoAtual}
-          demandaExistente={uploadModal.demanda}
-        />
-      )}
-
       <p className="text-sm text-gray-500">
         Planejamento anual de {anoAtual} — clique em um mês para ver os eventos.
       </p>
@@ -441,9 +425,7 @@ function VisaoAnual({ colaboradores, demandas }) {
                           <td className="px-4 py-2 text-center">
                             <ArteBadge
                               demanda={demanda}
-                              colaborador={ev.colaborador}
-                              tipo={ev.tipo}
-                              onUpload={() => setUploadModal({ colaborador: ev.colaborador, tipo: ev.tipo, demanda })}
+                              onUpload={() => abrirUpload(ev.colaborador, ev.tipo, idx)}
                             />
                           </td>
                         </tr>
@@ -463,8 +445,22 @@ function VisaoAnual({ colaboradores, demandas }) {
   );
 }
 
-// ─── Componente exportado ─────────────────────────────────────────────────────
+// ─── Componente exportado — modal AQUI, fora de qualquer lista/acordeão ───────
 export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false }) {
+  // Estado do modal no NÍVEL RAIZ — evita desmontagem durante upload assíncrono
+  const [modalUpload, setModalUpload] = useState(null); // { colaborador, tipo, demanda }
+  const queryClient = useQueryClient();
+
+  const updateDemandaMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Comunicados_Artes.update(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] }),
+  });
+
+  const createDemandaMut = useMutation({
+    mutationFn: (data) => base44.entities.Comunicados_Artes.create(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] }),
+  });
+
   const { data: colaboradores = [], isLoading: loadColabs } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: () => base44.entities.Colaboradores.list(),
@@ -477,19 +473,62 @@ export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false
     staleTime: 30_000,
   });
 
+  const handleUploadSuccess = async (fileUrl) => {
+    if (!modalUpload) return;
+    const { colaborador, tipo, demanda } = modalUpload;
+
+    if (demanda?.id) {
+      await updateDemandaMut.mutateAsync({
+        id: demanda.id,
+        data: { imagem_url: fileUrl, status_arte: "arte_carregada" },
+      });
+    } else {
+      await createDemandaMut.mutateAsync({
+        colaborador_id: colaborador.id,
+        colaborador_nome: colaborador.nome_completo,
+        tipo_comunicado: tipo,
+        imagem_url: fileUrl,
+        status_arte: "arte_carregada",
+        ano_referencia: anoAtual,
+        criado_por: "portal",
+      });
+    }
+    setModalUpload(null);
+  };
+
   if (loadColabs || loadDemandas) {
     return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
   }
 
-  if (modo === "anual") {
-    return <VisaoAnual colaboradores={colaboradores} demandas={demandas} />;
-  }
-
   return (
-    <VisaoMesAtual
-      colaboradores={colaboradores}
-      demandas={demandas}
-      podeEnviarDespedida={podeEnviarDespedida}
-    />
+    <>
+      {/* Modal renderizado UMA VEZ no nível raiz — fora de listas e acordeões */}
+      {modalUpload && (
+        <UploadArteModal
+          open={!!modalUpload}
+          onClose={() => setModalUpload(null)}
+          colaborador={modalUpload.colaborador}
+          tipo={modalUpload.tipo}
+          anoReferencia={anoAtual}
+          demandaExistente={modalUpload.demanda}
+          onSuccess={handleUploadSuccess}
+        />
+      )}
+
+      {modo === "anual" ? (
+        <VisaoAnual
+          colaboradores={colaboradores}
+          demandas={demandas}
+          setModalUpload={setModalUpload}
+        />
+      ) : (
+        <VisaoMesAtual
+          colaboradores={colaboradores}
+          demandas={demandas}
+          podeEnviarDespedida={podeEnviarDespedida}
+          setModalUpload={setModalUpload}
+        />
+      )}
+    </>
   );
 }

@@ -1,11 +1,13 @@
 /**
  * Modal de upload de arte para uma demanda de comunicado.
- * Usado na VisaoEventos (coluna Arte) no Planejamento Anual.
+ * Suporta dois modos:
+ *   1. Props completas (colaborador, tipo, anoReferencia, demandaExistente) — cria ou atualiza via SDK
+ *   2. Props de demanda (demanda) + onSuccess(url) — o pai controla a atualização (modo raiz)
  */
 import React, { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, X, ImageIcon } from "lucide-react";
 
@@ -17,12 +19,28 @@ const TIPO_LABEL = {
   despedida: "Despedida",
 };
 
-export default function UploadArteModal({ open, onClose, colaborador, tipo, anoReferencia, demandaExistente }) {
+export default function UploadArteModal({
+  open,
+  onClose,
+  // Modo 1: props de contexto (VisaoEventos modo mes, ou criação nova)
+  colaborador,
+  tipo,
+  anoReferencia,
+  demandaExistente,
+  // Modo 2: pai controla atualização (VisaoEventos modo anual — raiz)
+  demanda,       // objeto demanda completo
+  onSuccess,     // callback(fileUrl) chamado após upload
+}) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef();
   const queryClient = useQueryClient();
+
+  // Resolver modo
+  const resolvedColaboradorNome = colaborador?.nome_completo || demanda?.colaborador_nome || "";
+  const resolvedTipo = tipo || demanda?.tipo_comunicado || "";
+  const tipoLabel = TIPO_LABEL[resolvedTipo] || resolvedTipo;
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
@@ -36,26 +54,33 @@ export default function UploadArteModal({ open, onClose, colaborador, tipo, anoR
   const handleConfirm = async () => {
     if (!file) return;
     setUploading(true);
+
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-    if (demandaExistente) {
-      await base44.entities.Comunicados_Artes.update(demandaExistente.id, {
-        imagem_url: file_url,
-        status_arte: "arte_carregada",
-      });
+    if (onSuccess) {
+      // Modo 2: delegar ao pai
+      await onSuccess(file_url);
     } else {
-      await base44.entities.Comunicados_Artes.create({
-        colaborador_id: colaborador.id,
-        colaborador_nome: colaborador.nome_completo,
-        tipo_comunicado: tipo,
-        imagem_url: file_url,
-        status_arte: "arte_carregada",
-        ano_referencia: anoReferencia,
-        criado_por: "portal",
-      });
+      // Modo 1: salva diretamente
+      if (demandaExistente) {
+        await base44.entities.Comunicados_Artes.update(demandaExistente.id, {
+          imagem_url: file_url,
+          status_arte: "arte_carregada",
+        });
+      } else {
+        await base44.entities.Comunicados_Artes.create({
+          colaborador_id: colaborador.id,
+          colaborador_nome: colaborador.nome_completo,
+          tipo_comunicado: tipo,
+          imagem_url: file_url,
+          status_arte: "arte_carregada",
+          ano_referencia: anoReferencia,
+          criado_por: "portal",
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
     }
 
-    queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
     setUploading(false);
     handleClose();
   };
@@ -66,16 +91,20 @@ export default function UploadArteModal({ open, onClose, colaborador, tipo, anoR
     onClose();
   };
 
-  if (!colaborador) return null;
+  // Validação: precisa de alguma referência para exibir
+  if (!resolvedColaboradorNome && !open) return null;
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base leading-snug">
-            Carregar Arte — {colaborador.nome_completo}
-            <span className="block text-sm font-normal text-gray-500 mt-0.5">{TIPO_LABEL[tipo] || tipo}</span>
+            Carregar Arte — {resolvedColaboradorNome}
+            <span className="block text-sm font-normal text-gray-500 mt-0.5">{tipoLabel}</span>
           </DialogTitle>
+          <DialogDescription>
+            Faça o upload da arte para {resolvedColaboradorNome} — {tipoLabel}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

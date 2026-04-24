@@ -4,6 +4,7 @@ import PortalLayout from "../components/portal/PortalLayout";
 import ListaDemandas from "../components/comunicados/ListaDemandas";
 import VisaoEventos from "../components/comunicados/VisaoEventos";
 import GestaoColaboradoresPortal from "../components/portal/GestaoColaboradoresPortal";
+import AbaEnvios from "../components/comunicados/AbaEnvios";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
@@ -54,6 +55,7 @@ export default function PortalComunicados() {
             {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
             {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Artes</TabsTrigger>}
             {podeGerirColabs && <TabsTrigger value="colabs">👥 Colaboradores</TabsTrigger>}
+            {podeVerVisao && <TabsTrigger value="envios">⚙️ Envios</TabsTrigger>}
           </TabsList>
 
           {podeVerVisao && (
@@ -74,6 +76,11 @@ export default function PortalComunicados() {
           {podeGerirColabs && (
             <TabsContent value="colabs">
               <GestaoColaboradoresPortal />
+            </TabsContent>
+          )}
+          {podeVerVisao && (
+            <TabsContent value="envios">
+              <AbaEnvios />
             </TabsContent>
           )}
         </Tabs>

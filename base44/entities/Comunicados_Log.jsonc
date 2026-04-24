@@ -1,0 +1,56 @@
+{
+  "name": "Comunicados_Log",
+  "type": "object",
+  "properties": {
+    "tipo_comunicado": {
+      "type": "string",
+      "description": "Tipo do comunicado (ex: aniversario_colaborador)"
+    },
+    "colaborador_nome": {
+      "type": "string",
+      "description": "Nome do colaborador relacionado ao envio"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do colaborador"
+    },
+    "destinatarios": {
+      "type": "array",
+      "description": "Lista de e-mails destinat\u00e1rios",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assunto_enviado": {
+      "type": "string",
+      "description": "Assunto do e-mail enviado"
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora do envio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "enviado",
+        "erro",
+        "sem_arte",
+        "sem_destinatario"
+      ],
+      "description": "Status do envio"
+    },
+    "detalhe_erro": {
+      "type": "string",
+      "description": "Detalhe do erro (apenas se status = erro)"
+    },
+    "demanda_id": {
+      "type": "string",
+      "description": "ID da demanda em Comunicados_Artes"
+    }
+  },
+  "required": [
+    "tipo_comunicado",
+    "status"
+  ]
+}
