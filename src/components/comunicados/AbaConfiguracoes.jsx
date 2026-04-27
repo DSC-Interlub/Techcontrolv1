@@ -123,12 +123,15 @@ function ConfigCard({ config, onSave, saving }) {
             {config.tipo_comunicado === "despedida" ? (
               <p className="text-xs text-gray-500 mt-1 italic">Disparo manual — sem automação</p>
             ) : (
-              <Input
-                type="time"
-                value={form.horario_envio}
-                onChange={e => set("horario_envio", e.target.value)}
-                className="mt-1 h-8 text-xs"
-              />
+              <>
+                <Input
+                  type="time"
+                  value={form.horario_envio}
+                  onChange={e => set("horario_envio", e.target.value)}
+                  className="mt-1 h-8 text-xs"
+                />
+                <p className="text-xs text-gray-400 mt-1">(referência visual — não altera o horário de disparo automático)</p>
+              </>
             )}
           </div>
           <div>
@@ -259,8 +262,20 @@ export default function AbaConfiguracoes() {
         )}
       </div>
 
+      {/* Banner informativo sobre horario_envio */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+        <div className="shrink-0 mt-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        </div>
+        <div className="text-xs text-blue-800 space-y-1">
+          <p className="font-semibold">O horário configurado aqui é apenas uma referência visual.</p>
+          <p>Ele aparece na aba <strong>Envios</strong> para informar o horário esperado, mas <strong>não altera o horário real de disparo automático</strong>. O disparo real é controlado pelo <strong>start_time</strong> de cada automação no painel Base44.</p>
+          <p>Para alterar o horário de disparo efetivo, acesse <strong>Base44 Dashboard → Automações</strong> e altere o <em>start_time</em> de cada função de comunicado.</p>
+        </div>
+      </div>
+
       <p className="text-xs text-gray-500">
-        Configure o horário, assunto e destinatários de cada tipo de comunicado. As automações leem estas configurações antes de enviar.
+        Configure o assunto e destinatários de cada tipo de comunicado.
       </p>
 
       {configsMerged.map(config => (

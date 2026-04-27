@@ -54,10 +54,19 @@ Deno.serve(async (req) => {
 
   let alvos = [];
   if (colaborador_id) {
+    // Modo manual: envia para o colaborador específico independente da data de admissão
     const colabs = await base44.asServiceRole.entities.Colaboradores.filter({ id: colaborador_id });
     if (colabs[0]) alvos = [colabs[0]];
   } else {
-    alvos = await base44.asServiceRole.entities.Colaboradores.filter({ status: "Ativo", comunicado_boas_vindas_enviado: false });
+    // Modo automático: apenas colaboradores admitidos nos últimos 7 dias
+    // Evita spam em massa para colaboradores antigos com comunicado_boas_vindas_enviado = false
+    const limiteData = new Date();
+    limiteData.setDate(limiteData.getDate() - 7);
+    const limiteDateStr = limiteData.toISOString().split("T")[0];
+
+    const pendentes = await base44.asServiceRole.entities.Colaboradores.filter({ status: "Ativo", comunicado_boas_vindas_enviado: false });
+    alvos = pendentes.filter(c => c.data_admissao && c.data_admissao >= limiteDateStr);
+    console.log(`[enviarBoasVindas] Modo automático: ${pendentes.length} pendentes, ${alvos.length} elegíveis (admissão >= ${limiteDateStr}).`);
   }
 
   const enviados = [];

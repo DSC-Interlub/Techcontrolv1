@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 2.3.0 | **Data de geração:** 27/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 2.4.0 | **Data de geração:** 27/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -215,7 +215,7 @@ Tabela com as 5 automações automáticas + linha manual da Despedida.
 
 Card por tipo de comunicado (5 tipos). Cada card contém:
 - Switch Ativo/Inativo (opacidade 60% quando inativo)
-- Horário de Envio (time input, exceto Despedida que é "Manual")
+- Horário de Envio (time input, exceto Despedida que é "Manual") — com texto auxiliar: *"(referência visual — não altera o horário de disparo automático)"*
 - Assunto do E-mail com variáveis dinâmicas (`{nome}`, `{nome_conjuge}`, `{nome_filho}`, `{anos}`, `{area}`)
 - Select Destinatários: todos_colaboradores / colaborador_conjuge_gestor / colaborador_e_gestor / manual
 - E-mails adicionais (sempre recebem, separados por vírgula)
@@ -223,6 +223,11 @@ Card por tipo de comunicado (5 tipos). Cada card contém:
 - Botão "Salvar" por card (upsert)
 
 **Auto-inicialização:** Se `Comunicados_Config` estiver vazia (primeira vez), os 5 registros padrão são criados automaticamente ao abrir a aba.
+
+**⚠️ Banner informativo fixo no topo da aba (v2.4.0):**
+> "O horário configurado aqui é apenas uma referência visual. Ele aparece na aba Envios para informar o horário esperado, mas **não altera o horário real de disparo automático**. O disparo real é controlado pelo `start_time` de cada automação no painel Base44."
+
+Isso elimina a confusão de admin alterar o horário e achar que o disparo mudou. Para alterar o horário real, é necessário editar o `start_time` das automações no Base44 Dashboard → Automações.
 
 **Valores padrão:**
 
@@ -418,9 +423,14 @@ created_by   – string (email do criador)
 | `functions/enviarAniversarioConjuge.js` | Automação diária (10:00 BRT) | Busca demandas `tipo=aniversario_conjuge`. Envia para colaborador + cônjuge + gestor. |
 | `functions/enviarAniversarioFilho1Ano.js` | Automação diária (10:00 BRT) | Busca demandas `tipo=aniversario_filho_1ano`. Envia para colaborador + cônjuge + gestor. |
 | `functions/enviarAniversarioTempoEmpresa.js` | Automação diária (10:00 BRT) | Busca demandas `tipo=tempo_empresa`. Envia para todos os ativos com `incluir_comunicados`. |
-| `functions/enviarBoasVindas.js` | Diário ou chamada manual | Sem `colaborador_id`: processa todos pendentes. Com ID: envia apenas para aquele. Busca arte específica do colaborador → fallback arte genérica. |
+| `functions/enviarBoasVindas.js` | Diário ou chamada manual | **Modo automático** (sem `colaborador_id`): processa colaboradores com `comunicado_boas_vindas_enviado = false` **E `data_admissao` nos últimos 7 dias** — evita spam em massa para colaboradores antigos. **Modo manual** (com `colaborador_id`): sem restrição de data, envia para o colaborador específico. Busca arte específica → fallback arte genérica. |
 | `functions/enviarDespedida.js` | Chamada manual (admin ou portal) | Exige `colaborador_id`. Busca arte do colaborador com `status_arte=arte_carregada`. Envia para todos os ativos. Marca `comunicado_despedida_enviado = true`. |
 | `functions/gerarDemandasComunicados.js` | Cron dia 1 do mês (09:00 UTC) + manual | Gera demandas para o próximo mês. Anti-duplicata. Aceita `{ mes_atual: true }` para gerar o mês atual. |
+| `functions/migrarBoasVindasAntigos.js` | **Executar UMA VEZ** (admin only) | Script de migração: marca `comunicado_boas_vindas_enviado = true` para colaboradores com `data_admissao < hoje - 30 dias` que ainda têm o campo `false`, sem enviar e-mail. Evita que apareçam como pendentes no modo automático. Desativar após uso. |
+
+### Confirmação: Todas as funções gravam Comunicados_Log (v2.3.0+)
+
+Todas as 6 funções de comunicado (`enviarAniversariosColaboradores`, `enviarAniversarioConjuge`, `enviarAniversarioFilho1Ano`, `enviarAniversarioTempoEmpresa`, `enviarBoasVindas`, `enviarDespedida`) gravam um registro em `Comunicados_Log` após cada tentativa de envio (sucesso ou erro). A aba Envios exibe "Último Disparo" correto para todos os tipos.
 
 ### Tratamento de Erros nas Funções de Envio (v2.3.0)
 
@@ -554,8 +564,9 @@ Template com header azul, banner colorido por status, número do chamado em dest
 | 4 | **Sem validação MIME no servidor** – Upload só valida por `accept` HTML | Chamados | 🟡 Média | Segurança de upload |
 | 5 | **FilaEmails sem limpeza** – Registros "enviado" nunca removidos | E-mails | 🟢 Baixa | Performance futura |
 | 6 | **Chamado travado em Aguardando Avaliação** – Se colaborador não avaliar | Chamados | 🟢 Baixa | Métricas incorretas |
-| 7 | **horario_envio em Comunicados_Config é referência visual** – Alterar o horário real exige mudar o `start_time` da automação no Base44 dashboard | Comunicados | 🟡 Média | Expectativa incorreta do admin |
-| 8 | **Domínio remetente padrão** – `onboarding@resend.dev` pode cair em spam. Verificar domínio próprio no Resend para produção. | Comunicados | 🟡 Média | Deliverability |
+| 7 | **Domínio remetente padrão** – `onboarding@resend.dev` pode cair em spam. Verificar domínio próprio no Resend para produção. | Comunicados | 🟡 Média | Deliverability |
+| 8 | **gerarDemandasComunicados com 0 execuções** – A automação cron `0 9 1 * *` nunca rodou automaticamente. Primeira execução será dia 01/05/2026 às 09:00 UTC. Monitorar. Como fallback, usar botão "Gerar Demandas do Mês" manualmente. | Comunicados | 🟡 Média | Demandas de maio não existem ainda |
+| 9 | **migrarBoasVindasAntigos deve ser executada** – A função de migração `functions/migrarBoasVindasAntigos.js` deve ser executada uma única vez por um admin para limpar colaboradores antigos com `comunicado_boas_vindas_enviado = false`. Sem isso, o campo fica inconsistente na UI (aparece como pendente mas nunca será processado). | Comunicados | 🟡 Média | UI desatualizada |
 
 ---
 
@@ -609,6 +620,7 @@ BASE44_APP_ID=your_app_id
 | 23/04/2026 | 2.1.0 | Colaboradores | Schema com 30+ campos (família, cônjuge, filhos). `ColaboradorForm` em 4 abas. `GestaoColaboradoresPortal` com 3 abas. `VisaoEventos` com coluna Detalhe e `UploadArteModal` clicável. |
 | 24/04/2026 | 2.2.0 | Comunicados | `AbaEnvios` (tabela de automações + histórico de logs). `AbaConfiguracoes` (cards por tipo com auto-inicialização). Entidades `Comunicados_Log` e `Comunicados_Config`. `enviarAniversariosColaboradores` grava log. |
 | 27/04/2026 | 2.3.0 | Comunicados | **Bug fix upload:** `modalUpload` armazena apenas primitivos; `const id = demandaId` capturado antes do `await` — closure estável. **Resend:** todas as funções tratam `result.error` individualmente por email, gravam `Comunicados_Log` com emailsOk/emailsErro, usam `onboarding@resend.dev`. **AbaEnvios:** horário lido de `Comunicados_Config` (não hardcoded); badge "Desativado" se `ativo === false`. **Planejamento Anual:** barra de filtros (busca por nome, tipo, status de arte), badges de prontidão separados (prontas/sem arte/enviadas), coluna "Envio", ordenação automática (sem arte primeiro). **Funções:** todas adotam padrão de tratamento de erro do Resend com log individual. |
+| 27/04/2026 | 2.4.0 | Comunicados | **AbaConfiguracoes:** banner informativo azul fixo no topo explicando que `horario_envio` é referência visual; texto auxiliar abaixo de cada campo de horário. **enviarBoasVindas:** modo automático (sem `colaborador_id`) agora restrito a colaboradores com `data_admissao >= hoje - 7 dias` — elimina risco de spam em massa. Modo manual (com ID) sem restrição. **migrarBoasVindasAntigos.js:** novo script admin-only que marca `comunicado_boas_vindas_enviado = true` para colaboradores com admissão anterior a 30 dias sem enviar e-mail. **Documentação:** seção 7 atualizada (enviarBoasVindas e migração); confirmação de que todas as funções gravam Comunicados_Log; problemas conhecidos revisados. |
 
 ---
 
