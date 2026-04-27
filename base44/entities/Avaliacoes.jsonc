@@ -1,0 +1,99 @@
+{
+  "name": "Avaliacoes",
+  "type": "object",
+  "properties": {
+    "equipamento_id": {
+      "type": "string",
+      "description": "ID do equipamento avaliado"
+    },
+    "equipamento_tipo": {
+      "type": "string",
+      "description": "Tipo de entidade (PCs_Internos ou Notebooks_Externos)"
+    },
+    "equipamento_nome": {
+      "type": "string",
+      "description": "Nome/modelo do equipamento para exibi\u00e7\u00e3o"
+    },
+    "usuario_equipamento": {
+      "type": "string",
+      "description": "Usu\u00e1rio atual do equipamento"
+    },
+    "numero_avaliacao": {
+      "type": "number",
+      "description": "N\u00famero sequencial da avalia\u00e7\u00e3o para este equipamento (1\u00aa, 2\u00aa, 3\u00aa, etc)"
+    },
+    "memoria_ram": {
+      "type": "string",
+      "description": "Uso de mem\u00f3ria RAM"
+    },
+    "tipo_armazenamento": {
+      "type": "string",
+      "description": "Tipo de armazenamento (SSD/HDD)"
+    },
+    "espaco_disco": {
+      "type": "string",
+      "description": "Espa\u00e7o livre em disco"
+    },
+    "versao_windows": {
+      "type": "string",
+      "description": "Vers\u00e3o do Windows"
+    },
+    "antivirus": {
+      "type": "string",
+      "description": "Status do antiv\u00edrus"
+    },
+    "desempenho": {
+      "type": "string",
+      "description": "Desempenho geral"
+    },
+    "problemas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Lista de problemas identificados"
+    },
+    "atende_trabalho": {
+      "type": "string",
+      "description": "Se atende \u00e0s necessidades de trabalho"
+    },
+    "recomendacao_usuario": {
+      "type": "string",
+      "description": "Recomenda\u00e7\u00e3o do usu\u00e1rio"
+    },
+    "satisfacao": {
+      "type": "string",
+      "description": "N\u00edvel de satisfa\u00e7\u00e3o"
+    },
+    "tempo_uso_anos": {
+      "type": "number",
+      "description": "Tempo de uso em anos"
+    },
+    "pontuacao_total": {
+      "type": "number",
+      "description": "Pontua\u00e7\u00e3o total calculada"
+    },
+    "classificacao": {
+      "type": "string",
+      "enum": [
+        "Manter",
+        "Upgrade",
+        "Substituir"
+      ],
+      "description": "Classifica\u00e7\u00e3o final"
+    },
+    "data_avaliacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora da avalia\u00e7\u00e3o"
+    },
+    "avaliador": {
+      "type": "string",
+      "description": "Quem realizou a avalia\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "equipamento_id",
+    "equipamento_tipo"
+  ]
+}

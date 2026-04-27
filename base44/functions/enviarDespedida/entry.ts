@@ -15,10 +15,7 @@ function buildComunicadoHtml(arteUrl) {
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
-  // Verificar permissão: admin, user, comunicados_dp ou colaborador com permissão
-  let user = null;
   const portalColabId = req.headers.get("x-portal-colaborador-id");
-
   if (portalColabId) {
     const colabChamador = await base44.asServiceRole.entities.Colaboradores.filter({ id: portalColabId });
     const c = colabChamador[0];
@@ -26,6 +23,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: "Sem permissão" }, { status: 403 });
     }
   } else {
+    let user = null;
     try { user = await base44.auth.me(); } catch (_) {}
     if (user && !["admin", "user", "comunicados_dp"].includes(user.role)) {
       return Response.json({ error: "Sem permissão" }, { status: 403 });
@@ -46,7 +44,6 @@ Deno.serve(async (req) => {
     return Response.json({ error: "Colaborador não encontrado" }, { status: 404 });
   }
 
-  // Buscar arte de despedida para este colaborador (status = arte_carregada)
   const demandas = await base44.asServiceRole.entities.Comunicados_Artes.filter({
     colaborador_id,
     tipo_comunicado: "despedida",
@@ -61,8 +58,6 @@ Deno.serve(async (req) => {
   }
 
   const demanda = demandas[0];
-
-  // Buscar destinatários (todos os colaboradores ativos)
   const todosColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
   const destinatarios = todosColabs
     .filter(c => c.status !== "Desligado" && c.email && c.incluir_comunicados)
@@ -70,20 +65,45 @@ Deno.serve(async (req) => {
 
   const assunto = `Até logo, ${colaborador.nome_completo} — obrigado por tudo! 💼`;
   const html = buildComunicadoHtml(demanda.imagem_url);
+  const dataEnvio = new Date().toISOString();
 
+  const emailsOk = [];
+  const emailsErro = [];
   for (const email of destinatarios) {
-    await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
+    const result = await resend.emails.send({
+      from: "TechControl <onboarding@resend.dev>",
+      to: email,
+      subject: assunto,
+      html,
+    });
+    if (result.error) {
+      console.error(`[enviarDespedida] RESEND ERRO para ${email}:`, JSON.stringify(result.error));
+      emailsErro.push(email);
+    } else {
+      emailsOk.push(email);
+    }
   }
 
-  // Atualizar demanda e colaborador
   await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
     status_arte: "enviado",
-    data_envio: new Date().toISOString(),
+    data_envio: dataEnvio,
   });
   await base44.asServiceRole.entities.Colaboradores.update(colaborador_id, {
     comunicado_despedida_enviado: true,
   });
 
-  console.log(`[enviarDespedida] Enviado para ${colaborador.nome_completo} (${destinatarios.length} dest.).`);
-  return Response.json({ ok: true, enviados: destinatarios.length });
+  await base44.asServiceRole.entities.Comunicados_Log.create({
+    tipo_comunicado: "despedida",
+    colaborador_nome: colaborador.nome_completo,
+    colaborador_id: colaborador.id,
+    destinatarios: emailsOk,
+    assunto_enviado: assunto,
+    data_envio: dataEnvio,
+    status: emailsErro.length === destinatarios.length ? "erro" : "enviado",
+    detalhe_erro: emailsErro.length > 0 ? `Falhou para: ${emailsErro.join(", ")}` : undefined,
+    demanda_id: demanda.id,
+  });
+
+  console.log(`[enviarDespedida] ${colaborador.nome_completo}: ${emailsOk.length} ok, ${emailsErro.length} erro.`);
+  return Response.json({ ok: true, enviados: emailsOk.length, erros: emailsErro.length, msg: `${emailsOk.length} e-mail(s) enviado(s).` });
 });

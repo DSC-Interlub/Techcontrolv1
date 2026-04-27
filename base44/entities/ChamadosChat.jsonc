@@ -1,0 +1,49 @@
+{
+  "name": "ChamadosChat",
+  "type": "object",
+  "properties": {
+    "chamado_id": {
+      "type": "string",
+      "description": "ID do chamado relacionado"
+    },
+    "tipo_remetente": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "solicitante"
+      ],
+      "description": "Tipo de remetente da mensagem"
+    },
+    "remetente_nome": {
+      "type": "string",
+      "description": "Nome de quem enviou a mensagem"
+    },
+    "remetente_email": {
+      "type": "string",
+      "description": "Email de quem enviou a mensagem"
+    },
+    "mensagem": {
+      "type": "string",
+      "description": "Conte\u00fado da mensagem"
+    },
+    "anexo_url": {
+      "type": "string",
+      "description": "URL do arquivo anexado"
+    },
+    "anexo_nome": {
+      "type": "string",
+      "description": "Nome do arquivo anexado"
+    },
+    "data_hora": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora da mensagem"
+    }
+  },
+  "required": [
+    "chamado_id",
+    "tipo_remetente",
+    "remetente_nome",
+    "mensagem"
+  ]
+}

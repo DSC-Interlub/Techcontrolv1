@@ -40,22 +40,47 @@ Deno.serve(async (req) => {
     if (!colaborador) continue;
 
     const anos = demanda.anos_empresa || "?";
-    const nome = colaborador.nome_completo.split(" ")[0];
     const assunto = `${colaborador.nome_completo} está completando ${anos} ano${anos > 1 ? "s" : ""} conosco! 🎉`;
     const html = buildComunicadoHtml(demanda.imagem_url);
+    const dataEnvio = new Date().toISOString();
 
+    const emailsOk = [];
+    const emailsErro = [];
     for (const email of destinatariosGerais) {
-      await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
+      const result = await resend.emails.send({
+        from: "TechControl <onboarding@resend.dev>",
+        to: email,
+        subject: assunto,
+        html,
+      });
+      if (result.error) {
+        console.error(`[enviarAniversarioTempoEmpresa] RESEND ERRO para ${email}:`, JSON.stringify(result.error));
+        emailsErro.push(email);
+      } else {
+        emailsOk.push(email);
+      }
     }
 
     await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
       status_arte: "enviado",
-      data_envio: new Date().toISOString(),
+      data_envio: dataEnvio,
+    });
+
+    await base44.asServiceRole.entities.Comunicados_Log.create({
+      tipo_comunicado: "tempo_empresa",
+      colaborador_nome: colaborador.nome_completo,
+      colaborador_id: colaborador.id,
+      destinatarios: emailsOk,
+      assunto_enviado: assunto,
+      data_envio: dataEnvio,
+      status: emailsErro.length === destinatariosGerais.length ? "erro" : "enviado",
+      detalhe_erro: emailsErro.length > 0 ? `Falhou para: ${emailsErro.join(", ")}` : undefined,
+      demanda_id: demanda.id,
     });
 
     enviados++;
-    console.log(`[enviarAniversarioTempoEmpresa] Enviado para ${colaborador.nome_completo} — ${anos} anos.`);
+    console.log(`[enviarAniversarioTempoEmpresa] ${colaborador.nome_completo} — ${anos} anos: ${emailsOk.length} ok.`);
   }
 
-  return Response.json({ ok: true, enviados });
+  return Response.json({ ok: true, enviados, msg: `${enviados} processado(s).` });
 });

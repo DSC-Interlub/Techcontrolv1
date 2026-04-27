@@ -46,22 +46,47 @@ Deno.serve(async (req) => {
     const nomeConjuge = colaborador.conjuge_nome || "cônjuge";
     const assunto = `Parabéns, ${nomeConjuge}! 🎂`;
     const html = buildComunicadoHtml(demanda.imagem_url);
+    const dataEnvio = new Date().toISOString();
 
-    const destinatarios = [colaborador.email, colaborador.conjuge_email, colaborador.contato_responsavel_email]
-      .filter(Boolean);
+    const destinatarios = [colaborador.email, colaborador.conjuge_email, colaborador.contato_responsavel_email].filter(Boolean);
 
+    const emailsOk = [];
+    const emailsErro = [];
     for (const email of destinatarios) {
-      await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
+      const result = await resend.emails.send({
+        from: "TechControl <onboarding@resend.dev>",
+        to: email,
+        subject: assunto,
+        html,
+      });
+      if (result.error) {
+        console.error(`[enviarAniversarioConjuge] RESEND ERRO para ${email}:`, JSON.stringify(result.error));
+        emailsErro.push(email);
+      } else {
+        emailsOk.push(email);
+      }
     }
 
     await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
       status_arte: "enviado",
-      data_envio: new Date().toISOString(),
+      data_envio: dataEnvio,
+    });
+
+    await base44.asServiceRole.entities.Comunicados_Log.create({
+      tipo_comunicado: "aniversario_conjuge",
+      colaborador_nome: colaborador.nome_completo,
+      colaborador_id: colaborador.id,
+      destinatarios: emailsOk,
+      assunto_enviado: assunto,
+      data_envio: dataEnvio,
+      status: emailsErro.length === destinatarios.length ? "erro" : "enviado",
+      detalhe_erro: emailsErro.length > 0 ? `Falhou para: ${emailsErro.join(", ")}` : undefined,
+      demanda_id: demanda.id,
     });
 
     enviados++;
-    console.log(`[enviarAniversarioConjuge] Enviado para cônjuge de ${colaborador.nome_completo}.`);
+    console.log(`[enviarAniversarioConjuge] ${colaborador.nome_completo}: ${emailsOk.length} ok, ${emailsErro.length} erro.`);
   }
 
-  return Response.json({ ok: true, enviados });
+  return Response.json({ ok: true, enviados, msg: `${enviados} processado(s).` });
 });

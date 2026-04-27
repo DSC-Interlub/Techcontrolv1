@@ -1,0 +1,62 @@
+{
+  "name": "Ramais",
+  "type": "object",
+  "properties": {
+    "ramal": {
+      "type": "string",
+      "description": "N\u00famero do ramal"
+    },
+    "usuario_atual": {
+      "type": "string",
+      "description": "Usu\u00e1rio atual do ramal"
+    },
+    "area": {
+      "type": "string",
+      "description": "\u00c1rea/Departamento do usu\u00e1rio"
+    },
+    "data_atribuicao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da \u00faltima atribui\u00e7\u00e3o"
+    },
+    "usuarios_anteriores": {
+      "type": "array",
+      "description": "Hist\u00f3rico de usu\u00e1rios anteriores do ramal",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string"
+          },
+          "data_inicio": {
+            "type": "string",
+            "format": "date"
+          },
+          "data_fim": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Dispon\u00edvel",
+        "Em uso"
+      ],
+      "default": "Dispon\u00edvel",
+      "description": "Status do ramal"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre o ramal"
+    }
+  },
+  "required": [
+    "ramal"
+  ]
+}

@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
   const hoje = new Date();
   const hojeStr = hoje.toISOString().split("T")[0];
 
-  // Buscar demandas do tipo aniversario_colaborador para hoje com arte carregada
   const demandas = await base44.asServiceRole.entities.Comunicados_Artes.filter({
     tipo_comunicado: "aniversario_colaborador",
     data_evento: hojeStr,
@@ -36,67 +35,72 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, enviados: 0, msg: "Nenhuma demanda com arte para hoje." });
   }
 
-  // Buscar todos os colaboradores ativos para enviar o e-mail para todos
   const todosColabs = await base44.asServiceRole.entities.Colaboradores.filter({});
   const destinatariosGerais = todosColabs
     .filter(c => c.status !== "Desligado" && c.email && c.incluir_comunicados)
     .map(c => c.email);
+
+  if (destinatariosGerais.length === 0) {
+    console.log(`[enviarAniversariosColaboradores] Nenhum destinatário encontrado.`);
+    return Response.json({ ok: true, enviados: 0, msg: "Nenhum destinatário encontrado." });
+  }
 
   let enviados = 0;
 
   for (const demanda of demandas) {
     const colaborador = todosColabs.find(c => c.id === demanda.colaborador_id);
     if (!colaborador) continue;
-
     if (!ehHojeMesDia(colaborador.data_nascimento)) continue;
 
-    const assunto = `Feliz Aniversário, ${colaborador.nome_completo.split(" ")[0]}! 🎉`;
+    const assunto = `Feliz Aniversário, ${colaborador.nome_completo.split(" ")[0]}! 🎂`;
     const html = buildComunicadoHtml(demanda.imagem_url);
     const dataEnvio = new Date().toISOString();
 
-    try {
-      for (const email of destinatariosGerais) {
-        await resend.emails.send({ from: "TechControl <noreply@resend.dev>", to: email, subject: assunto, html });
+    // Enviar um a um para capturar erros individuais
+    const emailsComErro = [];
+    const emailsOk = [];
+    for (const email of destinatariosGerais) {
+      const result = await resend.emails.send({
+        from: "TechControl <onboarding@resend.dev>",
+        to: email,
+        subject: assunto,
+        html,
+      });
+      if (result.error) {
+        console.error(`[enviarAniversariosColaboradores] RESEND ERRO para ${email}:`, JSON.stringify(result.error));
+        emailsComErro.push(email);
+      } else {
+        emailsOk.push(email);
       }
-
-      await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
-        status_arte: "enviado",
-        data_envio: dataEnvio,
-      });
-
-      const historico = colaborador.comunicados_historico || [];
-      historico.push({ tipo: "aniversario_colaborador", data_envio: dataEnvio, ano: hoje.getFullYear(), destinatarios: destinatariosGerais, assunto });
-      await base44.asServiceRole.entities.Colaboradores.update(colaborador.id, { comunicados_historico: historico });
-
-      // Gravar log de envio
-      await base44.asServiceRole.entities.Comunicados_Log.create({
-        tipo_comunicado: "aniversario_colaborador",
-        colaborador_nome: colaborador.nome_completo,
-        colaborador_id: colaborador.id,
-        destinatarios: destinatariosGerais,
-        assunto_enviado: assunto,
-        data_envio: dataEnvio,
-        status: "enviado",
-        demanda_id: demanda.id,
-      });
-
-      enviados++;
-      console.log(`[enviarAniversariosColaboradores] Enviado para ${colaborador.nome_completo} (${destinatariosGerais.length} destinatários).`);
-    } catch (err) {
-      await base44.asServiceRole.entities.Comunicados_Log.create({
-        tipo_comunicado: "aniversario_colaborador",
-        colaborador_nome: colaborador.nome_completo,
-        colaborador_id: colaborador.id,
-        destinatarios: destinatariosGerais,
-        assunto_enviado: assunto,
-        data_envio: dataEnvio,
-        status: "erro",
-        detalhe_erro: err.message,
-        demanda_id: demanda.id,
-      });
-      console.error(`[enviarAniversariosColaboradores] Erro ao enviar para ${colaborador.nome_completo}: ${err.message}`);
     }
+
+    const statusFinal = emailsComErro.length === destinatariosGerais.length ? "erro"
+      : emailsComErro.length > 0 ? "enviado" : "enviado";
+
+    await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
+      status_arte: "enviado",
+      data_envio: dataEnvio,
+    });
+
+    const historico = colaborador.comunicados_historico || [];
+    historico.push({ tipo: "aniversario_colaborador", data_envio: dataEnvio, ano: hoje.getFullYear(), destinatarios: emailsOk, assunto });
+    await base44.asServiceRole.entities.Colaboradores.update(colaborador.id, { comunicados_historico: historico });
+
+    await base44.asServiceRole.entities.Comunicados_Log.create({
+      tipo_comunicado: "aniversario_colaborador",
+      colaborador_nome: colaborador.nome_completo,
+      colaborador_id: colaborador.id,
+      destinatarios: emailsOk,
+      assunto_enviado: assunto,
+      data_envio: dataEnvio,
+      status: statusFinal,
+      detalhe_erro: emailsComErro.length > 0 ? `Falhou para: ${emailsComErro.join(", ")}` : undefined,
+      demanda_id: demanda.id,
+    });
+
+    enviados++;
+    console.log(`[enviarAniversariosColaboradores] ${colaborador.nome_completo}: ${emailsOk.length} ok, ${emailsComErro.length} erro.`);
   }
 
-  return Response.json({ ok: true, enviados, msg: `${enviados} e-mail(s) de aniversário enviado(s).` });
+  return Response.json({ ok: true, enviados, msg: `${enviados} e-mail(s) de aniversário processado(s).` });
 });

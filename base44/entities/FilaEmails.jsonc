@@ -1,0 +1,67 @@
+{
+  "name": "FilaEmails",
+  "type": "object",
+  "properties": {
+    "destinatario": {
+      "type": "string",
+      "description": "Email destinat\u00e1rio"
+    },
+    "assunto": {
+      "type": "string",
+      "description": "Assunto do email"
+    },
+    "corpo_html": {
+      "type": "string",
+      "description": "Corpo HTML do email"
+    },
+    "tipo_evento": {
+      "type": "string",
+      "enum": [
+        "chamado_aberto",
+        "atendimento_iniciado",
+        "observacao_adicionada",
+        "chamado_concluido",
+        "notificacao_geral"
+      ],
+      "description": "Tipo de evento que gerou o email"
+    },
+    "referencia_id": {
+      "type": "string",
+      "description": "ID do chamado ou entidade relacionada"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "enviado",
+        "erro"
+      ],
+      "default": "pendente",
+      "description": "Status do envio"
+    },
+    "tentativas": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero de tentativas de envio"
+    },
+    "mensagem_erro": {
+      "type": "string",
+      "description": "Mensagem de erro se falhar"
+    },
+    "data_criacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de cria\u00e7\u00e3o"
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de envio bem-sucedido"
+    }
+  },
+  "required": [
+    "destinatario",
+    "assunto",
+    "corpo_html"
+  ]
+}

@@ -15,11 +15,11 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const AUTOMACOES = [
-  { id: "enviarAniversariosColaboradores", label: "Aniversários de colaboradores", horario: "08:00", tipo: "aniversario_colaborador" },
-  { id: "enviarAniversarioConjuge",        label: "Aniversários de cônjuges",     horario: "08:00", tipo: "aniversario_conjuge" },
-  { id: "enviarAniversarioFilho1Ano",      label: "Filhos — 1 aninho",            horario: "08:00", tipo: "aniversario_filho_1ano" },
-  { id: "enviarAniversarioTempoEmpresa",   label: "Tempo de empresa",             horario: "08:00", tipo: "tempo_empresa" },
-  { id: "enviarBoasVindas",               label: "Boas-vindas",                  horario: "08:00", tipo: "boas_vindas" },
+  { id: "enviarAniversariosColaboradores", label: "Aniversários de colaboradores", tipo: "aniversario_colaborador" },
+  { id: "enviarAniversarioConjuge",        label: "Aniversários de cônjuges",     tipo: "aniversario_conjuge" },
+  { id: "enviarAniversarioFilho1Ano",      label: "Filhos — 1 aninho",            tipo: "aniversario_filho_1ano" },
+  { id: "enviarAniversarioTempoEmpresa",   label: "Tempo de empresa",             tipo: "tempo_empresa" },
+  { id: "enviarBoasVindas",               label: "Boas-vindas",                  tipo: "boas_vindas" },
 ];
 
 const TIPO_LABELS = {
@@ -90,6 +90,14 @@ function ModalDetalhes({ log, onClose }) {
 export default function AbaEnvios() {
   const queryClient = useQueryClient();
   const [disparando, setDisparando] = useState(null);
+
+  const { data: configs = [] } = useQuery({
+    queryKey: ["comunicados_config"],
+    queryFn: () => base44.entities.Comunicados_Config.list(),
+    staleTime: 5 * 60_000,
+  });
+
+  const getConfig = (tipo) => configs.find(c => c.tipo_comunicado === tipo) || {};
   const [resultadoDisparo, setResultadoDisparo] = useState(null);
   const [confirmando, setConfirmando] = useState(null); // automacao obj
   const [detalhesLog, setDetalhesLog] = useState(null);
@@ -185,7 +193,16 @@ export default function AbaEnvios() {
                     <tr key={aut.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-800">{aut.label}</td>
                       <td className="px-4 py-3 text-gray-500">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{aut.horario}</span>
+                        {(() => {
+                          const cfg = getConfig(aut.tipo);
+                          return (
+                            <span className="flex items-center gap-2">
+                              <Clock className="w-3.5 h-3.5" />
+                              {cfg.horario_envio || "08:00"}
+                              {cfg.ativo === false && <Badge className="bg-red-100 text-red-700 text-xs">Desativado</Badge>}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">
                         {ultimo?.data_envio ? format(parseISO(ultimo.data_envio), "dd/MM/yyyy HH:mm") : "—"}
@@ -212,7 +229,9 @@ export default function AbaEnvios() {
                 })}
                 <tr className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-800">Despedida</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs italic">Manual</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs italic">
+                    {getConfig("despedida").horario_envio || "Manual"}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {ultimoPorTipo["despedida"]?.data_envio
                       ? format(parseISO(ultimoPorTipo["despedida"].data_envio), "dd/MM/yyyy HH:mm")
