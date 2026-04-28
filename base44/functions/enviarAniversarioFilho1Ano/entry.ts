@@ -1,7 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { Resend } from 'npm:resend@2.0.0';
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 function buildComunicadoHtml(arteUrl) {
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff;">
@@ -42,42 +39,49 @@ Deno.serve(async (req) => {
 
     const destinatarios = [colaborador.email, colaborador.conjuge_email, colaborador.contato_responsavel_email].filter(Boolean);
 
-    const emailsOk = [];
-    const emailsErro = [];
-    for (const email of destinatarios) {
-      const result = await resend.emails.send({
-        from: "TechControl <onboarding@resend.dev>",
-        to: email,
-        subject: assunto,
-        html,
-      });
-      if (result.error) {
-        console.error(`[enviarAniversarioFilho1Ano] RESEND ERRO para ${email}:`, JSON.stringify(result.error));
-        emailsErro.push(email);
-      } else {
-        emailsOk.push(email);
+    try {
+      for (const email of destinatarios) {
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: email,
+          subject: assunto,
+          body: html,
+        });
       }
+
+      await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
+        status_arte: "enviado",
+        data_envio: dataEnvio,
+      });
+
+      await base44.asServiceRole.entities.Comunicados_Log.create({
+        tipo_comunicado: "aniversario_filho_1ano",
+        colaborador_nome: colaborador.nome_completo,
+        colaborador_id: colaborador.id,
+        destinatarios,
+        assunto_enviado: assunto,
+        data_envio: dataEnvio,
+        status: "enviado",
+        detalhe_erro: null,
+        demanda_id: demanda.id,
+      });
+
+      enviados++;
+      console.log(`[enviarAniversarioFilho1Ano] ${colaborador.nome_completo} — filho: ${nomeFilho}: ${destinatarios.length} enviados.`);
+    } catch (erro) {
+      console.error(`[enviarAniversarioFilho1Ano] Erro para ${colaborador.nome_completo}:`, erro.message);
+
+      await base44.asServiceRole.entities.Comunicados_Log.create({
+        tipo_comunicado: "aniversario_filho_1ano",
+        colaborador_nome: colaborador.nome_completo,
+        colaborador_id: colaborador.id,
+        destinatarios,
+        assunto_enviado: assunto,
+        data_envio: dataEnvio,
+        status: "erro",
+        detalhe_erro: erro.message || "Erro desconhecido no SendEmail",
+        demanda_id: demanda.id,
+      });
     }
-
-    await base44.asServiceRole.entities.Comunicados_Artes.update(demanda.id, {
-      status_arte: "enviado",
-      data_envio: dataEnvio,
-    });
-
-    await base44.asServiceRole.entities.Comunicados_Log.create({
-      tipo_comunicado: "aniversario_filho_1ano",
-      colaborador_nome: colaborador.nome_completo,
-      colaborador_id: colaborador.id,
-      destinatarios: emailsOk,
-      assunto_enviado: assunto,
-      data_envio: dataEnvio,
-      status: emailsErro.length === destinatarios.length ? "erro" : "enviado",
-      detalhe_erro: emailsErro.length > 0 ? `Falhou para: ${emailsErro.join(", ")}` : undefined,
-      demanda_id: demanda.id,
-    });
-
-    enviados++;
-    console.log(`[enviarAniversarioFilho1Ano] ${colaborador.nome_completo} — filho: ${nomeFilho}: ${emailsOk.length} ok.`);
   }
 
   return Response.json({ ok: true, enviados, msg: `${enviados} processado(s).` });

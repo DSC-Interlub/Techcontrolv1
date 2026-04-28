@@ -1,5 +1,5 @@
 # DOCUMENTAÇÃO TÉCNICA – TechControl
-> **Versão:** 2.4.0 | **Data de geração:** 27/04/2026 | **Ambiente:** Produção (Base44)
+> **Versão:** 2.5.0 | **Data de geração:** 28/04/2026 | **Ambiente:** Produção (Base44)
 
 ---
 
@@ -57,19 +57,21 @@
 
 | Serviço | Uso | Autenticação |
 |---------|-----|--------------|
-| **Resend API** | Envio de e-mails transacionais | `RESEND_API_KEY` (secret) |
+| **Resend API** | E-mails de chamados (helpdesk) via domínio `suporte@techcontrol.site` | `RESEND_API_KEY` (secret) |
+| **Base44 Core – SendEmail** | E-mails de **comunicados internos** (aniversários, boas-vindas, despedida) | Automático via SDK — sem configuração extra |
 | **Base44 Core – UploadFile** | Upload de imagens/arquivos | Automático via SDK |
 | **Base44 Core – InvokeLLM** | IA para avaliações | Automático via SDK |
-| **Base44 Core – SendEmail** | E-mail via integração nativa | Automático via SDK |
 
 ### Variáveis de Ambiente
 
 | Variável | Obrigatória | Uso |
 |----------|-------------|-----|
-| `RESEND_API_KEY` | ✅ Sim | Envio de e-mails via Resend |
+| `RESEND_API_KEY` | ✅ Sim | Envio de e-mails de **chamados** (helpdesk) via Resend |
 | `BASE44_APP_ID` | ✅ Sim (auto) | ID do app (pré-populado pela plataforma) |
 
-> **IMPORTANTE – Remetente Resend:** Todas as funções de comunicado usam `from: "TechControl <onboarding@resend.dev>"`. O domínio `resend.dev` é verificado por padrão no Resend. Se quiser usar um domínio próprio, verifique-o no painel resend.com/domains e atualize o campo `from` em todas as funções de envio.
+> **IMPORTANTE – Dois sistemas de e-mail:**
+> - **Chamados (helpdesk):** usam Resend diretamente via `fetch` com `from: "TechControl <suporte@techcontrol.site>"` — domínio verificado.
+> - **Comunicados internos:** usam `base44.asServiceRole.integrations.Core.SendEmail()` — integração nativa Base44, sem domínio a verificar, sem API key separada, envia para qualquer destinatário.
 
 ---
 
@@ -432,24 +434,26 @@ created_by   – string (email do criador)
 
 Todas as 6 funções de comunicado (`enviarAniversariosColaboradores`, `enviarAniversarioConjuge`, `enviarAniversarioFilho1Ano`, `enviarAniversarioTempoEmpresa`, `enviarBoasVindas`, `enviarDespedida`) gravam um registro em `Comunicados_Log` após cada tentativa de envio (sucesso ou erro). A aba Envios exibe "Último Disparo" correto para todos os tipos.
 
-### Tratamento de Erros nas Funções de Envio (v2.3.0)
+### Padrão de Envio das Funções de Comunicado (v2.5.0)
 
-Todas as funções de comunicado adotam o padrão:
+Todas as funções de comunicado usam `base44.asServiceRole.integrations.Core.SendEmail()` com tratamento via try/catch:
+
 ```javascript
-const emailsOk = []
-const emailsErro = []
-for (const email of destinatarios) {
-  const result = await resend.emails.send({ from: "TechControl <onboarding@resend.dev>", to: email, subject, html })
-  if (result.error) {
-    console.error("RESEND ERRO:", JSON.stringify(result.error))
-    emailsErro.push(email)
-  } else {
-    emailsOk.push(email)
+try {
+  for (const email of destinatarios) {
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: email,
+      subject: assunto,
+      body: html,
+    });
   }
+  // Grava log status: "enviado"
+} catch (erro) {
+  // Grava log status: "erro", detalhe_erro: erro.message
 }
-// Grava log com emailsOk como destinatarios, detalhe_erro listando emailsErro
-// status = "erro" apenas se TODOS falharam; caso contrário "enviado"
 ```
+
+> **Nota:** Ao contrário do Resend (que retorna `result.error`), o `SendEmail` nativo lança exceção em caso de falha — por isso o `try/catch` substitui a verificação `if (result.error)`.
 
 ### Backend Functions — Chamados
 
@@ -546,7 +550,7 @@ Template minimalista gerado inline em cada função:
 - ✅ Imagem da arte ocupa 100% (max 640px)
 - ✅ Rodapé discreto 11px cinza
 
-**Remetente padrão:** `TechControl <onboarding@resend.dev>` (domínio `resend.dev` verificado por padrão no Resend)
+**Envio:** `base44.asServiceRole.integrations.Core.SendEmail()` — sem remetente configurável pelo desenvolvedor; o remetente é gerenciado pela plataforma Base44. Envia para qualquer destinatário sem necessidade de verificação prévia.
 
 ### E-mails de Chamados (helpdesk)
 
@@ -564,7 +568,7 @@ Template com header azul, banner colorido por status, número do chamado em dest
 | 4 | **Sem validação MIME no servidor** – Upload só valida por `accept` HTML | Chamados | 🟡 Média | Segurança de upload |
 | 5 | **FilaEmails sem limpeza** – Registros "enviado" nunca removidos | E-mails | 🟢 Baixa | Performance futura |
 | 6 | **Chamado travado em Aguardando Avaliação** – Se colaborador não avaliar | Chamados | 🟢 Baixa | Métricas incorretas |
-| 7 | **Domínio remetente padrão** – `onboarding@resend.dev` pode cair em spam. Verificar domínio próprio no Resend para produção. | Comunicados | 🟡 Média | Deliverability |
+| 7 | **Comunicados usam SendEmail nativo** – Remetente controlado pela Base44. Não é possível personalizar o `from:` nos comunicados internos. Se necessário, migrar de volta para Resend com domínio verificado. | Comunicados | 🟢 Baixa | Branding |
 | 8 | **gerarDemandasComunicados com 0 execuções** – A automação cron `0 9 1 * *` nunca rodou automaticamente. Primeira execução será dia 01/05/2026 às 09:00 UTC. Monitorar. Como fallback, usar botão "Gerar Demandas do Mês" manualmente. | Comunicados | 🟡 Média | Demandas de maio não existem ainda |
 | 9 | **migrarBoasVindasAntigos deve ser executada** – A função de migração `functions/migrarBoasVindasAntigos.js` deve ser executada uma única vez por um admin para limpar colaboradores antigos com `comunicado_boas_vindas_enviado = false`. Sem isso, o campo fica inconsistente na UI (aparece como pendente mas nunca será processado). | Comunicados | 🟡 Média | UI desatualizada |
 
@@ -621,6 +625,7 @@ BASE44_APP_ID=your_app_id
 | 24/04/2026 | 2.2.0 | Comunicados | `AbaEnvios` (tabela de automações + histórico de logs). `AbaConfiguracoes` (cards por tipo com auto-inicialização). Entidades `Comunicados_Log` e `Comunicados_Config`. `enviarAniversariosColaboradores` grava log. |
 | 27/04/2026 | 2.3.0 | Comunicados | **Bug fix upload:** `modalUpload` armazena apenas primitivos; `const id = demandaId` capturado antes do `await` — closure estável. **Resend:** todas as funções tratam `result.error` individualmente por email, gravam `Comunicados_Log` com emailsOk/emailsErro, usam `onboarding@resend.dev`. **AbaEnvios:** horário lido de `Comunicados_Config` (não hardcoded); badge "Desativado" se `ativo === false`. **Planejamento Anual:** barra de filtros (busca por nome, tipo, status de arte), badges de prontidão separados (prontas/sem arte/enviadas), coluna "Envio", ordenação automática (sem arte primeiro). **Funções:** todas adotam padrão de tratamento de erro do Resend com log individual. |
 | 27/04/2026 | 2.4.0 | Comunicados | **AbaConfiguracoes:** banner informativo azul fixo no topo explicando que `horario_envio` é referência visual; texto auxiliar abaixo de cada campo de horário. **enviarBoasVindas:** modo automático (sem `colaborador_id`) agora restrito a colaboradores com `data_admissao >= hoje - 7 dias` — elimina risco de spam em massa. Modo manual (com ID) sem restrição. **migrarBoasVindasAntigos.js:** novo script admin-only que marca `comunicado_boas_vindas_enviado = true` para colaboradores com admissão anterior a 30 dias sem enviar e-mail. **Documentação:** seção 7 atualizada (enviarBoasVindas e migração); confirmação de que todas as funções gravam Comunicados_Log; problemas conhecidos revisados. |
+| 28/04/2026 | 2.5.0 | Comunicados | **Migração de e-mail:** todas as 6 funções de comunicado (`enviarAniversariosColaboradores`, `enviarAniversarioConjuge`, `enviarAniversarioFilho1Ano`, `enviarAniversarioTempoEmpresa`, `enviarBoasVindas`, `enviarDespedida`) migradas de Resend (`onboarding@resend.dev`) para `base44.asServiceRole.integrations.Core.SendEmail()`. Eliminado `import Resend` e uso de `RESEND_API_KEY` nas funções de comunicado. Tratamento de erro alterado de `if (result.error)` para `try/catch`. Chamados (helpdesk) permanecem no Resend com domínio `suporte@techcontrol.site`. |
 
 ---
 
