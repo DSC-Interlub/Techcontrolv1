@@ -1,7 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabase";
 import { 
   LayoutDashboard, 
   Monitor, 
@@ -139,6 +139,7 @@ const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}${cr
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [darkMode, setDarkMode] = React.useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
@@ -156,7 +157,7 @@ export default function Layout({ children }) {
   const comunicadosRoles = ['comunicados_arte', 'comunicados_gestao', 'comunicados_dp'];
   const isComunicadosRole = currentUser && comunicadosRoles.includes(currentUser.role);
 
-  const isPublicPage = location.pathname.includes('/chamado-publico') || 
+  const isPublicPage = location.pathname.includes('/chamado-publico') ||
                        location.pathname.includes('/reserva-publica') ||
                        location.pathname.includes('/reserva-sala-publica') ||
                        location.pathname.includes('/acompanhar-chamado') ||
@@ -166,29 +167,50 @@ export default function Layout({ children }) {
                        location.pathname.includes('/portal-sala') ||
                        location.pathname.includes('/portal-equipamentos') ||
                        location.pathname.includes('/portal-ramais') ||
-                       location.pathname.includes('/portal');
+                       location.pathname.includes('/portal') ||
+                       location.pathname === '/login';
 
   React.useEffect(() => {
     if (isPublicPage) {
       setLoading(false);
       return;
     }
-    const loadUser = async () => {
-      try {
-        const user = await base44.auth.me();
-        setCurrentUser(user);
-      } catch (err) {
-        console.error("Erro ao carregar usuário:", err);
-      } finally {
-        setLoading(false);
+
+    // Garante spinner enquanto verifica sessão (evita redirect prematuro)
+    setLoading(true);
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setCurrentUser({ ...session.user, ...profile });
       }
-    };
-    loadUser();
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        setCurrentUser({ ...session.user, ...profile });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [isPublicPage]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Deseja realmente sair do sistema?")) {
-      base44.auth.logout();
+      await supabase.auth.signOut();
+      navigate('/login');
     }
   };
 
@@ -199,7 +221,7 @@ export default function Layout({ children }) {
 
   // Redireciona para login se não autenticado em páginas privadas
   if (!loading && !currentUser) {
-    base44.auth.redirectToLogin();
+    window.location.href = '/login';
     return null;
   }
 

@@ -1,24 +1,17 @@
 import { base44 } from './base44Client';
 
-
-
-
 export const Core = base44.integrations.Core;
 
-export const InvokeLLM = base44.integrations.Core.InvokeLLM;
+export const InvokeLLM = (params) => base44.integrations.Core.InvokeLLM(params);
 
-export const SendEmail = base44.integrations.Core.SendEmail;
+export const SendEmail = (params) => base44.integrations.Core.SendEmail(params);
 
-export const SendSMS = base44.integrations.Core.SendSMS;
+export const UploadFile = (params) => base44.integrations.Core.UploadFile(params);
 
-export const UploadFile = base44.integrations.Core.UploadFile;
+export const GenerateImage = async () => {
+  throw new Error('GenerateImage não suportado na nova stack');
+};
 
-export const GenerateImage = base44.integrations.Core.GenerateImage;
-
-export const ExtractDataFromUploadedFile = base44.integrations.Core.ExtractDataFromUploadedFile;
-
-
-
-
-
-
+export const ExtractDataFromUploadedFile = async () => {
+  throw new Error('ExtractDataFromUploadedFile não suportado na nova stack');
+};
