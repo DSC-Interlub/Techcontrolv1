@@ -5,6 +5,6 @@
     { "path": "/api/enviarAniversarioFilho1Ano",      "schedule": "0 13 * * *" },
     { "path": "/api/enviarAniversarioTempoEmpresa",   "schedule": "0 13 * * *" },
     { "path": "/api/gerarDemandasComunicados",        "schedule": "0 9 1 * *"  },
-    { "path": "/api/lembreteAvaliacao",               "schedule": "0 */12 * * *" }
+    { "path": "/api/lembreteAvaliacao",               "schedule": "0 15 * * *"   }
   ]
 }
