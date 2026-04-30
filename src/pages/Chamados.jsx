@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,13 +70,12 @@ export default function Chamados() {
   const [originalChamado, setOriginalChamado] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   const [showAvaliacao, setShowAvaliacao] = useState(false);
   const [activeTab, setActiveTab] = useState("abertos");
   const [modalTab, setModalTab] = useState("detalhes");
   const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
-  const [user, setUser] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const { user, isLoadingAuth: loading } = useAuth();
+  const currentUser = user;
   const [meuNomeExibicao, setMeuNomeExibicao] = React.useState("");
   const [novaMsg, setNovaMsg] = useState("");
   const [testeLembreteLoading, setTesteLembreteLoading] = useState(false);
@@ -93,20 +93,6 @@ export default function Chamados() {
 
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const u = await base44.auth.me();
-        setCurrentUser(u);
-        setUser(u);
-      } catch {
-        base44.auth.redirectToLogin();
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUser();
-  }, []);
 
   const publicUrl = `${window.location.origin}${createPageUrl("chamado-publico")}`;
 

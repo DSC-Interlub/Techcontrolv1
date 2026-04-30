@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone } from "lucide-react";
 import ListaDemandas from "../components/comunicados/ListaDemandas";
@@ -7,23 +8,21 @@ import VisaoEventos from "../components/comunicados/VisaoEventos";
 import AbaEnvios from "../components/comunicados/AbaEnvios";
 import AbaConfiguracoes from "../components/comunicados/AbaConfiguracoes";
 
+function getDefaultTab(user) {
+  const role = user?.role;
+  if (role === "comunicados_gestao" || role === "comunicados_dp") return "visao_mes";
+  return "artes";
+}
+
 export default function Comunicados() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [activeTab, setActiveTab] = useState(null);
+  const { user: currentUser, isLoadingAuth } = useAuth();
+  const [activeTab, setActiveTab] = useState("artes");
 
   useEffect(() => {
-    base44.auth.me().then(u => {
-      setCurrentUser(u);
-      const role = u?.role;
-      if (role === "comunicados_gestao" || role === "comunicados_dp") {
-        setActiveTab("visao_mes");
-      } else {
-        setActiveTab("artes");
-      }
-    }).catch(() => setActiveTab("artes"));
-  }, []);
+    if (currentUser) setActiveTab(getDefaultTab(currentUser));
+  }, [currentUser]);
 
-  if (!activeTab) return null;
+  if (isLoadingAuth) return null;
 
   const role = currentUser?.role;
   const isAdmin = role === "admin";

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +19,7 @@ export default function Colaboradores() {
   const [editingColaborador, setEditingColaborador] = useState(null);
   const [selectedColaborador, setSelectedColaborador] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [currentUser, setCurrentUser] = useState(null);
-
-  React.useEffect(() => {
-    base44.auth.me().then(setCurrentUser).catch(() => {});
-  }, []);
+  const { user: currentUser } = useAuth();
 
   const isReadonly = currentUser && COMUNICADOS_READONLY_ROLES.includes(currentUser.role);
 

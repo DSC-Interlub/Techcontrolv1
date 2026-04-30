@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
+  const { user: currentAuthUser } = useAuth();
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
   });
@@ -45,7 +47,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
   const salvarAvaliacaoMutation = useMutation({
     mutationFn: async (dadosAvaliacao) => {
-      const user = await base44.auth.me();
+      const user = currentAuthUser;
       const numeroAvaliacao = avaliacoes.length + 1;
       
       const avaliacaoData = {

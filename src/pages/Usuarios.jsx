@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -282,8 +283,7 @@ function ModalConvidar({ onClose, onSuccess }) {
 // ─── Página Principal ─────────────────────────────────────────────────────────
 export default function Usuarios() {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isLoadingAuth: loading } = useAuth();
 
   const [showInvite, setShowInvite] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -292,12 +292,6 @@ export default function Usuarios() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [success, setSuccess] = useState("");
-
-  useEffect(() => {
-    base44.auth.me().then(u => { setUser(u); setLoading(false); }).catch(() => {
-      base44.auth.redirectToLogin();
-    });
-  }, []);
 
   const { data: usuarios = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["usuarios"],
