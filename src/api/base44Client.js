@@ -43,8 +43,6 @@ function createEntity(entityName) {
         const descending = orderBy.startsWith('-');
         const column = descending ? orderBy.slice(1) : orderBy;
         query = query.order(column, { ascending: !descending });
-      } else {
-        query = query.order('created_date', { ascending: false });
       }
 
       if (limit) query = query.limit(limit);
