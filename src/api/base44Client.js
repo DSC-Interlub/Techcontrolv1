@@ -133,16 +133,17 @@ const entitiesProxy = new Proxy({}, {
 // Auth
 const auth = {
   async me() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) throw { status: 401, message: 'Not authenticated' };
+    // getUser() valida o JWT no servidor sem usar locks de localStorage
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) throw { status: 401, message: 'Not authenticated' };
 
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
-    return { ...session.user, ...profile };
+    return { ...user, ...profile };
   },
 
   async logout() {
@@ -155,18 +156,18 @@ const auth = {
   },
 
   async isAuthenticated() {
-    const { data: { session } } = await supabase.auth.getSession();
-    return !!session;
+    const { data: { user } } = await supabase.auth.getUser();
+    return !!user;
   },
 
   async updateMe(payload) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) throw new Error('Not authenticated');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
       .from('profiles')
       .update(payload)
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .select()
       .single();
     if (error) throw error;
@@ -195,7 +196,7 @@ const integrations = {
     },
 
     async InvokeLLM({ prompt, response_json_schema, max_tokens }) {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: {} }));
       const token = session?.access_token || '';
 
       const res = await fetch('/api/invokeLLM', {
@@ -220,7 +221,7 @@ const integrations = {
 // Functions invoke → Vercel API Routes
 const functions = {
   async invoke(functionName, payload = {}) {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: {} }));
     const token = session?.access_token || '';
 
     // Portal: passa o ID do colaborador se existir em sessionStorage

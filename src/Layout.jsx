@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useAuth } from "@/lib/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { 
   LayoutDashboard, 
@@ -140,8 +141,7 @@ const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}${cr
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [currentUser, setCurrentUser] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+  const { user: currentUser, isLoadingAuth: loading } = useAuth();
   const [darkMode, setDarkMode] = React.useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
 
   React.useEffect(() => {
@@ -170,42 +170,6 @@ export default function Layout({ children }) {
                        location.pathname.includes('/portal') ||
                        location.pathname === '/login';
 
-  React.useEffect(() => {
-    if (isPublicPage) {
-      setLoading(false);
-      return;
-    }
-
-    // Garante spinner enquanto verifica sessão (evita redirect prematuro)
-    setLoading(true);
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setCurrentUser({ ...session.user, ...profile });
-      }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setCurrentUser({ ...session.user, ...profile });
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [isPublicPage]);
 
   const handleLogout = async () => {
     if (window.confirm("Deseja realmente sair do sistema?")) {
