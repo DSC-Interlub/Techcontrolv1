@@ -15,8 +15,8 @@ export default function Login() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) window.location.href = '/Dashboard';
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) window.location.href = '/Dashboard';
     });
   }, []);
 

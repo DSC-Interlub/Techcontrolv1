@@ -179,7 +179,7 @@ const auth = {
   },
 };
 
-// Integrations (UploadFile e InvokeLLM)
+// Integrations (UploadFile via Supabase Storage)
 const integrations = {
   Core: {
     async UploadFile({ file }) {
@@ -191,27 +191,6 @@ const integrations = {
 
       const { data } = supabase.storage.from('uploads').getPublicUrl(path);
       return { file_url: data.publicUrl };
-    },
-
-    async InvokeLLM({ prompt, response_json_schema, max_tokens }) {
-      const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: {} }));
-      const token = session?.access_token || '';
-
-      const res = await fetch('/api/invokeLLM', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ prompt, response_json_schema, max_tokens }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || 'InvokeLLM failed');
-      return result;
-    },
-
-    async SendEmail() {
-      throw new Error('SendEmail não disponível no frontend — use API Route');
     },
   },
 };
@@ -242,9 +221,17 @@ const functions = {
   },
 };
 
+const users = {
+  async inviteUser(email, role = 'user') {
+    const result = await functions.invoke('inviteUser', { email, role });
+    return result.data;
+  },
+};
+
 export const base44 = {
   entities: entitiesProxy,
   auth,
   integrations,
   functions,
+  users,
 };

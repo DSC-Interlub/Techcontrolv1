@@ -1,6 +1,4 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, Eye, EyeOff, Loader2, AlertCircle, Lock } from "lucide-react";
 import { createPageUrl } from "@/utils";
+
+async function portalLoginRequest(body) {
+  const res = await fetch('/api/portalLogin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro ao fazer login');
+  return data;
+}
 
 export default function PortalLogin() {
   const [email, setEmail] = useState("");
@@ -25,114 +34,64 @@ export default function PortalLogin() {
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
-  const queryClient = useQueryClient();
-
-  const { data: colaboradores = [], isLoading: loadingColab } = useQuery({
-    queryKey: ['colab_login'],
-    queryFn: async () => {
-      try {
-        return await base44.entities.Colaboradores.list();
-      } catch {
-        return [];
-      }
-    },
-  });
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setErro("");
     setLoading(true);
 
-    setTimeout(() => {
-      const colaborador = colaboradores.find(
-        c => c.email?.toLowerCase().trim() === email.toLowerCase().trim()
-      );
+    try {
+      const result = await portalLoginRequest({ action: 'login', email, senha });
 
-      if (!colaborador) {
-        setErro("Email não encontrado. Verifique e tente novamente.");
-        setLoading(false);
-        return;
-      }
-
-      if (colaborador.acesso_portal_bloqueado) {
-        setErro("Seu acesso ao portal está bloqueado. Entre em contato com o TI.");
-        setLoading(false);
-        return;
-      }
-
-      if (colaborador.status === "Desligado") {
-        setErro("Usuário inativo. Entre em contato com o TI.");
-        setLoading(false);
-        return;
-      }
-
-      if (!colaborador.senha_portal) {
-        setErro("Senha de portal não configurada. Entre em contato com o TI.");
-        setLoading(false);
-        return;
-      }
-
-      if (colaborador.senha_portal !== senha) {
-        setErro("Senha incorreta. Tente novamente.");
-        setLoading(false);
-        return;
-      }
-
-      // Verifica se precisa trocar senha (flag senha_precisa_trocar ou campo dedicado)
-      if (colaborador.senha_precisa_trocar) {
-        setColaboradorLogando(colaborador);
+      if (result.precisaTrocarSenha) {
+        setColaboradorLogando(result.colaborador);
         setTrocarSenha(true);
         setLoading(false);
         return;
       }
 
-      // Login bem-sucedido — salvar sessão no sessionStorage
       sessionStorage.setItem('portal_colaborador', JSON.stringify({
-        id: colaborador.id,
-        nome_completo: colaborador.nome_completo,
-        email: colaborador.email,
-        area: colaborador.area,
-        tipo_funcionario: colaborador.tipo_funcionario,
-        permissoes_comunicados: colaborador.permissoes_comunicados || [],
+        id: result.colaborador.id,
+        nome_completo: result.colaborador.nome_completo,
+        email: result.colaborador.email,
+        area: result.colaborador.area,
+        tipo_funcionario: result.colaborador.tipo_funcionario,
+        permissoes_comunicados: result.colaborador.permissoes_comunicados || [],
       }));
 
       window.location.href = createPageUrl("portal");
+    } catch (err) {
+      setErro(err.message);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const handleTrocarSenha = async (e) => {
     e.preventDefault();
     setErro("");
 
-    if (novaSenha.length < 6) {
-      setErro("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-
-    if (novaSenha !== confirmarSenha) {
-      setErro("As senhas não coincidem.");
-      return;
-    }
+    if (novaSenha.length < 6) { setErro("A senha deve ter pelo menos 6 caracteres."); return; }
+    if (novaSenha !== confirmarSenha) { setErro("As senhas não coincidem."); return; }
 
     setSalvandoSenha(true);
-    await base44.entities.Colaboradores.update(colaboradorLogando.id, {
-      senha_portal: novaSenha,
-      senha_precisa_trocar: false,
-    });
+    try {
+      await portalLoginRequest({ action: 'changePassword', colaboradorId: colaboradorLogando.id, novaSenha });
 
-    // Login bem-sucedido após troca de senha
-    sessionStorage.setItem('portal_colaborador', JSON.stringify({
-      id: colaboradorLogando.id,
-      nome_completo: colaboradorLogando.nome_completo,
-      email: colaboradorLogando.email,
-      area: colaboradorLogando.area,
-      tipo_funcionario: colaboradorLogando.tipo_funcionario,
-      permissoes_comunicados: colaboradorLogando.permissoes_comunicados || [],
-    }));
+      sessionStorage.setItem('portal_colaborador', JSON.stringify({
+        id: colaboradorLogando.id,
+        nome_completo: colaboradorLogando.nome_completo,
+        email: colaboradorLogando.email,
+        area: colaboradorLogando.area,
+        tipo_funcionario: colaboradorLogando.tipo_funcionario,
+        permissoes_comunicados: colaboradorLogando.permissoes_comunicados || [],
+      }));
 
-    setSalvandoSenha(false);
-    window.location.href = createPageUrl("portal");
+      window.location.href = createPageUrl("portal");
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setSalvandoSenha(false);
+    }
   };
 
   if (trocarSenha && colaboradorLogando) {
@@ -154,7 +113,7 @@ export default function PortalLogin() {
             <CardContent className="pt-6">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-orange-800">
-                  Olá, <strong>{colaboradorLogando.nome_completo.split(' ')[0]}</strong>! 
+                  Olá, <strong>{colaboradorLogando.nome_completo.split(' ')[0]}</strong>!
                   Por segurança, você precisa definir uma senha pessoal antes de continuar.
                 </p>
               </div>
@@ -178,11 +137,8 @@ export default function PortalLogin() {
                       onChange={(e) => setNovaSenha(e.target.value)}
                       className="pr-10"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowNovaSenha(!showNovaSenha)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <button type="button" onClick={() => setShowNovaSenha(!showNovaSenha)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showNovaSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -199,21 +155,14 @@ export default function PortalLogin() {
                       onChange={(e) => setConfirmarSenha(e.target.value)}
                       className="pr-10"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmarSenha(!showConfirmarSenha)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showConfirmarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-orange-500 hover:bg-orange-600 mt-2"
-                  disabled={salvandoSenha}
-                >
+                <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 mt-2" disabled={salvandoSenha}>
                   {salvandoSenha ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Definir Senha e Entrar"}
                 </Button>
               </form>
@@ -250,14 +199,8 @@ export default function PortalLogin() {
 
               <div>
                 <Label>E-mail corporativo</Label>
-                <Input
-                  type="email"
-                  required
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1"
-                />
+                <Input type="email" required placeholder="seu@email.com"
+                  value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
               </div>
 
               <div>
@@ -265,27 +208,17 @@ export default function PortalLogin() {
                 <div className="relative mt-1">
                   <Input
                     type={showSenha ? "text" : "password"}
-                    required
-                    placeholder="••••••••"
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                    className="pr-10"
+                    required placeholder="••••••••"
+                    value={senha} onChange={(e) => setSenha(e.target.value)} className="pr-10"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowSenha(!showSenha)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
+                  <button type="button" onClick={() => setShowSenha(!showSenha)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
-                disabled={loading || loadingColab}
-              >
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2" disabled={loading}>
                 {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Entrando...</> : "Entrar"}
               </Button>
             </form>
