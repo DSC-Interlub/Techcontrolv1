@@ -44,14 +44,14 @@ export default function PortalReservas() {
     queryKey: ['portal_nb_ext'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
     enabled: !!colaborador,
-    staleTime: 0,
+    staleTime: 60 * 1000,
   });
 
   const { data: pcsInternos = [], isLoading: loadingPcsInternos } = useQuery({
     queryKey: ['portal_pcs_int'],
     queryFn: () => base44.entities.PCs_Internos.list(),
     enabled: !!colaborador,
-    staleTime: 0,
+    staleTime: 60 * 1000,
   });
 
   const loadingNotebooks = loadingNotebooksExt || loadingPcsInternos;

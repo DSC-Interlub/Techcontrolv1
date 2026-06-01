@@ -197,7 +197,42 @@ CREATE POLICY "auth_all_comunicados_config" ON comunicados_config
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- ============================================================
--- 3. Verificação — lista políticas ativas
+-- 3. Storage RLS — bucket "uploads"
+--    Necessário para upload de fotos, anexos e artes
+-- ============================================================
+
+-- Garante que o bucket existe como público
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('uploads', 'uploads', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Remove políticas antigas para evitar conflito
+DROP POLICY IF EXISTS "uploads_insert_authenticated" ON storage.objects;
+DROP POLICY IF EXISTS "uploads_insert_anon" ON storage.objects;
+DROP POLICY IF EXISTS "uploads_select_public" ON storage.objects;
+DROP POLICY IF EXISTS "uploads_delete_authenticated" ON storage.objects;
+
+-- Usuários autenticados (admin) podem fazer upload
+CREATE POLICY "uploads_insert_authenticated" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'uploads');
+
+-- Portal do colaborador (anon) também pode fazer upload (ex: anexos em chamados)
+CREATE POLICY "uploads_insert_anon" ON storage.objects
+  FOR INSERT TO anon
+  WITH CHECK (bucket_id = 'uploads');
+
+-- Qualquer pessoa pode ler os arquivos (URLs públicas)
+CREATE POLICY "uploads_select_public" ON storage.objects
+  FOR SELECT USING (bucket_id = 'uploads');
+
+-- Autenticados podem deletar seus próprios uploads
+CREATE POLICY "uploads_delete_authenticated" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'uploads');
+
+-- ============================================================
+-- 4. Verificação — lista políticas ativas
 -- ============================================================
 SELECT tablename, policyname, cmd, roles
 FROM pg_policies
