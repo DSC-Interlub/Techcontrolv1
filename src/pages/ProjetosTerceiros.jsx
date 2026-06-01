@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,12 +61,14 @@ function exportCSV(rows) {
 }
 
 export default function ProjetosTerceiros() {
+  const { user } = useAuth();
   const [filterMes, setFilterMes] = useState("todos");
   const [filterEmpresa, setFilterEmpresa] = useState("todas");
 
   const { data: chamados = [], isLoading } = useQuery({
     queryKey: ['chamados_terceiros'],
     queryFn: () => base44.entities.Chamados.list('-created_date'),
+    enabled: !!user,
   });
 
   // Um chamado é considerado PROJETO quando tem dados financeiros ou marcos definidos.

@@ -86,6 +86,9 @@ export default function Chamados() {
   const [iniciarChamado, setIniciarChamado] = useState(null);
   const [terceiroDados, setTerceiroDados] = useState({ terceiro_envolvido: null, terceiro_empresa: "", terceiro_numero_chamado: "", terceiro_data_abertura: "" });
 
+  // Proteção double-click em funções async diretas
+  const [isSaving, setIsSaving] = useState(false);
+
   // Projeto / Terceiro
   const [novoMarco, setNovoMarco] = useState({ data: "", descricao: "", status: "Pendente" });
   const [novoEnvolvido, setNovoEnvolvido] = useState("");
@@ -164,18 +167,23 @@ export default function Chamados() {
   };
 
   const handleSaveChanges = async () => {
-    if (!selectedChamado || !originalChamado || !currentUser) return;
-    const historico = selectedChamado.historico || [];
-    const nomeExibicao = meuNomeExibicao || currentUser.full_name;
-    if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
-      historico.push({ data_hora: new Date().toISOString(), tipo: "solucao", descricao: `Solução registrada por ${nomeExibicao}: ${selectedChamado.solucao}`, usuario: nomeExibicao });
+    if (!selectedChamado || !originalChamado || !currentUser || isSaving) return;
+    setIsSaving(true);
+    try {
+      const historico = selectedChamado.historico || [];
+      const nomeExibicao = meuNomeExibicao || currentUser.full_name;
+      if (selectedChamado.solucao !== originalChamado.solucao && selectedChamado.solucao) {
+        historico.push({ data_hora: new Date().toISOString(), tipo: "solucao", descricao: `Solução registrada por ${nomeExibicao}: ${selectedChamado.solucao}`, usuario: nomeExibicao });
+      }
+      if (selectedChamado.responsavel !== originalChamado.responsavel && selectedChamado.responsavel) {
+        historico.push({ data_hora: new Date().toISOString(), tipo: "responsavel", descricao: `Responsável alterado para: ${selectedChamado.responsavel}`, usuario: nomeExibicao });
+      }
+      await base44.entities.Chamados.update(selectedChamado.id, { ...selectedChamado, historico });
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] });
+      setShowDetails(false);
+    } finally {
+      setIsSaving(false);
     }
-    if (selectedChamado.responsavel !== originalChamado.responsavel && selectedChamado.responsavel) {
-      historico.push({ data_hora: new Date().toISOString(), tipo: "responsavel", descricao: `Responsável alterado para: ${selectedChamado.responsavel}`, usuario: nomeExibicao });
-    }
-    await base44.entities.Chamados.update(selectedChamado.id, { ...selectedChamado, historico });
-    queryClient.invalidateQueries({ queryKey: ['chamados'] });
-    setShowDetails(false);
   };
 
   // ── Iniciar Atendimento: abre formulário ──
@@ -186,7 +194,8 @@ export default function Chamados() {
   };
 
   const handleConfirmarIniciar = async () => {
-    if (terceiroDados.terceiro_envolvido === null) return;
+    if (terceiroDados.terceiro_envolvido === null || isSaving) return;
+    setIsSaving(true);
     const chamado = iniciarChamado;
     const agora = new Date().toISOString();
     const nomeExibicao = meuNomeExibicao || currentUser.full_name;
@@ -208,15 +217,20 @@ export default function Chamados() {
       } : {}),
     };
 
-    setSelectedChamado(dataAtualizada);
-    setShowIniciarForm(false);
-    await base44.entities.Chamados.update(chamado.id, dataAtualizada);
-    base44.functions.invoke('sendEmailTicketStarted', { chamado_id: chamado.id, responsavel: nomeExibicao }).catch(() => {});
-    queryClient.invalidateQueries({ queryKey: ['chamados'] });
+    try {
+      setSelectedChamado(dataAtualizada);
+      setShowIniciarForm(false);
+      await base44.entities.Chamados.update(chamado.id, dataAtualizada);
+      base44.functions.invoke('sendEmailTicketStarted', { chamado_id: chamado.id, responsavel: nomeExibicao }).catch(() => {});
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleFinalizarAtendimento = async (chamado) => {
-    if (!currentUser) return;
+    if (!currentUser || isSaving) return;
+    setIsSaving(true);
     const agora = new Date().toISOString();
     const historico = [...(chamado.historico || [])];
     const nomeExibicao = meuNomeExibicao || currentUser.full_name;
@@ -252,12 +266,15 @@ export default function Chamados() {
       historico
     });
 
-    if (chamado.solicitante_email) {
-      base44.functions.invoke('sendEmailTicketClosed', { chamado_id: chamado.id, responsavel: nomeExibicao }).catch(() => {});
+    try {
+      if (chamado.solicitante_email) {
+        base44.functions.invoke('sendEmailTicketClosed', { chamado_id: chamado.id, responsavel: nomeExibicao }).catch(() => {});
+      }
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] });
+      setShowDetails(false);
+    } finally {
+      setIsSaving(false);
     }
-
-    queryClient.invalidateQueries({ queryKey: ['chamados'] });
-    setShowDetails(false);
   };
 
   const handleSalvarAvaliacao = () => {

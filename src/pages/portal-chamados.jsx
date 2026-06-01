@@ -184,7 +184,9 @@ export default function PortalChamados() {
         anexos: anexos,
       });
 
-      // Email disparado automaticamente pela automação entity (notificarNovoChamado)
+      // Dispara email de confirmação para o solicitante e para o admin
+      base44.functions.invoke('sendEmailTicketCreated', { chamado_id: chamado.id }).catch(() => {});
+
       return { chamado, numeroChamado };
     },
     onSuccess: (data) => {
