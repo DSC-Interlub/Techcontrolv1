@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { X, Plus, Trash2, Eye, EyeOff, Upload, User } from "lucide-react";
+import { X, Plus, Trash2, Eye, EyeOff, Upload, User, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PERMISSOES_COMUNICADOS = [
   { value: "ver_visao_geral", label: "Ver Visão Geral", desc: "Acesso à visão geral de aniversariantes, tempo de empresa e eventos pendentes" },
@@ -61,7 +62,17 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
   const handleSubmit = (e) => {
     e.preventDefault();
     const v = validate();
-    if (Object.keys(v).length) { setErrors(v); return; }
+    if (Object.keys(v).length) {
+      setErrors(v);
+      // Mostra alerta no topo do formulário para erros em abas invisíveis
+      if (v.nome_completo || v.area) {
+        setErrors(prev => ({
+          ...prev,
+          _form: 'Preencha os campos obrigatórios na aba "Profissional": Nome e Área.',
+        }));
+      }
+      return;
+    }
     if (colaborador) {
       updateMutation.mutate({ id: colaborador.id, data: formData });
     } else {
@@ -96,7 +107,6 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
   const toggleShowSenha = (field) => setShowSenhas(prev => ({ ...prev, [field]: !prev[field] }));
 
   const isPending = createMutation.isPending || updateMutation.isPending;
-  const canSubmit = formData.nome_completo?.trim()?.length >= 3 && formData.area?.trim();
   const isComunicadosRole = ['comunicados_arte', 'comunicados_gestao', 'comunicados_dp'].includes(currentUserRole);
 
   const ErrMsg = ({ field }) => errors[field] ? <p className="text-xs text-red-500 mt-1">{errors[field]}</p> : null;
@@ -111,6 +121,12 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="pt-4">
+          {errors._form && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{errors._form}</AlertDescription>
+            </Alert>
+          )}
           <Tabs defaultValue="profissional" className="w-full">
             <TabsList className={`grid w-full mb-6 ${isComunicadosRole ? "grid-cols-3" : "grid-cols-4"}`}>
               <TabsTrigger value="profissional">Profissional</TabsTrigger>
@@ -444,7 +460,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
         <div className="border-t p-6 flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isPending || !canSubmit}>
+          <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isPending}>
             {isPending ? "Salvando..." : (colaborador ? "Salvar Alterações" : "Criar Colaborador")}
           </Button>
         </div>

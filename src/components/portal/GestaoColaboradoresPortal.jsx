@@ -121,7 +121,6 @@ function FormColaboradorPortal({ colaborador, onClose, onSuccess }) {
   };
 
   const isPending = createMut.isPending || updateMut.isPending;
-  const canSubmit = form.nome_completo?.trim()?.length >= 3 && form.area?.trim();
 
   const ErrMsg = ({ field }) => errors[field] ? <p className="text-xs text-red-500 mt-1">{errors[field]}</p> : null;
 
@@ -316,7 +315,7 @@ function FormColaboradorPortal({ colaborador, onClose, onSuccess }) {
 
       <div className="flex justify-end gap-3 pt-3 border-t">
         <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isPending || !canSubmit}>
+        <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isPending}>
           {isPending ? "Salvando..." : (colaborador ? "Salvar Alterações" : "Cadastrar Colaborador")}
         </Button>
       </div>
