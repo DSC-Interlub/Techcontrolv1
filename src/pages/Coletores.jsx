@@ -451,8 +451,10 @@ export default function Coletores() {
                 </div>
               </CardContent>
               <CardFooter className="border-t pt-6 flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setFormData({}); }}>Cancelar</Button>
-                <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700">{editingEquipamento ? "Atualizar" : "Criar"}</Button>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setFormData({}); }} disabled={createMutation.isPending || updateMutation.isPending}>Cancelar</Button>
+                <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (editingEquipamento ? "Atualizar" : "Criar")}
+                </Button>
               </CardFooter>
             </form>
           </Card>

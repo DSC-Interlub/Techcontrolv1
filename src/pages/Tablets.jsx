@@ -141,6 +141,7 @@ export default function Tablets() {
               setEditingEquipamento(null);
             }}
             entityType="Tablets"
+            isLoading={createMutation.isPending || updateMutation.isPending}
           />
         )}
 

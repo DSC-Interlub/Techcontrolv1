@@ -159,6 +159,7 @@ export default function Notebooks_Externos() {
               setEditingEquipamento(null);
             }}
             entityType="Notebooks_Externos"
+            isLoading={createMutation.isPending || updateMutation.isPending}
           />
         )}
 

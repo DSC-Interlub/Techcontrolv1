@@ -10,13 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { X, FileText, Activity, Plus, Trash2 } from "lucide-react";
+import { X, FileText, Activity, Plus, Trash2, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
 
 
-export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType }) {
+export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType, isLoading = false }) {
   const { user: currentAuthUser } = useAuth();
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
@@ -119,7 +119,9 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       'entity_name',
       'app_id',
       'tempo_uso',
-      'origem'
+      'origem',
+      // Notebooks_Externos e Tablets usam 'uf' em vez de 'area'
+      ...(entityType === 'Notebooks_Externos' || entityType === 'Tablets' ? ['area'] : []),
     ];
 
     const cleanData = {};
@@ -802,11 +804,15 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
           )}
         </CardContent>
         <CardFooter className="border-t pt-6 flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-            {equipamento ? "Atualizar" : "Criar"}
+          <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
+            {isLoading ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
+            ) : (
+              equipamento ? "Atualizar" : "Criar"
+            )}
           </Button>
         </CardFooter>
       </form>

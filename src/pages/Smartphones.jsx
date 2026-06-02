@@ -333,11 +333,29 @@ export default function Smartphones() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <Label>Data de Aquisição</Label>
-                    <Input type="date" value={formData.data_aquisicao || ""} onChange={(e) => setFormData({ ...formData, data_aquisicao: e.target.value })} />
+                    <Input
+                      type="date"
+                      value={formData.data_aquisicao || ""}
+                      onChange={(e) => {
+                        const d = e.target.value;
+                        const anos = d ? parseFloat(((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24 * 365)).toFixed(1)) : undefined;
+                        setFormData({ ...formData, data_aquisicao: d, uso_anos: anos });
+                      }}
+                    />
                   </div>
                   <div>
-                    <Label>Uso (anos)</Label>
-                    <Input type="number" value={formData.uso_anos || ""} onChange={(e) => setFormData({ ...formData, uso_anos: parseFloat(e.target.value) })} />
+                    <Label>Tempo de Uso</Label>
+                    <Input
+                      value={formData.data_aquisicao ? (() => {
+                        const days = Math.ceil((Date.now() - new Date(formData.data_aquisicao).getTime()) / 86400000);
+                        if (days < 30) return `${days} dia${days !== 1 ? 's' : ''}`;
+                        if (days < 365) { const m = Math.floor(days / 30); return `${m} mês${m > 1 ? 'es' : ''}`; }
+                        const y = Math.floor(days / 365); const m = Math.floor((days % 365) / 30);
+                        return m > 0 ? `${y} ano${y > 1 ? 's' : ''} e ${m} mês${m > 1 ? 'es' : ''}` : `${y} ano${y > 1 ? 's' : ''}`;
+                      })() : "—"}
+                      readOnly
+                      className="bg-gray-50"
+                    />
                   </div>
                   <div>
                     <Label>Operadora</Label>
@@ -351,8 +369,8 @@ export default function Smartphones() {
                     <Input placeholder="(11) 99999-9999" value={formData.linha_celular || ""} onChange={(e) => setFormData({ ...formData, linha_celular: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Quantidade</Label>
-                    <Input type="number" value={formData.quantidade || ""} onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) })} />
+                    <Label>Qtd. de Chips / SIMs</Label>
+                    <Input type="number" min="1" placeholder="Ex: 1 ou 2" value={formData.quantidade || ""} onChange={(e) => setFormData({ ...formData, quantidade: parseInt(e.target.value) })} />
                   </div>
                 </div>
 
@@ -483,8 +501,10 @@ export default function Smartphones() {
                 </div>
               </CardContent>
               <CardFooter className="border-t pt-6 flex justify-end gap-3">
-                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setFormData({}); }}>Cancelar</Button>
-                <Button type="submit" className="bg-green-600 hover:bg-green-700">{editingEquipamento ? "Atualizar" : "Criar"}</Button>
+                <Button type="button" variant="outline" onClick={() => { setShowForm(false); setFormData({}); }} disabled={createMutation.isPending || updateMutation.isPending}>Cancelar</Button>
+                <Button type="submit" className="bg-green-600 hover:bg-green-700" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : (editingEquipamento ? "Atualizar" : "Criar")}
+                </Button>
               </CardFooter>
             </form>
           </Card>
