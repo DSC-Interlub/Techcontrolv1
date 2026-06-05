@@ -30,6 +30,8 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!currentAuthUser,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: avaliacoes = [] } = useQuery({
@@ -42,7 +44,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       }, '-data_avaliacao');
       return avaliacoes;
     },
-    enabled: !!equipamento?.id,
+    enabled: !!equipamento?.id && !!currentAuthUser,
   });
 
   const salvarAvaliacaoMutation = useMutation({

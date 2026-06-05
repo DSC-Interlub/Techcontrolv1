@@ -11,8 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function AvaliacoesEquipamentos() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClassificacao, setFilterClassificacao] = useState("todos");
   const [activeTab, setActiveTab] = useState("realizadas");
@@ -22,6 +24,8 @@ export default function AvaliacoesEquipamentos() {
   const { data: todasAvaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
     queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   // Agrupar avaliações por equipamento e pegar apenas a mais recente
@@ -37,11 +41,15 @@ export default function AvaliacoesEquipamentos() {
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: notebooksExternos = [] } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Identificar equipamentos não avaliados

@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function PCs_Internos() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [selectedEquipamento, setSelectedEquipamento] = useState(null);
@@ -32,11 +34,15 @@ export default function PCs_Internos() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({

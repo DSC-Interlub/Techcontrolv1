@@ -13,8 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Ramais() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingRamal, setEditingRamal] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,11 +33,15 @@ export default function Ramais() {
   const { data: ramais = [], isLoading } = useQuery({
     queryKey: ['ramais'],
     queryFn: () => base44.entities.Ramais.list(),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({

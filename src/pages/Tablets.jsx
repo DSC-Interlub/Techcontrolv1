@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Tablets() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [selectedEquipamento, setSelectedEquipamento] = useState(null);
@@ -21,6 +23,8 @@ export default function Tablets() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['tablets'],
     queryFn: () => base44.entities.Tablets.list('-created_date'),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const createMutation = useMutation({

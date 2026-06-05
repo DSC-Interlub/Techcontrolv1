@@ -12,8 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Canetas_Vibracao() {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,37 +33,50 @@ export default function Canetas_Vibracao() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list('-created_date'),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Buscar todos os usuários de todos os equipamentos
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: notebooksExternos = [] } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: smartphones = [] } = useQuery({
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: cameras = [] } = useQuery({
     queryKey: ['cameras'],
     queryFn: () => base44.entities.Cameras.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: coletores = [] } = useQuery({
     queryKey: ['coletores'],
     queryFn: () => base44.entities.Coletores.list(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
 

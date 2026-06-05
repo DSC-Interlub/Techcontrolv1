@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createPageUrl } from "@/utils";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Reservas() {
+  const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState("all");
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,16 +36,22 @@ export default function Reservas() {
   const { data: reservas = [], isLoading: loadingReservas } = useQuery({
     queryKey: ['reservas'],
     queryFn: () => base44.entities.Reservas.list('-created_date'),
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const { data: notebooksExternos = [], isLoading: loadingNotebooksExternos } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: pcsInternos = [], isLoading: loadingPcsInternos } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Combinar notebooks de ambas as entidades
