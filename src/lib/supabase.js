@@ -9,15 +9,35 @@ if (!SUPABASE_URL || SUPABASE_URL.includes('COLE_AQUI') || !SUPABASE_ANON_KEY ||
   );
 }
 
-// Sem lock customizado — o lock serializa getSession() em CADA query,
-// causando timeout em páginas com 7+ queries simultâneas.
-// O lock nativo do browser (Web Locks API) funciona corretamente
-// para uso em aba única; o aviso "lock stolen" no console é inofensivo.
+// Lock customizado: fila simples que serializa operações de auth.
+//
+// POR QUE precisamos disso:
+// A Web Locks API nativa do browser pode "roubar" o lock entre operações
+// concorrentes, fazendo o onAuthStateChange falhar silenciosamente e
+// mantendo `user` como null para sempre.
+//
+// POR QUE SEM TIMEOUT:
+// A versão anterior tinha timeout de 8s que causava "supabase lock timeout".
+// Cada fn() é leitura rápida de localStorage (~0ms), então a fila resolve
+// em microssegundos. Só fica lenta se houver refresh de token (rede),
+// mas isso acontece no máximo 1x por hora.
+let _lockQueue = Promise.resolve();
+
+function lock(_name, _timeout, fn) {
+  const result = _lockQueue.then(
+    () => fn(),
+    () => fn()  // avança mesmo se a anterior falhou
+  );
+  _lockQueue = result.then(() => {}, () => {});
+  return result;
+}
+
 export const supabase = createClient(
   SUPABASE_URL || 'https://placeholder.supabase.co',
   SUPABASE_ANON_KEY || 'placeholder',
   {
     auth: {
+      lock,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,

@@ -9,36 +9,71 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    // Segurança: libera o loading após 8s mesmo se o Supabase não responder
-    const safetyTimeout = setTimeout(() => {
-      setIsLoadingAuth(false);
-    }, 8000);
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const safetyTimeout = setTimeout(() => {
+      if (mounted) setIsLoadingAuth(false);
+    }, 10000);
+
+    async function loadProfile(sessionUser) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', sessionUser.id)
+          .single();
+        return { ...sessionUser, ...(profile || {}) };
+      } catch {
+        return sessionUser;
+      }
+    }
+
+    // Carrega sessão atual imediatamente (não espera por evento)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
       clearTimeout(safetyTimeout);
 
       if (session?.user) {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setUser({ ...session.user, ...(profile || {}) });
-        } catch {
-          // Se não conseguir carregar o perfil, usa só os dados da sessão
-          setUser(session.user);
+        const fullUser = await loadProfile(session.user);
+        if (mounted) {
+          setUser(fullUser);
+          setIsAuthenticated(true);
         }
-        setIsAuthenticated(true);
       } else {
-        setUser(null);
-        setIsAuthenticated(false);
+        if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       }
+      if (mounted) setIsLoadingAuth(false);
+    }).catch(() => {
+      if (mounted) setIsLoadingAuth(false);
+    });
 
-      setIsLoadingAuth(false);
+    // Mantém sync em mudanças subsequentes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          const fullUser = await loadProfile(session.user);
+          if (mounted) {
+            setUser(fullUser);
+            setIsAuthenticated(true);
+            setIsLoadingAuth(false);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (mounted) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoadingAuth(false);
+        }
+      }
     });
 
     return () => {
+      mounted = false;
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
