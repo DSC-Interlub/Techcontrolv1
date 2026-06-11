@@ -167,6 +167,8 @@ export default function Layout({ children }) {
                        location.pathname.includes('/portal-sala') ||
                        location.pathname.includes('/portal-equipamentos') ||
                        location.pathname.includes('/portal-ramais') ||
+                       location.pathname.includes('/portal-requisicoes') ||
+                       location.pathname.includes('/aprovacao-diretor') ||
                        location.pathname.includes('/portal') ||
                        location.pathname === '/login';
 

@@ -7,6 +7,7 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
+import AprovacaoDiretor from './pages/aprovacao-diretor';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -39,6 +40,8 @@ function App() {
                 }
               />
             ))}
+            {/* Página pública para aprovação do diretor via e-mail */}
+            <Route path="/aprovacao-diretor" element={<AprovacaoDiretor />} />
             <Route path="*" element={<PageNotFound />} />
           </Routes>
         </Router>

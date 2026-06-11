@@ -78,6 +78,8 @@ import reservaSalaPublica from './pages/reserva-sala-publica';
 import salaTreinamento from './pages/sala-treinamento';
 import Comunicados from './pages/Comunicados';
 import portalComunicados from './pages/portal-comunicados';
+import portalRequisicoes from './pages/portal-requisicoes';
+import aprovacaoDiretor from './pages/aprovacao-diretor';
 import Login from './pages/Login';
 import __Layout from './Layout.jsx';
 
@@ -114,6 +116,8 @@ export const PAGES = {
     "sala-treinamento": salaTreinamento,
     "Comunicados": Comunicados,
     "portal-comunicados": portalComunicados,
+    "portal-requisicoes": portalRequisicoes,
+    "aprovacao-diretor": aprovacaoDiretor,
     "login": Login,
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -109,6 +109,28 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
   const isPending = createMutation.isPending || updateMutation.isPending;
   const isComunicadosRole = ['comunicados_arte', 'comunicados_gestao', 'comunicados_dp'].includes(currentUserRole);
 
+  // Busca todos colaboradores ativos para o select de aprovador
+  const { data: todosColaboradores = [] } = useQuery({
+    queryKey: ['colaboradores_aprovadores'],
+    queryFn: () => base44.entities.Colaboradores.filter({ status: 'Ativo' }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const handleAprovadorChange = (colaboradorId) => {
+    if (!colaboradorId || colaboradorId === '__none__') {
+      set('responsavel_id', '');
+      set('responsavel_nome', '');
+      set('responsavel_email', '');
+      return;
+    }
+    const colab = todosColaboradores.find(c => c.id === colaboradorId);
+    if (colab) {
+      set('responsavel_id', colab.id);
+      set('responsavel_nome', colab.nome_completo);
+      set('responsavel_email', colab.email || '');
+    }
+  };
+
   const ErrMsg = ({ field }) => errors[field] ? <p className="text-xs text-red-500 mt-1">{errors[field]}</p> : null;
 
   return (
@@ -197,6 +219,34 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   </Select>
                 </div>
               </div>
+              {/* Aprovador para Requisições de Compra */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-2 space-y-2">
+                <h4 className="text-sm font-semibold text-emerald-900">Aprovador de Requisições de Compra</h4>
+                <p className="text-xs text-emerald-700">Selecione o colaborador responsável por aprovar as requisições de compra deste colaborador.</p>
+                <Select
+                  value={formData.responsavel_id || '__none__'}
+                  onValueChange={handleAprovadorChange}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Selecione o aprovador..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Nenhum aprovador definido —</SelectItem>
+                    {todosColaboradores
+                      .filter(c => c.id !== colaborador?.id)
+                      .map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.nome_completo} {c.cargo ? `— ${c.cargo}` : ''} {c.area ? `(${c.area})` : ''}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+                {formData.responsavel_nome && (
+                  <p className="text-xs text-emerald-800">✅ Aprovador: <strong>{formData.responsavel_nome}</strong> · {formData.responsavel_email}</p>
+                )}
+              </div>
+
               <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
                 <Switch
                   id="incluir_comunicados"

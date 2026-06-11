@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Headset, Calendar, Users, Phone, Activity, ArrowRight, Loader2, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Headset, Calendar, Users, Phone, Activity, ArrowRight, Loader2, CheckCircle, Clock, AlertCircle, ShoppingCart } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import PortalLayout from "../components/portal/PortalLayout";
@@ -61,6 +61,15 @@ export default function Portal() {
       url: createPageUrl("portal-chamados"),
       badge: chamadosAbertos.length > 0 ? `${chamadosAbertos.length} em aberto` : null,
       badgeColor: "bg-orange-100 text-orange-800",
+    },
+    {
+      title: "Requisições de Compra",
+      desc: "Solicite compras e acompanhe as aprovações",
+      icon: ShoppingCart,
+      color: "bg-emerald-100 text-emerald-600",
+      url: createPageUrl("portal-requisicoes"),
+      badge: null,
+      badgeColor: "",
     },
     {
       title: "Reservar Notebook",
