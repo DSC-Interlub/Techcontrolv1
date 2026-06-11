@@ -1,17 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import nodemailer from 'npm:nodemailer@6.9.0';
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: Deno.env.get('GMAIL_USER'),
-    pass: Deno.env.get('GMAIL_APP_PASSWORD'),
-  },
-});
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: Deno.env.get('GMAIL_USER'),
+        pass: Deno.env.get('GMAIL_APP_PASSWORD'),
+      },
+    });
     const body = await req.json();
     const { action, requisicao_id, comentario, token } = body;
 
