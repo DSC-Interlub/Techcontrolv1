@@ -1,99 +1,38 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { base44 } from '@/api/base44Client';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    const safetyTimeout = setTimeout(() => {
-      if (mounted) setIsLoadingAuth(false);
-    }, 10000);
-
-    async function loadProfile(sessionUser) {
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', sessionUser.id)
-          .single();
-        return { ...sessionUser, ...(profile || {}) };
-      } catch {
-        return sessionUser;
-      }
-    }
-
-    // Carrega sessão atual imediatamente (não espera por evento)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      clearTimeout(safetyTimeout);
-
-      if (session?.user) {
-        const fullUser = await loadProfile(session.user);
-        if (mounted) {
-          setUser(fullUser);
-          setIsAuthenticated(true);
-        }
-      } else {
-        if (mounted) {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      }
-      if (mounted) setIsLoadingAuth(false);
-    }).catch(() => {
-      if (mounted) setIsLoadingAuth(false);
-    });
-
-    // Mantém sync em mudanças subsequentes (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (session?.user) {
-          const fullUser = await loadProfile(session.user);
-          if (mounted) {
-            setUser(fullUser);
-            setIsAuthenticated(true);
-            setIsLoadingAuth(false);
-          }
-        }
-      } else if (event === 'SIGNED_OUT') {
-        if (mounted) {
-          setUser(null);
-          setIsAuthenticated(false);
-          setIsLoadingAuth(false);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      clearTimeout(safetyTimeout);
-      subscription.unsubscribe();
-    };
+    base44.auth.me()
+      .then((u) => {
+        setUser(u);
+        setIsLoadingAuth(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsLoadingAuth(false);
+      });
   }, []);
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+  const logout = () => {
+    base44.auth.logout('/login');
   };
 
   return (
     <AuthContext.Provider value={{
       user,
-      isAuthenticated,
+      isAuthenticated: !!user,
       isLoadingAuth,
       isLoadingPublicSettings: false,
       authError: null,
       appPublicSettings: null,
       logout,
-      navigateToLogin: () => { window.location.href = '/login'; },
+      navigateToLogin: () => base44.auth.redirectToLogin(),
       checkAppState: () => {},
     }}>
       {children}

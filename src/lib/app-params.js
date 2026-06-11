@@ -1,8 +1,3 @@
-// Mantido por compatibilidade — Base44 removido
 export const appParams = {
-  appId: null,
-  serverUrl: null,
-  token: null,
-  fromUrl: typeof window !== 'undefined' ? window.location.href : '',
-  functionsVersion: null,
+  appId: "691323397a0bc5c15e63e15d",
 };
