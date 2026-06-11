@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,13 +9,9 @@ import { Settings, Eye, EyeOff, Loader2, AlertCircle, Lock } from "lucide-react"
 import { createPageUrl } from "@/utils";
 
 async function portalLoginRequest(body) {
-  const res = await fetch('/api/portalLogin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro ao fazer login');
+  const res = await base44.functions.invoke('portalLogin', body);
+  const data = res.data;
+  if (data?.error) throw new Error(data.error);
   return data;
 }
 
