@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useAuth } from "@/lib/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { base44 } from "@/api/base44Client";
 import { 
   LayoutDashboard, 
   Monitor, 
@@ -181,8 +181,7 @@ export default function Layout({ children }) {
 
   const handleLogout = async () => {
     if (window.confirm("Deseja realmente sair do sistema?")) {
-      await supabase.auth.signOut();
-      navigate('/login');
+      base44.auth.logout('/login');
     }
   };
 

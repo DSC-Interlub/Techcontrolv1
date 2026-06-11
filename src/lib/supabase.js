@@ -1,7 +1,5 @@
-// Stub de compatibilidade — o app roda no Base44, não no Supabase/Vercel.
-// Este arquivo exporta um objeto `supabase` mínimo para que os arquivos
-// que ainda importam dele (AuthContext, Login) não quebrem, mas toda a
-// autenticação real é feita pelo SDK do Base44 via AuthContext.
+// Stub vazio — o app usa apenas Base44, não Supabase.
+// Este arquivo existe apenas para não quebrar imports legados.
 
 export const supabase = {
   auth: {
