@@ -22,7 +22,8 @@ import {
   Sun,
   Moon,
   Building2,
-  Megaphone
+  Megaphone,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,6 +124,11 @@ const managementItems = [
     title: "Projetos / Terceiros",
     url: createPageUrl("ProjetosTerceiros"),
     icon: Building2,
+  },
+  {
+    title: "Requisições de Compra",
+    url: createPageUrl("RequisicaoCompras"),
+    icon: ShoppingCart,
   },
   {
     title: "Comunicados",
