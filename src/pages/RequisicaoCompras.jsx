@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShoppingCart, Search, Clock, CheckCircle, XCircle, Loader2, Filter, UserCheck } from "lucide-react";
 import RequisicaoDetalhes from "@/components/requisicoes/RequisicaoDetalhes";
 import ModuloAprovador from "@/components/requisicoes/ModuloAprovador";
+import ConfiguracoesDiretor from "@/components/requisicoes/ConfiguracoesDiretor";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -180,7 +181,10 @@ export default function RequisicaoCompras() {
           <ListaRequisicoes lista={filtrar(reprovadas)} isLoading={isLoading} onSelect={setSelectedReq} />
         </TabsContent>
         <TabsContent value="aprovadores">
-          <ModuloAprovador onSelectRequisicao={setSelectedReq} />
+          <div className="space-y-4">
+            <ConfiguracoesDiretor />
+            <ModuloAprovador onSelectRequisicao={setSelectedReq} />
+          </div>
         </TabsContent>
       </Tabs>
 

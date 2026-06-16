@@ -72,6 +72,11 @@ Deno.serve(async (req) => {
         return Response.json({ success: true, action: 'reprovado' });
       }
 
+      // Busca e-mail do diretor nas configurações
+      const configs = await base44.asServiceRole.entities.Configuracoes.filter({ chave: 'diretor_email' });
+      const diretorEmail = configs?.[0]?.valor;
+      if (!diretorEmail) return Response.json({ error: 'E-mail do diretor não configurado' }, { status: 500 });
+
       // Aprovar: enviar para o diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
       await base44.asServiceRole.entities.RequisicaoCompras.update(requisicao_id, {
@@ -96,7 +101,7 @@ Deno.serve(async (req) => {
         : 'Não informado';
 
       await sendEmail(
-        'vtorres@interlub.com',
+        diretorEmail,
         `🛒 Aprovação Necessária — Requisição ${req_data.numero_requisicao}`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
           <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
