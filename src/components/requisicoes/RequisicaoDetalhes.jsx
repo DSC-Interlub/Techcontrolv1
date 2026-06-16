@@ -15,15 +15,24 @@ const statusColors = {
   "Reprovada pelo Diretor": "bg-red-100 text-red-800",
 };
 
-export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, onAcao }) {
+export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdmin, onAcao }) {
   const [comentario, setComentario] = useState("");
   const [acao, setAcao] = useState(null); // "aprovar" | "reprovar"
 
   const isAprovador = colaboradorAtual?.id === requisicao.aprovador_id;
   const podeAtuar = isAprovador && requisicao.status === 'Aguardando Aprovador';
+  // Admin pode agir como diretor quando status é Aguardando Diretor
+  const podeAtuarDiretor = isAdmin && requisicao.status === 'Aguardando Diretor';
 
   const acaoMutation = useMutation({
     mutationFn: async (tipo) => {
+      if (podeAtuarDiretor) {
+        return base44.functions.invoke('requisicaoComprasAction', {
+          action: tipo === 'aprovar' ? 'diretor_aprovar' : 'diretor_reprovar',
+          token: requisicao.token_aprovacao,
+          comentario,
+        });
+      }
       return base44.functions.invoke('requisicaoComprasAction', {
         action: tipo === 'aprovar' ? 'aprovador_aprovar' : 'aprovador_reprovar',
         requisicao_id: requisicao.id,
@@ -115,7 +124,7 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, onAca
         </div>
       )}
 
-      {/* Ações do aprovador */}
+      {/* Ações do aprovador (1º nível) */}
       {podeAtuar && (
         <div className="border-t pt-4 space-y-3">
           <p className="font-semibold text-foreground">Sua Análise</p>
@@ -153,6 +162,54 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, onAca
                   onClick={() => acaoMutation.mutate(acao)}
                 >
                   {acaoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (acao === 'aprovar' ? 'Confirmar Aprovação' : 'Confirmar Reprovação')}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ações do diretor (admin) */}
+      {podeAtuarDiretor && (
+        <div className="border-t pt-4 space-y-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="font-semibold text-blue-900 text-sm">⬆️ Aprovação do Diretor</p>
+            <p className="text-xs text-blue-700 mt-0.5">Esta requisição foi aprovada pelo responsável e aguarda sua decisão final.</p>
+          </div>
+          {!acao ? (
+            <div className="flex gap-3">
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={() => setAcao('aprovar')}>
+                <CheckCircle className="w-4 h-4" />Aprovar
+              </Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700 gap-2" onClick={() => setAcao('reprovar')}>
+                <XCircle className="w-4 h-4" />Reprovar
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className={`rounded-lg p-3 text-sm font-medium ${acao === 'aprovar' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                {acao === 'aprovar' ? '✅ Aprovação final — aprovador e colaborador serão notificados.' : '❌ Reprovar — aprovador e colaborador serão notificados com a devolutiva.'}
+              </div>
+              <div>
+                <Label>Comentário {acao === 'reprovar' ? '(obrigatório)' : '(opcional)'}</Label>
+                <Textarea
+                  className="mt-1"
+                  rows={3}
+                  placeholder={acao === 'aprovar' ? 'Observação final (opcional)...' : 'Explique o motivo da reprovação...'}
+                  value={comentario}
+                  onChange={e => setComentario(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => { setAcao(null); setComentario(""); }}>
+                  Cancelar
+                </Button>
+                <Button
+                  className={`flex-1 ${acao === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                  disabled={acaoMutation.isPending || (acao === 'reprovar' && !comentario.trim())}
+                  onClick={() => acaoMutation.mutate(acao)}
+                >
+                  {acaoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (acao === 'aprovar' ? 'Confirmar Aprovação Final' : 'Confirmar Reprovação')}
                 </Button>
               </div>
             </div>

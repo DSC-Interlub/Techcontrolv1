@@ -194,6 +194,7 @@ export default function RequisicaoCompras() {
             <RequisicaoDetalhes
               requisicao={selectedReq}
               colaboradorAtual={null}
+              isAdmin={true}
               onAcao={() => {
                 queryClient.invalidateQueries({ queryKey: ["admin_requisicoes"] });
                 setSelectedReq(null);
