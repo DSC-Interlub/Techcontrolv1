@@ -8,8 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, Search, Clock, CheckCircle, XCircle, Loader2, Filter } from "lucide-react";
+import { ShoppingCart, Search, Clock, CheckCircle, XCircle, Loader2, Filter, UserCheck } from "lucide-react";
 import RequisicaoDetalhes from "@/components/requisicoes/RequisicaoDetalhes";
+import ModuloAprovador from "@/components/requisicoes/ModuloAprovador";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -148,7 +149,7 @@ export default function RequisicaoCompras() {
 
       {/* Tabs */}
       <Tabs defaultValue="todas">
-        <TabsList className="grid grid-cols-4 w-full mb-4">
+        <TabsList className="grid grid-cols-5 w-full mb-4">
           <TabsTrigger value="todas">Todas ({filtrar(requisicoes).length})</TabsTrigger>
           <TabsTrigger value="pendentes">
             Pendentes
@@ -156,6 +157,9 @@ export default function RequisicaoCompras() {
           </TabsTrigger>
           <TabsTrigger value="aprovadas">Aprovadas ({filtrar(aprovadas).length})</TabsTrigger>
           <TabsTrigger value="reprovadas">Reprovadas ({filtrar(reprovadas).length})</TabsTrigger>
+          <TabsTrigger value="aprovadores" className="flex items-center gap-1">
+            <UserCheck className="w-3 h-3" />Aprovadores
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="todas">
@@ -174,6 +178,9 @@ export default function RequisicaoCompras() {
         </TabsContent>
         <TabsContent value="reprovadas">
           <ListaRequisicoes lista={filtrar(reprovadas)} isLoading={isLoading} onSelect={setSelectedReq} />
+        </TabsContent>
+        <TabsContent value="aprovadores">
+          <ModuloAprovador onSelectRequisicao={setSelectedReq} />
         </TabsContent>
       </Tabs>
 

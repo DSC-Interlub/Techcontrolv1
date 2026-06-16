@@ -28,6 +28,7 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, onAca
         action: tipo === 'aprovar' ? 'aprovador_aprovar' : 'aprovador_reprovar',
         requisicao_id: requisicao.id,
         comentario,
+        aprovador_email: colaboradorAtual?.email || requisicao.aprovador_email,
       });
     },
     onSuccess: () => {
