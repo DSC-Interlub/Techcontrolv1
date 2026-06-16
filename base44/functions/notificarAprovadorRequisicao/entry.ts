@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     // E-mail para o aprovador
     await resend.emails.send({
-      from: 'TechControl <onboarding@resend.dev>',
+      from: 'TechControl <suporte@techcontrol.site>',
       to: aprovador_email,
       subject: `🛒 Nova Requisição de Compra Aguardando Aprovação — ${numero}`,
       html: `
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     // E-mail de confirmação para o requisitante
     if (colaborador_email) {
       await resend.emails.send({
-        from: 'TechControl <onboarding@resend.dev>',
+        from: 'TechControl <suporte@techcontrol.site>',
         to: colaborador_email,
         subject: `📋 Requisição ${numero} criada com sucesso`,
         html: `

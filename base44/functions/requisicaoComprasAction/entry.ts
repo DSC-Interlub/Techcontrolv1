@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     // Helper para enviar e-mail via Resend
     async function sendEmail(to, subject, html) {
       await resend.emails.send({
-        from: 'TechControl <onboarding@resend.dev>',
+        from: 'TechControl <suporte@techcontrol.site>',
         to,
         subject,
         html,
