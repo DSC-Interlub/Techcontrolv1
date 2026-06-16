@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft } from "lucide-react";
+import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import NovaRequisicaoForm from "../components/requisicoes/NovaRequisicaoForm";
 import RequisicaoDetalhes from "../components/requisicoes/RequisicaoDetalhes";
 import IndicadoresRequisicao from "../components/requisicoes/IndicadoresRequisicao";
+import PainelAprovador from "../components/requisicoes/PainelAprovador";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -127,7 +128,7 @@ export default function PortalRequisicoes() {
               <Clock className="w-5 h-5 text-amber-600 shrink-0" />
               <div>
                 <p className="font-semibold text-amber-900">Você tem {requisicoesPendentesAprovador.length} requisição(ões) aguardando sua aprovação</p>
-                <p className="text-sm text-amber-700">Acesse a aba "Para Aprovar" abaixo para analisar.</p>
+                <p className="text-sm text-amber-700">Acesse a aba "Aprovador" abaixo para analisar.</p>
               </div>
             </div>
           )}
@@ -138,8 +139,8 @@ export default function PortalRequisicoes() {
               <TabsTrigger value="pendentes" className="text-xs">Em Andamento ({pendentes.length})</TabsTrigger>
               <TabsTrigger value="historico" className="text-xs">Histórico ({aprovadas.length + reprovadas.length})</TabsTrigger>
               {isAprovador && (
-                <TabsTrigger value="aprovar" className="text-xs relative">
-                  Para Aprovar
+                <TabsTrigger value="aprovador" className="text-xs relative flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" />Aprovador
                   {requisicoesPendentesAprovador.length > 0 && (
                     <span className="ml-1 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">{requisicoesPendentesAprovador.length}</span>
                   )}
@@ -157,13 +158,8 @@ export default function PortalRequisicoes() {
               <RequisicaoLista lista={[...aprovadas, ...reprovadas]} isLoading={isLoading} onSelect={setSelectedReq} empty="Nenhuma requisição concluída." />
             </TabsContent>
             {isAprovador && (
-              <TabsContent value="aprovar">
-                <AprovadorLista
-                  colaboradorId={colaboradorFull?.id}
-                  requisicoes={requisicoes}
-                  onSelect={setSelectedReq}
-                  isLoading={isLoading}
-                />
+              <TabsContent value="aprovador">
+                <PainelAprovador colaboradorFull={colaboradorFull} />
               </TabsContent>
             )}
           </Tabs>
