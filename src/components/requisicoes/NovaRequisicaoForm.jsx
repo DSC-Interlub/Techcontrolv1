@@ -71,7 +71,12 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           requisicao_id: requisicao.id,
           numero: numeroRequisicao,
           colaborador_nome: colaborador.nome_completo,
+          colaborador_email: colaborador.email,
           item: data.item,
+          urgencia: data.urgencia,
+          justificativa: data.justificativa,
+          valor_minimo: data.valor_minimo,
+          valor_maximo: data.valor_maximo,
         }).catch(() => {});
       }
 
