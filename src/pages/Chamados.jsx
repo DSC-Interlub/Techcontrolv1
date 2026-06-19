@@ -750,11 +750,15 @@ export default function Chamados() {
                     {selectedChamado.tempo_util_minutos && (
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm">
                         <p className="font-semibold text-purple-900 mb-1">Tempos de Resolução</p>
-                        <p>Tempo útil (TI): <strong>{formatMinutos(selectedChamado.tempo_util_minutos)}</strong></p>
-                        {selectedChamado.tempo_total_minutos && <p>Tempo total corrido: <strong>{formatMinutos(selectedChamado.tempo_total_minutos)}</strong></p>}
-                        {selectedChamado.tipo_resolucao === "Terceiro" && selectedChamado.terceiro_data_abertura && selectedChamado.terceiro_data_resolucao && (
-                          <p>Tempo da empresa terceira: <strong>{formatMinutos(Math.round((new Date(selectedChamado.terceiro_data_resolucao) - new Date(selectedChamado.terceiro_data_abertura)) / 60000))}</strong></p>
+                        {selectedChamado.tipo_resolucao === "Terceiro" ? (
+                          <>
+                            <p>Tempo TI (útil): <strong>—</strong> <span className="text-xs text-gray-500">(chamado resolvido por terceiro)</span></p>
+                            <p>Tempo 3º (útil): <strong>{formatMinutos(selectedChamado.tempo_util_minutos)}</strong></p>
+                          </>
+                        ) : (
+                          <p>Tempo útil (TI): <strong>{formatMinutos(selectedChamado.tempo_util_minutos)}</strong></p>
                         )}
+                        {selectedChamado.tempo_total_minutos && <p>Tempo total corrido: <strong>{formatMinutos(selectedChamado.tempo_total_minutos)}</strong></p>}
                       </div>
                     )}
                     {selectedChamado.avaliacao_data && (
