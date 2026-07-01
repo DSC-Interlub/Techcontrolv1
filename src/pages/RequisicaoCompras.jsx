@@ -234,8 +234,9 @@ function ListaRequisicoes({ lista, isLoading, onSelect }) {
             <p className="font-medium text-foreground truncate">{r.item}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {r.colaborador_nome} · {r.colaborador_area} · Qtd: {r.quantidade}
+              {r.centro_custo_nome ? ` · CC: ${r.centro_custo_codigo}` : ""}
               {r.valor_minimo && r.valor_maximo
-                ? ` · R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}`
+                ? ` · Total: R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}`
                 : ""}
             </p>
           </div>

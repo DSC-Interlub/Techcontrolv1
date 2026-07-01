@@ -131,6 +131,11 @@ const managementItems = [
     icon: ShoppingCart,
   },
   {
+    title: "Centros de Custo",
+    url: createPageUrl("CentrosCusto"),
+    icon: Building2,
+  },
+  {
     title: "Comunicados",
     url: createPageUrl("Comunicados"),
     icon: Megaphone,

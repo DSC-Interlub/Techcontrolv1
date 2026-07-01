@@ -205,8 +205,9 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty }) {
             </div>
             <p className="font-medium text-foreground truncate">{r.item}</p>
             <p className="text-xs text-muted-foreground">
-              Qtd: {r.quantidade} · 
-              {r.valor_minimo && r.valor_maximo ? ` R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}` : ' Valor não informado'}
+              Qtd: {r.quantidade}
+              {r.centro_custo_nome ? ` · CC: ${r.centro_custo_codigo}` : ""}
+              {r.valor_minimo && r.valor_maximo ? ` · Total: R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}` : ' · Valor não informado'}
             </p>
           </div>
         </div>

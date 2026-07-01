@@ -45,9 +45,13 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
     },
   });
 
-  const valorRange = requisicao.valor_minimo && requisicao.valor_maximo
+  const valorRangeUnit = requisicao.valor_unitario_minimo && requisicao.valor_unitario_maximo
+    ? `R$ ${Number(requisicao.valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(requisicao.valor_unitario_maximo).toLocaleString('pt-BR')}`
+    : requisicao.valor_unitario_minimo ? `A partir de R$ ${Number(requisicao.valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
+
+  const valorRangeTotal = requisicao.valor_minimo && requisicao.valor_maximo
     ? `R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(requisicao.valor_maximo).toLocaleString('pt-BR')}`
-    : 'Não informado';
+    : requisicao.valor_minimo ? `A partir de R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')}` : null;
 
   return (
     <div className="space-y-4 text-sm">
@@ -65,9 +69,20 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
 
       <div className="bg-muted/30 rounded-lg p-4 space-y-3 border">
         <div><p className="text-muted-foreground text-xs uppercase tracking-wide">Item</p><p className="font-semibold text-foreground">{requisicao.item}</p></div>
+        {requisicao.centro_custo_nome && (
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-muted-foreground text-xs">Centro de Custo</p><p className="font-medium">{requisicao.centro_custo_codigo} — {requisicao.centro_custo_nome}</p></div>
+            <div><p className="text-muted-foreground text-xs">Quantidade</p><p className="font-medium">{requisicao.quantidade}</p></div>
+          </div>
+        )}
+        {!requisicao.centro_custo_nome && (
+          <div className="grid grid-cols-2 gap-3">
+            <div><p className="text-muted-foreground text-xs">Quantidade</p><p className="font-medium">{requisicao.quantidade}</p></div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <div><p className="text-muted-foreground text-xs">Quantidade</p><p className="font-medium">{requisicao.quantidade}</p></div>
-          <div><p className="text-muted-foreground text-xs">Valor Estimado</p><p className="font-medium">{valorRange}</p></div>
+          <div><p className="text-muted-foreground text-xs">Valor Unitário</p><p className="font-medium">{valorRangeUnit || "Não informado"}</p></div>
+          <div><p className="text-muted-foreground text-xs">Valor Total</p><p className="font-medium">{valorRangeTotal || "Não informado"}</p></div>
         </div>
         {requisicao.fornecedor_sugerido && (
           <div><p className="text-muted-foreground text-xs">Fornecedor Sugerido</p><p className="font-medium">{requisicao.fornecedor_sugerido}</p></div>

@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
     const body = await req.json();
-    const { aprovador_email, aprovador_nome, requisicao_id, numero, colaborador_nome, colaborador_email, item, urgencia, justificativa, valor_minimo, valor_maximo } = body;
+    const { aprovador_email, aprovador_nome, requisicao_id, numero, colaborador_nome, colaborador_email, item, urgencia, justificativa, valor_minimo, valor_maximo, valor_unitario_minimo, valor_unitario_maximo, centro_custo_nome } = body;
 
     if (!aprovador_email) {
       return Response.json({ error: 'E-mail do aprovador não informado' }, { status: 400 });
@@ -15,9 +15,13 @@ Deno.serve(async (req) => {
 
     const portalUrl = req.headers.get('origin') || 'https://app.base44.com';
 
-    const valorRange = valor_minimo && valor_maximo
+    const valorRangeTotal = valor_minimo && valor_maximo
       ? `R$ ${Number(valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_maximo).toLocaleString('pt-BR')}`
       : valor_minimo ? `A partir de R$ ${Number(valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
+
+    const valorRangeUnit = valor_unitario_minimo && valor_unitario_maximo
+      ? `R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_unitario_maximo).toLocaleString('pt-BR')}`
+      : valor_unitario_minimo ? `A partir de R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
 
     // E-mail para o aprovador
     await resend.emails.send({
@@ -37,7 +41,9 @@ Deno.serve(async (req) => {
             <p><strong>Item:</strong> ${item}</p>
             ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
             ${justificativa ? `<p><strong>Justificativa:</strong> ${justificativa}</p>` : ''}
-            <p><strong>Valor Estimado:</strong> ${valorRange}</p>
+            ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
+            ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
+            <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
           </div>
           <a href="${portalUrl}/portal-requisicoes" style="display:inline-block;background:#059669;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
             Acessar Portal para Aprovar
@@ -64,7 +70,9 @@ Deno.serve(async (req) => {
               <p><strong>Número:</strong> ${numero}</p>
               <p><strong>Item:</strong> ${item}</p>
               ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
-              <p><strong>Valor Estimado:</strong> ${valorRange}</p>
+              ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
+              ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
+              <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
               <p><strong>Responsável:</strong> ${aprovador_nome}</p>
               <p><strong>Status:</strong> Aguardando Aprovador</p>
             </div>

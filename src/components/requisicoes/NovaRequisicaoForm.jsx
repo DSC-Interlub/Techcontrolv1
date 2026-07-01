@@ -13,6 +13,10 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
   const [formData, setFormData] = useState({
     item: "",
     quantidade: 1,
+    centro_custo_codigo: "",
+    centro_custo_nome: "",
+    valor_unitario_minimo: "",
+    valor_unitario_maximo: "",
     valor_minimo: "",
     valor_maximo: "",
     justificativa: "",
@@ -32,6 +36,11 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
       return results?.[0] || null;
     },
     enabled: !!colaborador?.responsavel_id,
+  });
+
+  const { data: centrosCusto = [] } = useQuery({
+    queryKey: ['centros_custo_ativos'],
+    queryFn: () => base44.entities.CentrosCusto.filter({ ativo: true }),
   });
 
   const createMutation = useMutation({
@@ -77,6 +86,9 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           justificativa: data.justificativa,
           valor_minimo: data.valor_minimo,
           valor_maximo: data.valor_maximo,
+          valor_unitario_minimo: data.valor_unitario_minimo,
+          valor_unitario_maximo: data.valor_unitario_maximo,
+          centro_custo_nome: data.centro_custo_nome,
         }).catch(() => {});
       }
 
@@ -174,8 +186,28 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
             </div>
 
             <div>
-              <Label>Valor Estimado (Range)</Label>
-              <p className="text-xs text-muted-foreground mb-2">Informe um valor mínimo e máximo estimado para a compra</p>
+              <Label>Centro de Custo <span className="text-red-500">*</span></Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione o centro de custo onde esta compra será alocada</p>
+              <Select
+                value={formData.centro_custo_codigo}
+                onValueChange={v => {
+                  const cc = centrosCusto.find(c => c.codigo === v);
+                  set('centro_custo_codigo', v);
+                  set('centro_custo_nome', cc?.nome || '');
+                }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione o centro de custo..." /></SelectTrigger>
+                <SelectContent>
+                  {[...centrosCusto].sort((a, b) => String(a.codigo).localeCompare(String(b.codigo))).map(cc => (
+                    <SelectItem key={cc.id} value={cc.codigo}>{cc.codigo} — {cc.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Valor Unitário Estimado</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor de uma unidade do item (range mín–máx)</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
@@ -184,7 +216,38 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                     min="0"
                     step="0.01"
                     className="mt-1 pl-9"
-                    placeholder="Mínimo"
+                    placeholder="Mín. unit."
+                    value={formData.valor_unitario_minimo}
+                    onChange={e => set('valor_unitario_minimo', e.target.value)}
+                  />
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="mt-1 pl-9"
+                    placeholder="Máx. unit."
+                    value={formData.valor_unitario_maximo}
+                    onChange={e => set('valor_unitario_maximo', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label>Valor Total Estimado</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor total da compra = valor unitário × quantidade (range mín–máx)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="mt-1 pl-9"
+                    placeholder="Mín. total"
                     value={formData.valor_minimo}
                     onChange={e => set('valor_minimo', e.target.value)}
                   />
@@ -196,7 +259,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                     min="0"
                     step="0.01"
                     className="mt-1 pl-9"
-                    placeholder="Máximo"
+                    placeholder="Máx. total"
                     value={formData.valor_maximo}
                     onChange={e => set('valor_maximo', e.target.value)}
                   />

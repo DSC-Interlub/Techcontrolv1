@@ -42,13 +42,29 @@
       "type": "number",
       "description": "Quantidade desejada"
     },
+    "centro_custo_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo do centro de custo onde a compra ser\u00e1 alocada"
+    },
+    "centro_custo_nome": {
+      "type": "string",
+      "description": "Nome do centro de custo selecionado"
+    },
+    "valor_unitario_minimo": {
+      "type": "number",
+      "description": "Valor unit\u00e1rio m\u00ednimo estimado (R$)"
+    },
+    "valor_unitario_maximo": {
+      "type": "number",
+      "description": "Valor unit\u00e1rio m\u00e1ximo estimado (R$)"
+    },
     "valor_minimo": {
       "type": "number",
-      "description": "Valor m\u00ednimo estimado (R$)"
+      "description": "Valor total m\u00ednimo estimado (R$)"
     },
     "valor_maximo": {
       "type": "number",
-      "description": "Valor m\u00e1ximo estimado (R$)"
+      "description": "Valor total m\u00e1ximo estimado (R$)"
     },
     "justificativa": {
       "type": "string",

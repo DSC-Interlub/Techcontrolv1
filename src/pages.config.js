@@ -82,6 +82,7 @@ import portalRequisicoes from './pages/portal-requisicoes';
 import aprovacaoDiretor from './pages/aprovacao-diretor';
 import Login from './pages/Login';
 import RequisicaoCompras from './pages/RequisicaoCompras';
+import CentrosCusto from './pages/CentrosCusto';
 import __Layout from './Layout.jsx';
 
 
@@ -121,6 +122,7 @@ export const PAGES = {
     "aprovacao-diretor": aprovacaoDiretor,
     "login": Login,
     "RequisicaoCompras": RequisicaoCompras,
+    "CentrosCusto": CentrosCusto,
 }
 
 export const pagesConfig = {
