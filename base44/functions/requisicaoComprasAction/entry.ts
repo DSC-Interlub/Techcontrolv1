@@ -96,9 +96,13 @@ Deno.serve(async (req) => {
       const linkAprovar = `${baseUrl}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
       const linkReprovar = `${baseUrl}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
-      const valorRange = req_data.valor_minimo && req_data.valor_maximo
+      const valorRangeTotal = req_data.valor_minimo && req_data.valor_maximo
         ? `R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_maximo).toLocaleString('pt-BR')}`
-        : 'Não informado';
+        : req_data.valor_minimo ? `A partir de R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
+
+      const valorRangeUnit = req_data.valor_unitario_minimo && req_data.valor_unitario_maximo
+        ? `R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_unitario_maximo).toLocaleString('pt-BR')}`
+        : req_data.valor_unitario_minimo ? `A partir de R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
 
       await sendEmail(
         diretorEmail,
@@ -114,7 +118,9 @@ Deno.serve(async (req) => {
             <p><strong>Aprovador:</strong> ${req_data.aprovador_nome}</p>
             <p><strong>Item:</strong> ${req_data.item}</p>
             <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
-            <p><strong>Valor Estimado:</strong> ${valorRange}</p>
+            ${req_data.centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
+            ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
+            <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
             <p><strong>Urgência:</strong> ${req_data.urgencia}</p>
             <p><strong>Justificativa:</strong> ${req_data.justificativa}</p>
             ${req_data.fornecedor_sugerido ? `<p><strong>Fornecedor Sugerido:</strong> ${req_data.fornecedor_sugerido}</p>` : ''}

@@ -46,7 +46,37 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Colaboradores.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['colaboradores'] }); onClose(); },
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+      queryClient.invalidateQueries({ queryKey: ['portal_colab_full'] });
+
+      // Se o aprovador mudou, atualiza as requisições pendentes para o novo aprovador
+      const oldId = colaborador?.responsavel_id;
+      const newId = variables.data.responsavel_id;
+      if (oldId !== newId) {
+        try {
+          const pendentes = await base44.entities.RequisicaoCompras.filter({
+            colaborador_id: variables.id,
+            status: 'Aguardando Aprovador',
+          });
+          if (pendentes.length > 0) {
+            await base44.entities.RequisicaoCompras.bulkUpdate(
+              pendentes.map(r => ({
+                id: r.id,
+                aprovador_id: variables.data.responsavel_id || '',
+                aprovador_nome: variables.data.responsavel_nome || '',
+                aprovador_email: variables.data.responsavel_email || '',
+              }))
+            );
+          }
+        } catch (e) {
+          console.error('Erro ao atualizar requisições pendentes:', e);
+        }
+        queryClient.invalidateQueries({ queryKey: ['admin_requisicoes'] });
+        queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      }
+      onClose();
+    },
   });
 
   const validate = () => {
