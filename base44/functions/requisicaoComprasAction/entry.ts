@@ -159,6 +159,69 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, action: 'enviado_diretor' });
     }
 
+    // Editar requisição (solicitante reenvia com novos dados — volta para o aprovador)
+    if (action === 'requisicao_editar') {
+      if (!requisicao_id) return Response.json({ error: 'requisicao_id obrigatório' }, { status: 400 });
+
+      const req_data = await base44.asServiceRole.entities.RequisicaoCompras.get(requisicao_id);
+      if (!req_data) return Response.json({ error: 'Requisição não encontrada' }, { status: 404 });
+
+      // Só permite editar se estiver Aprovada ou Reprovada
+      const statusEditavel = ['Aprovada', 'Reprovada pelo Aprovador', 'Reprovada pelo Diretor'];
+      if (!statusEditavel.includes(req_data.status)) {
+        return Response.json({ error: 'Esta requisição não pode ser editada no status atual' }, { status: 400 });
+      }
+
+      const {
+        item, quantidade, centro_custo_codigo, centro_custo_nome,
+        valor_unitario_minimo, valor_unitario_maximo,
+        valor_minimo, valor_maximo,
+        justificativa, urgencia, fornecedor_sugerido, anexos,
+      } = body;
+
+      await base44.asServiceRole.entities.RequisicaoCompras.update(requisicao_id, {
+        item, quantidade, centro_custo_codigo, centro_custo_nome,
+        valor_unitario_minimo, valor_unitario_maximo,
+        valor_minimo, valor_maximo,
+        justificativa, urgencia, fornecedor_sugerido,
+        anexos: anexos || [],
+        status: 'Aguardando Aprovador',
+        aprovador_comentario: '',
+        aprovador_data: null,
+        diretor_comentario: '',
+        diretor_data: null,
+        token_aprovacao: '',
+        historico: [...(req_data.historico || []), {
+          data_hora: new Date().toISOString(),
+          tipo: 'edicao_reenvio',
+          descricao: 'Requisição editada e reenviada para aprovação com novos valores.',
+          usuario: req_data.colaborador_nome,
+        }],
+      });
+
+      // Notifica o aprovador
+      if (req_data.aprovador_email) {
+        base44.functions.invoke('notificarAprovadorRequisicao', {
+          aprovador_email: req_data.aprovador_email,
+          aprovador_nome: req_data.aprovador_nome,
+          requisicao_id,
+          numero: req_data.numero_requisicao,
+          colaborador_nome: req_data.colaborador_nome,
+          colaborador_email: req_data.colaborador_email,
+          item,
+          urgencia,
+          justificativa,
+          valor_minimo,
+          valor_maximo,
+          valor_unitario_minimo,
+          valor_unitario_maximo,
+          centro_custo_nome,
+        }).catch(() => {});
+      }
+
+      return Response.json({ success: true, action: 'editada' });
+    }
+
     // Ação do diretor via token (sem auth)
     if (action === 'diretor_aprovar' || action === 'diretor_reprovar') {
       if (!token) return Response.json({ error: 'Token inválido' }, { status: 400 });

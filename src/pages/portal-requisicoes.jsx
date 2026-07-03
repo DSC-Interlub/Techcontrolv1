@@ -175,6 +175,7 @@ export default function PortalRequisicoes() {
             <RequisicaoDetalhes
               requisicao={selectedReq}
               colaboradorAtual={colaboradorFull}
+              isAdmin={false}
               onAcao={() => {
                 queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
                 setSelectedReq(null);

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Pencil } from "lucide-react";
+import EditarRequisicaoForm from "./EditarRequisicaoForm";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -18,11 +19,16 @@ const statusColors = {
 export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdmin, onAcao }) {
   const [comentario, setComentario] = useState("");
   const [acao, setAcao] = useState(null); // "aprovar" | "reprovar"
+  const [editando, setEditando] = useState(false);
 
   const isAprovador = colaboradorAtual?.id === requisicao.aprovador_id;
+  const isSolicitante = colaboradorAtual?.id === requisicao.colaborador_id;
   const podeAtuar = isAprovador && requisicao.status === 'Aguardando Aprovador';
   // Admin pode agir como diretor quando status é Aguardando Diretor
   const podeAtuarDiretor = isAdmin && requisicao.status === 'Aguardando Diretor';
+  // Solicitante ou admin podem editar se a requisição já foi concluída (aprovada ou reprovada)
+  const podeEditar = (isSolicitante || isAdmin) &&
+    ['Aprovada', 'Reprovada pelo Aprovador', 'Reprovada pelo Diretor'].includes(requisicao.status);
 
   const acaoMutation = useMutation({
     mutationFn: async (tipo) => {
@@ -53,11 +59,28 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
     ? `R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(requisicao.valor_maximo).toLocaleString('pt-BR')}`
     : requisicao.valor_minimo ? `A partir de R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')}` : null;
 
+  if (editando) {
+    return (
+      <EditarRequisicaoForm
+        requisicao={requisicao}
+        onCancel={() => setEditando(false)}
+        onSuccess={() => { setEditando(false); onAcao(); }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4 text-sm">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <Badge className={statusColors[requisicao.status]}>{requisicao.status}</Badge>
-        <Badge variant="outline">{requisicao.urgencia}</Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge className={statusColors[requisicao.status]}>{requisicao.status}</Badge>
+          <Badge variant="outline">{requisicao.urgencia}</Badge>
+        </div>
+        {podeEditar && (
+          <Button size="sm" variant="outline" className="gap-2 text-amber-700 border-amber-300 hover:bg-amber-50" onClick={() => setEditando(true)}>
+            <Pencil className="w-3.5 h-3.5" />Editar e Reenviar
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
