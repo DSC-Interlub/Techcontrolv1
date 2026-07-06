@@ -199,24 +199,68 @@ Deno.serve(async (req) => {
         }],
       });
 
-      // Notifica o aprovador
+      // E-mail para o aprovador (reenvio)
       if (req_data.aprovador_email) {
-        base44.functions.invoke('notificarAprovadorRequisicao', {
-          aprovador_email: req_data.aprovador_email,
-          aprovador_nome: req_data.aprovador_nome,
-          requisicao_id,
-          numero: req_data.numero_requisicao,
-          colaborador_nome: req_data.colaborador_nome,
-          colaborador_email: req_data.colaborador_email,
-          item,
-          urgencia,
-          justificativa,
-          valor_minimo,
-          valor_maximo,
-          valor_unitario_minimo,
-          valor_unitario_maximo,
-          centro_custo_nome,
-        }).catch(() => {});
+        const portalUrl = req.headers.get('origin') || 'https://app.base44.com';
+        const valorRangeTotal = valor_minimo && valor_maximo
+          ? `R$ ${Number(valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_maximo).toLocaleString('pt-BR')}`
+          : valor_minimo ? `A partir de R$ ${Number(valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
+        const valorRangeUnit = valor_unitario_minimo && valor_unitario_maximo
+          ? `R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_unitario_maximo).toLocaleString('pt-BR')}`
+          : valor_unitario_minimo ? `A partir de R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
+
+        await sendEmail(
+          req_data.aprovador_email,
+          `🔄 Requisição ${req_data.numero_requisicao} Editada e Reenviada`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+            <div style="background:#d97706;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+              <h2 style="margin:0;">🔄 Requisição Editada e Reenviada</h2>
+            </div>
+            <p>Olá, <strong>${req_data.aprovador_nome}</strong>!</p>
+            <p>O solicitante editou a requisição <strong>${req_data.numero_requisicao}</strong> e ela está novamente aguardando sua aprovação.</p>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+              <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
+              <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
+              <p><strong>Item:</strong> ${item}</p>
+              <p><strong>Quantidade:</strong> ${quantidade}</p>
+              ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
+              ${justificativa ? `<p><strong>Justificativa:</strong> ${justificativa}</p>` : ''}
+              ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
+              ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
+              <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
+              ${fornecedor_sugerido ? `<p><strong>Fornecedor Sugerido:</strong> ${fornecedor_sugerido}</p>` : ''}
+              ${anexos?.length > 0 ? `<p><strong>Anexos:</strong> ${anexos.map(a => `<a href="${a.file_url}">${a.file_name}</a>`).join(', ')}</p>` : ''}
+            </div>
+            <a href="${portalUrl}/portal-requisicoes" style="display:inline-block;background:#d97706;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+              Acessar Portal para Aprovar
+            </a>
+            <p style="color:#64748b;font-size:12px;margin-top:16px;">Acesse o Portal do Colaborador e vá em "Para Aprovar" para analisar esta requisição.</p>
+          </div>`
+        );
+      }
+
+      // Confirmação para o solicitante
+      if (req_data.colaborador_email) {
+        const portalUrl = req.headers.get('origin') || 'https://app.base44.com';
+        await sendEmail(
+          req_data.colaborador_email,
+          `🔄 Requisição ${req_data.numero_requisicao} Reenviada para Aprovação`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+            <div style="background:#d97706;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+              <h2 style="margin:0;">🔄 Requisição Reenviada</h2>
+            </div>
+            <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+            <p>Sua requisição foi editada e reenviada para aprovação do seu responsável (<strong>${req_data.aprovador_nome}</strong>).</p>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+              <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
+              <p><strong>Item:</strong> ${item}</p>
+              <p><strong>Status:</strong> Aguardando Aprovador</p>
+            </div>
+            <a href="${portalUrl}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+              Acompanhar Requisição
+            </a>
+          </div>`
+        );
       }
 
       return Response.json({ success: true, action: 'editada' });
