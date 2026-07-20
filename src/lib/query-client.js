@@ -46,14 +46,34 @@ export const queryClientInstance = new QueryClient({
   }),
 });
 
-// Instrument React Query cache updates to track loading and pending states
+// Instrument React Query cache updates to track loading and pending states and run a watchdog
+const queryWatchdogs = new Map();
+
 queryClientInstance.getQueryCache().subscribe((event) => {
   if (event.type === 'updated') {
     const { query } = event;
     const queryKey = query.queryKey;
+    const queryHash = query.queryHash;
     const status = query.state.status;
     const fetchStatus = query.state.fetchStatus;
+    
     console.log(`[DEBUG-QUERY] Key: ${JSON.stringify(queryKey)} | Status: ${status} | FetchStatus: ${fetchStatus}`);
+
+    if (fetchStatus === 'fetching') {
+      if (!queryWatchdogs.has(queryHash)) {
+        const timer = setTimeout(() => {
+          console.warn(
+            `[WATCHDOG-WARNING] A query com a chave ${JSON.stringify(queryKey)} está em estado 'fetching' há mais de 15 segundos sem responder. Possível travamento ou deadlock detectado.`
+          );
+        }, 15000);
+        queryWatchdogs.set(queryHash, timer);
+      }
+    } else {
+      if (queryWatchdogs.has(queryHash)) {
+        clearTimeout(queryWatchdogs.get(queryHash));
+        queryWatchdogs.delete(queryHash);
+      }
+    }
   }
 });
 

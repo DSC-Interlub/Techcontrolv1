@@ -46,39 +46,77 @@ export const AuthProvider = ({ children }) => {
 
     // Escuta alterações na sessão do Supabase Auth
     console.log("[DEBUG-AUTH] Setting up supabase.auth.onAuthStateChange listener");
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log(`[DEBUG-AUTH] onAuthStateChange event fired: ${event} | User email: ${session?.user?.email || "none"}`);
       if (!mounted) {
         console.log("[DEBUG-AUTH] onAuthStateChange event skipped (component unmounted)");
         return;
       }
 
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT' || !session?.user) {
         setUser(null);
         sessionStorage.removeItem('techcontrol_user_cache');
         setIsLoadingAuth(false);
-        console.log("[DEBUG-AUTH] event SIGNED_OUT handled");
-      } else if (session?.user) {
-        try {
-          const u = await base44.auth.me();
-          if (mounted && u) {
-            setUser(u);
-            sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
-            console.log("[DEBUG-AUTH] event SIGNED_IN/TOKEN_REFRESHED handled successfully");
-          }
-        } catch (err) {
-          console.warn("[DEBUG-AUTH] [AuthContext] Erro ao atualizar perfil em " + event + ":", err);
-        } finally {
-          if (mounted) {
-            setIsLoadingAuth(false);
-            console.log("[DEBUG-AUTH] Auth resolution completed for event:", event);
-          }
-        }
+        console.log("[DEBUG-AUTH] event SIGNED_OUT or empty session handled");
       } else {
-        if (mounted) {
-          setIsLoadingAuth(false);
-          console.log("[DEBUG-AUTH] No session user, set isLoadingAuth to false");
-        }
+        // b) Construa o usuário/sessão inicial de forma síncrona usando apenas o parâmetro session já recebido pelo callback
+        const userObj = session.user;
+        const baseUser = {
+          id: userObj.id,
+          email: userObj.email,
+          role: userObj.app_metadata?.role || userObj.user_metadata?.role || 'admin',
+          name: userObj.user_metadata?.full_name || userObj.user_metadata?.name || userObj.email
+        };
+
+        setUser(baseUser);
+        sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(baseUser));
+        setIsLoadingAuth(false);
+        console.log("[DEBUG-AUTH] Initial user constructed synchronously from session");
+
+        // c) Qualquer chamada adicional ao Supabase necessária (buscar perfil, role, etc.) seja adiada com setTimeout(fn, 0) para rodar depois que o callback termina
+        setTimeout(async () => {
+          if (!mounted) return;
+          console.log("[DEBUG-AUTH] Deferred query running for user profile information");
+          try {
+            // Busca dados complementares de perfil (profiles / colaboradores) usando chamadas diretas de banco (NÃO usando auth.*)
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userObj.id)
+              .maybeSingle();
+
+            if (profile && mounted) {
+              const updatedUser = {
+                ...baseUser,
+                role: profile.role || baseUser.role,
+                name: profile.full_name || profile.nome_exibicao || baseUser.name
+              };
+              setUser(updatedUser);
+              sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(updatedUser));
+              console.log("[DEBUG-AUTH] Deferred query resolved profile details:", updatedUser.role);
+              return;
+            }
+
+            const { data: colab } = await supabase
+              .from('colaboradores')
+              .select('*')
+              .eq('id', userObj.id)
+              .maybeSingle();
+
+            if (colab && mounted) {
+              const updatedUser = {
+                ...baseUser,
+                role: 'colaborador',
+                name: colab.nome_completo || baseUser.name
+              };
+              setUser(updatedUser);
+              sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(updatedUser));
+              console.log("[DEBUG-AUTH] Deferred query resolved colaborador details");
+            }
+          } catch (err) {
+            console.warn("[DEBUG-AUTH] [AuthContext] Erro ao carregar detalhes complementares no setTimeout:", err);
+          }
+        }, 0);
       }
     });
 

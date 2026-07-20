@@ -150,7 +150,10 @@ const createEntityHandler = (entityName) => {
       const channel = supabase
         .channel(`realtime_${tableName}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
-          cb(payload.new);
+          // Defer callback execution to prevent deadlock in postgres_changes event handler
+          setTimeout(() => {
+            cb(payload.new);
+          }, 0);
         })
         .subscribe();
       return () => {
