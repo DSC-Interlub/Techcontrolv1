@@ -3,8 +3,6 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/enviarComunicadosDiarios", "schedule": "0 13 * * *" },
-    { "path": "/api/gerarDemandasComunicados",  "schedule": "0 9 1 * *"  },
-    { "path": "/api/lembreteAvaliacao",         "schedule": "0 15 * * *" }
+    { "path": "/api/cronDiario", "schedule": "0 13 * * *" }
   ]
 }

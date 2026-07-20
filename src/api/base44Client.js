@@ -244,6 +244,45 @@ export const base44 = {
   functions: {
     invoke: async (name, payload) => {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // 1. Caso de listagem de usuários: consulta direta com RLS
+      if (name === 'listarUsuarios') {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (error) throw error;
+        return { data };
+      }
+
+      // 2. Caso de geração de demandas: RPC direta no banco
+      if (name === 'gerarDemandasComunicados') {
+        const { data, error } = await supabase.rpc('gerar_demandas_comunicados', {
+          usar_mes_atual: !!payload?.mes_atual
+        });
+        if (error) throw error;
+        return { data };
+      }
+
+      // 3. Demais rotas unificadas ou originais
+      let targetUrl = `/api/${name}`;
+      let bodyData = payload;
+
+      const unifiedNotifications = [
+        'sendEmailTicketCreated',
+        'sendEmailTicketStarted',
+        'sendEmailTicketClosed',
+        'sendEmailChatMessage',
+        'notificarAprovadorRequisicao',
+        'enviarBoasVindas',
+        'enviarDespedida'
+      ];
+
+      if (unifiedNotifications.includes(name)) {
+        targetUrl = '/api/notificar';
+        bodyData = { type: name, data: payload };
+      } else if (name === 'lembreteAvaliacao') {
+        targetUrl = '/api/cronDiario';
+        bodyData = { runType: 'avaliacoes' };
+      }
+
       const headers = {
         'Content-Type': 'application/json'
       };
@@ -251,10 +290,10 @@ export const base44 = {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      const res = await fetch(`/api/${name}`, {
+      const res = await fetch(targetUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(bodyData)
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
