@@ -29,49 +29,49 @@ export default function Dashboard() {
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: notebooksExternos = [] } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: smartphones = [] } = useQuery({
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: cameras = [] } = useQuery({
     queryKey: ['cameras'],
     queryFn: () => base44.entities.Cameras.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: coletores = [] } = useQuery({
     queryKey: ['coletores'],
     queryFn: () => base44.entities.Coletores.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: canetas = [] } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: tablets = [] } = useQuery({
     queryKey: ['tablets'],
     queryFn: () => base44.entities.Tablets.list(),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: chamados = [] } = useQuery({
     queryKey: ['chamados'],
     queryFn: () => base44.entities.Chamados.list('-created_date', 5),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const { data: reservas = [] } = useQuery({

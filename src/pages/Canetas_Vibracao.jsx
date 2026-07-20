@@ -33,15 +33,13 @@ export default function Canetas_Vibracao() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: pcsInternos = [] } = useQuery({

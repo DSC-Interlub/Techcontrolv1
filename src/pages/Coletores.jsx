@@ -34,15 +34,13 @@ export default function Coletores() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['coletores'],
     queryFn: () => base44.entities.Coletores.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: pcsInternos = [] } = useQuery({

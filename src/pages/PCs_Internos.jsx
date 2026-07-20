@@ -34,15 +34,13 @@ export default function PCs_Internos() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const createMutation = useMutation({

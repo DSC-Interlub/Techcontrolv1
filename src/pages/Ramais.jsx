@@ -33,15 +33,13 @@ export default function Ramais() {
   const { data: ramais = [], isLoading } = useQuery({
     queryKey: ['ramais'],
     queryFn: () => base44.entities.Ramais.list(),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const createMutation = useMutation({

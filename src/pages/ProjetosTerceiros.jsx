@@ -68,7 +68,7 @@ export default function ProjetosTerceiros() {
   const { data: chamados = [], isLoading } = useQuery({
     queryKey: ['chamados_terceiros'],
     queryFn: () => base44.entities.Chamados.list('-created_date'),
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   // Um chamado é considerado PROJETO quando tem dados financeiros ou marcos definidos.

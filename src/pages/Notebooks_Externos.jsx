@@ -23,8 +23,7 @@ export default function Notebooks_Externos() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const createMutation = useMutation({

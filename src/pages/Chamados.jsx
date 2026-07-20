@@ -405,6 +405,13 @@ export default function Chamados() {
   const maxColaborador = topColaboradores[0]?.[1] || 1;
   const maxSetor = topSetores[0]?.[1] || 1;
 
+  // Lista unificada de administradores/atendentes para as abas dinâmicas
+  const adminsDoSistema = usuarios.map(u => u.nome_exibicao || u.full_name || u.email).filter(Boolean);
+  const responsaveisFormatados = [...new Set([
+    ...responsaveis,
+    ...adminsDoSistema
+  ])].sort();
+
   const getTipoCompleto = (chamado) => {
     let d = chamado.tipo_solicitacao || "";
     if (chamado.tipo_solicitacao === "Sistema") { if (chamado.sistema_tipo) d += ` - ${chamado.sistema_tipo}`; if (chamado.sistema_subtipo) d += ` (${chamado.sistema_subtipo})`; }
@@ -421,9 +428,6 @@ export default function Chamados() {
     const minutos = Math.round((fim - inicio) / 60000);
     return formatMinutos(minutos);
   };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
-  if (!user) return null;
 
   const renderChamadosTable = (lista) => (
     <div className="overflow-x-auto">
@@ -595,13 +599,13 @@ export default function Chamados() {
                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto flex-wrap">
                   <TabsTrigger value="abertos" className="rounded-none border-b-2 border-transparent data-[state=active]:border-orange-600 data-[state=active]:bg-transparent px-6 py-3">Em Aberto ({chamadosAbertos.length})</TabsTrigger>
                   <TabsTrigger value="geral" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent px-6 py-3">Geral ({chamadosGeral.length})</TabsTrigger>
-                  {responsaveis.map(r => (
+                  {responsaveisFormatados.map(r => (
                     <TabsTrigger key={r} value={r} className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-6 py-3">{r} ({getChamadosPorResponsavel(r).length})</TabsTrigger>
                   ))}
                 </TabsList>
                 <TabsContent value="abertos" className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(chamadosAbertos))}</TabsContent>
                 <TabsContent value="geral" className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(chamadosGeral))}</TabsContent>
-                {responsaveis.map(r => (
+                {responsaveisFormatados.map(r => (
                   <TabsContent key={r} value={r} className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(getChamadosPorResponsavel(r)))}</TabsContent>
                 ))}
               </Tabs>

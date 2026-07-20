@@ -24,8 +24,7 @@ export default function AvaliacoesEquipamentos() {
   const { data: todasAvaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
     queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   // Agrupar avaliações por equipamento e pegar apenas a mais recente

@@ -23,8 +23,7 @@ export default function Tablets() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['tablets'],
     queryFn: () => base44.entities.Tablets.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const createMutation = useMutation({

@@ -22,13 +22,7 @@ export default function Comunicados() {
     if (currentUser) setActiveTab(getDefaultTab(currentUser));
   }, [currentUser]);
 
-  if (isLoadingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+
 
   const role = currentUser?.role;
   const isAdmin = role === "admin";

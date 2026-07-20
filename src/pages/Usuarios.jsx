@@ -316,7 +316,7 @@ export default function Usuarios() {
         return [];
       }
     },
-    enabled: !!user,
+    staleTime: 30000,
   });
 
   const showSuccess = (msg) => {
@@ -338,17 +338,6 @@ export default function Usuarios() {
     comunicados: usuarios.filter(u => ["comunicados_arte","comunicados_gestao","comunicados_dp"].includes(u.role)).length,
     operacional: usuarios.filter(u => u.role === "user").length,
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <TooltipProvider>

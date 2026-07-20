@@ -34,15 +34,13 @@ export default function Smartphones() {
   const { data: equipamentos = [], isLoading } = useQuery({
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list('-created_date'),
-    enabled: !!user,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30000,
   });
 
   const { data: pcsInternos = [] } = useQuery({
