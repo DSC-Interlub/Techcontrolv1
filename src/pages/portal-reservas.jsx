@@ -31,7 +31,7 @@ export default function PortalReservas() {
   const [success, setSuccess] = useState(false);
   const [validationError, setValidationError] = useState("");
   const [selectedNotebook, setSelectedNotebook] = useState(null);
-  const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "07:42", data_fim: "", hora_fim: "17:30", motivo: "" });
+  const [formData, setFormData] = useState({ data_inicio: "", hora_inicio: "08:00", data_fim: "", hora_fim: "17:30", motivo: "" });
   const [semanaRef, setSemanaRef] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -104,7 +104,7 @@ export default function PortalReservas() {
         if (r.equipamento_id !== nbId || r.status === "Cancelada" || r.status === "Concluída") return false;
         return new Date(`${r.data_fim}T${r.hora_fim}`) > agora;
       })
-      .sort((a, b) => new Date(`${a.data_fim}T${a.hora_fim}`) - new Date(`${b.data_fim}T${b.hora_fim}`));
+      .sort((a, b) => new Date(`${a.data_inicio}T${a.hora_inicio}`) - new Date(`${b.data_inicio}T${b.hora_inicio}`));
     if (futuras.length > 0) {
       // Retorna o término da primeira reserva futura (próximo slot de liberação)
       const primeira = futuras[0];
@@ -160,8 +160,9 @@ export default function PortalReservas() {
       .filter(r => {
         if (r.equipamento_id !== nbId) return false;
         if (r.status === "Cancelada" || r.status === "Concluída") return false;
-        // Verifica se a data consultada está dentro do intervalo da reserva (multi-dias inclusive)
-        if (r.data_inicio > dataStr || r.data_fim < dataStr) return false;
+        // Should check: reservation overlaps with the given date
+        const overlapsDate = r.data_inicio <= dataStr && (r.data_fim >= dataStr || !r.data_fim);
+        if (!overlapsDate) return false;
         // Validade extra: hora_inicio deve ser menor que hora_fim em reservas do mesmo dia
         if (r.data_inicio === r.data_fim && r.hora_inicio >= r.hora_fim) return false;
         return true;

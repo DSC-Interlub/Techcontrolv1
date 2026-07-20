@@ -19,20 +19,23 @@ export default function Portal() {
 
   const { data: chamados = [] } = useQuery({
     queryKey: ['portal_chamados', colaborador?.nome_completo],
-    queryFn: () => base44.entities.Chamados.list('-created_date'),
+    queryFn: () => base44.entities.Chamados.filter({ solicitante_nome: colaborador.nome_completo }, '-created_date'),
     enabled: !!colaborador,
+    staleTime: 60000,
   });
 
   const { data: reservas = [] } = useQuery({
     queryKey: ['portal_reservas_nb', colaborador?.email],
-    queryFn: () => base44.entities.Reservas.list('-created_date'),
+    queryFn: () => base44.entities.Reservas.filter({ solicitante_email: colaborador.email }, '-created_date'),
     enabled: !!colaborador,
+    staleTime: 60000,
   });
 
   const { data: reservasSala = [] } = useQuery({
     queryKey: ['portal_reservas_sala', colaborador?.nome_completo],
-    queryFn: () => base44.entities.ReservasSala.list('-created_date'),
+    queryFn: () => base44.entities.ReservasSala.filter({ solicitante_nome: colaborador.nome_completo }, '-created_date'),
     enabled: !!colaborador,
+    staleTime: 60000,
   });
 
   if (loading || !colaborador) {

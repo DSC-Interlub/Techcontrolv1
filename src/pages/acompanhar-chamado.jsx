@@ -31,7 +31,7 @@ export default function AcompanharChamado() {
   });
   const queryClient = useQueryClient();
 
-  const { data: chamados = [], isLoading, error } = useQuery({
+  const { data: chamados = [], isPending, error } = useQuery({
     queryKey: ['chamados_acompanhamento', numeroChamado],
     queryFn: async () => {
       if (!numeroChamado) return [];
@@ -228,7 +228,7 @@ export default function AcompanharChamado() {
           </CardContent>
         </Card>
 
-        {isLoading && (
+        {isPending && (
           <Card className="shadow-xl">
             <CardContent className="py-12 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -237,7 +237,7 @@ export default function AcompanharChamado() {
           </Card>
         )}
 
-        {buscarChamado && !isLoading && !chamado && (
+        {buscarChamado && !isPending && !chamado && (
           <Card className="shadow-xl">
             <CardContent className="py-12 text-center">
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
