@@ -55,6 +55,7 @@ export default function SalaTreinamento() {
   // --- Histórico ---
   const [historicoSearch, setHistoricoSearch] = useState("");
   const [historicoStatusFilter, setHistoricoStatusFilter] = useState("todos");
+  const [confirmCancelarId, setConfirmCancelarId] = useState(null);
 
   // --- Link público ---
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}${createPageUrl("reserva-sala-publica")}` : '';
@@ -84,19 +85,16 @@ export default function SalaTreinamento() {
 
   const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
 
-  // --- Auto-concluir reservas passadas (otimizado e seguro) ---
+  // --- Auto-concluir reservas passadas ---
   useEffect(() => {
-    if (!reservas.length) return;
-    const agora = new Date();
-    const expiradas = reservas.filter(r => {
-      if (r.status !== "Confirmada") return false;
-      const fim = new Date(`${r.data}T${r.hora_fim || '23:59'}`);
-      return fim <= agora;
-    });
-
-    if (expiradas.length === 0) return;
-
-    const concluirSequencial = async () => {
+    if (!reservas || !reservas.length) return;
+    const updateReservasStatus = async () => {
+      const agora = new Date();
+      const expiradas = reservas.filter(r => 
+        r.status === "Confirmada" && new Date(`${r.data}T${r.hora_fim}`) <= agora
+      );
+      if (expiradas.length === 0) return;
+      
       for (const r of expiradas) {
         try {
           await base44.entities.ReservasSala.update(r.id, { status: "Concluída" });
@@ -169,9 +167,8 @@ export default function SalaTreinamento() {
   };
 
   const handleCancelarReserva = (reserva) => {
-    if (window.confirm(`Cancelar a reserva de ${reserva.solicitante_nome} em ${reserva.data} das ${reserva.hora_inicio} às ${reserva.hora_fim}?`)) {
-      cancelMutation.mutate(reserva.id);
-    }
+    cancelMutation.mutate(reserva.id);
+    setConfirmCancelarId(null);
   };
 
   // --- Calendário mensal ---
@@ -326,11 +323,19 @@ export default function SalaTreinamento() {
                     {reservaDetalhes.num_participantes && <div><span className="text-gray-500">Participantes</span><p className="font-medium">{reservaDetalhes.num_participantes}</p></div>}
                     {reservaDetalhes.observacoes && <div className="col-span-2"><span className="text-gray-500">Observações</span><p className="font-medium">{reservaDetalhes.observacoes}</p></div>}
                   </div>
-                  <div className="pt-2 flex justify-end">
-                    <Button variant="destructive" size="sm" onClick={() => handleCancelarReserva(reservaDetalhes)} disabled={cancelMutation.isPending}>
-                      {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                      Cancelar Reserva
-                    </Button>
+                  <div className="pt-2 flex justify-end gap-2">
+                    {confirmCancelarId === reservaDetalhes.id ? (
+                      <>
+                        <span className="text-sm self-center text-red-600 font-medium mr-2">Confirmar cancelamento?</span>
+                        <Button variant="outline" size="sm" onClick={() => setConfirmCancelarId(null)}>Não</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleCancelarReserva(reservaDetalhes)} disabled={cancelMutation.isPending}>Sim</Button>
+                      </>
+                    ) : (
+                      <Button variant="destructive" size="sm" onClick={() => setConfirmCancelarId(reservaDetalhes.id)} disabled={cancelMutation.isPending}>
+                        {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                        Cancelar Reserva
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -521,9 +526,16 @@ export default function SalaTreinamento() {
                               <Badge className={statusColors[r.status] || "bg-blue-100 text-blue-800"}>{r.status}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Button size="sm" variant="destructive" onClick={() => handleCancelarReserva(r)}>
-                                Cancelar
-                              </Button>
+                              {confirmCancelarId === r.id ? (
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="destructive" onClick={() => handleCancelarReserva(r)}>Sim</Button>
+                                  <Button size="sm" variant="outline" onClick={() => setConfirmCancelarId(null)}>Não</Button>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="destructive" onClick={() => setConfirmCancelarId(r.id)}>
+                                  Cancelar
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
@@ -710,11 +722,19 @@ export default function SalaTreinamento() {
                 )}
 
                 {reservaDetalhes.status !== "Cancelada" && reservaDetalhes.status !== "Concluída" && (
-                  <div className="pt-2 border-t flex justify-end">
-                    <Button variant="destructive" onClick={() => handleCancelarReserva(reservaDetalhes)} disabled={cancelMutation.isPending}>
-                      {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Cancelar Reserva
-                    </Button>
+                  <div className="pt-2 border-t flex justify-end gap-2">
+                    {confirmCancelarId === reservaDetalhes.id ? (
+                      <>
+                        <span className="text-sm self-center text-red-600 font-medium mr-2">Confirmar cancelamento?</span>
+                        <Button variant="outline" size="sm" onClick={() => setConfirmCancelarId(null)}>Não</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleCancelarReserva(reservaDetalhes)} disabled={cancelMutation.isPending}>Sim</Button>
+                      </>
+                    ) : (
+                      <Button variant="destructive" size="sm" onClick={() => setConfirmCancelarId(reservaDetalhes.id)} disabled={cancelMutation.isPending}>
+                        {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Cancelar Reserva
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

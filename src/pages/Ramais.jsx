@@ -181,7 +181,7 @@ export default function Ramais() {
     });
   };
 
-  const executeTrocar = () => {
+  const executeTrocar = async () => {
     if (!ramalDestino) return;
 
     const ramal1 = selectedRamal;
@@ -189,8 +189,14 @@ export default function Ramais() {
 
     if (!ramal2) return;
 
-    // Histórico do ramal 1
-    const historico1 = ramal1.usuarios_anteriores || [];
+    const estadoOriginal1 = {
+      usuario_atual: ramal1.usuario_atual,
+      area: ramal1.area,
+      status: ramal1.status,
+      data_atribuicao: ramal1.data_atribuicao
+    };
+
+    const historico1 = [...(ramal1.usuarios_anteriores || [])];
     if (ramal1.usuario_atual) {
       historico1.push({
         nome: ramal1.usuario_atual,
@@ -200,8 +206,7 @@ export default function Ramais() {
       });
     }
 
-    // Histórico do ramal 2
-    const historico2 = ramal2.usuarios_anteriores || [];
+    const historico2 = [...(ramal2.usuarios_anteriores || [])];
     if (ramal2.usuario_atual) {
       historico2.push({
         nome: ramal2.usuario_atual,
@@ -213,30 +218,39 @@ export default function Ramais() {
 
     const dataAtual = new Date().toISOString().split('T')[0];
 
-    // Troca os usuários
-    updateMutation.mutate({
-      id: ramal1.id,
-      data: {
+    try {
+      // Atualiza ramal 1
+      await base44.entities.Ramais.update(ramal1.id, {
         usuario_atual: ramal2.usuario_atual || "",
         area: ramal2.area || "",
         status: ramal2.usuario_atual ? "Em uso" : "Disponível",
         data_atribuicao: ramal2.usuario_atual ? dataAtual : null,
         usuarios_anteriores: historico1
-      }
-    });
+      });
 
-    setTimeout(() => {
-      updateMutation.mutate({
-        id: ramal2.id,
-        data: {
+      try {
+        // Atualiza ramal 2 com usuário original do ramal 1
+        await base44.entities.Ramais.update(ramal2.id, {
           usuario_atual: ramal1.usuario_atual || "",
           area: ramal1.area || "",
           status: ramal1.usuario_atual ? "Em uso" : "Disponível",
           data_atribuicao: ramal1.usuario_atual ? dataAtual : null,
           usuarios_anteriores: historico2
-        }
-      });
-    }, 500);
+        });
+      } catch (err2) {
+        // Rollback do ramal 1 em caso de erro no ramal 2
+        await base44.entities.Ramais.update(ramal1.id, estadoOriginal1);
+        throw err2;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['ramais'] });
+      setShowTrocarModal(false);
+      setSelectedRamal(null);
+      setRamalDestino("");
+    } catch (err) {
+      console.error("Erro na troca de ramais:", err);
+      alert(`Falha ao trocar ramais: ${err.message || "Erro desconhecido"}`);
+    }
   };
 
   const filteredRamais = ramais.filter(r =>
