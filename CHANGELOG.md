@@ -4,6 +4,27 @@ Todo o histórico de modificações de código e reestruturação da infraestrut
 
 ---
 
+## [1.1.0] — 2026-07-20
+
+### Adicionado
+*   **[20260720123756_add_gerar_demandas_rpc.sql](file:///c:/techcontrol/Techcontrolv1-main/supabase/migrations/20260720123756_add_gerar_demandas_rpc.sql):** Nova migration contendo a stored procedure `public.gerar_demandas_comunicados()`.
+*   **[api/_email.js](file:///c:/techcontrol/Techcontrolv1-main/api/_email.js):** Helper interno para envio de emails via Resend ou Gmail SMTP (Nodemailer).
+*   **[api/notificar.js](file:///c:/techcontrol/Techcontrolv1-main/api/notificar.js):** Endpoint unificado para processar todos os disparos transacionais.
+*   **[api/cronDiario.js](file:///c:/techcontrol/Techcontrolv1-main/api/cronDiario.js):** Endpoint unificado para processar as crons diárias consolidadas.
+*   **[create_admin.sql](file:///c:/techcontrol/Techcontrolv1-main/create_admin.sql):** Script utilitário para criação ou atualização do primeiro administrador no Supabase.
+*   **[AUTHENTICATION.md](file:///c:/techcontrol/Techcontrolv1-main/AUTHENTICATION.md), [ADMIN_SETUP.md](file:///c:/techcontrol/Techcontrolv1-main/ADMIN_SETUP.md), [DOMAIN_CONFIGURATION.md](file:///c:/techcontrol/Techcontrolv1-main/DOMAIN_CONFIGURATION.md), [TEST_REPORT.md](file:///c:/techcontrol/Techcontrolv1-main/TEST_REPORT.md):** Novos guias de suporte à homologação.
+
+### Modificado
+*   **[Login.jsx](file:///c:/techcontrol/Techcontrolv1-main/src/pages/Login.jsx):** Reconstruído totalmente para adotar a identidade visual (Design System, cores, responsividade) do Portal do Colaborador e remover o fluxo de Magic Link.
+*   **[base44Client.js](file:///c:/techcontrol/Techcontrolv1-main/src/api/base44Client.js):** Atualizado para redirecionar chamadas de API de e-mail para `/api/notificar`, crons para `/api/cronDiario`, a chamada `listarUsuarios` para query direta via Supabase JS SDK, e `gerarDemandasComunicados` para a stored procedure RPC.
+*   **[vercel.json](file:///c:/techcontrol/Techcontrolv1-main/vercel.json):** Simplificado para rodar apenas o cron job diário consolidado `/api/cronDiario`.
+
+### Removido
+*   **Magic Link:** Removidos botões, handlers e rotas de OTP/Magic Link na tela de Login.
+*   **Serverless Functions Antigas:** Excluídos 12 arquivos de API redundantes da pasta `/api` para liberar quota.
+
+---
+
 ## [1.0.0] — 2026-07-20
 
 ### Adicionado

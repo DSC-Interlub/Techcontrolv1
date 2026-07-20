@@ -11,13 +11,21 @@ O sistema passou por uma migração arquitetural completa: toda a infraestrutura
 Para facilitar o provisionamento, a homologação e a manutenção do sistema do zero, consulte os guias dedicados abaixo:
 
 1.  **[Guia de Implantação Geral (Deploy)](file:///c:/techcontrol/Techcontrolv1-main/DEPLOY_GUIDE.md):** Roteiro end-to-end integrando a nuvem e homologando fluxos.
-2.  **[Guia de Configuração do Supabase](file:///c:/techcontrol/Techcontrolv1-main/SUPABASE_SETUP.md):** Criação de projeto, migrations locais, policies RLS e storage.
-3.  **[Guia de Configuração da Vercel](file:///c:/techcontrol/Techcontrolv1-main/VERCEL_SETUP.md):** Passo a passo de conexão, build, SSL e domínios.
-4.  **[Guia de Variáveis de Ambiente](file:///c:/techcontrol/Techcontrolv1-main/ENVIRONMENT_VARIABLES.md):** Chaves públicas do frontend e chaves privadas de APIs.
-5.  **[Checklist Pré-Produção](file:///c:/techcontrol/Techcontrolv1-main/PRODUCTION_CHECKLIST.md):** Validações finais de segurança antes de liberar para os usuários.
-6.  **[Guia de Rollback (Reversão)](file:///c:/techcontrol/Techcontrolv1-main/ROLLBACK_GUIDE.md):** Procedimentos de emergência se um deploy apresentar bugs graves.
-7.  **[Guia de Recuperação de Desastres](file:///c:/techcontrol/Techcontrolv1-main/RECOVERY_GUIDE.md):** Backups de dados, storage e rotação de credenciais expostas.
-8.  **[Histórico de Alterações (Changelog)](file:///c:/techcontrol/Techcontrolv1-main/CHANGELOG.md):** Histórico detalhado de commits e modificações da migração.
+2.  **[Guia de Configuração de Domínio](file:///c:/techcontrol/Techcontrolv1-main/DOMAIN_CONFIGURATION.md):** Apontamentos DNS e chaves do domínio `techcontrol.site`.
+3.  **[Guia de Autenticação](file:///c:/techcontrol/Techcontrolv1-main/AUTHENTICATION.md):** Funcionamento de portais, controle de sessão e fluxo de senhas.
+4.  **[Configuração do Administrador](file:///c:/techcontrol/Techcontrolv1-main/ADMIN_SETUP.md):** SQL script para inserção de administrador inicial em produção.
+5.  **[Relatório de Testes e Homologação](file:///c:/techcontrol/Techcontrolv1-main/TEST_REPORT.md):** Status de homologação dos 18 cenários de validação.
+6.  **[Reestruturação da Infraestrutura](file:///c:/techcontrol/Techcontrolv1-main/INFRASTRUCTURE_REFACTOR.md):** Plano geral de reestruturação backend de Vercel para Supabase.
+7.  **[Relatório de Migração de Funções](file:///c:/techcontrol/Techcontrolv1-main/FUNCTION_MIGRATION_REPORT.md):** Destino arquitetural final de cada API.
+8.  **[Arquitetura de Backend Supabase](file:///c:/techcontrol/Techcontrolv1-main/SUPABASE_BACKEND_ARCHITECTURE.md):** stored procedures e trigger de sincronização de usuários.
+9.  **[Resumo de Redução de Funções](file:///c:/techcontrol/Techcontrolv1-main/FUNCTION_REDUCTION_SUMMARY.md):** Redução de 14 para 4 functions ativas.
+10. **[Guia de Configuração do Supabase](file:///c:/techcontrol/Techcontrolv1-main/SUPABASE_SETUP.md):** Criação de projeto, migrations locais, policies RLS e storage.
+11. **[Guia de Configuração da Vercel](file:///c:/techcontrol/Techcontrolv1-main/VERCEL_SETUP.md):** Passo a passo de conexão, build, SSL e domínios.
+12. **[Guia de Variáveis de Ambiente](file:///c:/techcontrol/Techcontrolv1-main/ENVIRONMENT_VARIABLES.md):** Chaves públicas do frontend e chaves privadas de APIs.
+13. **[Checklist Pré-Produção](file:///c:/techcontrol/Techcontrolv1-main/PRODUCTION_CHECKLIST.md):** Validações finais de segurança antes de liberar para os usuários.
+14. **[Guia de Rollback (Reversão)](file:///c:/techcontrol/Techcontrolv1-main/ROLLBACK_GUIDE.md):** Procedimentos de emergência se um deploy apresentar bugs graves.
+15. **[Guia de Recuperação de Desastres](file:///c:/techcontrol/Techcontrolv1-main/RECOVERY_GUIDE.md):** Backups de dados, storage e rotação de credenciais expostas.
+16. **[Histórico de Alterações (Changelog)](file:///c:/techcontrol/Techcontrolv1-main/CHANGELOG.md):** Histórico detalhado de commits e modificações da migração.
 
 ---
 

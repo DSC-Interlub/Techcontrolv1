@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Loader2, Mail, Lock, Key, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    // Se já houver sessão ativa, redireciona para o Dashboard
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         window.location.href = "/Dashboard";
@@ -55,7 +53,6 @@ export default function Login() {
         .maybeSingle();
 
       if (profileError || !profile) {
-        // Desloga se não for admin
         await supabase.auth.signOut();
         throw new Error("Acesso negado. Esta área é restrita a administradores.");
       }
@@ -65,33 +62,6 @@ export default function Login() {
       setError(err.message || "Falha na autenticação. Verifique suas credenciais.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMagicLink = async (e) => {
-    e.preventDefault();
-    setError("");
-    setInfoMessage("");
-    if (!email) {
-      setError("Por favor, digite seu e-mail para solicitar o link de acesso.");
-      return;
-    }
-
-    setMagicLinkLoading(true);
-    try {
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/Dashboard`
-        }
-      });
-
-      if (otpError) throw otpError;
-      setInfoMessage("Link mágico enviado! Verifique sua caixa de entrada e spam.");
-    } catch (err) {
-      setError(err.message || "Erro ao enviar Magic Link. Tente novamente.");
-    } finally {
-      setMagicLinkLoading(false);
     }
   };
 
@@ -121,148 +91,117 @@ export default function Login() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-400" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4">
-      {/* Círculos decorativos de background */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">TechControl</h1>
+          <p className="text-gray-600 mt-1">Portal do Administrador</p>
+        </div>
 
-      <Card className="w-full max-w-md border-slate-800 bg-slate-900/80 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-        {/* Barra superior de destaque */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-indigo-500" />
-        
-        <CardHeader className="space-y-1 pb-6 text-center">
-          <CardTitle className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-teal-400 to-indigo-200 bg-clip-text text-transparent">
-            TechControl
-          </CardTitle>
-          <CardDescription className="text-slate-400">
-            Portal Administrativo e Gestão de TI
-          </CardDescription>
-        </CardHeader>
+        <Card className="shadow-2xl">
+          <CardHeader className="border-b">
+            <CardTitle className="text-center text-lg">Entrar no Painel</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={handlePasswordLogin} className="space-y-4">
+              {error && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </Alert>
+              )}
 
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive" className="border-red-500/50 bg-red-950/50 text-red-200">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-xs">{error}</AlertDescription>
-            </Alert>
-          )}
+              {infoMessage && (
+                <Alert className="bg-green-50 border-green-200">
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  <AlertDescription className="text-green-800">{infoMessage}</AlertDescription>
+                </Alert>
+              )}
 
-          {infoMessage && (
-            <Alert className="border-teal-500/50 bg-teal-950/50 text-teal-200">
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription className="text-xs">{infoMessage}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handlePasswordLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300 text-sm font-medium">E-mail Corporativo</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+              <div>
+                <Label htmlFor="email">E-mail corporativo</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="exemplo@empresa.com"
+                  required
+                  placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-600 focus-visible:ring-teal-500 focus-visible:border-teal-500"
-                  disabled={loading || magicLinkLoading || recoveryLoading}
+                  className="mt-1"
+                  disabled={loading || recoveryLoading}
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-300 text-sm font-medium">Senha</Label>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
-                  disabled={loading || magicLinkLoading || recoveryLoading}
-                >
-                  {recoveryLoading ? "Enviando..." : "Esqueceu a senha?"}
-                </button>
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-blue-600 hover:text-blue-500 hover:underline transition-colors"
+                    disabled={loading || recoveryLoading}
+                  >
+                    {recoveryLoading ? "Enviando..." : "Esqueceu a senha?"}
+                  </button>
+                </div>
+                <div className="relative mt-1">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10"
+                    disabled={loading || recoveryLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-600 focus-visible:ring-teal-500"
-                  disabled={loading || magicLinkLoading || recoveryLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
+                disabled={loading || recoveryLoading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
+
+            <div className="text-center pt-4 border-t mt-4">
+              <a
+                href="/portal-login"
+                className="text-xs text-blue-600 hover:text-blue-500 hover:underline font-medium transition-all"
+              >
+                Ir para o Portal do Colaborador ➡️
+              </a>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-medium shadow-md transition-all duration-200"
-              disabled={loading || magicLinkLoading || recoveryLoading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verificando...
-                </>
-              ) : (
-                "Entrar com Senha"
-              )}
-            </Button>
-          </form>
-
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink mx-4 text-slate-600 text-xs font-semibold uppercase tracking-wider">ou</span>
-            <div className="flex-grow border-t border-slate-800"></div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleMagicLink}
-            className="w-full border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-900 hover:text-teal-400 font-medium transition-all duration-200"
-            disabled={loading || magicLinkLoading || recoveryLoading}
-          >
-            {magicLinkLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin text-teal-400" />
-                Enviando Link...
-              </>
-            ) : (
-              <>
-                <Key className="mr-2 h-4 w-4" />
-                Receber Link Mágico por E-mail
-              </>
-            )}
-          </Button>
-          
-          <div className="text-center pt-2">
-            <a
-              href="/portal-login"
-              className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium transition-all"
-            >
-              Ir para o Portal do Colaborador ➡️
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
