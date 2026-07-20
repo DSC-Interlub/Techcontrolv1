@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check, Eye, User, Mail, Briefcase, Clock, FileText, Headset, Star, Zap, AlertCircle, Building2 } from "lucide-react";
+import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check, Eye, User, Mail, Briefcase, Clock, FileText, Headset, Star, Zap, AlertCircle, Building2, Info } from "lucide-react";
 import GerenciadorEmpresasTerceiras from "@/components/chamados/GerenciadorEmpresasTerceiras";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays, parseISO, isAfter } from "date-fns";

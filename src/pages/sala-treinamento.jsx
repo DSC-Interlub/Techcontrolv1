@@ -105,7 +105,7 @@ export default function SalaTreinamento() {
       queryClient.invalidateQueries({ queryKey: ['reservas_sala'] });
     };
 
-    concluirSequencial();
+    updateReservasStatus();
   }, [reservas.map(r => r.id + '-' + r.status).join(',')]);
 
   // --- Mutations ---

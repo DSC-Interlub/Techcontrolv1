@@ -840,6 +840,8 @@ CREATE POLICY "anon_select_tablets" ON tablets FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_select_smartphones" ON smartphones FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_select_ramais" ON ramais FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_select_comunicados_artes" ON comunicados_artes FOR SELECT TO anon USING (true);
+CREATE POLICY "anon_insert_comunicados_artes" ON public.comunicados_artes FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon_update_comunicados_artes" ON public.comunicados_artes FOR UPDATE TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_select_comunicados_log" ON public.comunicados_log FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_select_centros" ON public.centros_custo FOR SELECT TO anon USING (true);
 
