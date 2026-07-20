@@ -23,62 +23,68 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+const Skeleton = ({ className }) => (
+  <div className={`animate-pulse bg-gray-200 dark:bg-gray-800 rounded ${className}`} />
+);
+
 export default function Dashboard() {
   const { user, isLoadingAuth: loading } = useAuth();
 
-  const { data: pcsInternos = [] } = useQuery({
+  const { data: pcsInternos = [], isLoading: isLoadingPcs } = useQuery({
     queryKey: ['pcs_internos'],
     queryFn: () => base44.entities.PCs_Internos.list(),
     staleTime: 30000,
   });
 
-  const { data: notebooksExternos = [] } = useQuery({
+  const { data: notebooksExternos = [], isLoading: isLoadingNbs } = useQuery({
     queryKey: ['notebooks_externos'],
     queryFn: () => base44.entities.Notebooks_Externos.list(),
     staleTime: 30000,
   });
 
-  const { data: smartphones = [] } = useQuery({
+  const { data: smartphones = [], isLoading: isLoadingSmartphones } = useQuery({
     queryKey: ['smartphones'],
     queryFn: () => base44.entities.Smartphones.list(),
     staleTime: 30000,
   });
 
-  const { data: cameras = [] } = useQuery({
+  const { data: cameras = [], isLoading: isLoadingCameras } = useQuery({
     queryKey: ['cameras'],
     queryFn: () => base44.entities.Cameras.list(),
     staleTime: 30000,
   });
 
-  const { data: coletores = [] } = useQuery({
+  const { data: coletores = [], isLoading: isLoadingColetores } = useQuery({
     queryKey: ['coletores'],
     queryFn: () => base44.entities.Coletores.list(),
     staleTime: 30000,
   });
 
-  const { data: canetas = [] } = useQuery({
+  const { data: canetas = [], isLoading: isLoadingCanetas } = useQuery({
     queryKey: ['canetas_vibracao'],
     queryFn: () => base44.entities.Canetas_Vibracao.list(),
     staleTime: 30000,
   });
 
-  const { data: tablets = [] } = useQuery({
+  const { data: tablets = [], isLoading: isLoadingTablets } = useQuery({
     queryKey: ['tablets'],
     queryFn: () => base44.entities.Tablets.list(),
     staleTime: 30000,
   });
 
-  const { data: chamados = [] } = useQuery({
+  const { data: chamados = [], isLoading: isLoadingChamados } = useQuery({
     queryKey: ['chamados'],
     queryFn: () => base44.entities.Chamados.list('-created_date', 5),
     staleTime: 30000,
   });
 
-  const { data: reservas = [] } = useQuery({
+  const { data: reservas = [], isLoading: isLoadingReservas } = useQuery({
     queryKey: ['reservas'],
     queryFn: () => base44.entities.Reservas.list('-created_date', 5),
     enabled: !!user,
   });
+
+  const isPageLoading = isLoadingPcs || isLoadingNbs || isLoadingSmartphones || isLoadingCameras || isLoadingColetores || isLoadingCanetas || isLoadingTablets || isLoadingChamados || isLoadingReservas;
 
   const equipmentStats = [
     {
@@ -171,7 +177,11 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalEquipamentos}</div>
+              {isPageLoading ? (
+                <Skeleton className="h-9 w-20 bg-white/20" />
+              ) : (
+                <div className="text-3xl font-bold">{totalEquipamentos}</div>
+              )}
               <p className="text-xs opacity-80 mt-1">Em todos os segmentos</p>
             </CardContent>
           </Card>
@@ -184,7 +194,11 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{totalDisponiveis}</div>
+              {isPageLoading ? (
+                <Skeleton className="h-9 w-20 bg-white/20" />
+              ) : (
+                <div className="text-3xl font-bold">{totalDisponiveis}</div>
+              )}
               <p className="text-xs opacity-80 mt-1">Prontos para uso</p>
             </CardContent>
           </Card>
@@ -202,7 +216,11 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              {isPageLoading ? (
+                <Skeleton className="h-9 w-40 bg-white/20" />
+              ) : (
+                <div className="text-2xl font-bold">{valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+              )}
               <p className="text-xs opacity-80 mt-1">Smartphones · Notebooks · Tablets · PCs · Câmeras · Coletores</p>
             </CardContent>
           </Card>
@@ -215,44 +233,72 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{chamadosAbertos}</div>
+              {isPageLoading ? (
+                <Skeleton className="h-9 w-20 bg-white/20" />
+              ) : (
+                <div className="text-3xl font-bold">{chamadosAbertos}</div>
+              )}
               <p className="text-xs opacity-80 mt-1">Aguardando atendimento</p>
             </CardContent>
           </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {equipmentStats.map((stat) => (
-            <Link key={stat.name} to={stat.link}>
-              <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer group">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{stat.name}</CardTitle>
-                      <p className="text-sm text-gray-500 mt-1">Total: {stat.total}</p>
-                    </div>
-                    <div className={`w-12 h-12 rounded-xl ${stat.color} bg-opacity-20 flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
-                    </div>
+          {isPageLoading ? (
+            Array.from({ length: 6 }).map((_, idx) => (
+              <Card key={idx} className="h-36 shadow-sm border border-gray-150 flex flex-col justify-between p-6 bg-card">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-4 w-16" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Disponíveis:</span>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      {stat.disponiveis}
-                    </Badge>
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                </div>
+                <div className="space-y-2 mt-4">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-8" />
                   </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm text-gray-600">Em uso:</span>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                      {stat.total - stat.disponiveis}
-                    </Badge>
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-8" />
                   </div>
-                </CardContent>
+                </div>
               </Card>
-            </Link>
-          ))}
+            ))
+          ) : (
+            equipmentStats.map((stat) => (
+              <Link key={stat.name} to={stat.link}>
+                <Card className="hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{stat.name}</CardTitle>
+                        <p className="text-sm text-gray-500 mt-1">Total: {stat.total}</p>
+                      </div>
+                      <div className={`w-12 h-12 rounded-xl ${stat.color} bg-opacity-20 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Disponíveis:</span>
+                      <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        {stat.disponiveis}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-gray-600">Em uso:</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        {stat.total - stat.disponiveis}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          )}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
@@ -269,7 +315,20 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {chamados.length === 0 ? (
+              {isPageLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-3 w-48" />
+                      </div>
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                  ))}
+                </div>
+              ) : chamados.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Headset className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>Nenhum chamado registrado</p>
@@ -310,7 +369,20 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {reservas.length === 0 ? (
+              {isPageLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-3 w-36" />
+                      </div>
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                  ))}
+                </div>
+              ) : reservas.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>Nenhuma reserva registrada</p>

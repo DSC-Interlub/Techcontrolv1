@@ -24,6 +24,17 @@ const statusColors = {
   "Cancelada": "bg-red-100 text-red-800",
 };
 
+const normalizeUserName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function PortalSala() {
   const { colaborador, loading, logout, requireAuth } = usePortalAuth();
   const queryClient = useQueryClient();
@@ -71,8 +82,8 @@ export default function PortalSala() {
   const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
 
   const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
-  const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
-  const minhasReservas = reservas.filter(r => r.solicitante_nome?.toLowerCase().trim() === nomeNorm);
+  const nomeNorm = normalizeUserName(colaborador.nome_completo);
+  const minhasReservas = reservas.filter(r => normalizeUserName(r.solicitante_nome) === nomeNorm);
 
   const getReservaNoSlot = (data, hora) => {
     const dataStr = format(data, 'yyyy-MM-dd');

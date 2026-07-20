@@ -10,6 +10,17 @@ import { Link } from "react-router-dom";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
+const normalizeUserName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function Portal() {
   const { colaborador, loading, logout, requireAuth } = usePortalAuth();
 
@@ -42,9 +53,9 @@ export default function Portal() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
-  const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
+  const nomeNorm = normalizeUserName(colaborador.nome_completo);
 
-  const meusChamados = chamados.filter(c => c.solicitante_nome?.toLowerCase().trim() === nomeNorm);
+  const meusChamados = chamados.filter(c => normalizeUserName(c.solicitante_nome) === nomeNorm);
   const chamadosAbertos = meusChamados.filter(c => c.status !== "Resolvido" && c.status !== "Cancelado");
 
   const minhasReservasNb = reservas.filter(r =>
@@ -52,7 +63,7 @@ export default function Portal() {
   );
 
   const minhasReservasSala = reservasSala.filter(r =>
-    r.solicitante_nome?.toLowerCase().trim() === nomeNorm && r.status !== "Cancelada"
+    normalizeUserName(r.solicitante_nome) === nomeNorm && r.status !== "Cancelada"
   );
 
   const cards = [

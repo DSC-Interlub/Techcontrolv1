@@ -26,6 +26,17 @@ const statusColors = {
   "Cancelado": "bg-gray-100 text-gray-800",
 };
 
+const normalizeUserName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
   const [show, setShow] = useState(false);
   const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 0, qualidade_atendimento: 0, qualidade_solucao: 0, comunicacao: 0, comentario: "" });
@@ -150,10 +161,10 @@ export default function PortalChamados() {
   // Atualiza equipamentos do usuário quando dados chegam
   useEffect(() => {
     if (!colaborador) return;
-    const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
+    const nomeNorm = normalizeUserName(colaborador.nome_completo);
     const lista = [];
     const add = (arr, tipo) => arr.forEach(e => {
-      if (e.usuario_atual?.toLowerCase().trim() === nomeNorm) {
+      if (normalizeUserName(e.usuario_atual) === nomeNorm) {
         lista.push({ id: e.id, tipo: tipo || e.tipo || "Equipamento", marca: e.marca || "", modelo: e.modelo || "", etiqueta: e.etiqueta_interna || e.numero_sequencial || "", displayName: `${tipo || e.tipo || "Equipamento"} - ${e.marca || ""} ${e.modelo || ""}${e.etiqueta_interna ? ` (${e.etiqueta_interna})` : ""}` });
       }
     });
@@ -206,8 +217,21 @@ export default function PortalChamados() {
     queryKey: ['chamados_chat', selectedChamado?.id],
     queryFn: () => base44.entities.ChamadosChat.filter({ chamado_id: selectedChamado?.id }, 'data_hora'),
     enabled: !!selectedChamado?.id,
-    refetchInterval: 3000,
   });
+
+  useEffect(() => {
+    if (!selectedChamado?.id) return;
+
+    const unsubscribe = base44.entities.ChamadosChat.subscribe((newRecord) => {
+      if (newRecord.chamado_id === selectedChamado.id) {
+        queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado.id] });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [selectedChamado?.id, queryClient]);
 
   const [novaMsg, setNovaMsg] = useState("");
 
@@ -261,8 +285,8 @@ export default function PortalChamados() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
-  const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
-  const meusChamados = chamados.filter(c => c.solicitante_nome?.toLowerCase().trim() === nomeNorm);
+  const nomeNorm = normalizeUserName(colaborador.nome_completo);
+  const meusChamados = chamados.filter(c => normalizeUserName(c.solicitante_nome) === nomeNorm);
 
   // 4 categorias conforme solicitado
   const naoIniciados = meusChamados.filter(c => c.status === "Aberto" || c.status === "Em Análise");

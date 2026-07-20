@@ -889,6 +889,9 @@ CREATE POLICY "uploads_insert_anon" ON storage.objects FOR INSERT TO anon WITH C
 CREATE POLICY "uploads_select_public" ON storage.objects FOR SELECT USING (bucket_id = 'uploads');
 CREATE POLICY "uploads_delete_authenticated" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'uploads');
 
+-- ── Realtime Replication ──
+ALTER PUBLICATION supabase_realtime ADD TABLE public.chamados_chat;
+
 -- ============================================================
 -- 8. SEED DATA (DADOS INICIAIS)
 -- ============================================================

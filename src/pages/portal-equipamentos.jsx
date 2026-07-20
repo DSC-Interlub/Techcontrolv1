@@ -12,6 +12,17 @@ import AvaliacaoEquipamento from "../components/equipamentos/AvaliacaoEquipament
 
 const getClassColor = (c) => c === "Manter" ? "bg-green-100 text-green-800" : c === "Upgrade" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
 
+const normalizeUserName = (name) => {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function PortalEquipamentos() {
   const { colaborador, loading, logout, requireAuth } = usePortalAuth();
   const queryClient = useQueryClient();
@@ -71,14 +82,14 @@ export default function PortalEquipamentos() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
-  const nomeNorm = colaborador.nome_completo?.toLowerCase().trim();
+  const nomeNorm = normalizeUserName(colaborador.nome_completo);
 
   const meusEquipamentos = [
     ...pcsInternos
-      .filter(pc => pc.usuario_atual?.toLowerCase().trim() === nomeNorm && pc.tipo !== "Monitor")
+      .filter(pc => normalizeUserName(pc.usuario_atual) === nomeNorm && pc.tipo !== "Monitor")
       .map(pc => ({ ...pc, entityType: "PCs_Internos", IconComp: pc.tipo === "Notebook" ? Laptop : Monitor })),
     ...notebooksExternos
-      .filter(nb => nb.usuario_atual?.toLowerCase().trim() === nomeNorm)
+      .filter(nb => normalizeUserName(nb.usuario_atual) === nomeNorm)
       .map(nb => ({ ...nb, entityType: "Notebooks_Externos", IconComp: Laptop })),
   ];
 
