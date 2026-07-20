@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
 
 const AuthContext = createContext();
 
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
+    // 1. Carrega a sessão inicial
     base44.auth.me()
       .then((u) => {
         setUser(u);
@@ -17,6 +19,26 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsLoadingAuth(false);
       });
+
+    // 2. Escuta mudanças de estado do Supabase Auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setIsLoadingAuth(true);
+      if (session?.user) {
+        try {
+          const u = await base44.auth.me();
+          setUser(u);
+        } catch {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setIsLoadingAuth(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const logout = () => {

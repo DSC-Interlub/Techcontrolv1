@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,13 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, Eye, EyeOff, Loader2, AlertCircle, Lock } from "lucide-react";
 import { createPageUrl } from "@/utils";
-
-async function portalLoginRequest(body) {
-  const res = await base44.functions.invoke('portalLogin', body);
-  const data = res.data;
-  if (data?.error) throw new Error(data.error);
-  return data;
-}
 
 export default function PortalLogin() {
   const [email, setEmail] = useState("");
@@ -37,27 +30,57 @@ export default function PortalLogin() {
     setLoading(true);
 
     try {
-      const result = await portalLoginRequest({ action: 'login', email, senha });
+      // 1. Autentica no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: senha
+      });
 
-      if (result.precisaTrocarSenha) {
-        setColaboradorLogando(result.colaborador);
+      if (authError) throw authError;
+
+      // 2. Busca os dados na tabela colaboradores
+      const { data: colaborador, error: colabError } = await supabase
+        .from('colaboradores')
+        .select('id,nome_completo,email,area,tipo_funcionario,status,acesso_portal_bloqueado,senha_precisa_trocar,permissoes_comunicados')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (colabError || !colaborador) {
+        await supabase.auth.signOut();
+        throw new Error("Colaborador não cadastrado ou não encontrado.");
+      }
+
+      if (colaborador.acesso_portal_bloqueado) {
+        await supabase.auth.signOut();
+        throw new Error("Seu acesso ao portal está bloqueado. Entre em contato com o TI.");
+      }
+
+      if (colaborador.status === 'Desligado') {
+        await supabase.auth.signOut();
+        throw new Error("Usuário inativo. Entre em contato com o TI.");
+      }
+
+      // 3. Verifica se precisa trocar senha
+      if (colaborador.senha_precisa_trocar) {
+        setColaboradorLogando(colaborador);
         setTrocarSenha(true);
         setLoading(false);
         return;
       }
 
+      // 4. Salva a sessão no sessionStorage para retrocompatibilidade
       sessionStorage.setItem('portal_colaborador', JSON.stringify({
-        id: result.colaborador.id,
-        nome_completo: result.colaborador.nome_completo,
-        email: result.colaborador.email,
-        area: result.colaborador.area,
-        tipo_funcionario: result.colaborador.tipo_funcionario,
-        permissoes_comunicados: result.colaborador.permissoes_comunicados || [],
+        id: colaborador.id,
+        nome_completo: colaborador.nome_completo,
+        email: colaborador.email,
+        area: colaborador.area,
+        tipo_funcionario: colaborador.tipo_funcionario,
+        permissoes_comunicados: colaborador.permissoes_comunicados || [],
       }));
 
       window.location.href = createPageUrl("portal");
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || "Erro desconhecido ao logar.");
     } finally {
       setLoading(false);
     }
@@ -67,13 +90,36 @@ export default function PortalLogin() {
     e.preventDefault();
     setErro("");
 
-    if (novaSenha.length < 6) { setErro("A senha deve ter pelo menos 6 caracteres."); return; }
-    if (novaSenha !== confirmarSenha) { setErro("As senhas não coincidem."); return; }
+    if (novaSenha.length < 6) { 
+      setErro("A senha deve ter pelo menos 6 caracteres."); 
+      return; 
+    }
+    if (novaSenha !== confirmarSenha) { 
+      setErro("As senhas não coincidem."); 
+      return; 
+    }
 
     setSalvandoSenha(true);
     try {
-      await portalLoginRequest({ action: 'changePassword', colaboradorId: colaboradorLogando.id, novaSenha });
+      // 1. Atualiza a senha no Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: novaSenha
+      });
 
+      if (updateError) throw updateError;
+
+      // 2. Atualiza a flag e a senha_portal na tabela public.colaboradores
+      const { error: colabError } = await supabase
+        .from('colaboradores')
+        .update({ 
+          senha_portal: novaSenha, 
+          senha_precisa_trocar: false 
+        })
+        .eq('id', colaboradorLogando.id);
+
+      if (colabError) throw colabError;
+
+      // 3. Salva a sessão no sessionStorage
       sessionStorage.setItem('portal_colaborador', JSON.stringify({
         id: colaboradorLogando.id,
         nome_completo: colaboradorLogando.nome_completo,
@@ -85,7 +131,7 @@ export default function PortalLogin() {
 
       window.location.href = createPageUrl("portal");
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || "Erro ao salvar a nova senha.");
     } finally {
       setSalvandoSenha(false);
     }

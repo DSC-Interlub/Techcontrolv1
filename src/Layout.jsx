@@ -181,6 +181,7 @@ export default function Layout({ children }) {
                        location.pathname.includes('/portal-requisicoes') ||
                        location.pathname.includes('/aprovacao-diretor') ||
                        location.pathname.includes('/portal') ||
+                       location.pathname.includes('/reset-password') ||
                        location.pathname === '/login';
 
 

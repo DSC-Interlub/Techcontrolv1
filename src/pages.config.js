@@ -6,85 +6,48 @@
  * 
  * THE ONLY EDITABLE VALUE: mainPage
  * This controls which page is the landing page (shown when users visit the app).
- * 
- * Example file structure:
- * 
- *   import HomePage from './pages/HomePage';
- *   import Dashboard from './pages/Dashboard';
- *   import Settings from './pages/Settings';
- *   
- *   export const PAGES = {
- *       "HomePage": HomePage,
- *       "Dashboard": Dashboard,
- *       "Settings": Settings,
- *   }
- *   
- *   export const pagesConfig = {
- *       mainPage: "HomePage",
- *       Pages: PAGES,
- *   };
- * 
- * Example with Layout (wraps all pages):
- *
- *   import Home from './pages/Home';
- *   import Settings from './pages/Settings';
- *   import __Layout from './Layout.jsx';
- *
- *   export const PAGES = {
- *       "Home": Home,
- *       "Settings": Settings,
- *   }
- *
- *   export const pagesConfig = {
- *       mainPage: "Home",
- *       Pages: PAGES,
- *       Layout: __Layout,
- *   };
- *
- * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
- *
- * The mainPage value must match a key in the PAGES object exactly.
  */
-import avaliacoesEquipamentos from './pages/Avaliacoes_Equipamentos';
-import Cameras from './pages/Cameras';
-import canetasVibracao from './pages/Canetas_Vibracao';
-import Chamados from './pages/Chamados';
-import Colaboradores from './pages/Colaboradores';
-import Coletores from './pages/Coletores';
-import Dashboard from './pages/Dashboard';
-import Home from './pages/Home';
-import projetosTerceiros from './pages/ProjetosTerceiros';
-import notebooksExternos from './pages/Notebooks_Externos';
-import pcsInternos from './pages/PCs_Internos';
-import Ramais from './pages/Ramais';
-import Reservas from './pages/Reservas';
-import Resumo from './pages/Resumo';
-import Smartphones from './pages/Smartphones';
-import Tablets from './pages/Tablets';
-import Usuarios from './pages/Usuarios';
-import acompanharChamado from './pages/acompanhar-chamado';
-import chamadoPublico from './pages/chamado-publico';
-import portalChamados from './pages/portal-chamados';
-import portalEquipamentos from './pages/portal-equipamentos';
-import portalLogin from './pages/portal-login';
-import portalRamais from './pages/portal-ramais';
-import portalReservas from './pages/portal-reservas';
-import portalSala from './pages/portal-sala';
-import portal from './pages/portal';
-import reservaPublica from './pages/reserva-publica';
-import reservaSalaPublica from './pages/reserva-sala-publica';
-import salaTreinamento from './pages/sala-treinamento';
-import Comunicados from './pages/Comunicados';
-import portalComunicados from './pages/portal-comunicados';
-import portalRequisicoes from './pages/portal-requisicoes';
-import aprovacaoDiretor from './pages/aprovacao-diretor';
-import Login from './pages/Login';
-import RequisicaoCompras from './pages/RequisicaoCompras';
-import CentrosCusto from './pages/CentrosCusto';
+import { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
+// Lazy loaded pages to enable code splitting and reduce initial bundle size
+const avaliacoesEquipamentos = lazy(() => import('./pages/Avaliacoes_Equipamentos'));
+const Cameras = lazy(() => import('./pages/Cameras'));
+const canetasVibracao = lazy(() => import('./pages/Canetas_Vibracao'));
+const Chamados = lazy(() => import('./pages/Chamados'));
+const Colaboradores = lazy(() => import('./pages/Colaboradores'));
+const Coletores = lazy(() => import('./pages/Coletores'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Home = lazy(() => import('./pages/Home'));
+const projetosTerceiros = lazy(() => import('./pages/ProjetosTerceiros'));
+const notebooksExternos = lazy(() => import('./pages/Notebooks_Externos'));
+const pcsInternos = lazy(() => import('./pages/PCs_Internos'));
+const Ramais = lazy(() => import('./pages/Ramais'));
+const Reservas = lazy(() => import('./pages/Reservas'));
+const Resumo = lazy(() => import('./pages/Resumo'));
+const Smartphones = lazy(() => import('./pages/Smartphones'));
+const Tablets = lazy(() => import('./pages/Tablets'));
+const Usuarios = lazy(() => import('./pages/Usuarios'));
+const acompanharChamado = lazy(() => import('./pages/acompanhar-chamado'));
+const chamadoPublico = lazy(() => import('./pages/chamado-publico'));
+const portalChamados = lazy(() => import('./pages/portal-chamados'));
+const portalEquipamentos = lazy(() => import('./pages/portal-equipamentos'));
+const portalLogin = lazy(() => import('./pages/portal-login'));
+const portalRamais = lazy(() => import('./pages/portal-ramais'));
+const portalReservas = lazy(() => import('./pages/portal-reservas'));
+const portalSala = lazy(() => import('./pages/portal-sala'));
+const portal = lazy(() => import('./pages/portal'));
+const reservaPublica = lazy(() => import('./pages/reserva-publica'));
+const reservaSalaPublica = lazy(() => import('./pages/reserva-sala-publica'));
+const salaTreinamento = lazy(() => import('./pages/sala-treinamento'));
+const Comunicados = lazy(() => import('./pages/Comunicados'));
+const portalComunicados = lazy(() => import('./pages/portal-comunicados'));
+const portalRequisicoes = lazy(() => import('./pages/portal-requisicoes'));
+const aprovacaoDiretor = lazy(() => import('./pages/aprovacao-diretor'));
+const Login = lazy(() => import('./pages/Login'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const RequisicaoCompras = lazy(() => import('./pages/RequisicaoCompras'));
+const CentrosCusto = lazy(() => import('./pages/CentrosCusto'));
 
 export const PAGES = {
     "Avaliacoes_Equipamentos": avaliacoesEquipamentos,
@@ -121,6 +84,7 @@ export const PAGES = {
     "portal-requisicoes": portalRequisicoes,
     "aprovacao-diretor": aprovacaoDiretor,
     "login": Login,
+    "reset-password": ResetPassword,
     "RequisicaoCompras": RequisicaoCompras,
     "CentrosCusto": CentrosCusto,
 }

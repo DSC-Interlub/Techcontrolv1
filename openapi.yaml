@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: TechControl Serverless API
+  description: Documentação das APIs serverless e webhooks integrados do sistema TechControl rodando na Vercel e integrados com o Supabase.
+  version: 1.0.0
+servers:
+  - url: /api
+    description: Servidor Local / Produção (Vercel)
+paths:
+  /portalLogin:
+    post:
+      summary: Autenticação do Portal do Colaborador
+      description: Realiza a autenticação de funcionários e permite a troca de senha obrigatória no primeiro acesso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [login, changePassword]
+                  description: Ação a ser executada
+                email:
+                  type: string
+                  format: email
+                  description: E-mail do colaborador (necessário em 'login')
+                senha:
+                  type: string
+                  description: Senha do portal (necessário em 'login')
+                colaboradorId:
+                  type: string
+                  format: uuid
+                  description: ID do colaborador (necessário em 'changePassword')
+                novaSenha:
+                  type: string
+                  description: Nova senha (mínimo de 6 caracteres, necessário em 'changePassword')
+      responses:
+        '200':
+          description: Ação executada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  colaborador:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      nome_completo:
+                        type: string
+                      email:
+                        type: string
+                      area:
+                        type: string
+                      tipo_funcionario:
+                        type: string
+                      permissoes_comunicados:
+                        type: array
+                        items:
+                          type: string
+                  precisaTrocarSenha:
+                    type: boolean
+        '400':
+          description: Dados inválidos ou incompletos
+        '401':
+          description: Credenciais incorretas
+        '403':
+          description: Acesso bloqueado ou inativo
+        '500':
+          description: Erro interno do servidor
+
+  /enviarBoasVindas:
+    post:
+      summary: Disparo de E-mail de Boas-vindas
+      description: Envia o comunicado oficial de boas-vindas para o novo colaborador e copia todos os funcionários ativos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - colaboradorId
+              properties:
+                colaboradorId:
+                  type: string
+                  format: uuid
+                  description: ID do novo colaborador
+      responses:
+        '200':
+          description: E-mail enviado com sucesso
+        '400':
+          description: Parâmetro inválido
+        '500':
+          description: Erro ao processar envio
+
+  /enviarDespedida:
+    post:
+      summary: Disparo de E-mail de Despedida
+      description: Envia o comunicado oficial de desligamento/despedida de um colaborador para toda a empresa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - colaboradorId
+              properties:
+                colaboradorId:
+                  type: string
+                  format: uuid
+                  description: ID do colaborador desligado
+      responses:
+        '200':
+          description: E-mail enviado com sucesso
+        '400':
+          description: Parâmetro inválido
+        '500':
+          description: Erro ao processar envio
+
+  /enviarComunicadosDiarios:
+    get:
+      summary: Cron Job de Comunicados Diários
+      description: Consolida e dispara comunicados automáticos diários (aniversários, tempo de empresa, aniversários de cônjuges e filhos de 1 ano).
+      responses:
+        '200':
+          description: Comunicados disparados e gravados no log
+        '500':
+          description: Erro ao executar a rotina de cron
+
+  /lembreteAvaliacao:
+    get:
+      summary: Lembrete de Avaliações Técnicas
+      description: Varre equipamentos que necessitam de checklist técnico e notifica os colaboradores por e-mail (Resend).
+      responses:
+        '200':
+          description: Lembretes enviados
+        '500':
+          description: Erro de execução
+
+  /sendEmailChatMessage:
+    post:
+      summary: Alerta de Nova Mensagem no Chat
+      description: Dispara e-mail de aviso quando uma nova mensagem é adicionada no chat do chamado (evita que respostas fiquem sem visualização).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - chamadoId
+                - remetenteNome
+                - mensagem
+              properties:
+                chamadoId:
+                  type: string
+                  format: uuid
+                  description: ID do chamado
+                remetenteNome:
+                  type: string
+                  description: Nome de quem enviou a mensagem
+                mensagem:
+                  type: string
+                  description: Conteúdo da mensagem
+      responses:
+        '200':
+          description: Alerta de chat enviado
+        '500':
+          description: Erro de envio
+
+  /sendEmailTicketCreated:
+    post:
+      summary: Webhook de Chamado Criado
+      description: Endpoint acionado por Database Webhooks do Supabase para notificar a criação de um novo chamado no helpdesk.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - record
+              properties:
+                record:
+                  type: object
+                  description: Registro do chamado inserido no banco
+                  required:
+                    - id
+                    - numero_chamado
+                    - titulo_chamado
+                    - solicitante_email
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    numero_chamado:
+                      type: string
+                    titulo_chamado:
+                      type: string
+                    solicitante_email:
+                      type: string
+                    solicitante_nome:
+                      type: string
+                    descricao_problema:
+                      type: string
+      responses:
+        '200':
+          description: Notificação de abertura enviada
+        '500':
+          description: Falha no envio do webhook
+
+  /sendEmailTicketStarted:
+    post:
+      summary: Notificação de Chamado Iniciado
+      description: Notifica o solicitante quando seu chamado entra em atendimento ("Em Andamento").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - record
+              properties:
+                record:
+                  type: object
+                  required:
+                    - id
+                    - numero_chamado
+                    - solicitante_email
+                    - responsavel
+      responses:
+        '200':
+          description: E-mail enviado
+        '500':
+          description: Erro de envio
+
+  /sendEmailTicketClosed:
+    post:
+      summary: Notificação de Chamado Concluído
+      description: Envia o link de avaliação de satisfação e notifica o encerramento do chamado para o solicitante.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - record
+              properties:
+                record:
+                  type: object
+                  required:
+                    - id
+                    - numero_chamado
+                    - solicitante_email
+                    - solucao
+      responses:
+        '200':
+          description: E-mail enviado
+        '500':
+          description: Erro de envio
+
+  /requisicaoComprasAction:
+    post:
+      summary: Ações do Fluxo de Compras
+      description: Processa aprovação e comentários de gestores e do diretor no fluxo de requisições de compras.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+                - requisicaoId
+              properties:
+                action:
+                  type: string
+                  enum: [aprovar_gestor, reprovar_gestor, aprovar_diretor, reprovar_diretor]
+                  description: Ação de aprovação
+                requisicaoId:
+                  type: string
+                  format: uuid
+                  description: ID da requisição de compra
+                token:
+                  type: string
+                  description: Token UUID de aprovação do Diretor (obrigatório para ações de diretor)
+                comentario:
+                  type: string
+                  description: Justificativa ou comentário do aprovador
+      responses:
+        '200':
+          description: Decisão registrada com sucesso
+        '400':
+          description: Token inválido ou dados incompletos
+        '500':
+          description: Erro ao persistir aprovação
+
+  /notificarAprovadorRequisicao:
+    post:
+      summary: Notificar Aprovador de Compra
+      description: Dispara e-mail via Resend notificando o gestor de que há uma requisição de compras pendente de sua análise.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requisicaoId
+              properties:
+                requisicaoId:
+                  type: string
+                  format: uuid
+                  description: ID da requisição de compras recém-criada
+      responses:
+        '200':
+          description: Gestor notificado com sucesso
+        '500':
+          description: Erro ao disparar e-mail de compras
