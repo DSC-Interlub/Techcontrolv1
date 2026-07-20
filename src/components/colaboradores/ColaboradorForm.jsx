@@ -100,6 +100,12 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     return e;
   };
 
+  // Reaproveita o cache de colaboradores do parent
+  const { data: colaboradoresExistentes = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    enabled: false // não dispara fetch redundante se já existir no cache, senão usa queryFn quando necessário
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const v = validate();
@@ -114,6 +120,22 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       }
       return;
     }
+
+    if (formData.email?.trim()) {
+      const emailDuplicado = colaboradoresExistentes.some(c => 
+        c.email?.trim().toLowerCase() === formData.email?.trim().toLowerCase() && 
+        c.id !== colaborador?.id
+      );
+      if (emailDuplicado) {
+        setErrors(prev => ({
+          ...prev,
+          email: "Este e-mail já está cadastrado para outro colaborador.",
+          _form: "Este e-mail já está cadastrado para outro colaborador."
+        }));
+        return;
+      }
+    }
+
     if (colaborador) {
       updateMutation.mutate({ id: colaborador.id, data: formData });
     } else {

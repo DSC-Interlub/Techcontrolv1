@@ -44,6 +44,24 @@ export default function RequisicaoCompras() {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroUrgencia, setFiltroUrgencia] = useState("todos");
   const [selectedReq, setSelectedReq] = useState(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  const handleSearchChange = (value) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (value) => {
+    setFiltroStatus(value);
+    setCurrentPage(1);
+  };
+
+  const handleUrgenciaChange = (value) => {
+    setFiltroUrgencia(value);
+    setCurrentPage(1);
+  };
 
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ["admin_requisicoes"],
@@ -66,6 +84,12 @@ export default function RequisicaoCompras() {
       const matchUrgencia = filtroUrgencia === "todos" || r.urgencia === filtroUrgencia;
       return matchSearch && matchStatus && matchUrgencia;
     });
+  }
+
+  function paginar(lista) {
+    const from = (currentPage - 1) * pageSize;
+    const to = from + pageSize;
+    return lista.slice(from, to);
   }
 
   const totalValorAprovado = aprovadas.reduce((acc, r) => acc + (r.valor_maximo || 0), 0);
@@ -119,10 +143,10 @@ export default function RequisicaoCompras() {
             className="pl-9"
             placeholder="Buscar por item, solicitante, área..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearchChange(e.target.value)}
           />
         </div>
-        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+        <Select value={filtroStatus} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-[200px]">
             <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Status" />
@@ -136,7 +160,7 @@ export default function RequisicaoCompras() {
             <SelectItem value="Reprovada pelo Diretor">Reprovada pelo Diretor</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filtroUrgencia} onValueChange={setFiltroUrgencia}>
+        <Select value={filtroUrgencia} onValueChange={handleUrgenciaChange}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Urgência" />
           </SelectTrigger>
@@ -169,10 +193,20 @@ export default function RequisicaoCompras() {
         </TabsList>
 
         <TabsContent value="todas">
-          <ListaRequisicoes lista={filtrar(requisicoes)} isLoading={isLoading} onSelect={setSelectedReq} />
+          <ListaRequisicoes lista={paginar(filtrar(requisicoes))} isLoading={isLoading} onSelect={setSelectedReq} />
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={Math.ceil(filtrar(requisicoes).length / pageSize)}
+            onPageChange={setCurrentPage}
+          />
         </TabsContent>
         <TabsContent value="pendentes">
-          <ListaRequisicoes lista={filtrar(pendentes)} isLoading={isLoading} onSelect={setSelectedReq} />
+          <ListaRequisicoes lista={paginar(filtrar(pendentes))} isLoading={isLoading} onSelect={setSelectedReq} />
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={Math.ceil(filtrar(pendentes).length / pageSize)}
+            onPageChange={setCurrentPage}
+          />
         </TabsContent>
         <TabsContent value="aprovadas">
           {filtrar(aprovadas).length > 0 && (
@@ -180,10 +214,20 @@ export default function RequisicaoCompras() {
               💰 Valor total aprovado (máximo estimado): <strong>R$ {totalValorAprovado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
             </div>
           )}
-          <ListaRequisicoes lista={filtrar(aprovadas)} isLoading={isLoading} onSelect={setSelectedReq} />
+          <ListaRequisicoes lista={paginar(filtrar(aprovadas))} isLoading={isLoading} onSelect={setSelectedReq} />
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={Math.ceil(filtrar(aprovadas).length / pageSize)}
+            onPageChange={setCurrentPage}
+          />
         </TabsContent>
         <TabsContent value="reprovadas">
-          <ListaRequisicoes lista={filtrar(reprovadas)} isLoading={isLoading} onSelect={setSelectedReq} />
+          <ListaRequisicoes lista={paginar(filtrar(reprovadas))} isLoading={isLoading} onSelect={setSelectedReq} />
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={Math.ceil(filtrar(reprovadas).length / pageSize)}
+            onPageChange={setCurrentPage}
+          />
         </TabsContent>
         <TabsContent value="aprovadores">
           <div className="space-y-4">
@@ -254,6 +298,76 @@ function ListaRequisicoes({ lista, isLoading, onSelect }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function PaginationControls({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-gray-200 bg-white dark:bg-slate-900 px-4 py-3 sm:px-6 mt-4 rounded-lg">
+      <div className="flex flex-1 justify-between sm:hidden">
+        <Button
+          variant="outline"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Anterior
+        </Button>
+        <Button
+          variant="outline"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Próxima
+        </Button>
+      </div>
+      <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Página <span className="font-medium text-foreground">{currentPage}</span> de{' '}
+            <span className="font-medium text-foreground">{totalPages}</span>
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            Anterior
+          </Button>
+          {Array.from({ length: totalPages }).map((_, idx) => {
+            const pageNum = idx + 1;
+            // Apenas renderizar páginas próximas à atual para não poluir se houver dezenas de páginas
+            if (pageNum === 1 || pageNum === totalPages || Math.abs(pageNum - currentPage) <= 2) {
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onPageChange(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              );
+            }
+            if (pageNum === 2 || pageNum === totalPages - 1) {
+              return <span key={pageNum} className="px-2 text-muted-foreground">...</span>;
+            }
+            return null;
+          })}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

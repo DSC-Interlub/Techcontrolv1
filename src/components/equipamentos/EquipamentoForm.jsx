@@ -34,6 +34,13 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: equipamentosExistentes = [] } = useQuery({
+    queryKey: [entityType?.toLowerCase()],
+    queryFn: () => base44.entities[entityType].list(),
+    enabled: !!entityType && !!currentAuthUser,
+    staleTime: 60000,
+  });
+
   const { data: avaliacoes = [] } = useQuery({
     queryKey: ['avaliacoes', equipamento?.id],
     queryFn: async () => {
@@ -99,6 +106,31 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validação de Data Futura de Aquisição
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (formData.data_aquisicao && formData.data_aquisicao > hojeStr) {
+      alert("Erro de Validação: A data de aquisição não pode ser no futuro.");
+      return;
+    }
+
+    // Validação de Data Futura de Formatação
+    if (formData.data_formatacao && formData.data_formatacao > hojeStr) {
+      alert("Erro de Validação: A data de formatação não pode ser no futuro.");
+      return;
+    }
+
+    // Validação de Service Tag / Serial Number duplicado
+    if (formData.service_tag?.trim()) {
+      const serialDuplicado = equipamentosExistentes.some(eq => 
+        eq.service_tag?.trim().toLowerCase() === formData.service_tag?.trim().toLowerCase() && 
+        eq.id !== equipamento?.id
+      );
+      if (serialDuplicado) {
+        alert(`Erro de Validação: O Service Tag / Serial Number "${formData.service_tag}" já está cadastrado em outro equipamento.`);
+        return;
+      }
+    }
+
     let dataToSubmit = { ...formData };
 
     if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
@@ -158,6 +190,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
   const adicionarFormatacao = () => {
     if (!novaFormatacao.data_formatacao) return;
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (novaFormatacao.data_formatacao > hojeStr) {
+      alert("Erro: A data de formatação não pode ser no futuro.");
+      return;
+    }
     const historico = [...(formData.historico_formatacoes || [])];
     historico.push({ ...novaFormatacao });
     historico.sort((a, b) => new Date(b.data_formatacao) - new Date(a.data_formatacao));

@@ -57,6 +57,23 @@ export default function ResetPassword() {
     }
   };
 
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, label: "", color: "bg-slate-700", textColor: "text-slate-500" };
+    if (pwd.length < 6) return { score: 1, label: "Muito curta (Mín. 6)", color: "bg-red-500", textColor: "text-red-500" };
+    
+    let score = 1;
+    const hasNumbers = /\d/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+    const hasMixed = /[a-z]/.test(pwd) && /[A-Z]/.test(pwd);
+
+    if (pwd.length >= 8 && (hasNumbers || hasSpecial)) score = 2;
+    if (pwd.length >= 10 && hasNumbers && hasSpecial && hasMixed) score = 3;
+
+    if (score === 1) return { score: 1, label: "Fraca", color: "bg-red-400", textColor: "text-red-400" };
+    if (score === 2) return { score: 2, label: "Média", color: "bg-yellow-500", textColor: "text-yellow-500" };
+    return { score: 3, label: "Forte", color: "bg-green-500", textColor: "text-green-500" };
+  };
+
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
@@ -126,6 +143,20 @@ export default function ResetPassword() {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {password && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400">Força da senha:</span>
+                      <span className={`font-semibold ${getPasswordStrength(password).textColor}`}>{getPasswordStrength(password).label}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${getPasswordStrength(password).color} transition-all duration-300`}
+                        style={{ width: `${(getPasswordStrength(password).score / 3) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

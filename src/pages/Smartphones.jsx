@@ -114,6 +114,26 @@ export default function Smartphones() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validação de Data Futura
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (formData.data_aquisicao && formData.data_aquisicao > hojeStr) {
+      alert("Erro de Validação: A data de aquisição não pode ser no futuro.");
+      return;
+    }
+
+    // Validação de IMEI duplicado
+    if (formData.imei?.trim()) {
+      const imeiDuplicado = equipamentos.some(eq => 
+        eq.imei?.trim().toLowerCase() === formData.imei?.trim().toLowerCase() && 
+        eq.id !== editingEquipamento?.id
+      );
+      if (imeiDuplicado) {
+        alert(`Erro de Validação: O IMEI "${formData.imei}" já está cadastrado em outro smartphone.`);
+        return;
+      }
+    }
+
     if (editingEquipamento) {
       updateMutation.mutate({ id: editingEquipamento.id, data: formData });
     } else {
@@ -409,7 +429,12 @@ export default function Smartphones() {
                   </div>
                   <div>
                     <Label>Valor (R$)</Label>
-                    <Input type="number" step="0.01" placeholder="0.00" value={formData.valor || ""} onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) })} />
+                    <Input type="number" step="0.01" placeholder="0.00" value={formData.valor || ""} onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })} />
+                    {formData.valor > 0 && (
+                      <span className="text-xs text-green-600 mt-1 block font-medium">
+                        Formatado: R$ {formData.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
                   </div>
                 </div>
 

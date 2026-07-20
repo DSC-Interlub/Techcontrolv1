@@ -46,6 +46,41 @@ const createEntityHandler = (entityName) => {
       return data || [];
     },
 
+    listPage: async (sort, page = 1, pageSize = 10, criteria = {}, search = '') => {
+      let query = supabase.from(tableName).select('*', { count: 'exact' });
+      
+      if (criteria) {
+        for (const [key, value] of Object.entries(criteria)) {
+          if (value !== undefined && value !== null && value !== 'todos' && value !== '') {
+            query = query.eq(key, value);
+          }
+        }
+      }
+
+      if (search && search.trim() !== '') {
+        const term = `%${search.trim()}%`;
+        if (tableName === 'requisicao_compras') {
+          query = query.or(`item.ilike.${term},colaborador_nome.ilike.${term},numero_requisicao.ilike.${term},colaborador_area.ilike.${term}`);
+        } else if (tableName === 'chamados') {
+          query = query.or(`assunto.ilike.${term},solicitante_nome.ilike.${term},numero_chamado.ilike.${term}`);
+        }
+      }
+
+      if (sort) {
+        const isDesc = sort.startsWith('-');
+        const field = isDesc ? sort.substring(1) : sort;
+        query = query.order(field, { ascending: !isDesc });
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+      return { data: data || [], count: count || 0 };
+    },
+
     filter: async (criteria, sort) => {
       let query = supabase.from(tableName).select('*');
       if (criteria) {
