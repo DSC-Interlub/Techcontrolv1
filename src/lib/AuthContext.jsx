@@ -18,8 +18,10 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(!user);
 
   const fetchCurrentUser = useCallback(async () => {
+    console.log("[DEBUG-AUTH] fetchCurrentUser started. Current isLoadingAuth:", isLoadingAuth);
     try {
       const u = await base44.auth.me();
+      console.log("[DEBUG-AUTH] fetchCurrentUser resolved user:", u?.email || "none");
       setUser(u);
       if (u) {
         sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
@@ -28,10 +30,11 @@ export const AuthProvider = ({ children }) => {
       }
       return u;
     } catch (err) {
-      console.error("[AuthContext] Erro ao carregar usuário:", err);
+      console.error("[DEBUG-AUTH] [AuthContext] Erro ao carregar usuário:", err);
       return null;
     } finally {
       setIsLoadingAuth(false);
+      console.log("[DEBUG-AUTH] fetchCurrentUser completed. New isLoadingAuth: false");
     }
   }, []);
 
@@ -42,27 +45,40 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
 
     // Escuta alterações na sessão do Supabase Auth
+    console.log("[DEBUG-AUTH] Setting up supabase.auth.onAuthStateChange listener");
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+      console.log(`[DEBUG-AUTH] onAuthStateChange event fired: ${event} | User email: ${session?.user?.email || "none"}`);
+      if (!mounted) {
+        console.log("[DEBUG-AUTH] onAuthStateChange event skipped (component unmounted)");
+        return;
+      }
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
         sessionStorage.removeItem('techcontrol_user_cache');
         setIsLoadingAuth(false);
+        console.log("[DEBUG-AUTH] event SIGNED_OUT handled");
       } else if (session?.user) {
         try {
           const u = await base44.auth.me();
           if (mounted && u) {
             setUser(u);
             sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
+            console.log("[DEBUG-AUTH] event SIGNED_IN/TOKEN_REFRESHED handled successfully");
           }
         } catch (err) {
-          console.warn("[AuthContext] Erro ao atualizar perfil em " + event + ":", err);
+          console.warn("[DEBUG-AUTH] [AuthContext] Erro ao atualizar perfil em " + event + ":", err);
         } finally {
-          if (mounted) setIsLoadingAuth(false);
+          if (mounted) {
+            setIsLoadingAuth(false);
+            console.log("[DEBUG-AUTH] Auth resolution completed for event:", event);
+          }
         }
       } else {
-        if (mounted) setIsLoadingAuth(false);
+        if (mounted) {
+          setIsLoadingAuth(false);
+          console.log("[DEBUG-AUTH] No session user, set isLoadingAuth to false");
+        }
       }
     });
 

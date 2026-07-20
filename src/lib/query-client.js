@@ -45,3 +45,15 @@ export const queryClientInstance = new QueryClient({
     },
   }),
 });
+
+// Instrument React Query cache updates to track loading and pending states
+queryClientInstance.getQueryCache().subscribe((event) => {
+  if (event.type === 'updated') {
+    const { query } = event;
+    const queryKey = query.queryKey;
+    const status = query.state.status;
+    const fetchStatus = query.state.fetchStatus;
+    console.log(`[DEBUG-QUERY] Key: ${JSON.stringify(queryKey)} | Status: ${status} | FetchStatus: ${fetchStatus}`);
+  }
+});
+
