@@ -1,4 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+/**
+ * ColaboradorForm.jsx — Reorganizado por Assunto (6 Seções Coerentes)
+ * 1. Profissional (Dados de cargo, contrato e contato)
+ * 2. Pessoal & Gestão (Foto, nascimento, formação e gestor direto)
+ * 3. Família & Dependentes (Cônjuge e lista compacta de filhos)
+ * 4. Requisições de Compra (Aprovador exclusivo)
+ * 5. Comunicados Internos (Toggle de envios automáticos + Permissões do portal)
+ * 6. Acesso, Segurança & Observações (Senhas do portal, TI, sistemas e anotações)
+ */
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,7 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { X, Plus, Trash2, Eye, EyeOff, Upload, User, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  X, Plus, Trash2, Eye, EyeOff, Upload, User, AlertCircle,
+  Briefcase, UserCheck, Heart, ShoppingCart, Megaphone, Lock, Check, Copy, ArrowRight, ArrowLeft
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const PERMISSOES_COMUNICADOS = [
@@ -26,7 +39,9 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
   const [formData, setFormData] = useState(() => colaborador || {
     senhas_sistemas: [], filhos: [], incluir_comunicados: true, permissoes_comunicados: [], status: "Ativo"
   });
+  const [activeTab, setActiveTab] = useState("profissional");
   const [showSenhas, setShowSenhas] = useState({});
+  const [copiedIndex, setCopiedIndex] = useState(null);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [errors, setErrors] = useState({});
   const fotoRef = useRef();
@@ -41,9 +56,9 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Colaboradores.create(data),
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey: ['colaboradores'] }); 
-      onClose(); 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+      onClose();
     },
     onError: (error) => {
       console.error("Erro ao criar colaborador:", error);
@@ -57,7 +72,6 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
       queryClient.invalidateQueries({ queryKey: ['portal_colab_full'] });
 
-      // Se o aprovador mudou, atualiza as requisições pendentes para o novo aprovador
       const oldId = colaborador?.responsavel_id;
       const newId = variables.data.responsavel_id;
       if (oldId !== newId) {
@@ -100,10 +114,9 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     return e;
   };
 
-  // Reaproveita o cache de colaboradores do parent
   const { data: colaboradoresExistentes = [] } = useQuery({
     queryKey: ['colaboradores'],
-    enabled: false // não dispara fetch redundante se já existir no cache, senão usa queryFn quando necessário
+    enabled: false
   });
 
   const handleSubmit = (e) => {
@@ -111,8 +124,8 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     const v = validate();
     if (Object.keys(v).length) {
       setErrors(v);
-      // Mostra alerta no topo do formulário para erros em abas invisíveis
       if (v.nome_completo || v.area) {
+        setActiveTab("profissional");
         setErrors(prev => ({
           ...prev,
           _form: 'Preencha os campos obrigatórios na aba "Profissional": Nome e Área.',
@@ -122,8 +135,8 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     }
 
     if (formData.email?.trim()) {
-      const emailDuplicado = colaboradoresExistentes.some(c => 
-        c.email?.trim().toLowerCase() === formData.email?.trim().toLowerCase() && 
+      const emailDuplicado = colaboradoresExistentes.some(c =>
+        c.email?.trim().toLowerCase() === formData.email?.trim().toLowerCase() &&
         c.id !== colaborador?.id
       );
       if (emailDuplicado) {
@@ -132,6 +145,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
           email: "Este e-mail já está cadastrado para outro colaborador.",
           _form: "Este e-mail já está cadastrado para outro colaborador."
         }));
+        setActiveTab("profissional");
         return;
       }
     }
@@ -152,9 +166,14 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingFoto(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    set('foto_url', file_url);
-    setUploadingFoto(false);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      set('foto_url', file_url);
+    } catch (err) {
+      alert("Erro ao fazer upload da foto: " + err.message);
+    } finally {
+      setUploadingFoto(false);
+    }
   };
 
   // Sistemas
@@ -169,10 +188,16 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
   const toggleShowSenha = (field) => setShowSenhas(prev => ({ ...prev, [field]: !prev[field] }));
 
+  const copyToClipboard = (text, idx) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
   const isPending = createMutation.isPending || updateMutation.isPending;
   const isComunicadosRole = ['comunicados_arte', 'comunicados_gestao', 'comunicados_dp'].includes(currentUserRole);
 
-  // Busca todos colaboradores ativos para o select de aprovador
   const { data: todosColaboradores = [] } = useQuery({
     queryKey: ['colaboradores_aprovadores'],
     queryFn: () => base44.entities.Colaboradores.filter({ status: 'Ativo' }),
@@ -194,33 +219,82 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     }
   };
 
+  // Contagem de preenchimento por aba (badges de progresso)
+  const tabCounts = useMemo(() => {
+    const prof = [formData.nome_completo, formData.email, formData.area, formData.cargo, formData.telefone, formData.tipo_funcionario, formData.data_admissao].filter(Boolean).length;
+    const pess = [formData.foto_url, formData.data_nascimento, formData.graduacao, formData.resumo_experiencia, formData.contato_responsavel_nome].filter(Boolean).length;
+    const fam = [formData.conjuge_nome, (formData.filhos || []).length > 0].filter(Boolean).length;
+    const comp = formData.responsavel_id ? 1 : 0;
+    const coms = (formData.permissoes_comunicados || []).length + (formData.incluir_comunicados ? 1 : 0);
+    const sec = [formData.senha_portal, formData.senha_microsoft, formData.senha_login_maquina, (formData.senhas_sistemas || []).length > 0].filter(Boolean).length;
+
+    return { prof, pess, fam, comp, coms, sec };
+  }, [formData]);
+
   const ErrMsg = ({ field }) => errors[field] ? <p className="text-xs text-red-500 mt-1">{errors[field]}</p> : null;
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="border-b">
+    <Card className="mb-6 shadow-md border-gray-200">
+      <CardHeader className="border-b bg-gray-50/50 py-4">
         <div className="flex items-center justify-between">
-          <CardTitle>{colaborador ? "Editar Colaborador" : "Novo Colaborador"}</CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+          <div>
+            <CardTitle className="text-xl font-bold text-gray-900">
+              {colaborador ? `Editar Colaborador: ${colaborador.nome_completo}` : "Novo Colaborador"}
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Organizado em 6 seções para cadastro e governança eficiente.
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="w-4 h-4" /></Button>
         </div>
       </CardHeader>
+
       <form onSubmit={handleSubmit}>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-4">
           {errors._form && (
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{errors._form}</AlertDescription>
             </Alert>
           )}
-          <Tabs defaultValue="profissional" className="w-full">
-            <TabsList className={`grid w-full mb-6 ${isComunicadosRole ? "grid-cols-3" : "grid-cols-4"}`}>
-              <TabsTrigger value="profissional">Profissional</TabsTrigger>
-              <TabsTrigger value="pessoal">Pessoal</TabsTrigger>
-              <TabsTrigger value="familia">Família</TabsTrigger>
-              {!isComunicadosRole && <TabsTrigger value="acesso">Acesso e Segurança</TabsTrigger>}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full mb-6 h-auto p-1 bg-gray-100 gap-1 rounded-xl">
+              <TabsTrigger value="profissional" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>Profissional</span>
+                {tabCounts.prof > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.prof}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="pessoal" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Pessoal</span>
+                {tabCounts.pess > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.pess}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="familia" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                <Heart className="w-3.5 h-3.5" />
+                <span>Família</span>
+                {tabCounts.fam > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.fam}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="compras" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>Compras</span>
+                {tabCounts.comp > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700">✓</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="comunicados" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                <Megaphone className="w-3.5 h-3.5" />
+                <span>Comunicados</span>
+                {tabCounts.coms > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700">{tabCounts.coms}</Badge>}
+              </TabsTrigger>
+              {!isComunicadosRole && (
+                <TabsTrigger value="acesso" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Segurança</span>
+                  {tabCounts.sec > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700">{tabCounts.sec}</Badge>}
+                </TabsTrigger>
+              )}
             </TabsList>
 
-            {/* ── ABA 1: PROFISSIONAL ── */}
+            {/* ── 1. PROFISSIONAL ── */}
             <TabsContent value="profissional" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
@@ -234,7 +308,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   <ErrMsg field="nome_completo" />
                 </div>
                 <div>
-                  <Label>E-mail</Label>
+                  <Label>E-mail Corporativo</Label>
                   <Input className="mt-1" type="email" placeholder="email@empresa.com" value={formData.email || ""} onChange={e => set('email', e.target.value)} />
                   <ErrMsg field="email" />
                 </div>
@@ -262,7 +336,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   </Select>
                 </div>
                 <div>
-                  <Label>Local / Unidade</Label>
+                  <Label>Local / Unidade de Trabalho</Label>
                   <Input className="mt-1" placeholder="Ex: Matriz SP, Filial RJ" value={formData.local_trabalho || ""} onChange={e => set('local_trabalho', e.target.value)} />
                 </div>
                 <div>
@@ -270,7 +344,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   <Input className="mt-1" type="date" value={formData.data_admissao || ""} onChange={e => set('data_admissao', e.target.value)} />
                 </div>
                 <div>
-                  <Label>Status</Label>
+                  <Label>Status no Sistema</Label>
                   <Select value={formData.status || "Ativo"} onValueChange={v => set('status', v)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -282,50 +356,10 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   </Select>
                 </div>
               </div>
-              {/* Aprovador para Requisições de Compra */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-2 space-y-2">
-                <h4 className="text-sm font-semibold text-emerald-900">Aprovador de Requisições de Compra</h4>
-                <p className="text-xs text-emerald-700">Selecione o colaborador responsável por aprovar as requisições de compra deste colaborador.</p>
-                <Select
-                  value={formData.responsavel_id || '__none__'}
-                  onValueChange={handleAprovadorChange}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Selecione o aprovador..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">— Nenhum aprovador definido —</SelectItem>
-                    {todosColaboradores
-                      .filter(c => c.id !== colaborador?.id)
-                      .map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome_completo} {c.cargo ? `— ${c.cargo}` : ''} {c.area ? `(${c.area})` : ''}
-                        </SelectItem>
-                      ))
-                    }
-                  </SelectContent>
-                </Select>
-                {formData.responsavel_nome && (
-                  <p className="text-xs text-emerald-800">✅ Aprovador: <strong>{formData.responsavel_nome}</strong> · {formData.responsavel_email}</p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
-                <Switch
-                  id="incluir_comunicados"
-                  checked={formData.incluir_comunicados !== false}
-                  onCheckedChange={v => set('incluir_comunicados', v)}
-                />
-                <label htmlFor="incluir_comunicados" className="text-sm text-blue-900 cursor-pointer">
-                  <span className="font-medium">Incluir nos Comunicados Automáticos</span>
-                  <p className="text-xs text-blue-700 mt-0.5">Quando ativo, o colaborador recebe e-mails automáticos de boas-vindas, aniversário e outros eventos.</p>
-                </label>
-              </div>
             </TabsContent>
 
-            {/* ── ABA 2: PESSOAL ── */}
+            {/* ── 2. PESSOAL & GESTÃO ── */}
             <TabsContent value="pessoal" className="space-y-5">
-              {/* Foto */}
               <div>
                 <Label>Foto do Colaborador</Label>
                 <div className="flex items-center gap-4 mt-2">
@@ -363,217 +397,305 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                 <div className="md:col-span-2">
                   <Label>Resumo de Experiência</Label>
                   <Textarea
-                    className="mt-1"
+                    className="mt-1 text-xs"
                     placeholder="Descreva brevemente a experiência profissional..."
                     rows={3}
                     maxLength={500}
                     value={formData.resumo_experiencia || ""}
                     onChange={e => set('resumo_experiencia', e.target.value)}
                   />
-                  <p className="text-xs text-gray-400 mt-1 text-right">{(formData.resumo_experiencia || "").length}/500</p>
+                  <p className="text-[11px] text-gray-400 mt-1 text-right">{(formData.resumo_experiencia || "").length}/500</p>
                 </div>
                 <div>
-                  <Label>Nome do Responsável / Gestor</Label>
+                  <Label>Nome do Gestor Direto</Label>
                   <Input className="mt-1" placeholder="Nome do gestor direto" value={formData.contato_responsavel_nome || ""} onChange={e => set('contato_responsavel_nome', e.target.value)} />
                 </div>
                 <div>
-                  <Label>E-mail do Responsável / Gestor</Label>
+                  <Label>E-mail do Gestor Direto</Label>
                   <Input className="mt-1" type="email" placeholder="gestor@empresa.com" value={formData.contato_responsavel_email || ""} onChange={e => set('contato_responsavel_email', e.target.value)} />
                 </div>
               </div>
             </TabsContent>
 
-            {/* ── ABA 3: FAMÍLIA ── */}
+            {/* ── 3. FAMÍLIA & DEPENDENTES ── */}
             <TabsContent value="familia" className="space-y-6">
-              {/* Cônjuge */}
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Cônjuge</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Cônjuge</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50/50 p-4 border rounded-xl">
                   <div>
-                    <Label>Nome do Cônjuge</Label>
-                    <Input className="mt-1" placeholder="Nome completo" value={formData.conjuge_nome || ""} onChange={e => set('conjuge_nome', e.target.value)} />
+                    <Label className="text-xs">Nome do Cônjuge</Label>
+                    <Input className="mt-1 text-xs" placeholder="Nome completo" value={formData.conjuge_nome || ""} onChange={e => set('conjuge_nome', e.target.value)} />
                   </div>
                   <div>
-                    <Label>E-mail do Cônjuge</Label>
-                    <Input className="mt-1" type="email" placeholder="conjuge@email.com" value={formData.conjuge_email || ""} onChange={e => set('conjuge_email', e.target.value)} />
+                    <Label className="text-xs">E-mail do Cônjuge</Label>
+                    <Input className="mt-1 text-xs" type="email" placeholder="conjuge@email.com" value={formData.conjuge_email || ""} onChange={e => set('conjuge_email', e.target.value)} />
                   </div>
                   <div>
-                    <Label>Data de Nascimento do Cônjuge</Label>
-                    <Input className="mt-1" type="date" max={hoje} value={formData.conjuge_data_nascimento || ""} onChange={e => set('conjuge_data_nascimento', e.target.value)} />
+                    <Label className="text-xs">Data de Nascimento do Cônjuge</Label>
+                    <Input className="mt-1 text-xs" type="date" max={hoje} value={formData.conjuge_data_nascimento || ""} onChange={e => set('conjuge_data_nascimento', e.target.value)} />
                     <ErrMsg field="conjuge_data_nascimento" />
                   </div>
                 </div>
               </div>
 
-              {/* Filhos */}
+              {/* Tabela Limpa de Filhos */}
               <div className="border-t pt-5">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filhos</h4>
-                  <Button type="button" size="sm" variant="outline" onClick={addFilho}>
-                    <Plus className="w-4 h-4 mr-1" />Adicionar Filho
+                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Filhos / Dependentes</h4>
+                  <Button type="button" size="sm" variant="outline" className="text-xs h-8" onClick={addFilho}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />Adicionar Filho
                   </Button>
                 </div>
-                {(formData.filhos || []).length === 0 && (
-                  <p className="text-sm text-gray-400">Nenhum filho cadastrado.</p>
-                )}
-                <div className="space-y-2">
-                  {(formData.filhos || []).map((filho, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input
-                          placeholder="Nome do filho(a)"
-                          value={filho.filho_nome || ""}
-                          onChange={e => updateFilho(i, 'filho_nome', e.target.value)}
-                        />
-                        <Input
-                          type="date"
-                          max={hoje}
-                          value={filho.filho_data_nascimento || ""}
-                          onChange={e => updateFilho(i, 'filho_data_nascimento', e.target.value)}
-                        />
+
+                {(formData.filhos || []).length === 0 ? (
+                  <p className="text-xs text-gray-400 py-3 text-center border border-dashed rounded-lg">Nenhum filho cadastrado.</p>
+                ) : (
+                  <div className="border rounded-xl overflow-hidden divide-y bg-white">
+                    {(formData.filhos || []).map((filho, i) => (
+                      <div key={i} className="p-3 flex items-center justify-between gap-3 hover:bg-gray-50 transition-colors">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            className="h-8 text-xs"
+                            placeholder="Nome do filho(a)"
+                            value={filho.filho_nome || ""}
+                            onChange={e => updateFilho(i, 'filho_nome', e.target.value)}
+                          />
+                          <Input
+                            className="h-8 text-xs"
+                            type="date"
+                            max={hoje}
+                            value={filho.filho_data_nascimento || ""}
+                            onChange={e => updateFilho(i, 'filho_data_nascimento', e.target.value)}
+                          />
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => removeFilho(i)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button type="button" size="icon" variant="ghost" onClick={() => removeFilho(i)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
-            {/* ── ABA 4: ACESSO E SEGURANÇA (apenas não-comunicados) ── */}
+            {/* ── 4. REQUISIÇÕES DE COMPRA ── */}
+            <TabsContent value="compras" className="space-y-4">
+              <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-5 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-900">
+                  <ShoppingCart className="w-5 h-5 text-emerald-600" />
+                  <h4 className="text-sm font-bold">Aprovador de Requisições de Compra</h4>
+                </div>
+                <p className="text-xs text-emerald-700">
+                  Selecione o colaborador responsável por aprovar as solicitações de compra abertas por este funcionário.
+                </p>
+
+                <Select value={formData.responsavel_id || '__none__'} onValueChange={handleAprovadorChange}>
+                  <SelectTrigger className="bg-white text-xs border-emerald-300">
+                    <SelectValue placeholder="Selecione o aprovador responsável..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__" className="text-xs">— Nenhum aprovador definido —</SelectItem>
+                    {todosColaboradores
+                      .filter(c => c.id !== colaborador?.id)
+                      .map(c => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.nome_completo} {c.cargo ? `— ${c.cargo}` : ''} {c.area ? `(${c.area})` : ''}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+
+                {formData.responsavel_nome ? (
+                  <div className="bg-white border border-emerald-200 rounded-lg p-3 text-xs flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-emerald-950">{formData.responsavel_nome}</p>
+                      <p className="text-emerald-700 text-[11px]">{formData.responsavel_email || "Sem e-mail cadastrado"}</p>
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px]">Aprovador Ativo</Badge>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 italic">Nenhum aprovador vinculado. As compras deste colaborador requererão aprovação de admin.</p>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* ── 5. COMUNICADOS INTERNOS ── */}
+            <TabsContent value="comunicados" className="space-y-6">
+              {/* Toggle Envios */}
+              <div className="flex items-start gap-4 bg-purple-50/60 border border-purple-200 rounded-xl p-4">
+                <Switch
+                  id="incluir_comunicados"
+                  checked={formData.incluir_comunicados !== false}
+                  onCheckedChange={v => set('incluir_comunicados', v)}
+                  className="mt-1"
+                />
+                <label htmlFor="incluir_comunicados" className="text-xs cursor-pointer space-y-0.5">
+                  <span className="font-bold text-purple-950 text-sm block">Incluir nos Comunicados Automáticos</span>
+                  <p className="text-purple-800">
+                    Quando ativo, o colaborador participa das automações de aniversário, tempo de empresa, 1 aninho e despedida.
+                  </p>
+                </label>
+              </div>
+
+              {/* Permissões no Portal */}
+              {currentUserRole === 'admin' && (
+                <div className="border-t pt-5">
+                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Permissões de Comunicados no Portal</h4>
+                  <p className="text-xs text-gray-500 mb-3">Define quais funcionalidades de comunicados este colaborador pode gerenciar no portal.</p>
+
+                  <div className="space-y-2.5">
+                    {PERMISSOES_COMUNICADOS.map(p => {
+                      const checked = (formData.permissoes_comunicados || []).includes(p.value);
+                      const toggle = () => {
+                        const atual = formData.permissoes_comunicados || [];
+                        set('permissoes_comunicados', checked ? atual.filter(v => v !== p.value) : [...atual, p.value]);
+                      };
+                      return (
+                        <div key={p.value} className="flex items-start gap-3 bg-white border border-gray-200 hover:border-indigo-200 rounded-lg p-3 transition-colors">
+                          <input type="checkbox" id={`perm_${p.value}`} checked={checked} onChange={toggle} className="w-4 h-4 mt-0.5 accent-indigo-600 cursor-pointer" />
+                          <label htmlFor={`perm_${p.value}`} className="cursor-pointer">
+                            <p className="text-xs font-bold text-gray-900">{p.label}</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{p.desc}</p>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── 6. ACESSO, SEGURANÇA & OBSERVAÇÕES ── */}
             {!isComunicadosRole && (
               <TabsContent value="acesso" className="space-y-6">
-                {/* Acesso ao Portal */}
+                {/* Acesso Portal */}
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Acesso ao Portal do Colaborador</h4>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-800">O colaborador usará o <strong>e-mail</strong> e a <strong>senha do portal</strong> para acessar o portal.</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Acesso ao Portal do Colaborador</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/50 p-4 border rounded-xl">
                     <div>
-                      <Label>Senha do Portal</Label>
+                      <Label className="text-xs">Senha do Portal</Label>
                       <div className="relative mt-1">
                         <Input
                           type={showSenhas.portal ? "text" : "password"}
                           placeholder="Definir senha de acesso"
                           value={formData.senha_portal || ""}
                           onChange={e => set('senha_portal', e.target.value)}
-                          className="pr-10"
+                          className="pr-10 text-xs"
                         />
                         <button type="button" onClick={() => toggleShowSenha('portal')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                           {showSenhas.portal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-center gap-3">
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center gap-2">
                         <input type="checkbox" id="bloquear_portal" checked={formData.acesso_portal_bloqueado || false} onChange={e => set('acesso_portal_bloqueado', e.target.checked)} className="w-4 h-4" />
-                        <label htmlFor="bloquear_portal" className="text-sm text-gray-700 cursor-pointer">Bloquear acesso ao portal</label>
+                        <label htmlFor="bloquear_portal" className="text-xs text-gray-700 cursor-pointer">Bloquear acesso ao portal</label>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <input type="checkbox" id="precisa_trocar" checked={formData.senha_precisa_trocar || false} onChange={e => set('senha_precisa_trocar', e.target.checked)} className="w-4 h-4" />
-                        <label htmlFor="precisa_trocar" className="text-sm text-gray-700 cursor-pointer">Forçar troca de senha no próximo acesso</label>
+                        <label htmlFor="precisa_trocar" className="text-xs text-gray-700 cursor-pointer">Forçar troca de senha no próximo acesso</label>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Credenciais corporativas */}
+                {/* Credenciais Corporativas TI */}
                 <div className="border-t pt-5">
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Credenciais Corporativas</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">Credenciais Corporativas de TI</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Senha Microsoft / Office 365</Label>
+                      <Label className="text-xs">Senha Microsoft / Office 365</Label>
                       <div className="relative mt-1">
-                        <Input type={showSenhas.microsoft ? "text" : "password"} placeholder="••••••••" value={formData.senha_microsoft || ""} onChange={e => set('senha_microsoft', e.target.value)} className="pr-10" />
-                        <button type="button" onClick={() => toggleShowSenha('microsoft')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <Input type={showSenhas.microsoft ? "text" : "password"} placeholder="••••••••" value={formData.senha_microsoft || ""} onChange={e => set('senha_microsoft', e.target.value)} className="pr-10 text-xs" />
+                        <button type="button" onClick={() => toggleShowSenha('microsoft')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                           {showSenhas.microsoft ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <Label>Senha Login Máquina</Label>
+                      <Label className="text-xs">Senha Login Máquina</Label>
                       <div className="relative mt-1">
-                        <Input type={showSenhas.maquina ? "text" : "password"} placeholder="••••••••" value={formData.senha_login_maquina || ""} onChange={e => set('senha_login_maquina', e.target.value)} className="pr-10" />
-                        <button type="button" onClick={() => toggleShowSenha('maquina')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <Input type={showSenhas.maquina ? "text" : "password"} placeholder="••••••••" value={formData.senha_login_maquina || ""} onChange={e => set('senha_login_maquina', e.target.value)} className="pr-10 text-xs" />
+                        <button type="button" onClick={() => toggleShowSenha('maquina')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                           {showSenhas.maquina ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <Label>Senhas de Sistemas</Label>
-                      <Button type="button" onClick={addSistemaSenha} size="sm" variant="outline">
-                        <Plus className="w-4 h-4 mr-2" />Adicionar Sistema
-                      </Button>
+                {/* Tabela de Senhas de Sistemas */}
+                <div className="border-t pt-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Senhas de Sistemas (SAP, WMS, CRM)</h4>
+                      <p className="text-[11px] text-gray-400">Lista de credenciais de acesso em outros sistemas corporativos.</p>
                     </div>
-                    <div className="space-y-3">
-                      {(formData.senhas_sistemas || []).map((sistema, index) => (
-                        <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start gap-2">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1">
-                              <Input placeholder="Sistema (SAP, WMS, etc)" value={sistema.sistema || ""} onChange={e => updateSistemaSenha(index, 'sistema', e.target.value)} />
-                              <Input placeholder="Usuário" value={sistema.usuario || ""} onChange={e => updateSistemaSenha(index, 'usuario', e.target.value)} />
-                              <div className="relative">
-                                <Input type={showSenhas[`s${index}`] ? "text" : "password"} placeholder="Senha" value={sistema.senha || ""} onChange={e => updateSistemaSenha(index, 'senha', e.target.value)} className="pr-10" />
-                                <button type="button" onClick={() => toggleShowSenha(`s${index}`)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                  {showSenhas[`s${index}`] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Button type="button" onClick={addSistemaSenha} size="sm" variant="outline" className="text-xs h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1" />Adicionar Sistema
+                    </Button>
+                  </div>
+
+                  {(formData.senhas_sistemas || []).length === 0 ? (
+                    <p className="text-xs text-gray-400 py-3 text-center border border-dashed rounded-lg">Nenhum sistema registrado.</p>
+                  ) : (
+                    <div className="border rounded-xl overflow-hidden divide-y bg-white">
+                      {(formData.senhas_sistemas || []).map((sis, index) => (
+                        <div key={index} className="p-3 space-y-2 bg-white hover:bg-gray-50/50">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <Input className="h-8 text-xs" placeholder="Sistema (ex: SAP)" value={sis.sistema || ""} onChange={e => updateSistemaSenha(index, 'sistema', e.target.value)} />
+                            <Input className="h-8 text-xs" placeholder="Usuário" value={sis.usuario || ""} onChange={e => updateSistemaSenha(index, 'usuario', e.target.value)} />
+                            <div className="relative">
+                              <Input
+                                type={showSenhas[`s${index}`] ? "text" : "password"}
+                                className="h-8 text-xs pr-16"
+                                placeholder="Senha"
+                                value={sis.senha || ""}
+                                onChange={e => updateSistemaSenha(index, 'senha', e.target.value)}
+                              />
+                              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                <button type="button" onClick={() => toggleShowSenha(`s${index}`)} className="p-1 text-gray-400 hover:text-gray-600">
+                                  {showSenhas[`s${index}`] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                                <button type="button" onClick={() => copyToClipboard(sis.senha, index)} className="p-1 text-gray-400 hover:text-gray-600" title="Copiar">
+                                  {copiedIndex === index ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                                 </button>
                               </div>
-                              <Input placeholder="Observações" value={sistema.observacoes || ""} onChange={e => updateSistemaSenha(index, 'observacoes', e.target.value)} />
                             </div>
-                            <Button type="button" size="icon" variant="ghost" onClick={() => removeSistemaSenha(index)} className="shrink-0">
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Input className="h-8 text-xs flex-1" placeholder="Obs" value={sis.observacoes || ""} onChange={e => updateSistemaSenha(index, 'observacoes', e.target.value)} />
+                              <Button type="button" size="icon" variant="ghost" onClick={() => removeSistemaSenha(index)} className="h-8 w-8 text-red-500 shrink-0">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Permissões de Comunicados — apenas admin */}
-                {currentUserRole === 'admin' && (
-                  <div className="border-t pt-5">
-                    <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-1">Permissões de Comunicados no Portal</h4>
-                    <p className="text-xs text-gray-500 mb-3">Define o que este colaborador pode acessar na seção "Comunicados" do portal.</p>
-                    <div className="space-y-3">
-                      {PERMISSOES_COMUNICADOS.map(p => {
-                        const checked = (formData.permissoes_comunicados || []).includes(p.value);
-                        const toggle = () => {
-                          const atual = formData.permissoes_comunicados || [];
-                          set('permissoes_comunicados', checked ? atual.filter(v => v !== p.value) : [...atual, p.value]);
-                        };
-                        return (
-                          <div key={p.value} className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-                            <input type="checkbox" id={`perm_${p.value}`} checked={checked} onChange={toggle} className="w-4 h-4 mt-0.5 accent-indigo-600" />
-                            <label htmlFor={`perm_${p.value}`} className="cursor-pointer">
-                              <p className="text-sm font-medium text-indigo-900">{p.label}</p>
-                              <p className="text-xs text-indigo-700 mt-0.5">{p.desc}</p>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Observações */}
+                {/* Observações Gerais RH */}
                 <div className="border-t pt-5">
-                  <Label>Observações Gerais</Label>
-                  <Textarea className="mt-1" placeholder="Observações sobre o colaborador..." value={formData.observacoes || ""} onChange={e => set('observacoes', e.target.value)} rows={3} />
+                  <Label className="text-xs">Observações Gerais (RH / TI)</Label>
+                  <Textarea
+                    className="mt-1 text-xs"
+                    placeholder="Anotações gerais sobre o colaborador..."
+                    value={formData.observacoes || ""}
+                    onChange={e => set('observacoes', e.target.value)}
+                    rows={3}
+                  />
                 </div>
               </TabsContent>
             )}
           </Tabs>
         </CardContent>
 
-        <div className="border-t p-6 flex justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={isPending}>
+        <div className="border-t p-4 bg-gray-50/50 flex items-center justify-between rounded-b-xl">
+          <Button type="button" variant="outline" onClick={onClose} className="text-xs">Cancelar</Button>
+          <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold px-6" disabled={isPending}>
             {isPending ? "Salvando..." : (colaborador ? "Salvar Alterações" : "Criar Colaborador")}
           </Button>
         </div>
