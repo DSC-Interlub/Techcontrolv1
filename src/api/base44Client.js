@@ -134,44 +134,54 @@ export const base44 = {
 
   auth: {
     me: async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) return null;
+      try {
+        const fetchMe = async () => {
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (error || !user) return null;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
 
-      if (profile) {
-        return {
-          id: user.id,
-          email: user.email,
-          role: profile.role,
-          name: profile.full_name || profile.nome_exibicao
+          if (profile) {
+            return {
+              id: user.id,
+              email: user.email,
+              role: profile.role,
+              name: profile.full_name || profile.nome_exibicao
+            };
+          }
+
+          const { data: colab } = await supabase
+            .from('colaboradores')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          if (colab) {
+            return {
+              id: user.id,
+              email: user.email,
+              role: 'colaborador',
+              name: colab.nome_completo
+            };
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            role: 'user'
+          };
         };
+
+        const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 2500));
+        return await Promise.race([fetchMe(), timeout]);
+      } catch (err) {
+        console.error("Erro em base44.auth.me:", err);
+        return null;
       }
-
-      const { data: colab } = await supabase
-        .from('colaboradores')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (colab) {
-        return {
-          id: user.id,
-          email: user.email,
-          role: 'colaborador',
-          name: colab.nome_completo
-        };
-      }
-
-      return {
-        id: user.id,
-        email: user.email,
-        role: 'user'
-      };
     },
 
     logout: async (redirectTo = '/login') => {

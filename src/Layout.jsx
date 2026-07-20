@@ -196,8 +196,20 @@ export default function Layout({ children }) {
     return <>{children}</>;
   }
 
+  // Se estiver carregando auth em página privada, exibe spinner em vez de bloquear a renderização silenciosamente
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-sm text-gray-400">Carregando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Redireciona para login se não autenticado em páginas privadas
-  if (!loading && !currentUser) {
+  if (!currentUser) {
     window.location.href = '/login';
     return null;
   }
