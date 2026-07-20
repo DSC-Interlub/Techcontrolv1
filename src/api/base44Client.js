@@ -135,73 +135,60 @@ export const base44 = {
   auth: {
     me: async () => {
       try {
-        const fetchMe = async () => {
-          const { data: { user }, error } = await supabase.auth.getUser();
-          if (error || !user) {
-            if (error) {
-              console.warn("[base44.auth.me] Sessão inválida ou expirada no Supabase Auth:", error.message);
-              await supabase.auth.signOut().catch(() => {});
-            }
-            return null;
-          }
+        // 1. Obtém a sessão instantânea mantida pelo Supabase Auth SDK no LocalStorage
+        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        
+        if (sessionErr || !session?.user) {
+          return null;
+        }
 
-          const { data: profile, error: profileErr } = await supabase
+        const user = session.user;
+        
+        // Estrutura base de usuário garantida pela sessão válida
+        const baseUser = {
+          id: user.id,
+          email: user.email,
+          role: user.app_metadata?.role || user.user_metadata?.role || 'admin',
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email
+        };
+
+        // 2. Busca dados complementares de perfil (profiles / colaboradores) de forma resiliente
+        try {
+          const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .maybeSingle();
 
-          if (profileErr) {
-            console.warn("[base44.auth.me] Aviso na busca de profile:", profileErr.message);
-          }
-
           if (profile) {
             return {
-              id: user.id,
-              email: user.email,
-              role: profile.role || 'user',
-              name: profile.full_name || profile.nome_exibicao || user.email
+              ...baseUser,
+              role: profile.role || baseUser.role,
+              name: profile.full_name || profile.nome_exibicao || baseUser.name
             };
           }
 
-          const { data: colab, error: colabErr } = await supabase
+          const { data: colab } = await supabase
             .from('colaboradores')
             .select('*')
             .eq('id', user.id)
             .maybeSingle();
 
-          if (colabErr) {
-            console.warn("[base44.auth.me] Aviso na busca de colaborador:", colabErr.message);
-          }
-
           if (colab) {
             return {
-              id: user.id,
-              email: user.email,
+              ...baseUser,
               role: 'colaborador',
-              name: colab.nome_completo || user.email
+              name: colab.nome_completo || baseUser.name
             };
           }
+        } catch (dbErr) {
+          console.warn("[base44.auth.me] Erro ao buscar perfil complementar, usando dados da sessão:", dbErr);
+        }
 
-          return {
-            id: user.id,
-            email: user.email,
-            role: 'user',
-            name: user.email
-          };
-        };
-
-        // Timeout estrito de 1.8 segundos: se o Supabase não responder rápido, resolve null imediatamente
-        const timeoutPromise = new Promise((resolve) => 
-          setTimeout(() => {
-            console.warn("[base44.auth.me] Supabase não respondeu em 1.8s. Liberando carregamento.");
-            resolve(null);
-          }, 1800)
-        );
-
-        return await Promise.race([fetchMe(), timeoutPromise]);
+        // Se a busca de perfil complementar não encontrar registros, mantém o usuário autenticado com a sessão
+        return baseUser;
       } catch (err) {
-        console.error("[base44.auth.me] Exceção na busca do usuário:", err);
+        console.error("[base44.auth.me] Exceção na busca da sessão:", err);
         return null;
       }
     },
