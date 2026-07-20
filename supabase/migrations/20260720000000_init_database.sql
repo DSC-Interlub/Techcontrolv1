@@ -710,7 +710,7 @@ CREATE OR REPLACE VIEW visao_patrimonio_consolidado AS
   UNION ALL
   SELECT id, 'Coletor' AS tipo_equipamento, marca, modelo, etiqueta_interna, service_tag, status, condicao, usuario_atual, colaborador_id, data_aquisicao, valor, observacoes FROM public.coletores
   UNION ALL
-  SELECT id, 'Caneta Vibração' AS tipo_equipamento, marca, modelo, etiqueta_interna, service_tag, status, condicao, usuario_atual, colaborador_id, data_aquisicao, valor, observacoes FROM public.canetas_vibracao;
+  SELECT id, 'Caneta Vibração' AS tipo_equipamento, marca, modelo, etiqueta_interna, service_tag, status, condicao, usuario_atual, colaborador_id, data_aquisicao, NULL::numeric AS valor, observacoes FROM public.canetas_vibracao;
 
 -- View agregadora de chamados ativos vinculados a detalhes organizacionais
 CREATE OR REPLACE VIEW chamados_ativos_solicitantes AS
