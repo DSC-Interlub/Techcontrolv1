@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
       return u;
     } catch (err) {
       console.error("[AuthContext] Erro ao carregar usuário:", err);
-      setUser(null);
+      // Mantém o estado anterior se houver
       return null;
     } finally {
       setIsLoadingAuth(false);
@@ -25,26 +25,29 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Dispara a busca inicial de sessão imediatamente no boot sem esperar callbacks
+    // Dispara a busca inicial de sessão imediatamente no boot
     fetchCurrentUser();
 
-    // Escuta alterações na sessão do Supabase Auth para navegação reativa
+    // Escuta alterações reativas na sessão do Supabase Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
+      if (event === 'SIGNED_OUT') {
         setUser(null);
         setIsLoadingAuth(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      } else if (session?.user) {
         try {
           const u = await base44.auth.me();
-          if (mounted) setUser(u);
+          if (mounted && u) {
+            setUser(u);
+          }
         } catch (err) {
-          console.error("[AuthContext] Erro ao carregar perfil em " + event + ":", err);
-          if (mounted) setUser(null);
+          console.warn("[AuthContext] Erro ao atualizar perfil em " + event + ":", err);
         } finally {
           if (mounted) setIsLoadingAuth(false);
         }
+      } else {
+        if (mounted) setIsLoadingAuth(false);
       }
     });
 
