@@ -1,10 +1,8 @@
 import React, { useEffect } from "react";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import PortalLayout from "../components/portal/PortalLayout";
-import ListaDemandas from "../components/comunicados/ListaDemandas";
-import VisaoEventos from "../components/comunicados/VisaoEventos";
+import PainelComunicados from "../components/comunicados/PainelComunicados";
 import GestaoColaboradoresPortal from "../components/portal/GestaoColaboradoresPortal";
-import AbaEnvios from "../components/comunicados/AbaEnvios";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
@@ -25,7 +23,6 @@ export default function PortalComunicados() {
   const podeVerVisao = permissoes.includes("ver_visao_geral");
   const podeCadastrarArtes = permissoes.includes("cadastrar_artes");
   const podeGerirColabs = permissoes.includes("gerir_colaboradores");
-  const podeEnviarDespedida = permissoes.includes("enviar_despedida");
 
   if (!podeVerVisao && !podeCadastrarArtes && !podeGerirColabs) {
     return (
@@ -38,46 +35,41 @@ export default function PortalComunicados() {
     );
   }
 
-  const defaultTab = podeVerVisao ? "calendario" : podeCadastrarArtes ? "artes" : "colabs";
   const nomeUsuario = colaborador.nome_completo || "";
 
-  return (
-    <PortalLayout colaborador={colaborador} onLogout={logout}>
-      <div className="p-4 md:p-6 max-w-5xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Comunicados</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestão de artes e eventos de comunicação interna</p>
-        </div>
-
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="mb-6 flex-wrap gap-1 h-auto">
-            {podeVerVisao && <TabsTrigger value="calendario">📅 Calendário de Eventos</TabsTrigger>}
-            {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Gestão de Artes</TabsTrigger>}
-            {podeGerirColabs && <TabsTrigger value="colabs">👥 Colaboradores</TabsTrigger>}
-            {podeVerVisao && <TabsTrigger value="admin">⚙️ Painel de Controle</TabsTrigger>}
-          </TabsList>
-
-          {podeVerVisao && (
-            <TabsContent value="calendario">
-              <VisaoEventos modo="mes" podeEnviarDespedida={podeEnviarDespedida} />
+  if (podeGerirColabs) {
+    return (
+      <PortalLayout colaborador={colaborador} onLogout={logout}>
+        <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+          <Tabs defaultValue="painel" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="painel">📢 Central de Comunicados</TabsTrigger>
+              <TabsTrigger value="colabs">👥 Gestão de Colaboradores</TabsTrigger>
+            </TabsList>
+            <TabsContent value="painel">
+              <PainelComunicados
+                podeCriarArte={podeCadastrarArtes || podeVerVisao}
+                podeGerenciarConfig={podeVerVisao}
+                nomeUsuario={nomeUsuario}
+              />
             </TabsContent>
-          )}
-          {podeCadastrarArtes && (
-            <TabsContent value="artes">
-              <ListaDemandas podeCriarArte={true} nomeUsuario={nomeUsuario} />
-            </TabsContent>
-          )}
-          {podeGerirColabs && (
             <TabsContent value="colabs">
               <GestaoColaboradoresPortal />
             </TabsContent>
-          )}
-          {podeVerVisao && (
-            <TabsContent value="admin">
-              <AbaEnvios />
-            </TabsContent>
-          )}
-        </Tabs>
+          </Tabs>
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  return (
+    <PortalLayout colaborador={colaborador} onLogout={logout}>
+      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <PainelComunicados
+          podeCriarArte={podeCadastrarArtes || podeVerVisao}
+          podeGerenciarConfig={podeVerVisao}
+          nomeUsuario={nomeUsuario}
+        />
       </div>
     </PortalLayout>
   );
