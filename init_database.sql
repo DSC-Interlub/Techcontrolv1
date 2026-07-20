@@ -13,6 +13,7 @@ DROP VIEW IF EXISTS visao_patrimonio_consolidado CASCADE;
 DROP VIEW IF EXISTS chamados_ativos_solicitantes CASCADE;
 
 DROP TABLE IF EXISTS requisicao_compras CASCADE;
+DROP TABLE IF EXISTS empresas_terceiras CASCADE;
 DROP TABLE IF EXISTS configuracoes CASCADE;
 DROP TABLE IF EXISTS centros_custo CASCADE;
 DROP TABLE IF EXISTS comunicados_config CASCADE;
@@ -640,6 +641,23 @@ CREATE TABLE requisicao_compras (
   historico JSONB DEFAULT '[]'
 );
 
+-- ── empresas_terceiras ──
+-- Cadastro de empresas e prestadores de serviços terceirizados.
+CREATE TABLE empresas_terceiras (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_date TIMESTAMPTZ DEFAULT NOW(),
+  updated_date TIMESTAMPTZ DEFAULT NOW(),
+  created_by TEXT,
+  
+  nome_empresa TEXT NOT NULL,
+  cnpj TEXT,
+  nome_contato TEXT,
+  telefone TEXT,
+  email TEXT,
+  observacoes TEXT,
+  status TEXT DEFAULT 'Ativa'
+);
+
 -- ============================================================
 -- 3. TRIGGERS E FUNÇÕES DE TABELAS
 -- ============================================================
@@ -662,7 +680,8 @@ BEGIN
     'profiles','colaboradores','chamados','chamados_chat','reservas','reservas_sala',
     'pcs_internos','notebooks_externos','tablets','smartphones','cameras','coletores',
     'canetas_vibracao','avaliacoes','ramais','fila_emails','comunicados_artes',
-    'comunicados_log','comunicados_config','centros_custo','configuracoes','requisicao_compras'
+    'comunicados_log','comunicados_config','centros_custo','configuracoes','requisicao_compras',
+    'empresas_terceiras'
   ] LOOP
     EXECUTE format('
       CREATE TRIGGER trg_%s_updated
@@ -804,6 +823,7 @@ ALTER TABLE public.comunicados_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.centros_custo ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.configuracoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.requisicao_compras ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.empresas_terceiras ENABLE ROW LEVEL SECURITY;
 
 -- ── Políticas de Autenticados (Admins e TI com login no Supabase Auth) ──
 CREATE POLICY "auth_all_profiles" ON profiles FOR ALL TO authenticated USING (true) WITH CHECK (true);
@@ -828,6 +848,7 @@ CREATE POLICY "auth_all_comunicados_config" ON public.comunicados_config FOR ALL
 CREATE POLICY "auth_all_centros_custo" ON public.centros_custo FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "auth_all_configuracoes" ON public.configuracoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "auth_all_requisicao_compras" ON public.requisicao_compras FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_all_empresas_terceiras" ON public.empresas_terceiras FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- ── Políticas de Anônimos (Funcionários no Portal do Colaborador — sessionStorage) ──
 -- ⚠️ Segurança: colaboradores.senha_portal e outros dados confidenciais de TI não devem ser alterados direto de forma aberta
@@ -871,6 +892,9 @@ CREATE POLICY "anon_insert_avaliacoes" ON public.avaliacoes FOR INSERT TO anon W
 CREATE POLICY "anon_select_requisicoes" ON public.requisicao_compras FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_insert_requisicoes" ON public.requisicao_compras FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "anon_update_requisicoes" ON public.requisicao_compras FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- Anon pode listar, cadastrar e atualizar empresas terceiras
+CREATE POLICY "anon_all_empresas_terceiras" ON public.empresas_terceiras FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- 7. STORAGE SETUP
