@@ -55,7 +55,7 @@ CREATE TABLE profiles (
 -- ── colaboradores ──
 -- Cadastro geral de colaboradores com informações de portal e dados pessoais.
 CREATE TABLE colaboradores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -106,7 +106,7 @@ ALTER TABLE colaboradores ADD CONSTRAINT fk_colaborador_responsavel FOREIGN KEY 
 -- ── chamados ──
 -- Tabela de chamados do helpdesk.
 CREATE TABLE chamados (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -178,7 +178,7 @@ CREATE TABLE chamados (
 -- ── chamados_chat ──
 -- Mensagens trocadas no chat do chamado.
 CREATE TABLE chamados_chat (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -196,7 +196,7 @@ CREATE TABLE chamados_chat (
 -- ── reservas ──
 -- Reservas de equipamentos temporários.
 CREATE TABLE reservas (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -219,7 +219,7 @@ CREATE TABLE reservas (
 -- ── reservas_sala ──
 -- Agendamento de horários para a sala de treinamentos.
 CREATE TABLE reservas_sala (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -239,7 +239,7 @@ CREATE TABLE reservas_sala (
 -- ── pcs_internos ──
 -- Equipamentos de TI internos (Notebooks, Desktops, Monitores).
 CREATE TABLE pcs_internos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -272,7 +272,7 @@ CREATE TABLE pcs_internos (
 -- ── notebooks_externos ──
 -- Notebooks sob posse de funcionários externos.
 CREATE TABLE notebooks_externos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -305,7 +305,7 @@ CREATE TABLE notebooks_externos (
 -- ── tablets ──
 -- Tablets do inventário corporativo.
 CREATE TABLE tablets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -337,7 +337,7 @@ CREATE TABLE tablets (
 -- ── smartphones ──
 -- Celulares da empresa.
 CREATE TABLE smartphones (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -367,7 +367,7 @@ CREATE TABLE smartphones (
 -- ── cameras ──
 -- Câmeras de segurança.
 CREATE TABLE cameras (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -394,7 +394,7 @@ CREATE TABLE cameras (
 -- ── coletores ──
 -- Coletores de dados industriais.
 CREATE TABLE coletores (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -422,7 +422,7 @@ CREATE TABLE coletores (
 -- ── canetas_vibracao ──
 -- Canetas coletoras de vibração.
 CREATE TABLE canetas_vibracao (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -449,7 +449,7 @@ CREATE TABLE canetas_vibracao (
 -- ── avaliacoes ──
 -- Fichas de avaliações técnicas dos computadores.
 CREATE TABLE avaliacoes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -479,7 +479,7 @@ CREATE TABLE avaliacoes (
 -- ── ramais ──
 -- Lista telefônica corporativa.
 CREATE TABLE ramais (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -496,7 +496,7 @@ CREATE TABLE ramais (
 -- ── fila_emails ──
 -- Fila assíncrona para envio de e-mails de chamados.
 CREATE TABLE fila_emails (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -516,7 +516,7 @@ CREATE TABLE fila_emails (
 -- ── comunicados_artes ──
 -- Demandas para criação e envio de artes para eventos corporativos.
 CREATE TABLE comunicados_artes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -539,7 +539,7 @@ CREATE TABLE comunicados_artes (
 -- ── comunicados_log ──
 -- Histórico e resultados de disparos de comunicados.
 CREATE TABLE comunicados_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -558,7 +558,7 @@ CREATE TABLE comunicados_log (
 -- ── comunicados_config ──
 -- Regras de envio, CCs e assuntos padrão de comunicados.
 CREATE TABLE comunicados_config (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -576,7 +576,7 @@ CREATE TABLE comunicados_config (
 -- ── centros_custo ──
 -- Códigos contábeis orçamentários da corporação.
 CREATE TABLE centros_custo (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -589,7 +589,7 @@ CREATE TABLE centros_custo (
 -- ── configuracoes ──
 -- Configurações gerais da aplicação salvas em chave/valor.
 CREATE TABLE configuracoes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
@@ -602,7 +602,7 @@ CREATE TABLE configuracoes (
 -- ── requisicao_compras ──
 -- Fluxo de solicitações de compras de ativos.
 CREATE TABLE requisicao_compras (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_date TIMESTAMPTZ DEFAULT NOW(),
   updated_date TIMESTAMPTZ DEFAULT NOW(),
   created_by TEXT,
