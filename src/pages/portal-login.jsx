@@ -30,35 +30,16 @@ export default function PortalLogin() {
     setLoading(true);
 
     try {
-      // 1. Autentica no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: senha
+      const res = await fetch('/api/portal-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), senha: senha })
       });
+      const data = await res.json();
+      
+      if (!data.ok) throw new Error(data.error || 'Credenciais invalidas');
 
-      if (authError) throw authError;
-
-      // 2. Busca os dados na tabela colaboradores
-      const { data: colaborador, error: colabError } = await supabase
-        .from('colaboradores')
-        .select('id,nome_completo,email,area,tipo_funcionario,status,acesso_portal_bloqueado,senha_precisa_trocar,permissoes_comunicados')
-        .eq('email', email.trim().toLowerCase())
-        .maybeSingle();
-
-      if (colabError || !colaborador) {
-        await supabase.auth.signOut();
-        throw new Error("Colaborador não cadastrado ou não encontrado.");
-      }
-
-      if (colaborador.acesso_portal_bloqueado) {
-        await supabase.auth.signOut();
-        throw new Error("Seu acesso ao portal está bloqueado. Entre em contato com o TI.");
-      }
-
-      if (colaborador.status === 'Desligado') {
-        await supabase.auth.signOut();
-        throw new Error("Usuário inativo. Entre em contato com o TI.");
-      }
+      const colaborador = data.colaborador;
 
       // 3. Verifica se precisa trocar senha
       if (colaborador.senha_precisa_trocar) {

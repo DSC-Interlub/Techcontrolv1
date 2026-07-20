@@ -35,8 +35,11 @@ export default function AcompanharChamado() {
     queryKey: ['chamados_acompanhamento', numeroChamado],
     queryFn: async () => {
       if (!numeroChamado) return [];
-      const allChamados = await base44.entities.Chamados.list();
-      return allChamados.filter(c => c.numero_chamado === numeroChamado.toUpperCase().trim());
+      // Filter server-side by numero_chamado instead of loading all records
+      return base44.entities.Chamados.filter(
+        { numero_chamado: numeroChamado.toUpperCase().trim() },
+        '-created_date'
+      );
     },
     enabled: buscarChamado && numeroChamado.length > 0,
   });
@@ -78,6 +81,10 @@ export default function AcompanharChamado() {
         comunicacao: 0,
         comentario: ""
       });
+    },
+    onError: (error) => {
+      console.error('Erro ao salvar avaliação:', error);
+      alert('Erro ao salvar avaliação. Tente novamente.');
     },
   });
 
@@ -535,10 +542,10 @@ export default function AcompanharChamado() {
                             </Button>
                             <Button
                               onClick={handleAvaliar}
-                              disabled={avaliacaoMutation.isLoading}
+                              disabled={avaliacaoMutation.isPending}
                               className="bg-yellow-600 hover:bg-yellow-700 flex-1"
                             >
-                              {avaliacaoMutation.isLoading ? "Enviando..." : "Enviar Avaliação"}
+                              {avaliacaoMutation.isPending ? "Enviando..." : "Enviar Avaliação"}
                             </Button>
                           </div>
                         </div>

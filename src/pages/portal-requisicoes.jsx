@@ -62,11 +62,16 @@ export default function PortalRequisicoes() {
 
   const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
 
-  // Se colaborador é aprovador, busca requisições dos seus colaboradores
-  const requisicoesPendentesAprovador = requisicoes.filter(r =>
-    r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
-  );
-  const isAprovador = colaboradorFull && requisicoes.some(r => r.aprovador_id === colaboradorFull.id);
+  // isAprovador: lê do campo do próprio colaborador, não depende de haver requisições
+  const isAprovador = !!(colaboradorFull?.is_aprovador || colaboradorFull?.cargo?.toLowerCase().includes('aprovador'));
+
+  // Se colaborador é aprovador, mostra as pendentes de aprovação dele
+  const requisicoesPendentesAprovador = isAprovador
+    ? requisicoes.filter(r =>
+        r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
+      )
+    : [];
+
 
   const pendentes = minhasRequisicoes.filter(r => r.status === 'Aguardando Aprovador' || r.status === 'Aguardando Diretor');
   const aprovadas = minhasRequisicoes.filter(r => r.status === 'Aprovada');

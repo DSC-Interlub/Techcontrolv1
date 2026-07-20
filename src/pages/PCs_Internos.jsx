@@ -123,10 +123,10 @@ export default function PCs_Internos() {
     setShowAssignModal(true);
   };
 
-  const executeTransfer = () => {
+  const executeTransfer = async () => {
     if (!newUserName || !equipmentToTransfer) return;
 
-    const usuariosAnteriores = equipmentToTransfer.usuarios_anteriores || [];
+    const usuariosAnteriores = [...(equipmentToTransfer.usuarios_anteriores || [])];
     
     // Adiciona usuário atual ao histórico, se houver um usuário atual
     if (equipmentToTransfer.usuario_atual) {
@@ -137,34 +137,37 @@ export default function PCs_Internos() {
       });
     }
 
-    // Se o novo usuário for "Disponível", limpa os campos
-    if (newUserName === "Disponível") {
-      updateMutation.mutate({
-        id: equipmentToTransfer.id,
-        data: {
-          usuario_atual: "",
-          usuario_desde: "",
-          area: "",
-          status: "Disponível",
-          usuarios_anteriores: usuariosAnteriores
-        }
-      });
-    } else {
-      // Buscar área do novo usuário
-      const novoColaborador = colaboradores.find(c => c.nome_completo === newUserName);
-      
-      // Transfere para novo usuário
-      updateMutation.mutate({
-        id: equipmentToTransfer.id,
-        data: {
-          usuario_atual: newUserName,
-          usuario_desde: new Date().toISOString().split('T')[0],
-          area: novoColaborador?.area || "",
-          status: "Em uso",
-          usuarios_anteriores: usuariosAnteriores
-        }
-      });
-    }
+    const isDisponivel = newUserName === "Disponível";
+    const novoColaborador = colaboradores.find(c => c.nome_completo === newUserName);
+
+    const dadosAtualizados = isDisponivel ? {
+      usuario_atual: "",
+      usuario_desde: "",
+      area: "",
+      status: "Disponível",
+      usuarios_anteriores: usuariosAnteriores
+    } : {
+      usuario_atual: newUserName,
+      usuario_desde: new Date().toISOString().split('T')[0],
+      area: novoColaborador?.area || "",
+      status: "Em uso",
+      usuarios_anteriores: usuariosAnteriores
+    };
+
+    updateMutation.mutate({
+      id: equipmentToTransfer.id,
+      data: dadosAtualizados
+    }, {
+      onSuccess: () => {
+        setShowTransferModal(false);
+        setEquipmentToTransfer(null);
+        setNewUserName("");
+      },
+      onError: (err) => {
+        console.error("Erro na transferência do equipamento:", err);
+        alert(`Falha ao transferir equipamento: ${err.message || "Erro de servidor"}`);
+      }
+    });
   };
 
   const executeAssign = () => {

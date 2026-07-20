@@ -6,8 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Search, Eye, Pencil, Trash2, X, Download } from "lucide-react";
+import { Users, Plus, Search, Eye, Pencil, Trash2, X, Download, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import ColaboradorDetalhes from "../components/colaboradores/ColaboradorDetalhes";
 import ColaboradorForm from "../components/colaboradores/ColaboradorForm";
 
@@ -18,6 +28,7 @@ export default function Colaboradores() {
   const [showForm, setShowForm] = useState(false);
   const [editingColaborador, setEditingColaborador] = useState(null);
   const [selectedColaborador, setSelectedColaborador] = useState(null);
+  const [deletingColaborador, setDeletingColaborador] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const { user: currentUser } = useAuth();
 
@@ -31,10 +42,26 @@ export default function Colaboradores() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Colaboradores.delete(id),
+    mutationFn: async (colaborador) => {
+      // Check for active chamados
+      const chamados = await base44.entities.Chamados.list();
+      const temChamados = chamados.some(c => 
+        c.solicitante_nome === colaborador.nome_completo ||
+        c.atribuido_para === colaborador.nome_completo
+      );
+      if (temChamados) {
+        throw new Error(`Não é possível excluir: colaborador possui chamados vinculados.`);
+      }
+      return base44.entities.Colaboradores.delete(colaborador.id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+      setDeletingColaborador(null);
     },
+    onError: (error) => {
+      alert(error.message || 'Erro ao excluir colaborador.');
+      setDeletingColaborador(null);
+    }
   });
 
   const handleExportar = () => {
@@ -250,11 +277,7 @@ export default function Colaboradores() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => {
-                                        if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
-                                          deleteMutation.mutate(colaborador.id);
-                                        }
-                                      }}
+                                      onClick={() => setDeletingColaborador(colaborador)}
                                     >
                                       <Trash2 className="w-4 h-4 text-red-600" />
                                     </Button>
@@ -338,11 +361,7 @@ export default function Colaboradores() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => {
-                                        if (confirm(`Tem certeza que deseja excluir ${colaborador.nome_completo}?`)) {
-                                          deleteMutation.mutate(colaborador.id);
-                                        }
-                                      }}
+                                      onClick={() => setDeletingColaborador(colaborador)}
                                     >
                                       <Trash2 className="w-4 h-4 text-red-600" />
                                     </Button>
@@ -361,6 +380,31 @@ export default function Colaboradores() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deletingColaborador} onOpenChange={(open) => !open && setDeletingColaborador(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o colaborador <strong>{deletingColaborador?.nome_completo}</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => deletingColaborador && deleteMutation.mutate(deletingColaborador)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Sim, Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

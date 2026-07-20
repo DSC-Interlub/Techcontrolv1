@@ -94,12 +94,9 @@ export default function Reservas() {
 
   // Atualizar status das reservas automaticamente baseado na data/hora (otimizado)
   useEffect(() => {
-    if (!reservas || reservas.length === 0) return;
-    
-    const updateReservasStatus = () => {
+    if (!reservas || !reservas.length) return;
+    const updateReservasStatus = async () => {
       const agora = new Date();
-      
-      // Coletar todas as atualizações necessárias antes de executar
       const updates = [];
       
       reservas.forEach(reserva => {
@@ -115,24 +112,24 @@ export default function Reservas() {
         }
         
         if (novoStatus !== reserva.status) {
-          updates.push({ id: reserva.id, status: novoStatus, reserva });
+          updates.push({ id: reserva.id, status: novoStatus });
         }
       });
 
-      // Executar atualizações apenas se houver mudanças
-      if (updates.length > 0) {
-        updates.forEach(({ id, reserva, status }) => {
-          updateReservaMutation.mutate({
-            id,
-            data: { ...reserva, status }
-          });
-        });
+      if (updates.length === 0) return;
+
+      for (const update of updates) {
+        try {
+          await base44.entities.Reservas.update(update.id, { status: update.status });
+        } catch (e) {
+          console.error('Erro ao atualizar status da reserva:', update.id, e);
+        }
       }
+      queryClient.invalidateQueries({ queryKey: ['reservas'] });
     };
 
-    // Executar apenas uma vez ao carregar, não em loop contínuo
     updateReservasStatus();
-  }, [reservas.length]); // Dependência otimizada
+  }, [reservas.map(r => r.id + '-' + r.status).join(',')]); // Dependência otimizada
 
   const handleToggleReserva = (notebook) => {
     updateNotebookMutation.mutate({

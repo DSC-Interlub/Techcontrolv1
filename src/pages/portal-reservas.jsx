@@ -106,8 +106,9 @@ export default function PortalReservas() {
       })
       .sort((a, b) => new Date(`${a.data_fim}T${a.hora_fim}`) - new Date(`${b.data_fim}T${b.hora_fim}`));
     if (futuras.length > 0) {
-      const ultima = futuras[futuras.length - 1];
-      return new Date(`${ultima.data_fim}T${ultima.hora_fim}`);
+      // Retorna o término da primeira reserva futura (próximo slot de liberação)
+      const primeira = futuras[0];
+      return new Date(`${primeira.data_fim}T${primeira.hora_fim}`);
     }
     return null;
   };
@@ -153,19 +154,16 @@ export default function PortalReservas() {
     return format(dt, 'dd/MM/yyyy');
   };
 
-
-
   const getPeriodosOcupadosNaData = (nbId, dataStr) => {
     if (!dataStr) return [];
     return todasReservas
       .filter(r => {
         if (r.equipamento_id !== nbId) return false;
         if (r.status === "Cancelada" || r.status === "Concluída") return false;
-        // Apenas reservas onde data_inicio é exatamente o dia selecionado
-        // Ignora reservas históricas com datas cruzadas (data_inicio diferente do dia)
-        if (r.data_inicio !== dataStr) return false;
-        // Validade extra: hora_inicio deve ser menor que hora_fim
-        if (r.hora_inicio >= r.hora_fim) return false;
+        // Verifica se a data consultada está dentro do intervalo da reserva (multi-dias inclusive)
+        if (r.data_inicio > dataStr || r.data_fim < dataStr) return false;
+        // Validade extra: hora_inicio deve ser menor que hora_fim em reservas do mesmo dia
+        if (r.data_inicio === r.data_fim && r.hora_inicio >= r.hora_fim) return false;
         return true;
       })
       .sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));

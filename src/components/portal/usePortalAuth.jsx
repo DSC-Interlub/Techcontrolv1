@@ -1,17 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPageUrl } from "@/utils";
 import { usePortalColaborador } from "./usePortalColaborador";
 
-/**
- * Hook de autenticação do portal.
- * Delega ao usePortalColaborador (que usa cache React Query compartilhado com staleTime 5min).
- * Resultado: dados disponíveis imediatamente do sessionStorage, sem race condition.
- */
 export function usePortalAuth() {
   const { colaborador, logout: logoutBase } = usePortalColaborador();
+  const [loading, setLoading] = useState(true);
 
-  // loading é false imediatamente pois lemos sessionStorage de forma síncrona
-  const loading = false;
+  useEffect(() => {
+    // loading starts true, becomes false after checking sessionStorage
+    setLoading(false);
+  }, []);
+
+  const getColaborador = () => {
+    try {
+      const data = sessionStorage.getItem('portal_colaborador');
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      console.error("Erro ao ler portal_colaborador do sessionStorage", e);
+      return null;
+    }
+  };
 
   const logout = () => {
     sessionStorage.removeItem('portal_colaborador');
@@ -19,12 +27,13 @@ export function usePortalAuth() {
   };
 
   const requireAuth = () => {
-    if (!colaborador) {
+    const user = getColaborador();
+    if (!user) {
       window.location.href = createPageUrl("portal-login");
       return false;
     }
     return true;
   };
 
-  return { colaborador, loading, logout, requireAuth };
+  return { colaborador: getColaborador() || colaborador, getColaborador, loading, logout, requireAuth };
 }

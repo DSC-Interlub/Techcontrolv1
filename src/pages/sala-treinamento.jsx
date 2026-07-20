@@ -84,21 +84,31 @@ export default function SalaTreinamento() {
 
   const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
 
-  // --- Auto-concluir reservas passadas ---
+  // --- Auto-concluir reservas passadas (otimizado e seguro) ---
   useEffect(() => {
     if (!reservas.length) return;
     const agora = new Date();
-    reservas.forEach(r => {
-      if (r.status === "Confirmada") {
-        const fim = new Date(`${r.data}T${r.hora_fim}`);
-        if (fim <= agora) {
-          base44.entities.ReservasSala.update(r.id, { status: "Concluída" }).then(() => {
-            queryClient.invalidateQueries({ queryKey: ['reservas_sala'] });
-          });
+    const expiradas = reservas.filter(r => {
+      if (r.status !== "Confirmada") return false;
+      const fim = new Date(`${r.data}T${r.hora_fim || '23:59'}`);
+      return fim <= agora;
+    });
+
+    if (expiradas.length === 0) return;
+
+    const concluirSequencial = async () => {
+      for (const r of expiradas) {
+        try {
+          await base44.entities.ReservasSala.update(r.id, { status: "Concluída" });
+        } catch (e) {
+          console.error("Erro ao auto-concluir reserva de sala:", r.id, e);
         }
       }
-    });
-  }, [reservas.length]);
+      queryClient.invalidateQueries({ queryKey: ['reservas_sala'] });
+    };
+
+    concluirSequencial();
+  }, [reservas.map(r => r.id + '-' + r.status).join(',')]);
 
   // --- Mutations ---
   const cancelMutation = useMutation({
