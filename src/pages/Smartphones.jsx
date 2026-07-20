@@ -574,7 +574,7 @@ export default function Smartphones() {
                       </TableRow>
                     ) : filteredUserGroups.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhum usuário encontrado</TableCell>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhum smartphone encontrado</TableCell>
                       </TableRow>
                     ) : (
                       filteredUserGroups.map((group, index) => (

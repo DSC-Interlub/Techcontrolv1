@@ -23,6 +23,7 @@ const tableMap = {
   Smartphones: 'smartphones',
   Tablets: 'tablets',
   Configuracoes: 'configuracoes',
+  EmpresasTerceiras: 'empresas_terceiras',
   User: 'profiles'
 };
 

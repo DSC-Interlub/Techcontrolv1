@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Headset, Copy, Check, Eye, Laptop, Star, Clock, Send, Zap, Info, Plus, Trash2, Upload, FileText, Download, Image } from "lucide-react";
+import { Calendar, ExternalLink, Settings, Search, ChevronLeft, ChevronRight, Copy, Check, Eye, User, Mail, Briefcase, Clock, FileText, Headset, Star, Zap, AlertCircle, Building2 } from "lucide-react";
+import GerenciadorEmpresasTerceiras from "@/components/chamados/GerenciadorEmpresasTerceiras";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays, parseISO, isAfter } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -73,6 +74,7 @@ export default function Chamados() {
   const [showAvaliacao, setShowAvaliacao] = useState(false);
   const [activeTab, setActiveTab] = useState("abertos");
   const [modalTab, setModalTab] = useState("detalhes");
+  const [showEmpresasTerceiras, setShowEmpresasTerceiras] = useState(false);
   const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
   const { user, isLoadingAuth: loading } = useAuth();
   const currentUser = user;
@@ -496,6 +498,14 @@ export default function Chamados() {
               <p className="text-muted-foreground mt-1">Gerenciar solicitações de suporte</p>
             </div>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowEmpresasTerceiras(true)}
+            className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+          >
+            <Building2 className="w-4 h-4 text-indigo-600" />
+            Empresas Terceirizadas
+          </Button>
         </div>
 
         {/* Filtro de período */}
@@ -916,6 +926,9 @@ export default function Chamados() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal Empresas Terceiras */}
+        <GerenciadorEmpresasTerceiras open={showEmpresasTerceiras} onClose={() => setShowEmpresasTerceiras(false)} />
 
       </div>
     </div>

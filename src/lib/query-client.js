@@ -26,7 +26,10 @@ function getMutationErrorMessage(error) {
 export const queryClientInstance = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 60000, // 1 minuto de dados aquecidos sem re-fetch compulsivo
+      gcTime: 10 * 60 * 1000, // 10 minutos para Garbage Collection em memória
       refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },

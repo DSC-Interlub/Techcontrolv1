@@ -41,7 +41,14 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Colaboradores.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['colaboradores'] }); onClose(); },
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['colaboradores'] }); 
+      onClose(); 
+    },
+    onError: (error) => {
+      console.error("Erro ao criar colaborador:", error);
+      setErrors(prev => ({ ...prev, _form: error.message || "Erro ao salvar colaborador. Tente novamente." }));
+    }
   });
 
   const updateMutation = useMutation({
@@ -77,6 +84,10 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       }
       onClose();
     },
+    onError: (error) => {
+      console.error("Erro ao atualizar colaborador:", error);
+      setErrors(prev => ({ ...prev, _form: error.message || "Erro ao atualizar colaborador. Tente novamente." }));
+    }
   });
 
   const validate = () => {

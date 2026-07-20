@@ -145,9 +145,15 @@ export default async function handler(req, res) {
     // 5. NOTIFICAR APROVADOR DE REQUISIÇÃO DE COMPRAS
     // ─────────────────────────────────────────────────────────────────────────────
     if (type === 'notificarAprovadorRequisicao') {
-      const { requisicaoId } = data;
-      const { data: req_data } = await supabase.from('requisicao_compras').select('*').eq('id', requisicaoId).maybeSingle();
-      if (!req_data) return res.status(404).json({ error: 'Requisição não encontrada' });
+      const requisicaoId = data.requisicaoId || data.requisicao_id;
+      let req_data = null;
+      if (requisicaoId) {
+        const { data: found } = await supabase.from('requisicao_compras').select('*').eq('id', requisicaoId).maybeSingle();
+        req_data = found;
+      }
+      if (!req_data) {
+        req_data = data;
+      }
 
       const {
         aprovador_email, aprovador_nome, numero_requisicao, colaborador_nome,

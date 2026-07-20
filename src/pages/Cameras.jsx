@@ -541,7 +541,7 @@ export default function Cameras() {
                       </TableRow>
                     ) : filteredUserGroups.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhum usuário encontrado</TableCell>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhuma câmera encontrada</TableCell>
                       </TableRow>
                     ) : (
                       filteredUserGroups.map((group, index) => (
