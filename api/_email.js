@@ -1,7 +1,9 @@
 import nodemailer from 'nodemailer';
 
-export async function sendEmail({ to, subject, html, service = 'resend' }) {
-  if (service === 'resend') {
+export async function sendEmail({ to, subject, html, service }) {
+  const chosenService = service || (process.env.RESEND_API_KEY ? 'resend' : 'gmail');
+
+  if (chosenService === 'resend' && process.env.RESEND_API_KEY) {
     const RESEND_KEY = process.env.RESEND_API_KEY;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -20,7 +22,7 @@ export async function sendEmail({ to, subject, html, service = 'resend' }) {
     console.log(`[sendEmail:resend] to=${to} status=${res.status} id=${j.id}`);
     if (res.status >= 400) throw new Error(j.message || 'Erro no Resend');
     return j;
-  } else if (service === 'gmail') {
+  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
@@ -33,5 +35,8 @@ export async function sendEmail({ to, subject, html, service = 'resend' }) {
     });
     console.log(`[sendEmail:gmail] to=${to} messageId=${info.messageId}`);
     return info;
+  } else {
+    console.warn("[sendEmail] Nenhuma credencial de e-mail (Resend ou Gmail) configurada.");
+    return { ok: false, warning: "Credenciais de e-mail não configuradas" };
   }
 }

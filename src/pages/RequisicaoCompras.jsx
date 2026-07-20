@@ -12,6 +12,8 @@ import { ShoppingCart, Search, Clock, CheckCircle, XCircle, Loader2, Filter, Use
 import RequisicaoDetalhes from "@/components/requisicoes/RequisicaoDetalhes";
 import ModuloAprovador from "@/components/requisicoes/ModuloAprovador";
 import ConfiguracoesDiretor from "@/components/requisicoes/ConfiguracoesDiretor";
+import GerenciadorCentrosCusto from "@/components/requisicoes/GerenciadorCentrosCusto";
+import { Building2 } from "lucide-react";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -150,7 +152,7 @@ export default function RequisicaoCompras() {
 
       {/* Tabs */}
       <Tabs defaultValue="todas">
-        <TabsList className="grid grid-cols-5 w-full mb-4">
+        <TabsList className="grid grid-cols-6 w-full mb-4">
           <TabsTrigger value="todas">Todas ({filtrar(requisicoes).length})</TabsTrigger>
           <TabsTrigger value="pendentes">
             Pendentes
@@ -160,6 +162,9 @@ export default function RequisicaoCompras() {
           <TabsTrigger value="reprovadas">Reprovadas ({filtrar(reprovadas).length})</TabsTrigger>
           <TabsTrigger value="aprovadores" className="flex items-center gap-1">
             <UserCheck className="w-3 h-3" />Aprovadores
+          </TabsTrigger>
+          <TabsTrigger value="centros-custo" className="flex items-center gap-1">
+            <Building2 className="w-3 h-3" />Centros de Custo
           </TabsTrigger>
         </TabsList>
 
@@ -185,6 +190,9 @@ export default function RequisicaoCompras() {
             <ConfiguracoesDiretor />
             <ModuloAprovador onSelectRequisicao={setSelectedReq} />
           </div>
+        </TabsContent>
+        <TabsContent value="centros-custo">
+          <GerenciadorCentrosCusto />
         </TabsContent>
       </Tabs>
 

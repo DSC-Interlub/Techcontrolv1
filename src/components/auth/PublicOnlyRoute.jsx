@@ -4,9 +4,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function PublicOnlyRoute({ children }) {
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth, user } = useAuth();
 
-  if (isLoadingAuth) {
+  if (isLoadingAuth && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="text-center">
@@ -17,7 +17,7 @@ export default function PublicOnlyRoute({ children }) {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated || user) {
     return <Navigate to="/Dashboard" replace />;
   }
 

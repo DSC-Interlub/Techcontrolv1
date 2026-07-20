@@ -4,18 +4,31 @@ import { supabase } from '@/lib/supabase';
 
 const AuthContext = createContext();
 
+const getInitialUser = () => {
+  try {
+    const cached = sessionStorage.getItem('techcontrol_user_cache');
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [user, setUser] = useState(getInitialUser);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(!user);
 
   const fetchCurrentUser = useCallback(async () => {
     try {
       const u = await base44.auth.me();
       setUser(u);
+      if (u) {
+        sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
+      } else {
+        sessionStorage.removeItem('techcontrol_user_cache');
+      }
       return u;
     } catch (err) {
       console.error("[AuthContext] Erro ao carregar usuário:", err);
-      // Mantém o estado anterior se houver
       return null;
     } finally {
       setIsLoadingAuth(false);
@@ -25,21 +38,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Dispara a busca inicial de sessão imediatamente no boot
+    // Dispara a busca inicial de sessão
     fetchCurrentUser();
 
-    // Escuta alterações reativas na sessão do Supabase Auth
+    // Escuta alterações na sessão do Supabase Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
         setUser(null);
+        sessionStorage.removeItem('techcontrol_user_cache');
         setIsLoadingAuth(false);
       } else if (session?.user) {
         try {
           const u = await base44.auth.me();
           if (mounted && u) {
             setUser(u);
+            sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
           }
         } catch (err) {
           console.warn("[AuthContext] Erro ao atualizar perfil em " + event + ":", err);
@@ -60,6 +75,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async (redirectTo = '/login') => {
     setIsLoadingAuth(true);
     try {
+      sessionStorage.removeItem('techcontrol_user_cache');
       await base44.auth.logout(redirectTo);
     } finally {
       setUser(null);

@@ -41,12 +41,20 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-const navigationItems = [
+const visaoGeralItems = [
   {
     title: "Dashboard",
     url: createPageUrl("Dashboard"),
     icon: LayoutDashboard,
   },
+  {
+    title: "Relatórios & BI",
+    url: createPageUrl("Resumo"),
+    icon: FileSpreadsheet,
+  },
+];
+
+const ativosItems = [
   {
     title: "PCs Internos",
     url: createPageUrl("PCs_Internos"),
@@ -82,16 +90,8 @@ const navigationItems = [
     url: createPageUrl("Canetas_Vibracao"),
     icon: Pen,
   },
-];
-
-const managementItems = [
   {
-    title: "Colaboradores",
-    url: createPageUrl("Colaboradores"),
-    icon: Users,
-  },
-  {
-    title: "Reservas",
+    title: "Reservas de Veículos",
     url: createPageUrl("Reservas"),
     icon: Calendar,
   },
@@ -100,10 +100,31 @@ const managementItems = [
     url: createPageUrl("sala-treinamento"),
     icon: Users,
   },
+];
+
+const operacoesItems = [
   {
-    title: "Chamados",
+    title: "Chamados TI",
     url: createPageUrl("Chamados"),
     icon: Headset,
+  },
+  {
+    title: "Requisições de Compra",
+    url: createPageUrl("RequisicaoCompras"),
+    icon: ShoppingCart,
+  },
+  {
+    title: "Comunicados",
+    url: createPageUrl("Comunicados"),
+    icon: Megaphone,
+  },
+];
+
+const gestaoItems = [
+  {
+    title: "Colaboradores",
+    url: createPageUrl("Colaboradores"),
+    icon: Users,
   },
   {
     title: "Ramais",
@@ -111,12 +132,12 @@ const managementItems = [
     icon: Phone,
   },
   {
-    title: "Usuários",
+    title: "Usuários do Sistema",
     url: createPageUrl("Usuarios"),
     icon: Settings,
   },
   {
-    title: "Avaliações de Equipamentos",
+    title: "Vistorias & Avaliações",
     url: createPageUrl("Avaliacoes_Equipamentos"),
     icon: Activity,
   },
@@ -125,26 +146,6 @@ const managementItems = [
     url: createPageUrl("ProjetosTerceiros"),
     icon: Building2,
   },
-  {
-    title: "Requisições de Compra",
-    url: createPageUrl("RequisicaoCompras"),
-    icon: ShoppingCart,
-  },
-  {
-    title: "Centros de Custo",
-    url: createPageUrl("CentrosCusto"),
-    icon: Building2,
-  },
-  {
-    title: "Comunicados",
-    url: createPageUrl("Comunicados"),
-    icon: Megaphone,
-  },
-  {
-    title: "Resumo",
-    url: createPageUrl("Resumo"),
-    icon: FileSpreadsheet,
-  },
 ];
 
 const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}${createPageUrl("portal-login")}` : '';
@@ -152,7 +153,7 @@ const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}${cr
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user: currentUser, isLoadingAuth: loading } = useAuth();
+  const { user: currentUser } = useAuth();
   const [darkMode, setDarkMode] = React.useState(() => localStorage.getItem('techcontrol_theme') === 'dark');
 
   React.useEffect(() => {
@@ -184,10 +185,9 @@ export default function Layout({ children }) {
                        location.pathname.includes('/reset-password') ||
                        location.pathname === '/login';
 
-
   const handleLogout = async () => {
     if (window.confirm("Deseja realmente sair do sistema?")) {
-      base44.auth.logout('/login');
+      await base44.auth.logout('/login');
     }
   };
 
@@ -196,56 +196,26 @@ export default function Layout({ children }) {
     return <>{children}</>;
   }
 
-
   return (
     <SidebarProvider>
-      <style>{`
-        .dark {
-          --background: 222 20% 13%;
-          --foreground: 210 40% 96%;
-          --card: 222 20% 16%;
-          --card-foreground: 210 40% 96%;
-          --popover: 222 20% 16%;
-          --popover-foreground: 210 40% 96%;
-          --primary: 210 40% 96%;
-          --primary-foreground: 222 20% 13%;
-          --secondary: 222 20% 20%;
-          --secondary-foreground: 210 40% 96%;
-          --muted: 222 20% 20%;
-          --muted-foreground: 215 20% 65%;
-          --accent: 222 20% 22%;
-          --accent-foreground: 210 40% 96%;
-          --destructive: 0 62.8% 40%;
-          --destructive-foreground: 0 0% 98%;
-          --border: 222 20% 22%;
-          --input: 222 20% 22%;
-          --ring: 215 40% 60%;
-          --sidebar-background: 222 25% 10%;
-          --sidebar-foreground: 210 40% 92%;
-          --sidebar-primary: 224.3 76.3% 60%;
-          --sidebar-primary-foreground: 0 0% 100%;
-          --sidebar-accent: 222 20% 18%;
-          --sidebar-accent-foreground: 210 40% 92%;
-          --sidebar-border: 222 20% 18%;
-        }
-      `}</style>
       <div className="min-h-screen flex w-full bg-background text-foreground">
         <Sidebar className="border-r border-border">
-          <SidebarHeader className="border-b border-border p-4 bg-gradient-to-r from-blue-600 to-blue-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-md">
-                <Settings className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="font-bold text-white text-lg">TechControl</h2>
-                <p className="text-xs text-blue-100">Gestão de Equipamentos</p>
+          <SidebarHeader className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                  <Monitor className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg text-foreground">TechControl</h1>
+                  <p className="text-xs text-muted-foreground">Gestão de TI & Ativos</p>
+                </div>
               </div>
             </div>
           </SidebarHeader>
-          
-          <SidebarContent className="p-2">
+
+          <SidebarContent className="px-2 py-4">
             {isComunicadosRole ? (
-              // ── Sidebar simplificado para perfis de Comunicados ──
               <SidebarGroup>
                 <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
                   Comunicados
@@ -284,15 +254,15 @@ export default function Layout({ children }) {
                 </SidebarGroupContent>
               </SidebarGroup>
             ) : (
-              // ── Sidebar completo para admin / user ──
+              // ── Sidebar completo organizado para admin / user ──
               <>
                 <SidebarGroup>
-                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2">
-                    Equipamentos
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-1 text-muted-foreground">
+                    Visão Geral
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {navigationItems.map((item) => (
+                      {visaoGeralItems.map((item) => (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton 
                             asChild 
@@ -312,17 +282,67 @@ export default function Layout({ children }) {
                 </SidebarGroup>
 
                 <SidebarGroup>
-                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-2 mt-2">
-                    Gestão
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-1 mt-2 text-muted-foreground">
+                    Ativos & Recursos
                   </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {managementItems.map((item) => (
+                      {ativosItems.map((item) => (
                         <SidebarMenuItem key={item.title}>
                           <SidebarMenuButton 
                             asChild 
-                            className={`hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 dark:hover:text-green-300 transition-colors duration-200 rounded-lg mb-1 ${
-                              location.pathname === item.url ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 font-medium' : ''
+                            className={`hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 rounded-lg mb-1 ${
+                              location.pathname === item.url ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium' : ''
+                            }`}
+                          >
+                            <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-1 mt-2 text-muted-foreground">
+                    Operações & Suporte
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {operacoesItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton 
+                            asChild 
+                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors duration-200 rounded-lg mb-1 ${
+                              location.pathname === item.url ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium' : ''
+                            }`}
+                          >
+                            <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
+                              <item.icon className="w-4 h-4" />
+                              <span>{item.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider px-2 py-1 mt-2 text-muted-foreground">
+                    Gestão & Pessoas
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {gestaoItems.map((item) => (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton 
+                            asChild 
+                            className={`hover:bg-purple-50 dark:hover:bg-purple-950 hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200 rounded-lg mb-1 ${
+                              location.pathname === item.url ? 'bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-medium' : ''
                             }`}
                           >
                             <Link to={item.url} className="flex items-center gap-3 px-3 py-2">
@@ -345,64 +365,70 @@ export default function Layout({ children }) {
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                     <span className="text-blue-700 dark:text-blue-300 font-semibold text-sm">
-                      {currentUser.full_name?.charAt(0).toUpperCase() || "?"}
+                      {currentUser.full_name?.charAt(0).toUpperCase() || currentUser.email?.charAt(0).toUpperCase() || "?"}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {currentUser.full_name || "Usuário"}
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {currentUser.full_name || currentUser.name || "Usuário"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {currentUser.email}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleLogout}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 text-xs"
-                  >
-                    <LogOut className="w-3 h-3 mr-2" />
-                    Sair do Sistema
-                  </Button>
-                  <Button
-                    onClick={() => setDarkMode(!darkMode)}
-                    variant="outline"
-                    size="sm"
-                    title={darkMode ? "Modo claro" : "Modo escuro"}
-                  >
-                    {darkMode ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
-                  </Button>
-                </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground text-center">
-              <p className="font-semibold">Sistema TechControl</p>
-              <p>v1.0.0</p>
-              <a
-                href={createPageUrl("portal-login")}
-                className="mt-2 inline-block text-blue-600 hover:underline"
+            
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDarkMode(!darkMode)}
+                className="flex-1 justify-start gap-2 text-xs"
               >
-                🔗 Portal do Colaborador
-              </a>
+                {darkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-700" />}
+                <span>{darkMode ? "Modo Claro" : "Modo Escuro"}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                title="Sair do sistema"
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 flex flex-col">
-          <header className="bg-background border-b border-border px-6 py-4 md:hidden sticky top-0 z-10">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="hover:bg-muted p-2 rounded-lg transition-colors duration-200" />
-              <h1 className="text-xl font-bold">TechControl</h1>
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-background sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger />
+              <div className="h-4 w-[1px] bg-border" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Painel Administrativo
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(portalUrl, '_blank')}
+                className="text-xs gap-2"
+              >
+                <span>Portal do Colaborador</span>
+              </Button>
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto bg-background">
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );
