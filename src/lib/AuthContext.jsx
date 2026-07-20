@@ -25,22 +25,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Timeout de segurança absoluto para garantir que a aplicação nunca fique presa no estado de loading
-    const safetyTimer = setTimeout(() => {
-      if (mounted && isLoadingAuth) {
-        console.warn("[AuthContext] Timeout de segurança atingido. Destravando carregamento.");
-        setIsLoadingAuth(false);
-      }
-    }, 4000);
+    // Dispara a busca inicial de sessão imediatamente no boot sem esperar callbacks
+    fetchCurrentUser();
 
-    // Escuta alterações na sessão do Supabase Auth
+    // Escuta alterações na sessão do Supabase Auth para navegação reativa
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT' || !session?.user) {
         setUser(null);
         setIsLoadingAuth(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         try {
           const u = await base44.auth.me();
           if (mounted) setUser(u);
@@ -50,17 +45,14 @@ export const AuthProvider = ({ children }) => {
         } finally {
           if (mounted) setIsLoadingAuth(false);
         }
-      } else {
-        if (mounted) setIsLoadingAuth(false);
       }
     });
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchCurrentUser]);
 
   const logout = async (redirectTo = '/login') => {
     setIsLoadingAuth(true);
