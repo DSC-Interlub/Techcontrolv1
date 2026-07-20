@@ -38,7 +38,7 @@ export default function PortalComunicados() {
     );
   }
 
-  const defaultTab = podeVerVisao ? "visao_mes" : podeCadastrarArtes ? "artes" : "colabs";
+  const defaultTab = podeVerVisao ? "calendario" : podeCadastrarArtes ? "artes" : "colabs";
   const nomeUsuario = colaborador.nome_completo || "";
 
   return (
@@ -51,21 +51,15 @@ export default function PortalComunicados() {
 
         <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto">
-            {podeVerVisao && <TabsTrigger value="visao_mes">📅 Este Mês</TabsTrigger>}
-            {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
-            {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Artes</TabsTrigger>}
+            {podeVerVisao && <TabsTrigger value="calendario">📅 Calendário de Eventos</TabsTrigger>}
+            {podeCadastrarArtes && <TabsTrigger value="artes">🎨 Gestão de Artes</TabsTrigger>}
             {podeGerirColabs && <TabsTrigger value="colabs">👥 Colaboradores</TabsTrigger>}
-            {podeVerVisao && <TabsTrigger value="envios">⚙️ Envios</TabsTrigger>}
+            {podeVerVisao && <TabsTrigger value="admin">⚙️ Painel de Controle</TabsTrigger>}
           </TabsList>
 
           {podeVerVisao && (
-            <TabsContent value="visao_mes">
+            <TabsContent value="calendario">
               <VisaoEventos modo="mes" podeEnviarDespedida={podeEnviarDespedida} />
-            </TabsContent>
-          )}
-          {podeVerVisao && (
-            <TabsContent value="visao_anual">
-              <VisaoEventos modo="anual" podeEnviarDespedida={false} />
             </TabsContent>
           )}
           {podeCadastrarArtes && (
@@ -79,7 +73,7 @@ export default function PortalComunicados() {
             </TabsContent>
           )}
           {podeVerVisao && (
-            <TabsContent value="envios">
+            <TabsContent value="admin">
               <AbaEnvios />
             </TabsContent>
           )}

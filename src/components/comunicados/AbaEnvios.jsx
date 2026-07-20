@@ -14,14 +14,6 @@ import { Loader2, Play, RefreshCw, AlertTriangle, CheckCircle, XCircle, Clock } 
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-const AUTOMACOES = [
-  { id: "enviarAniversariosColaboradores", label: "Aniversários de colaboradores", tipo: "aniversario_colaborador" },
-  { id: "enviarAniversarioConjuge",        label: "Aniversários de cônjuges",     tipo: "aniversario_conjuge" },
-  { id: "enviarAniversarioFilho1Ano",      label: "Filhos — 1 aninho",            tipo: "aniversario_filho_1ano" },
-  { id: "enviarAniversarioTempoEmpresa",   label: "Tempo de empresa",             tipo: "tempo_empresa" },
-  { id: "enviarBoasVindas",               label: "Boas-vindas",                  tipo: "boas_vindas" },
-];
-
 const TIPO_LABELS = {
   aniversario_colaborador: "🎂 Aniversário",
   aniversario_conjuge: "💑 Cônjuge",
@@ -89,20 +81,18 @@ function ModalDetalhes({ log, onClose }) {
 
 export default function AbaEnvios() {
   const queryClient = useQueryClient();
-  const [disparando, setDisparando] = useState(null);
+  const [disparando, setDisparando] = useState(false);
+  const [resultadoDisparo, setResultadoDisparo] = useState(null);
+  const [confirmando, setConfirmando] = useState(false);
+  const [detalhesLog, setDetalhesLog] = useState(null);
+  const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [filtroMes, setFiltroMes] = useState("todos");
 
   const { data: configs = [] } = useQuery({
     queryKey: ["comunicados_config"],
     queryFn: () => base44.entities.Comunicados_Config.list(),
     staleTime: 5 * 60_000,
   });
-
-  const getConfig = (tipo) => configs.find(c => c.tipo_comunicado === tipo) || {};
-  const [resultadoDisparo, setResultadoDisparo] = useState(null);
-  const [confirmando, setConfirmando] = useState(null); // automacao obj
-  const [detalhesLog, setDetalhesLog] = useState(null);
-  const [filtroStatus, setFiltroStatus] = useState("todos");
-  const [filtroMes, setFiltroMes] = useState("todos");
 
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ["comunicados_log"],
@@ -132,122 +122,83 @@ export default function AbaEnvios() {
     return r;
   }, [logs, filtroStatus, filtroMes]);
 
-  const ultimoPorTipo = useMemo(() => {
-    const map = {};
-    logs.forEach(l => {
-      if (!map[l.tipo_comunicado] || l.data_envio > map[l.tipo_comunicado].data_envio) {
-        map[l.tipo_comunicado] = l;
-      }
-    });
-    return map;
-  }, [logs]);
-
-  const handleDisparar = async (automacao) => {
-    setConfirmando(null);
-    setDisparando(automacao.id);
+  const handleDisparar = async () => {
+    setConfirmando(false);
+    setDisparando(true);
     setResultadoDisparo(null);
-    const res = await base44.functions.invoke(automacao.id, {});
-    queryClient.invalidateQueries({ queryKey: ["comunicados_log"] });
-    setResultadoDisparo({ automacao: automacao.label, ...res.data });
-    setDisparando(null);
+    try {
+      const res = await base44.functions.invoke('dispararComunicados', {});
+      queryClient.invalidateQueries({ queryKey: ["comunicados_log"] });
+      queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
+      
+      const counts = res.data?.results?.comunicados || {};
+      const totalEnviados = Object.values(counts).reduce((a, b) => a + b, 0);
+      
+      setResultadoDisparo({
+        automacao: "Rotina Consolidada de Comunicados",
+        msg: `Rotina executada com sucesso! Gerou demandas e enviou ${totalEnviados} e-mail(s) agendado(s) para hoje.`,
+      });
+    } catch (err) {
+      console.error("Erro ao disparar rotina:", err);
+      setResultadoDisparo({
+        automacao: "Erro na Execução",
+        msg: err.message || "Erro desconhecido ao disparar rotina de comunicados.",
+        error: true,
+      });
+    } finally {
+      setDisparando(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       {/* Resultado do disparo */}
       {resultadoDisparo && (
-        <div className="bg-green-50 border border-green-300 rounded-lg p-4 flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+        <div className={`border rounded-lg p-4 flex items-start gap-3 ${resultadoDisparo.error ? "bg-red-50 border-red-300 text-red-800" : "bg-green-50 border-green-300 text-green-850"}`}>
+          {resultadoDisparo.error ? (
+            <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+          )}
           <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">{resultadoDisparo.automacao}</p>
-            <p className="text-sm text-green-700 mt-0.5">{resultadoDisparo.msg || JSON.stringify(resultadoDisparo)}</p>
+            <p className="text-sm font-semibold">{resultadoDisparo.automacao}</p>
+            <p className="text-xs mt-0.5">{resultadoDisparo.msg}</p>
           </div>
-          <button className="text-green-400 hover:text-green-600" onClick={() => setResultadoDisparo(null)}>✕</button>
+          <button className="text-gray-400 hover:text-gray-600 text-sm" onClick={() => setResultadoDisparo(null)}>✕</button>
         </div>
       )}
 
-      {/* Tabela de automações */}
+      {/* Disparador Manual Consolidado */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Play className="w-4 h-4 text-indigo-600" />
-            Status das Automações
+            <Play className="w-4 h-4 text-indigo-650" />
+            Execução Manual da Rotina Diária
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Automação</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Horário</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Último Disparo</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {AUTOMACOES.map(aut => {
-                  const ultimo = ultimoPorTipo[aut.tipo];
-                  return (
-                    <tr key={aut.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-800">{aut.label}</td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {(() => {
-                          const cfg = getConfig(aut.tipo);
-                          return (
-                            <span className="flex items-center gap-2">
-                              <Clock className="w-3.5 h-3.5" />
-                              {cfg.horario_envio || "08:00"}
-                              {cfg.ativo === false && <Badge className="bg-red-100 text-red-700 text-xs">Desativado</Badge>}
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {ultimo?.data_envio ? format(parseISO(ultimo.data_envio), "dd/MM/yyyy HH:mm") : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {ultimo ? <StatusBadge status={ultimo.status} /> : <span className="text-xs text-gray-400">Sem registro</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs h-7"
-                          disabled={!!disparando}
-                          onClick={() => setConfirmando(aut)}
-                        >
-                          {disparando === aut.id
-                            ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />Disparando...</>
-                            : <><Play className="w-3 h-3 mr-1" />Disparar agora</>
-                          }
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">Despedida</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs italic">
-                    {getConfig("despedida").horario_envio || "Manual"}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {ultimoPorTipo["despedida"]?.data_envio
-                      ? format(parseISO(ultimoPorTipo["despedida"].data_envio), "dd/MM/yyyy HH:mm")
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {ultimoPorTipo["despedida"]
-                      ? <StatusBadge status={ultimoPorTipo["despedida"].status} />
-                      : <span className="text-xs text-gray-400">Sem registro</span>}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-xs text-gray-400">Aba "Este Mês"</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-500">
+            A rotina diária é executada de forma automática pelo servidor todas as manhãs. 
+            Ao disparar manualmente, o sistema irá:
+          </p>
+          <ul className="text-xs text-gray-500 list-disc list-inside space-y-1.5 pl-2">
+            <li>Sincronizar e criar automaticamente demandas pendentes para os próximos <strong>30 dias</strong>.</li>
+            <li>Buscar colaboradores que fazem aniversário ou completam tempo de empresa <strong>HOJE</strong>.</li>
+            <li>Disparar os e-mails com as artes customizadas prontas conforme as configurações salvas.</li>
+            <li>Verificar se há eventos próximos sem arte cadastrada e notificar o RH por e-mail com <strong>7 dias</strong> de antecedência.</li>
+          </ul>
+          <div className="pt-3 border-t flex justify-end">
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
+              disabled={disparando}
+              onClick={() => setConfirmando(true)}
+            >
+              {disparando ? (
+                <><Loader2 className="w-4 h-4 animate-spin mr-1.5" />Processando Rotina...</>
+              ) : (
+                <><Play className="w-4 h-4 mr-1.5" />Executar Rotina Diária Agora</>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

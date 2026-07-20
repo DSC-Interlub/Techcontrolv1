@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Settings } from "lucide-react";
 import ListaDemandas from "../components/comunicados/ListaDemandas";
 import VisaoEventos from "../components/comunicados/VisaoEventos";
 import AbaEnvios from "../components/comunicados/AbaEnvios";
@@ -10,7 +10,7 @@ import AbaConfiguracoes from "../components/comunicados/AbaConfiguracoes";
 
 function getDefaultTab(user) {
   const role = user?.role;
-  if (role === "comunicados_gestao" || role === "comunicados_dp") return "visao_mes";
+  if (role === "comunicados_gestao" || role === "comunicados_dp") return "calendario";
   return "artes";
 }
 
@@ -21,8 +21,6 @@ export default function Comunicados() {
   useEffect(() => {
     if (currentUser) setActiveTab(getDefaultTab(currentUser));
   }, [currentUser]);
-
-
 
   const role = currentUser?.role;
   const isAdmin = role === "admin";
@@ -48,11 +46,9 @@ export default function Comunicados() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6 flex-wrap gap-1 h-auto">
-          {podeVerArtes && <TabsTrigger value="artes">🎨 Artes e Demandas</TabsTrigger>}
-          {podeVerVisao && <TabsTrigger value="visao_mes">📅 Este Mês</TabsTrigger>}
-          {podeVerVisao && <TabsTrigger value="visao_anual">📆 Planejamento Anual</TabsTrigger>}
-          {podeVerEnvios && <TabsTrigger value="envios">⚙️ Envios</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="config">🔧 Configurações</TabsTrigger>}
+          {podeVerArtes && <TabsTrigger value="artes">🎨 Gestão de Artes</TabsTrigger>}
+          {podeVerVisao && <TabsTrigger value="calendario">📅 Calendário de Eventos</TabsTrigger>}
+          {(podeVerEnvios || isAdmin) && <TabsTrigger value="admin">⚙️ Painel de Controle</TabsTrigger>}
         </TabsList>
 
         {podeVerArtes && (
@@ -61,23 +57,22 @@ export default function Comunicados() {
           </TabsContent>
         )}
         {podeVerVisao && (
-          <TabsContent value="visao_mes">
+          <TabsContent value="calendario">
             <VisaoEventos modo="mes" podeEnviarDespedida={podeEnviarDespedida} />
           </TabsContent>
         )}
-        {podeVerVisao && (
-          <TabsContent value="visao_anual">
-            <VisaoEventos modo="anual" podeEnviarDespedida={false} />
-          </TabsContent>
-        )}
-        {podeVerEnvios && (
-          <TabsContent value="envios">
+        {(podeVerEnvios || isAdmin) && (
+          <TabsContent value="admin" className="space-y-8">
             <AbaEnvios />
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="config">
-            <AbaConfiguracoes />
+            {isAdmin && (
+              <div className="border-t pt-8">
+                <h3 className="font-semibold text-gray-800 text-base mb-4 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-indigo-650" />
+                  Configurações de E-mail por Tipo de Evento
+                </h3>
+                <AbaConfiguracoes />
+              </div>
+            )}
           </TabsContent>
         )}
       </Tabs>

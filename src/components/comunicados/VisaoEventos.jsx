@@ -494,6 +494,7 @@ function VisaoAnual({ colaboradores, demandas, abrirModal }) {
 // ─── Componente exportado ─────────────────────────────────────────────────────
 export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false }) {
   const queryClient = useQueryClient();
+  const [localModo, setLocalModo] = useState(modo);
 
   // Estado estável: só IDs e campos primitivos — sem objetos instáveis
   const [modalUpload, setModalUpload] = useState(null);
@@ -528,7 +529,6 @@ export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false
     const { demandaId, colaboradorId, colaboradorNome, tipo } = modalUpload;
 
     if (demandaId) {
-      // Captura o id em variável local antes de qualquer await
       const id = demandaId;
       await base44.entities.Comunicados_Artes.update(id, {
         imagem_url: fileUrl,
@@ -555,7 +555,26 @@ export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false
   }
 
   return (
-    <>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="inline-flex rounded-md shadow-sm">
+          <button
+            type="button"
+            onClick={() => setLocalModo("mes")}
+            className={`px-4 py-2 text-xs font-medium border rounded-l-lg hover:bg-gray-100 transition-colors ${localModo === "mes" ? "bg-indigo-600 border-indigo-600 text-white font-semibold" : "bg-white border-gray-200 text-gray-700"}`}
+          >
+            📅 Eventos do Mês
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocalModo("anual")}
+            className={`px-4 py-2 text-xs font-medium border-t border-b border-r rounded-r-lg hover:bg-gray-100 transition-colors ${localModo === "anual" ? "bg-indigo-600 border-indigo-600 text-white font-semibold" : "bg-white border-gray-200 text-gray-700"}`}
+          >
+            📆 Planejamento Anual
+          </button>
+        </div>
+      </div>
+
       {/* Modal UMA VEZ no nível raiz — nunca dentro de map/loop */}
       {modalUpload && (
         <UploadArteModal
@@ -568,7 +587,7 @@ export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false
         />
       )}
 
-      {modo === "anual" ? (
+      {localModo === "anual" ? (
         <VisaoAnual
           colaboradores={colaboradores}
           demandas={demandas}
@@ -582,6 +601,6 @@ export default function VisaoEventos({ modo = "mes", podeEnviarDespedida = false
           abrirModal={abrirModal}
         />
       )}
-    </>
+    </div>
   );
 }

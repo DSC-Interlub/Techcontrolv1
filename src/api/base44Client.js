@@ -319,7 +319,7 @@ export const base44 = {
       // 2. Caso de geração de demandas: RPC direta no banco
       if (name === 'gerarDemandasComunicados') {
         const { data, error } = await supabase.rpc('gerar_demandas_comunicados', {
-          usar_mes_atual: !!payload?.mes_atual
+          dias_busca: payload?.dias_busca || 30
         });
         if (error) throw error;
         return { data };
@@ -345,6 +345,9 @@ export const base44 = {
       } else if (name === 'lembreteAvaliacao') {
         targetUrl = '/api/cronDiario';
         bodyData = { runType: 'avaliacoes' };
+      } else if (name === 'dispararComunicados') {
+        targetUrl = '/api/cronDiario';
+        bodyData = { runType: 'comunicados' };
       }
 
       const headers = {
