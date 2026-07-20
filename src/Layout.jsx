@@ -91,7 +91,7 @@ const ativosItems = [
     icon: Pen,
   },
   {
-    title: "Reservas de Veículos",
+    title: "Reservas de Notebooks",
     url: createPageUrl("Reservas"),
     icon: Calendar,
   },

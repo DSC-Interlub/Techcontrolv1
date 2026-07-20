@@ -238,22 +238,6 @@ export default function Reservas() {
               <Settings className="w-4 h-4" />
               Configurar Notebooks
             </Button>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-              <span className="text-sm text-gray-600 font-mono truncate max-w-xs">{publicUrl}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCopyLink}
-                className="flex-shrink-0"
-              >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-600" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-gray-500 text-center">Link público para reservar notebooks</p>
           </div>
         </div>
 

@@ -130,17 +130,7 @@ export default function Login() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Senha</Label>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-xs text-blue-600 hover:text-blue-500 hover:underline transition-colors"
-                    disabled={loading || recoveryLoading}
-                  >
-                    {recoveryLoading ? "Enviando..." : "Esqueceu a senha?"}
-                  </button>
-                </div>
+                <Label htmlFor="password">Senha</Label>
                 <div className="relative mt-1">
                   <Input
                     id="password"

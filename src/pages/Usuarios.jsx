@@ -88,10 +88,16 @@ function ModalAlterarPermissao({ usuario, onClose, onSuccess }) {
 
   const handleSalvar = async () => {
     setSaving(true);
-    await base44.entities.User.update(usuario.id, { role: selectedRole });
-    setSaving(false);
-    onSuccess("Permissão atualizada com sucesso!");
-    onClose();
+    try {
+      await base44.entities.User.update(usuario.id, { role: selectedRole });
+      onSuccess("Permissão atualizada com sucesso!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar permissão:", err);
+      alert("Erro ao salvar permissão. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -157,10 +163,16 @@ function ModalEditarNome({ usuario, onClose, onSuccess }) {
   const handleSalvar = async () => {
     if (!editName.trim()) return;
     setSaving(true);
-    await base44.entities.User.update(usuario.id, { nome_exibicao: editName });
-    setSaving(false);
-    onSuccess("Nome de exibição atualizado!");
-    onClose();
+    try {
+      await base44.entities.User.update(usuario.id, { nome_exibicao: editName });
+      onSuccess("Nome de exibição atualizado!");
+      onClose();
+    } catch (err) {
+      console.error("Erro ao salvar nome:", err);
+      alert("Erro ao salvar nome de exibição. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

@@ -492,22 +492,6 @@ export default function Chamados() {
               <p className="text-muted-foreground mt-1">Gerenciar solicitações de suporte</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-              <span className="text-sm text-gray-600 font-mono truncate max-w-xs">{publicUrl}</span>
-              <Button size="sm" variant="ghost" onClick={handleCopyLink}>{copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}</Button>
-            </div>
-            <Button size="sm" variant="outline" onClick={handleTestarLembrete} disabled={testeLembreteLoading} className="gap-2">
-              <Zap className="w-4 h-4 text-yellow-600" />
-              {testeLembreteLoading ? "Disparando..." : "Testar Lembrete de Avaliação"}
-            </Button>
-            {testeLembreteResult && (
-              <div className="text-xs bg-gray-50 border rounded p-2">
-                {testeLembreteResult.error ? <span className="text-red-600">Erro: {testeLembreteResult.error}</span>
-                  : <span className="text-green-700">✅ {testeLembreteResult.enviados} enviados, {testeLembreteResult.pulados} pulados (anti-spam). Total aguardando: {testeLembreteResult.total_aguardando}</span>}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Filtro de período */}
