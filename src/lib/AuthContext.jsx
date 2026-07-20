@@ -9,34 +9,53 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
+    // Safety timeout: destrava o carregamento se a autenticação demorar mais de 3 segundos
+    const timeoutId = setTimeout(() => {
+      if (mounted) {
+        setIsLoadingAuth(false);
+      }
+    }, 3000);
+
     // 1. Carrega a sessão inicial
     base44.auth.me()
       .then((u) => {
-        setUser(u);
-        setIsLoadingAuth(false);
+        if (mounted) {
+          setUser(u);
+          setIsLoadingAuth(false);
+          clearTimeout(timeoutId);
+        }
       })
-      .catch(() => {
-        setUser(null);
-        setIsLoadingAuth(false);
+      .catch((err) => {
+        console.error("[AuthContext] Erro ao carregar me():", err);
+        if (mounted) {
+          setUser(null);
+          setIsLoadingAuth(false);
+          clearTimeout(timeoutId);
+        }
       });
 
     // 2. Escuta mudanças de estado do Supabase Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setIsLoadingAuth(true);
+      if (!mounted) return;
       if (session?.user) {
         try {
           const u = await base44.auth.me();
-          setUser(u);
-        } catch {
-          setUser(null);
+          if (mounted) setUser(u);
+        } catch (err) {
+          console.error("[AuthContext] Erro onAuthStateChange:", err);
+          if (mounted) setUser(null);
         }
       } else {
-        setUser(null);
+        if (mounted) setUser(null);
       }
-      setIsLoadingAuth(false);
+      if (mounted) setIsLoadingAuth(false);
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);

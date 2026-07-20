@@ -145,11 +145,19 @@ export default function Chamados() {
       queryClient.invalidateQueries({ queryKey: ['chamados_chat', selectedChamado?.id] });
       setNovaMsg("");
     },
+    onError: (error) => {
+      console.error('Mutation error:', error);
+      alert('Erro ao processar operacao. Tente novamente.');
+    },
   });
 
   const updateChamadoMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Chamados.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['chamados'] }),
+    onError: (error) => {
+      console.error('Mutation error:', error);
+      alert('Erro ao processar operacao. Tente novamente.');
+    },
   });
 
   const handleCopyLink = () => {

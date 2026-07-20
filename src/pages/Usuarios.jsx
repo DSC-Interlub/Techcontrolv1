@@ -296,10 +296,15 @@ export default function Usuarios() {
   const { data: usuarios = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["usuarios"],
     queryFn: async () => {
-      const res = await base44.functions.invoke('listarUsuarios', {});
-      return res.data?.usuarios || [];
+      try {
+        const res = await base44.functions.invoke('listarUsuarios', {});
+        return res.data?.usuarios || res.data || [];
+      } catch (err) {
+        console.error("Erro ao listar usuários:", err);
+        return [];
+      }
     },
-    enabled: !!user && user.role === 'admin',
+    enabled: !!user,
   });
 
   const showSuccess = (msg) => {

@@ -168,7 +168,12 @@ export default function PortalChamados() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const numeroChamado = `CH${Date.now().toString().slice(-8)}`;
+      const gerarNumeroChamado = () => {
+        const now = Date.now();
+        const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `CHM-${now}-${rand}`;
+      };
+      const numeroChamado = gerarNumeroChamado();
       const equipamentosParaChamado = equipamentosUsuario.map(e => ({ tipo: e.tipo, marca: e.marca, modelo: e.modelo, etiqueta: e.etiqueta }));
 
       const chamado = await base44.entities.Chamados.create({
