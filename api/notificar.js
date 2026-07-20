@@ -70,12 +70,12 @@ export default async function handler(req, res) {
       if (!chamado?.solicitante_email) return res.status(404).json({ error: 'Chamado ou e-mail do solicitante não encontrado' });
       if (chamado.email_abertura_enviado) return res.status(200).json({ skipped: true });
 
-      await supabase.from('chamados').update({ email_abertura_enviado: true }).eq('id', chamado.id);
-
       await Promise.all([
         sendEmail({ to: chamado.solicitante_email, subject: `[TechControl] Chamado ${chamado.numero_chamado} aberto com sucesso`, html: htmlTicketCreatedUser(chamado) }),
         sendEmail({ to: ADM_EMAIL, subject: `[TechControl] Novo chamado: ${chamado.numero_chamado} — ${chamado.solicitante_nome}`, html: htmlTicketCreatedAdmin(chamado) })
       ]);
+
+      await supabase.from('chamados').update({ email_abertura_enviado: true }).eq('id', chamado.id);
       return res.status(200).json({ success: true });
     }
 
@@ -88,13 +88,13 @@ export default async function handler(req, res) {
       if (!chamado?.solicitante_email) return res.status(404).json({ error: 'Chamado ou e-mail do solicitante não encontrado' });
       if (chamado.email_inicio_enviado) return res.status(200).json({ skipped: true });
 
-      await supabase.from('chamados').update({ email_inicio_enviado: true }).eq('id', chamado_id);
-
       await sendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} - Atendimento iniciado ⚡`,
         html: htmlTicketStarted(chamado, responsavel || chamado.responsavel || 'Equipe TechControl')
       });
+
+      await supabase.from('chamados').update({ email_inicio_enviado: true }).eq('id', chamado_id);
       return res.status(200).json({ success: true });
     }
 
@@ -107,13 +107,13 @@ export default async function handler(req, res) {
       if (!chamado?.solicitante_email) return res.status(404).json({ error: 'Chamado ou e-mail do solicitante não encontrado' });
       if (chamado.email_conclusao_enviado) return res.status(200).json({ skipped: true });
 
-      await supabase.from('chamados').update({ email_conclusao_enviado: true }).eq('id', chamado_id);
-
       await sendEmail({
         to: chamado.solicitante_email,
         subject: `[TechControl] Chamado ${chamado.numero_chamado} Concluído ✅ — Avalie o atendimento`,
         html: htmlTicketClosed(chamado, responsavel || chamado.responsavel || 'Equipe TechControl')
       });
+
+      await supabase.from('chamados').update({ email_conclusao_enviado: true }).eq('id', chamado_id);
       return res.status(200).json({ success: true });
     }
 
@@ -267,7 +267,7 @@ export default async function handler(req, res) {
         const dataEnvio = new Date().toISOString();
 
         try {
-          await sendEmail({ to: destinatarios, subject: assunto, html, service: 'gmail' });
+          await sendEmail({ to: destinatarios, subject: assunto, html });
 
           if (arte.colaborador_id) {
             await supabase.from('comunicados_artes').update({ status_arte: 'enviado', data_envio: dataEnvio }).eq('id', arte.id);
@@ -314,7 +314,7 @@ export default async function handler(req, res) {
       const dataEnvio = new Date().toISOString();
 
       try {
-        await sendEmail({ to: destinatarios, subject: assunto, html, service: 'gmail' });
+        await sendEmail({ to: destinatarios, subject: assunto, html });
 
         await supabase.from('comunicados_artes').update({ status_arte: 'enviado', data_envio: dataEnvio }).eq('id', demanda.id);
         await supabase.from('colaboradores').update({ comunicado_despedida_enviado: true }).eq('id', colaborador_id);

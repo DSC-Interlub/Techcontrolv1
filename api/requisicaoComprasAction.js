@@ -1,15 +1,9 @@
 import { createSupabaseAdmin } from './_supabase.js';
 
-const RESEND_KEY = process.env.RESEND_API_KEY;
+import { sendEmail as sendEmailUnified } from './_email.js';
 
 async function sendEmail(to, subject, html) {
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'TechControl <suporte@techcontrol.site>', to: [to], subject, html }),
-  });
-  const j = await res.json();
-  console.log(`[requisicaoComprasAction] to=${to} status=${res.status} id=${j.id}`);
+  return sendEmailUnified({ to, subject, html });
 }
 
 export default async function handler(req, res) {

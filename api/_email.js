@@ -1,19 +1,24 @@
-import nodemailer from 'nodemailer';
+export async function sendEmail({ to, subject, html, cc }) {
+  const RESEND_KEY = process.env.RESEND_API_KEY;
 
-export async function sendEmail({ to, subject, html, service, cc }) {
-  const chosenService = service || (process.env.RESEND_API_KEY ? 'resend' : 'gmail');
+  if (!RESEND_KEY) {
+    const errorMsg = "Erro de Configuração: RESEND_API_KEY não está configurada nas variáveis de ambiente.";
+    console.error(`[sendEmail] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
 
-  if (chosenService === 'resend' && process.env.RESEND_API_KEY) {
-    const RESEND_KEY = process.env.RESEND_API_KEY;
-    const body = {
-      from: 'TechControl <suporte@techcontrol.site>',
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html
-    };
-    if (cc) {
-      body.cc = Array.isArray(cc) ? cc : [cc];
-    }
+  const body = {
+    from: 'TechControl <suporte@techcontrol.site>',
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html
+  };
+
+  if (cc) {
+    body.cc = Array.isArray(cc) ? cc : [cc];
+  }
+
+  try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -22,29 +27,26 @@ export async function sendEmail({ to, subject, html, service, cc }) {
       },
       body: JSON.stringify(body),
     });
-    const j = await res.json();
-    console.log(`[sendEmail:resend] to=${to} cc=${cc} status=${res.status} id=${j.id}`);
-    if (res.status >= 400) throw new Error(j.message || 'Erro no Resend');
-    return j;
-  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-    });
-    const mailOptions = {
-      from: `"TechControl" <${process.env.GMAIL_USER}>`,
-      to: Array.isArray(to) ? to.join(',') : to,
-      subject,
-      html,
-    };
-    if (cc) {
-      mailOptions.cc = Array.isArray(cc) ? cc.join(',') : cc;
+
+    const contentType = res.headers.get("content-type");
+    let responseData = {};
+    if (contentType && contentType.includes("application/json")) {
+      responseData = await res.json();
+    } else {
+      responseData = { message: await res.text() };
     }
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[sendEmail:gmail] to=${to} cc=${cc} messageId=${info.messageId}`);
-    return info;
-  } else {
-    console.warn("[sendEmail] Nenhuma credencial de e-mail (Resend ou Gmail) configurada.");
-    return { ok: false, warning: "Credenciais de e-mail não configuradas" };
+
+    console.log(`[sendEmail:resend] to=${to} cc=${cc || ''} status=${res.status} id=${responseData.id || 'N/A'}`);
+
+    if (res.status >= 400) {
+      const errorMsg = responseData.message || `Erro no Resend (Status: ${res.status})`;
+      throw new Error(errorMsg);
+    }
+
+    return responseData;
+  } catch (err) {
+    console.error(`[sendEmail] Falha ao enviar e-mail: ${err.message}`);
+    throw err;
   }
 }
+

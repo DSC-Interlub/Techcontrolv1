@@ -147,8 +147,7 @@ async function processarComunicadoTipo(supabase, tipo, hojeStr, todosColabs, con
         to: destinatarios,
         cc: ccList.length ? ccList : undefined,
         subject: assunto,
-        html,
-        service: 'gmail'
+        html
       });
 
       await supabase.from('comunicados_artes').update({ status_arte: 'enviado', data_envio: dataEnvio }).eq('id', demanda.id);
@@ -317,8 +316,7 @@ export default async function handler(req, res) {
         await sendEmail({
           to: chamado.solicitante_email,
           subject: `Avalie seu atendimento — Chamado ${chamado.numero_chamado}`,
-          html: buildTicketReminderHtml(chamado),
-          service: 'resend'
+          html: buildTicketReminderHtml(chamado)
         });
         await supabase.from('chamados').update({ ultimo_lembrete_enviado: new Date().toISOString() }).eq('id', chamado.id);
         enviados++;
