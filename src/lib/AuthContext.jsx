@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/lib/supabase';
 
@@ -8,60 +8,68 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const u = await base44.auth.me();
+      setUser(u);
+      return u;
+    } catch (err) {
+      console.error("[AuthContext] Erro ao carregar usuário:", err);
+      setUser(null);
+      return null;
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
-    // Safety timeout: destrava o carregamento se a autenticação demorar mais de 3 segundos
-    const timeoutId = setTimeout(() => {
-      if (mounted) {
+    // Timeout de segurança absoluto para garantir que a aplicação nunca fique presa no estado de loading
+    const safetyTimer = setTimeout(() => {
+      if (mounted && isLoadingAuth) {
+        console.warn("[AuthContext] Timeout de segurança atingido. Destravando carregamento.");
         setIsLoadingAuth(false);
       }
-    }, 3000);
+    }, 4000);
 
-    // 1. Carrega a sessão inicial
-    base44.auth.me()
-      .then((u) => {
-        if (mounted) {
-          setUser(u);
-          setIsLoadingAuth(false);
-          clearTimeout(timeoutId);
-        }
-      })
-      .catch((err) => {
-        console.error("[AuthContext] Erro ao carregar me():", err);
-        if (mounted) {
-          setUser(null);
-          setIsLoadingAuth(false);
-          clearTimeout(timeoutId);
-        }
-      });
-
-    // 2. Escuta mudanças de estado do Supabase Auth
+    // Escuta alterações na sessão do Supabase Auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      if (session?.user) {
+
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null);
+        setIsLoadingAuth(false);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
         try {
           const u = await base44.auth.me();
           if (mounted) setUser(u);
         } catch (err) {
-          console.error("[AuthContext] Erro onAuthStateChange:", err);
+          console.error("[AuthContext] Erro ao carregar perfil em " + event + ":", err);
           if (mounted) setUser(null);
+        } finally {
+          if (mounted) setIsLoadingAuth(false);
         }
       } else {
-        if (mounted) setUser(null);
+        if (mounted) setIsLoadingAuth(false);
       }
-      if (mounted) setIsLoadingAuth(false);
     });
 
     return () => {
       mounted = false;
-      clearTimeout(timeoutId);
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
   }, []);
 
-  const logout = () => {
-    base44.auth.logout('/login');
+  const logout = async (redirectTo = '/login') => {
+    setIsLoadingAuth(true);
+    try {
+      await base44.auth.logout(redirectTo);
+    } finally {
+      setUser(null);
+      setIsLoadingAuth(false);
+    }
   };
 
   return (
@@ -69,12 +77,11 @@ export const AuthProvider = ({ children }) => {
       user,
       isAuthenticated: !!user,
       isLoadingAuth,
-      isLoadingPublicSettings: false,
-      authError: null,
-      appPublicSettings: null,
+      refreshUser: fetchCurrentUser,
       logout,
-      navigateToLogin: () => base44.auth.redirectToLogin(),
-      checkAppState: () => {},
+      navigateToLogin: () => {
+        if (typeof window !== 'undefined') window.location.href = '/login';
+      },
     }}>
       {children}
     </AuthContext.Provider>
@@ -83,6 +90,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   return context;
 };

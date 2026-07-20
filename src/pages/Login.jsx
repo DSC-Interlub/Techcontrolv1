@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,17 +20,6 @@ export default function Login() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        window.location.href = "/Dashboard";
-      } else {
-        setCheckingSession(false);
-      }
-    }).catch(() => setCheckingSession(false));
-  }, []);
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
@@ -45,7 +39,7 @@ export default function Login() {
 
       if (authError) throw authError;
 
-      // Verifica se o usuário é um Administrador (existe na tabela profiles)
+      // Verifica se o usuário tem perfil no sistema
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
@@ -57,7 +51,8 @@ export default function Login() {
         throw new Error("Acesso negado. Esta área é restrita a administradores.");
       }
 
-      window.location.href = "/Dashboard";
+      await refreshUser();
+      navigate("/Dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Falha na autenticação. Verifique suas credenciais.");
     } finally {
@@ -88,14 +83,6 @@ export default function Login() {
       setRecoveryLoading(false);
     }
   };
-
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">

@@ -135,59 +135,75 @@ export const base44 = {
   auth: {
     me: async () => {
       try {
-        const fetchMe = async () => {
-          const { data: { user }, error } = await supabase.auth.getUser();
-          if (error || !user) return null;
-
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-
-          if (profile) {
-            return {
-              id: user.id,
-              email: user.email,
-              role: profile.role,
-              name: profile.full_name || profile.nome_exibicao
-            };
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) {
+          if (error) {
+            console.warn("[base44.auth.me] Sessão inválida ou expirada no Supabase Auth:", error.message);
+            await supabase.auth.signOut().catch(() => {});
           }
+          return null;
+        }
 
-          const { data: colab } = await supabase
-            .from('colaboradores')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
+        const { data: profile, error: profileErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
 
-          if (colab) {
-            return {
-              id: user.id,
-              email: user.email,
-              role: 'colaborador',
-              name: colab.nome_completo
-            };
-          }
+        if (profileErr) {
+          console.warn("[base44.auth.me] Aviso na busca de profile:", profileErr.message);
+        }
 
+        if (profile) {
           return {
             id: user.id,
             email: user.email,
-            role: 'user'
+            role: profile.role || 'user',
+            name: profile.full_name || profile.nome_exibicao || user.email
           };
-        };
+        }
 
-        const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 2500));
-        return await Promise.race([fetchMe(), timeout]);
+        const { data: colab, error: colabErr } = await supabase
+          .from('colaboradores')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (colabErr) {
+          console.warn("[base44.auth.me] Aviso na busca de colaborador:", colabErr.message);
+        }
+
+        if (colab) {
+          return {
+            id: user.id,
+            email: user.email,
+            role: 'colaborador',
+            name: colab.nome_completo || user.email
+          };
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          role: 'user',
+          name: user.email
+        };
       } catch (err) {
-        console.error("Erro em base44.auth.me:", err);
+        console.error("[base44.auth.me] Exceção na busca do usuário:", err);
         return null;
       }
     },
 
     logout: async (redirectTo = '/login') => {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.error("[base44.auth.logout] Erro ao deslogar:", err);
+      }
       sessionStorage.clear();
-      window.location.href = redirectTo;
+      if (typeof window !== 'undefined') {
+        window.location.href = redirectTo;
+      }
     },
 
     isAuthenticated: async () => {
