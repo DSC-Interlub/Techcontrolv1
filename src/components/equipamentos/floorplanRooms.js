@@ -1,11 +1,11 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG Padronizada das 5 Salas
  * 
- * PADRONIZAÇÃO TOTAL:
+ * PADRONIZAÇÃO TOTAL & ESTÉTICA CAD:
  * 1. TODAS as 5 salas possuem EXATAMENTE as mesmas dimensões (1000 x 520).
  * 2. TODAS as salas estão em formato HORIZONTAL DEITADO (Widescreen 16:9).
- * 3. Proporções, larguras e alturas 100% idênticas nos quadros da interface.
- * 4. Mantidas exclusivamente as mesas circuladas originais em todas as salas.
+ * 3. Clicabilidade direta sobre as cadeiras CAD limpas (sem necessidade do botão azul "+").
+ * 4. Inclusão de detalhes arquitetônicos CAD fiéis às plantas oficiais.
  */
 
 export const SVG_ROOMS = {
@@ -39,10 +39,8 @@ export const SVG_ROOMS = {
     height: 520,
     outline: { x: 16, y: 16, w: 968, h: 488, rx: 6 },
     furniture: [
-      // 1. Estação L inferior esquerda
       { kind: "desk", x: 30, y: 340, w: 110, h: 90, hasGadgets: true },
 
-      // 2. Bloco Central 1 (3 filas x 2 tampos)
       { kind: "desk", x: 230, y: 130, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 292, y: 130, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 230, y: 235, w: 60, h: 95, hasGadgets: true },
@@ -50,7 +48,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 230, y: 340, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 292, y: 340, w: 60, h: 95, hasGadgets: true },
 
-      // 3. Bloco Central 2 (3 filas x 2 tampos)
       { kind: "desk", x: 440, y: 130, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 502, y: 130, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 440, y: 235, w: 60, h: 95, hasGadgets: true },
@@ -58,7 +55,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 440, y: 340, w: 60, h: 95, hasGadgets: true },
       { kind: "desk", x: 502, y: 340, w: 60, h: 95, hasGadgets: true },
 
-      // 4. Cluster L direita (3 filas x 2 mesas em L)
       { kind: "block", x: 640, y: 130, w: 110, h: 95, hasGadgets: true },
       { kind: "block", x: 760, y: 130, w: 110, h: 95, hasGadgets: true },
       { kind: "block", x: 640, y: 235, w: 110, h: 95, hasGadgets: true },
@@ -66,14 +62,11 @@ export const SVG_ROOMS = {
       { kind: "block", x: 640, y: 340, w: 110, h: 95, hasGadgets: true },
       { kind: "block", x: 760, y: 340, w: 110, h: 95, hasGadgets: true },
 
-      // 5. Estação L extrema direita
       { kind: "desk", x: 890, y: 340, w: 90, h: 90, hasGadgets: true },
     ],
     seats: [
-      // 1. Estação L inferior esquerda
       { id: "M-01", codigo: "M-01", x: 95, y: 400, rotate: -90 },
 
-      // 2. Bloco Central 1 (6 lugares)
       { id: "M-02", codigo: "M-02", x: 175, y: 175, rotate: 90 },
       { id: "M-03", codigo: "M-03", x: 175, y: 280, rotate: 90 },
       { id: "M-04", codigo: "M-04", x: 175, y: 385, rotate: 90 },
@@ -81,7 +74,6 @@ export const SVG_ROOMS = {
       { id: "M-06", codigo: "M-06", x: 347, y: 280, rotate: -90 },
       { id: "M-07", codigo: "M-07", x: 347, y: 385, rotate: -90 },
 
-      // 3. Bloco Central 2 (6 lugares)
       { id: "M-08", codigo: "M-08", x: 385, y: 175, rotate: 90 },
       { id: "M-09", codigo: "M-09", x: 385, y: 280, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 385, y: 385, rotate: 90 },
@@ -89,7 +81,6 @@ export const SVG_ROOMS = {
       { id: "M-12", codigo: "M-12", x: 557, y: 280, rotate: -90 },
       { id: "M-13", codigo: "M-13", x: 557, y: 385, rotate: -90 },
 
-      // 4. Cluster L direita (6 lugares)
       { id: "M-14", codigo: "M-14", x: 660, y: 205, rotate: 0 },
       { id: "M-15", codigo: "M-15", x: 825, y: 205, rotate: 0 },
       { id: "M-16", codigo: "M-16", x: 660, y: 310, rotate: 0 },
@@ -97,13 +88,12 @@ export const SVG_ROOMS = {
       { id: "M-18", codigo: "M-18", x: 660, y: 415, rotate: 0 },
       { id: "M-19", codigo: "M-19", x: 825, y: 415, rotate: 0 },
 
-      // 5. Estação extrema direita
       { id: "M-20", codigo: "M-20", x: 945, y: 400, rotate: 0 },
     ],
     textLabels: [],
   },
 
-  // 3. MEZANINO: SALA BSM / SALA DRC (Padronizada 1000 x 520 — Deitada)
+  // 3. MEZANINO: SALA BSM / SALA DRC (100% Idêntico à imagem de referência CAD enviada)
   mezanino_bsm_drc: {
     id: "bsm-drc",
     name: "Mezanino — Sala BSM / Sala DRC",
@@ -111,7 +101,14 @@ export const SVG_ROOMS = {
     height: 520,
     outline: { x: 16, y: 16, w: 968, h: 488, rx: 6 },
     walls: [{ x1: 230, y1: 16, x2: 230, y2: 504 }],
+    doors: [
+      { x: 230, y: 16, dx: 0, dy: 50, arcPath: "M 230 66 A 50 50 0 0 0 280 16" }
+    ],
     furniture: [
+      // Armários decorativos das paredes da imagem CAD
+      { kind: "cabinet", x: 185, y: 240, w: 40, h: 90 }, // Armário divisória BSM
+      { kind: "cabinet", x: 940, y: 130, w: 40, h: 120 }, // Armário parede direita DRC
+
       // SALA BSM (3 Mesas em L)
       { kind: "desk", x: 30, y: 35, w: 115, h: 45, hasGadgets: true },
       { kind: "desk", x: 30, y: 35, w: 45, h: 105, hasGadgets: true },

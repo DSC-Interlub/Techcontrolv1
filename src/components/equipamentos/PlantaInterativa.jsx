@@ -287,6 +287,18 @@ export default function PlantaInterativa({
                   />
                 ))}
 
+                {/* 2b. Portas e Arcos de Abertura CAD */}
+                {svgRoom.doors?.map((d, i) => (
+                  <g key={i}>
+                    {/* Linha da Porta */}
+                    <line x1={d.x} y1={d.y} x2={d.x + (d.dx ?? 0)} y2={d.y + (d.dy ?? 40)} stroke="#0F172A" strokeWidth={3} />
+                    {/* Arco de Varredura da Porta */}
+                    {d.arcPath && (
+                      <path d={d.arcPath} fill="none" stroke="#475569" strokeWidth={1.5} strokeDasharray="3 2" />
+                    )}
+                  </g>
+                ))}
+
                 {/* 3. Móveis e Gadgets Arquitetônicos CAD (Mesas, Monitores, Teclados, Mouses) */}
                 {svgRoom.furniture?.map((f, i) => {
                   if (f.kind === "round") {
@@ -423,9 +435,9 @@ export default function PlantaInterativa({
                         className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-3 group-hover:shadow-md"
                       />
 
-                      {/* Conteúdo: Iniciais do Colaborador (ex: "AS") ou Botão "+" */}
-                      <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
-                        {occupied && seat.colaborador ? (
+                      {/* Conteúdo: Iniciais do Colaborador quando ocupado (ex: "AS") ou Cadeira CAD limpa quando livre */}
+                      {occupied && seat.colaborador && (
+                        <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
                           <text
                             x={0}
                             y={half - 10}
@@ -434,21 +446,8 @@ export default function PlantaInterativa({
                           >
                             {getInitials(seat.colaborador.nome_completo)}
                           </text>
-                        ) : (
-                          <g transform="translate(0, 10)">
-                            {/* Botão de Adição Badged com + */}
-                            <circle r={10} fill="#3B82F6" className="group-hover:fill-blue-700 transition-colors" />
-                            <text
-                              x={0}
-                              y={4}
-                              textAnchor="middle"
-                              style={{ fontSize: 16, fill: "white", fontWeight: "bold" }}
-                            >
-                              +
-                            </text>
-                          </g>
-                        )}
-                      </g>
+                        </g>
+                      )}
                     </g>
                   );
                 })}
