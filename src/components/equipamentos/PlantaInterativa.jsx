@@ -287,7 +287,7 @@ export default function PlantaInterativa({
                   />
                 ))}
 
-                {/* 3. Móveis (Mesas, TVs, Armários, Mesas Redondas) */}
+                {/* 3. Móveis e Gadgets Arquitetônicos CAD (Mesas, Monitores, Teclados, Mouses) */}
                 {svgRoom.furniture?.map((f, i) => {
                   if (f.kind === "round") {
                     return (
@@ -310,18 +310,50 @@ export default function PlantaInterativa({
                       </g>
                     );
                   }
+
+                  const isHorizontalDesk = f.w >= f.h;
+
                   return (
-                    <rect
-                      key={i}
-                      x={f.x}
-                      y={f.y}
-                      width={f.w}
-                      height={f.h}
-                      rx={f.kind === "desk" ? 2 : 3}
-                      fill="#F8FAFC"
-                      stroke="#475569"
-                      strokeWidth={2}
-                    />
+                    <g key={i}>
+                      {/* Corpo da Mesa CAD */}
+                      <rect
+                        x={f.x}
+                        y={f.y}
+                        width={f.w}
+                        height={f.h}
+                        rx={f.kind === "desk" ? 2 : 3}
+                        fill="#FFFFFF"
+                        stroke="#334155"
+                        strokeWidth={2}
+                      />
+
+                      {/* Acessórios CAD de Computador na Mesa (Monitores, Teclado e Mouse) */}
+                      {f.hasGadgets && (
+                        <g opacity={0.65}>
+                          {isHorizontalDesk ? (
+                            <>
+                              {/* Monitor Widescreen */}
+                              <rect x={f.x + f.w / 2 - 16} y={f.y + 6} width={32} height={4} rx={1} fill="#1E293B" stroke="#475569" strokeWidth={0.8} />
+                              <rect x={f.x + f.w / 2 - 5} y={f.y + 10} width={10} height={3} fill="#64748B" />
+                              {/* Teclado */}
+                              <rect x={f.x + f.w / 2 - 14} y={f.y + 16} width={22} height={8} rx={1} fill="#F1F5F9" stroke="#94A3B8" strokeWidth={0.8} />
+                              {/* Mouse */}
+                              <ellipse cx={f.x + f.w / 2 + 13} cy={f.y + 20} rx={2.5} ry={4} fill="#E2E8F0" stroke="#64748B" strokeWidth={0.8} />
+                            </>
+                          ) : (
+                            <>
+                              {/* Monitor Vertical */}
+                              <rect x={f.x + 6} y={f.y + f.h / 2 - 16} width={4} height={32} rx={1} fill="#1E293B" stroke="#475569" strokeWidth={0.8} />
+                              <rect x={f.x + 10} y={f.y + f.h / 2 - 5} width={3} height={10} fill="#64748B" />
+                              {/* Teclado */}
+                              <rect x={f.x + 16} y={f.y + f.h / 2 - 14} width={8} height={22} rx={1} fill="#F1F5F9" stroke="#94A3B8" strokeWidth={0.8} />
+                              {/* Mouse */}
+                              <ellipse cx={f.x + 20} cy={f.y + f.h / 2 + 13} rx={4} ry={2.5} fill="#E2E8F0" stroke="#64748B" strokeWidth={0.8} />
+                            </>
+                          )}
+                        </g>
+                      )}
+                    </g>
                   );
                 })}
 
@@ -340,9 +372,9 @@ export default function PlantaInterativa({
                   </text>
                 ))}
 
-                {/* 5. CADEIRAS / ASSENTOS INTERATIVOS DO V0 (ENCOSTO + '+' OU INICIAIS) */}
+                {/* 5. CADEIRAS ERGONÔMICAS CAD DE ESCRITÓRIO (RODÍZIOS 5 PONTAS, BRAÇOS, BOTAO + E AVATAR) */}
                 {mappedSeats.map((seat) => {
-                  const size = 40;
+                  const size = 44;
                   const half = size / 2;
                   const occupied = seat.isOcupado;
                   const seatColor = occupied ? getColabColor(seat.colaborador_id) : "#FFFFFF";
@@ -355,32 +387,43 @@ export default function PlantaInterativa({
                       className="cursor-pointer group"
                       role="button"
                     >
-                      {/* Encosto da cadeira */}
-                      <rect
-                        x={-half}
-                        y={-half - 6}
-                        width={size}
-                        height={10}
-                        rx={3}
-                        fill="#94A3B8"
-                        opacity={0.7}
+                      {/* Base de 5 Rodízios CAD (Swivel 5-Star Wheel Base) */}
+                      <g stroke="#64748B" strokeWidth="1.5" opacity={0.6}>
+                        <line x1={0} y1={-half - 2} x2={0} y2={-half - 8} />
+                        <line x1={-6} y1={-half - 2} x2={-10} y2={-half - 6} />
+                        <line x1={6} y1={-half - 2} x2={10} y2={-half - 6} />
+                        <circle cx={0} cy={-half - 9} r={2} fill="#475569" />
+                        <circle cx={-11} cy={-half - 7} r={2} fill="#475569" />
+                        <circle cx={11} cy={-half - 7} r={2} fill="#475569" />
+                      </g>
+
+                      {/* Braços da Cadeira (Armrests CAD) */}
+                      <rect x={-half - 5} y={-half + 8} width={5} height={20} rx={2.5} fill="#475569" stroke="#1E293B" strokeWidth={1} />
+                      <rect x={half} y={-half + 8} width={5} height={20} rx={2.5} fill="#475569" stroke="#1E293B" strokeWidth={1} />
+
+                      {/* Encosto Curvo Ergonômico da Cadeira */}
+                      <path
+                        d={`M ${-half + 2} ${-half + 2} Q 0 ${-half - 4} ${half - 2} ${-half + 2} L ${half - 2} ${-half + 8} Q 0 ${-half + 4} ${-half + 2} ${-half + 8} Z`}
+                        fill="#334155"
+                        stroke="#0F172A"
+                        strokeWidth={1}
                       />
 
-                      {/* Base do assento (Tracejado se livre, Sólido se ocupado) */}
+                      {/* Assento Principal (Cushion CAD) */}
                       <rect
-                        x={-half}
-                        y={-half + 2}
-                        width={size}
-                        height={size}
+                        x={-half + 2}
+                        y={-half + 7}
+                        width={size - 4}
+                        height={size - 6}
                         rx={8}
                         fill={seatColor}
-                        stroke={occupied ? "#1E293B" : "#94A3B8"}
+                        stroke={occupied ? "#0F172A" : "#64748B"}
                         strokeDasharray={occupied ? undefined : "4 3"}
                         strokeWidth={2}
-                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-2"
+                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-3 group-hover:shadow-md"
                       />
 
-                      {/* Conteúdo: Iniciais do Colaborador (ex: "AS") ou Símbolo "+" */}
+                      {/* Conteúdo: Iniciais do Colaborador (ex: "AS") ou Botão "+" */}
                       <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
                         {occupied && seat.colaborador ? (
                           <text
@@ -392,14 +435,18 @@ export default function PlantaInterativa({
                             {getInitials(seat.colaborador.nome_completo)}
                           </text>
                         ) : (
-                          <text
-                            x={0}
-                            y={half - 6}
-                            textAnchor="middle"
-                            style={{ fontSize: 20, fill: "#64748B" }}
-                          >
-                            +
-                          </text>
+                          <g transform="translate(0, 10)">
+                            {/* Botão de Adição Badged com + */}
+                            <circle r={10} fill="#3B82F6" className="group-hover:fill-blue-700 transition-colors" />
+                            <text
+                              x={0}
+                              y={4}
+                              textAnchor="middle"
+                              style={{ fontSize: 16, fill: "white", fontWeight: "bold" }}
+                            >
+                              +
+                            </text>
+                          </g>
                         )}
                       </g>
                     </g>
