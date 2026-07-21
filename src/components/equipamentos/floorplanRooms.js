@@ -1,14 +1,14 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * Atualização Sala Financeiro:
- * - 100% Fiel à imagem real de referência (orientação vertical original).
- * - Mantidos EXCLUSIVAMENTE os 4 postos de trabalho circulados em azul na imagem.
- * - Removidos todos os armários, TVs e móveis secundários não circulados.
+ * Atualização ADM — 1º Andar:
+ * - 1000% Fiel à imagem real de referência com círculos azuis.
+ * - Mantidas EXCLUSIVAMENTE as 20 mesas circuladas em azul.
+ * - Removida a mesa de reunião redonda e todos os armários/gaveteiros não circulados.
  */
 
 export const SVG_ROOMS = {
-  // 1. SALA FINANCEIRO (100% Idêntica à imagem de referência real com círculos azuis)
+  // 1. SALA FINANCEIRO (Vertical 520 x 760)
   sala_financeiro: {
     id: "financeiro",
     name: "Sala Financeiro",
@@ -16,11 +16,10 @@ export const SVG_ROOMS = {
     height: 760,
     outline: { x: 24, y: 24, w: 472, h: 712, rx: 6 },
     furniture: [
-      // Bloco Central 2x2 com as 4 Mesas Circuladas em Azul na Imagem Real
-      { kind: "desk", x: 185, y: 220, w: 110, h: 195 }, // Mesa Superior Esquerda
-      { kind: "desk", x: 297, y: 220, w: 110, h: 195 }, // Mesa Superior Direita
-      { kind: "desk", x: 185, y: 417, w: 110, h: 195 }, // Mesa Inferior Esquerda
-      { kind: "desk", x: 297, y: 417, w: 110, h: 195 }, // Mesa Inferior Direita
+      { kind: "desk", x: 185, y: 220, w: 110, h: 195 },
+      { kind: "desk", x: 297, y: 220, w: 110, h: 195 },
+      { kind: "desk", x: 185, y: 417, w: 110, h: 195 },
+      { kind: "desk", x: 297, y: 417, w: 110, h: 195 },
     ],
     seats: [
       { id: "M-01", codigo: "M-01", x: 145, y: 317, rotate: 90 },
@@ -31,7 +30,7 @@ export const SVG_ROOMS = {
     textLabels: [{ text: "SALA FINANCEIRO", x: 50, y: 560, rotate: -90, size: 24 }],
   },
 
-  // 2. ADM 1º ANDAR (1400 x 720)
+  // 2. ADM 1º ANDAR (1400 x 720 — Apenas as 20 mesas circuladas em azul)
   adm_1andar: {
     id: "adm-1andar",
     name: "ADM — 1º Andar",
@@ -39,41 +38,41 @@ export const SVG_ROOMS = {
     height: 720,
     outline: { x: 8, y: 30, w: 1384, h: 660, rx: 4 },
     furniture: [
-      { kind: "round", x: 90, y: 230, w: 90, h: 90 },
-      { kind: "cabinet", x: 24, y: 370, w: 44, h: 90 },
+      // 1. Estação L inferior esquerda
       { kind: "desk", x: 24, y: 470, w: 150, h: 120 },
-      { kind: "cabinet", x: 30, y: 630, w: 44, h: 60 },
 
-      // Bloco Central 1
+      // 2. Bloco Central 1 (3 filas x 2 tampos)
       { kind: "desk", x: 330, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 410, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 330, y: 360, w: 78, h: 130 },
       { kind: "desk", x: 410, y: 360, w: 78, h: 130 },
       { kind: "desk", x: 330, y: 506, w: 78, h: 130 },
       { kind: "desk", x: 410, y: 506, w: 78, h: 130 },
-      { kind: "cabinet", x: 330, y: 648, w: 158, h: 40 },
 
-      // Bloco Central 2
+      // 3. Bloco Central 2 (3 filas x 2 tampos)
       { kind: "desk", x: 610, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 690, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 610, y: 360, w: 78, h: 130 },
       { kind: "desk", x: 690, y: 360, w: 78, h: 130 },
       { kind: "desk", x: 610, y: 506, w: 78, h: 130 },
       { kind: "desk", x: 690, y: 506, w: 78, h: 130 },
-      { kind: "cabinet", x: 610, y: 648, w: 158, h: 40 },
 
-      // Cluster L direita
+      // 4. Cluster L direita (3 filas x 2 mesas em L)
       { kind: "block", x: 850, y: 214, w: 150, h: 120 },
       { kind: "block", x: 1015, y: 214, w: 150, h: 120 },
       { kind: "block", x: 850, y: 360, w: 150, h: 120 },
       { kind: "block", x: 1015, y: 360, w: 150, h: 120 },
       { kind: "block", x: 850, y: 506, w: 150, h: 120 },
       { kind: "block", x: 1015, y: 506, w: 150, h: 120 },
+
+      // 5. Estação L extrema direita
       { kind: "desk", x: 1220, y: 500, w: 150, h: 120 },
     ],
     seats: [
+      // 1. Estação L inferior esquerda (1 lugar)
       { id: "M-01", codigo: "M-01", x: 130, y: 560, rotate: -90 },
 
+      // 2. Bloco Central 1 (6 lugares)
       { id: "M-02", codigo: "M-02", x: 300, y: 270, rotate: 90 },
       { id: "M-03", codigo: "M-03", x: 300, y: 415, rotate: 90 },
       { id: "M-04", codigo: "M-04", x: 300, y: 560, rotate: 90 },
@@ -81,6 +80,7 @@ export const SVG_ROOMS = {
       { id: "M-06", codigo: "M-06", x: 518, y: 415, rotate: -90 },
       { id: "M-07", codigo: "M-07", x: 518, y: 560, rotate: -90 },
 
+      // 3. Bloco Central 2 (6 lugares)
       { id: "M-08", codigo: "M-08", x: 580, y: 270, rotate: 90 },
       { id: "M-09", codigo: "M-09", x: 580, y: 415, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 580, y: 560, rotate: 90 },
@@ -88,6 +88,7 @@ export const SVG_ROOMS = {
       { id: "M-12", codigo: "M-12", x: 798, y: 415, rotate: -90 },
       { id: "M-13", codigo: "M-13", x: 798, y: 560, rotate: -90 },
 
+      // 4. Cluster L direita (6 lugares)
       { id: "M-14", codigo: "M-14", x: 875, y: 320, rotate: 0 },
       { id: "M-15", codigo: "M-15", x: 1120, y: 320, rotate: 0 },
       { id: "M-16", codigo: "M-16", x: 875, y: 425, rotate: 0 },
@@ -95,6 +96,7 @@ export const SVG_ROOMS = {
       { id: "M-18", codigo: "M-18", x: 875, y: 570, rotate: 0 },
       { id: "M-19", codigo: "M-19", x: 1120, y: 570, rotate: 0 },
 
+      // 5. Estação extrema direita (1 lugar)
       { id: "M-20", codigo: "M-20", x: 1330, y: 560, rotate: 0 },
     ],
     textLabels: [],
