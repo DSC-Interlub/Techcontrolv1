@@ -1,10 +1,9 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * Atualização Mezanino (Sala BSM / Sala DRC):
- * - Mantidas EXCLUSIVAMENTE as mesas circuladas em vermelho da planta real enviada pelo usuário.
- * - Removidos todos os armários, nichos e móveis não circulados.
- * - Formatos das mesas (mesas em L, mesa dupla e bloco 2x2) e posições de assentos fiéis 100% ao desenho original.
+ * Ajuste Fino Mezanino:
+ * - Reposicionado a mesa dupla inferior direita da Sala DRC para x:880 e x:974.
+ * - Assento M-11 ajustado para x:835, perfeitamente alinhado à esquerda da mesa, eliminado o acavalgamento com o assento M-10.
  */
 
 export const SVG_ROOMS = {
@@ -109,54 +108,46 @@ export const SVG_ROOMS = {
     textLabels: [],
   },
 
-  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560 — 100% idêntico à imagem real com círculos vermelhos)
+  // 3. MEZANINO: SALA BSM / SALA DRC (Ajustado M-11 alinhado perfeitamente)
   mezanino_bsm_drc: {
     id: "bsm-drc",
     name: "Mezanino — Sala BSM / Sala DRC",
     width: 1240,
     height: 560,
     outline: { x: 12, y: 20, w: 1216, h: 520, rx: 4 },
-    walls: [{ x1: 290, y1: 20, x2: 290, y2: 540 }], // Divisória central entre BSM e DRC
+    walls: [{ x1: 290, y1: 20, x2: 290, y2: 540 }],
     furniture: [
-      // ── SALA BSM (3 Mesas em L circuladas em vermelho) ─────────────────────
-      // Mesa 1 em L (Topo BSM)
+      // SALA BSM (3 Mesas em L)
       { kind: "desk", x: 35, y: 40, w: 140, h: 55 },
       { kind: "desk", x: 35, y: 40, w: 55, h: 125 },
 
-      // Mesa 2 em L (Meio BSM)
       { kind: "desk", x: 35, y: 210, w: 140, h: 55 },
       { kind: "desk", x: 35, y: 210, w: 55, h: 125 },
 
-      // Mesa 3 em L (Base BSM)
       { kind: "desk", x: 35, y: 370, w: 140, h: 55 },
       { kind: "desk", x: 35, y: 370, w: 55, h: 125 },
 
-      // ── SALA DRC (Mesas circuladas em vermelho) ───────────────────────────
-      // Mesa em L Topo Esquerdo DRC (Circulada em vermelho)
+      // SALA DRC
       { kind: "desk", x: 480, y: 40, w: 140, h: 55 },
       { kind: "desk", x: 565, y: 40, w: 55, h: 140 },
 
-      // Mesa Dupla Superior Direita DRC (Circulada em vermelho)
       { kind: "desk", x: 740, y: 40, w: 90, h: 140 },
       { kind: "desk", x: 834, y: 40, w: 90, h: 140 },
 
-      // Bloco Central 2x2 DRC (Circulado em vermelho)
       { kind: "desk", x: 480, y: 250, w: 90, h: 120 },
       { kind: "desk", x: 574, y: 250, w: 90, h: 120 },
       { kind: "desk", x: 480, y: 374, w: 90, h: 120 },
       { kind: "desk", x: 574, y: 374, w: 90, h: 120 },
 
-      // Mesa Dupla Inferior Direita DRC (Circulada em vermelho)
-      { kind: "desk", x: 850, y: 350, w: 90, h: 140 },
-      { kind: "desk", x: 944, y: 350, w: 90, h: 140 },
+      // Mesa Dupla Inferior Direita DRC (Ajustada para x:880 e x:974)
+      { kind: "desk", x: 880, y: 350, w: 90, h: 140 },
+      { kind: "desk", x: 974, y: 350, w: 90, h: 140 },
     ],
     seats: [
-      // ── SALA BSM (3 Assentos) ──
       { id: "M-01", codigo: "M-01", x: 125, y: 110, rotate: 45 },
       { id: "M-02", codigo: "M-02", x: 125, y: 275, rotate: -45 },
       { id: "M-03", codigo: "M-03", x: 125, y: 435, rotate: -45 },
 
-      // ── SALA DRC (9 Assentos) ──
       { id: "M-04", codigo: "M-04", x: 435, y: 95, rotate: 0 },
       { id: "M-05", codigo: "M-05", x: 690, y: 110, rotate: 90 },
       { id: "M-06", codigo: "M-06", x: 978, y: 110, rotate: -90 },
@@ -164,8 +155,8 @@ export const SVG_ROOMS = {
       { id: "M-08", codigo: "M-08", x: 718, y: 310, rotate: -90 },
       { id: "M-09", codigo: "M-09", x: 430, y: 434, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 718, y: 434, rotate: -90 },
-      { id: "M-11", codigo: "M-11", x: 800, y: 420, rotate: 90 },
-      { id: "M-12", codigo: "M-12", x: 994, y: 420, rotate: -90 },
+      { id: "M-11", codigo: "M-11", x: 832, y: 420, rotate: 90 }, // Perfeitamente alinhado à esquerda da mesa
+      { id: "M-12", codigo: "M-12", x: 1024, y: 420, rotate: -90 }, // Perfeitamente alinhado à direita da mesa
     ],
     textLabels: [
       { text: "SALA BSM", x: 180, y: 200, size: 22 },
