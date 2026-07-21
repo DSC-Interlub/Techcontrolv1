@@ -1,111 +1,104 @@
 /**
- * floorplanRooms.js — Definição das 5 Salas com Imagens Realistas
+ * floorplanRooms.js — Definição da Planta Espacial Única Padronizada
  * 
- * As imagens de alta definição recriadas pelo usuário foram aplicadas como fundo base.
- * Os assentos interativos para atribuição de colaboradores ficam posicionados sobre cada cadeira.
+ * Reúne todas as 8 salas do TechControl em um único mapa interativo de alta definição (688 x 1024).
+ * Suporta zoom, atalhos de seção e posicionamento dinâmico por coordenadas/porcentagem.
  */
 
+export const UNIFIED_FLOORPLAN = {
+  id: "planta_padronizada",
+  name: "Layout Geral de Salas Padronizado",
+  image: "/plantas/planta_padronizada.png",
+  width: 688,
+  height: 1024,
+
+  // Atalhos de Zoom & Navegação Espacial por Setor
+  sections: [
+    { id: "all", label: "🗺️ Planta Geral", viewBox: "0 0 688 1024" },
+    { id: "adm", label: "🏢 ADM — 1º Andar", viewBox: "0 0 688 290" },
+    { id: "cco", label: "🖥️ CCO", viewBox: "380 280 308 150" },
+    { id: "bsm_drc", label: "📊 Sala BSM / DRC", viewBox: "230 425 458 230" },
+    { id: "galpao", label: "📦 Galpão (Bio/Reenv/Check)", viewBox: "0 310 240 714" },
+    { id: "bsm_terreo", label: "📋 Sala BSM (Térreo)", viewBox: "230 670 235 354" },
+    { id: "financeiro", label: "💰 Sala Financeiro", viewBox: "460 670 228 354" },
+  ],
+
+  // Assentos Predefinidos mapeados sobre o traço da imagem unificada (38 postos)
+  seats: [
+    // ADM 1º Andar - Mesa Reunião Redonda (Top Left)
+    { id: "ADM-01", codigo: "ADM-01", sala: "ADM — 1º Andar", x: 86, y: 45 },
+    { id: "ADM-02", codigo: "ADM-02", sala: "ADM — 1º Andar", x: 86, y: 92 },
+    { id: "ADM-03", codigo: "ADM-03", sala: "ADM — 1º Andar", x: 62, y: 68 },
+    { id: "ADM-04", codigo: "ADM-04", sala: "ADM — 1º Andar", x: 110, y: 68 },
+
+    // ADM 1º Andar - Mesa L Canto Superior Esquerdo
+    { id: "ADM-05", codigo: "ADM-05", sala: "ADM — 1º Andar", x: 75, y: 210 },
+
+    // ADM 1º Andar - Baias Duplas Bloco 1 (6 lugares)
+    { id: "ADM-06", codigo: "ADM-06", sala: "ADM — 1º Andar", x: 153, y: 80 },
+    { id: "ADM-07", codigo: "ADM-07", sala: "ADM — 1º Andar", x: 208, y: 80 },
+    { id: "ADM-08", codigo: "ADM-08", sala: "ADM — 1º Andar", x: 153, y: 138 },
+    { id: "ADM-09", codigo: "ADM-09", sala: "ADM — 1º Andar", x: 208, y: 138 },
+    { id: "ADM-10", codigo: "ADM-10", sala: "ADM — 1º Andar", x: 153, y: 196 },
+    { id: "ADM-11", codigo: "ADM-11", sala: "ADM — 1º Andar", x: 208, y: 196 },
+
+    // ADM 1º Andar - Baias Duplas Bloco 2 (6 lugares)
+    { id: "ADM-12", codigo: "ADM-12", sala: "ADM — 1º Andar", x: 265, y: 80 },
+    { id: "ADM-13", codigo: "ADM-13", sala: "ADM — 1º Andar", x: 320, y: 80 },
+    { id: "ADM-14", codigo: "ADM-14", sala: "ADM — 1º Andar", x: 265, y: 138 },
+    { id: "ADM-15", codigo: "ADM-15", sala: "ADM — 1º Andar", x: 320, y: 138 },
+    { id: "ADM-16", codigo: "ADM-16", sala: "ADM — 1º Andar", x: 265, y: 196 },
+    { id: "ADM-17", codigo: "ADM-17", sala: "ADM — 1º Andar", x: 320, y: 196 },
+
+    // ADM 1º Andar - Baias L Direita (6 lugares)
+    { id: "ADM-18", codigo: "ADM-18", sala: "ADM — 1º Andar", x: 390, y: 90 },
+    { id: "ADM-19", codigo: "ADM-19", sala: "ADM — 1º Andar", x: 440, y: 90 },
+    { id: "ADM-20", codigo: "ADM-20", sala: "ADM — 1º Andar", x: 390, y: 145 },
+    { id: "ADM-21", codigo: "ADM-21", sala: "ADM — 1º Andar", x: 440, y: 145 },
+    { id: "ADM-22", codigo: "ADM-22", sala: "ADM — 1º Andar", x: 390, y: 202 },
+    { id: "ADM-23", codigo: "ADM-23", sala: "ADM — 1º Andar", x: 440, y: 202 },
+
+    // ADM 1º Andar - Mesas Canto Direito
+    { id: "ADM-24", codigo: "ADM-24", sala: "ADM — 1º Andar", x: 638, y: 80 },
+    { id: "ADM-25", codigo: "ADM-25", sala: "ADM — 1º Andar", x: 605, y: 210 },
+
+    // CCO - Centro de Controle Operacional (2 lugares)
+    { id: "CCO-01", codigo: "CCO-01", sala: "Centro de Controle Operacional", x: 460, y: 355 },
+    { id: "CCO-02", codigo: "CCO-02", sala: "Centro de Controle Operacional", x: 635, y: 355 },
+
+    // Galpão (3 lugares)
+    { id: "CHK-01", codigo: "CHK-01", sala: "Check Out", x: 115, y: 475 },
+    { id: "REE-01", codigo: "REE-01", sala: "Sala de Reenvase", x: 115, y: 665 },
+    { id: "BIO-01", codigo: "BIO-01", sala: "Sala BIO", x: 115, y: 865 },
+
+    // Sala DRC / Sala BSM Mezanino (7 lugares)
+    { id: "BSM-01", codigo: "BSM-01", sala: "Sala BSM", x: 285, y: 505 },
+    { id: "BSM-02", codigo: "BSM-02", sala: "Sala BSM", x: 285, y: 575 },
+    { id: "DRC-01", codigo: "DRC-01", sala: "Sala DRC", x: 432, y: 490 },
+    { id: "DRC-02", codigo: "DRC-02", sala: "Sala DRC", x: 412, y: 570 },
+    { id: "DRC-03", codigo: "DRC-03", sala: "Sala DRC", x: 452, y: 570 },
+    { id: "DRC-04", codigo: "DRC-04", sala: "Sala DRC", x: 555, y: 490 },
+    { id: "DRC-05", codigo: "DRC-05", sala: "Sala DRC", x: 595, y: 608 },
+
+    // Sala BSM Térreo (3 lugares)
+    { id: "BSM-T1", codigo: "BSM-T1", sala: "Sala BSM (Térreo)", x: 308, y: 755 },
+    { id: "BSM-T2", codigo: "BSM-T2", sala: "Sala BSM (Térreo)", x: 308, y: 845 },
+    { id: "BSM-T3", codigo: "BSM-T3", sala: "Sala BSM (Térreo)", x: 308, y: 935 },
+
+    // Sala Financeiro (4 lugares)
+    { id: "FIN-01", codigo: "FIN-01", sala: "Sala Financeiro", x: 518, y: 855 },
+    { id: "FIN-02", codigo: "FIN-02", sala: "Sala Financeiro", x: 630, y: 855 },
+    { id: "FIN-03", codigo: "FIN-03", sala: "Sala Financeiro", x: 518, y: 930 },
+    { id: "FIN-04", codigo: "FIN-04", sala: "Sala Financeiro", x: 630, y: 930 },
+  ]
+};
+
+// Mantido para compatibilidade com partes existentes do sistema
 export const SVG_ROOMS = {
-  // 1. SALA FINANCEIRO (Imagem Realista 688 x 1024)
-  sala_financeiro: {
-    id: "financeiro",
-    name: "Sala Financeiro",
-    image: "/plantas/sala_financeiro.png",
-    width: 688,
-    height: 1024,
-    seats: [
-      { id: "M-01", codigo: "M-01", x: 215, y: 550, rotate: 90 },
-      { id: "M-02", codigo: "M-02", x: 475, y: 550, rotate: -90 },
-      { id: "M-03", codigo: "M-03", x: 215, y: 820, rotate: 90 },
-      { id: "M-04", codigo: "M-04", x: 475, y: 820, rotate: -90 },
-    ],
-  },
-
-  // 2. ADM 1º ANDAR (Imagem Realista 1024 x 381)
-  adm_1andar: {
-    id: "adm-1andar",
-    name: "ADM — 1º Andar",
-    image: "/plantas/adm_1andar.png",
-    width: 1024,
-    height: 381,
-    seats: [
-      { id: "M-01", codigo: "M-01", x: 95, y: 295, rotate: -90 },
-
-      { id: "M-02", codigo: "M-02", x: 228, y: 205, rotate: 90 },
-      { id: "M-03", codigo: "M-03", x: 228, y: 275, rotate: 90 },
-      { id: "M-04", codigo: "M-04", x: 228, y: 345, rotate: 90 },
-      { id: "M-05", codigo: "M-05", x: 358, y: 205, rotate: -90 },
-      { id: "M-06", codigo: "M-06", x: 358, y: 275, rotate: -90 },
-      { id: "M-07", codigo: "M-07", x: 358, y: 345, rotate: -90 },
-
-      { id: "M-08", codigo: "M-08", x: 428, y: 205, rotate: 90 },
-      { id: "M-09", codigo: "M-09", x: 428, y: 275, rotate: 90 },
-      { id: "M-10", codigo: "M-10", x: 428, y: 345, rotate: 90 },
-      { id: "M-11", codigo: "M-11", x: 558, y: 205, rotate: -90 },
-      { id: "M-12", codigo: "M-12", x: 558, y: 275, rotate: -90 },
-      { id: "M-13", codigo: "M-13", x: 558, y: 345, rotate: -90 },
-
-      { id: "M-14", codigo: "M-14", x: 648, y: 260, rotate: 0 },
-      { id: "M-15", codigo: "M-15", x: 808, y: 260, rotate: 0 },
-      { id: "M-16", codigo: "M-16", x: 648, y: 310, rotate: 0 },
-      { id: "M-17", codigo: "M-17", x: 808, y: 310, rotate: 0 },
-      { id: "M-18", codigo: "M-18", x: 648, y: 360, rotate: 0 },
-      { id: "M-19", codigo: "M-19", x: 808, y: 360, rotate: 0 },
-
-      { id: "M-20", codigo: "M-20", x: 960, y: 310, rotate: 0 },
-    ],
-  },
-
-  // 3. MEZANINO: SALA BSM / SALA DRC (Imagem Realista 1024 x 456)
-  mezanino_bsm_drc: {
-    id: "bsm-drc",
-    name: "Mezanino — Sala BSM / Sala DRC",
-    image: "/plantas/mezanino_bsm_drc.png",
-    width: 1024,
-    height: 456,
-    seats: [
-      { id: "M-01", codigo: "M-01", x: 100, y: 110, rotate: 45 },
-      { id: "M-02", codigo: "M-02", x: 100, y: 240, rotate: -45 },
-      { id: "M-03", codigo: "M-03", x: 100, y: 380, rotate: -45 },
-
-      { id: "M-04", codigo: "M-04", x: 410, y: 155, rotate: 0 },
-      { id: "M-05", codigo: "M-05", x: 625, y: 175, rotate: 90 },
-      { id: "M-06", codigo: "M-06", x: 805, y: 175, rotate: -90 },
-      { id: "M-07", codigo: "M-07", x: 370, y: 300, rotate: 90 },
-      { id: "M-08", codigo: "M-08", x: 550, y: 300, rotate: -90 },
-      { id: "M-09", codigo: "M-09", x: 370, y: 410, rotate: 90 },
-      { id: "M-10", codigo: "M-10", x: 550, y: 410, rotate: -90 },
-      { id: "M-11", codigo: "M-11", x: 725, y: 380, rotate: 90 },
-      { id: "M-12", codigo: "M-12", x: 905, y: 380, rotate: -90 },
-    ],
-  },
-
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Imagem Realista 1024 x 252)
-  galpao_bio_reenvase_checkout: {
-    id: "bio-reenvase-checkout",
-    name: "Galpão — Bio / Reenvase / Check Out",
-    image: "/plantas/galpao_bio_reenvase_checkout.png",
-    width: 1024,
-    height: 252,
-    seats: [
-      { id: "M-01", codigo: "M-01", x: 195, y: 40, rotate: 0 },
-      { id: "M-02", codigo: "M-02", x: 415, y: 55, rotate: -90 },
-      { id: "M-03", codigo: "M-03", x: 760, y: 185, rotate: 180 },
-      { id: "M-04", codigo: "M-04", x: 900, y: 185, rotate: 180 },
-    ],
-  },
-
-  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (Imagem Realista 1024 x 935)
-  galpao_centro_controle_operacional: {
-    id: "centro-controle",
-    name: "Centro de Controle Operacional",
-    image: "/plantas/galpao_centro_controle_operacional.png",
-    width: 1024,
-    height: 935,
-    seats: [
-      { id: "M-01", codigo: "M-01", x: 260, y: 300, rotate: 45 },
-      { id: "M-02", codigo: "M-02", x: 260, y: 670, rotate: -45 },
-      { id: "M-03", codigo: "M-03", x: 815, y: 350, rotate: 0 },
-    ],
-  }
+  planta_padronizada: UNIFIED_FLOORPLAN,
+  sala_financeiro: UNIFIED_FLOORPLAN,
+  adm_1andar: UNIFIED_FLOORPLAN,
+  mezanino_bsm_drc: UNIFIED_FLOORPLAN,
+  galpao_bio_reenvase_checkout: UNIFIED_FLOORPLAN,
+  galpao_centro_controle_operacional: UNIFIED_FLOORPLAN
 };
