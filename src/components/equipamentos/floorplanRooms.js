@@ -1,10 +1,10 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * Atualização ADM — 1º Andar:
+ * Atualização Galpão — Bio / Reenvase / Check Out:
  * - 1000% Fiel à imagem real de referência com círculos azuis.
- * - Mantidas EXCLUSIVAMENTE as 20 mesas circuladas em azul.
- * - Removida a mesa de reunião redonda e todos os armários/gaveteiros não circulados.
+ * - Mantidas EXCLUSIVAMENTE as 4 mesas circuladas em azul.
+ * - Removidos todos os armários, paletes, caixas e bancadas secundárias não circuladas.
  */
 
 export const SVG_ROOMS = {
@@ -30,7 +30,7 @@ export const SVG_ROOMS = {
     textLabels: [{ text: "SALA FINANCEIRO", x: 50, y: 560, rotate: -90, size: 24 }],
   },
 
-  // 2. ADM 1º ANDAR (1400 x 720 — Apenas as 20 mesas circuladas em azul)
+  // 2. ADM 1º ANDAR (1400 x 720)
   adm_1andar: {
     id: "adm-1andar",
     name: "ADM — 1º Andar",
@@ -38,10 +38,8 @@ export const SVG_ROOMS = {
     height: 720,
     outline: { x: 8, y: 30, w: 1384, h: 660, rx: 4 },
     furniture: [
-      // 1. Estação L inferior esquerda
       { kind: "desk", x: 24, y: 470, w: 150, h: 120 },
 
-      // 2. Bloco Central 1 (3 filas x 2 tampos)
       { kind: "desk", x: 330, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 410, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 330, y: 360, w: 78, h: 130 },
@@ -49,7 +47,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 330, y: 506, w: 78, h: 130 },
       { kind: "desk", x: 410, y: 506, w: 78, h: 130 },
 
-      // 3. Bloco Central 2 (3 filas x 2 tampos)
       { kind: "desk", x: 610, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 690, y: 214, w: 78, h: 130 },
       { kind: "desk", x: 610, y: 360, w: 78, h: 130 },
@@ -57,7 +54,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 610, y: 506, w: 78, h: 130 },
       { kind: "desk", x: 690, y: 506, w: 78, h: 130 },
 
-      // 4. Cluster L direita (3 filas x 2 mesas em L)
       { kind: "block", x: 850, y: 214, w: 150, h: 120 },
       { kind: "block", x: 1015, y: 214, w: 150, h: 120 },
       { kind: "block", x: 850, y: 360, w: 150, h: 120 },
@@ -65,14 +61,11 @@ export const SVG_ROOMS = {
       { kind: "block", x: 850, y: 506, w: 150, h: 120 },
       { kind: "block", x: 1015, y: 506, w: 150, h: 120 },
 
-      // 5. Estação L extrema direita
       { kind: "desk", x: 1220, y: 500, w: 150, h: 120 },
     ],
     seats: [
-      // 1. Estação L inferior esquerda (1 lugar)
       { id: "M-01", codigo: "M-01", x: 130, y: 560, rotate: -90 },
 
-      // 2. Bloco Central 1 (6 lugares)
       { id: "M-02", codigo: "M-02", x: 300, y: 270, rotate: 90 },
       { id: "M-03", codigo: "M-03", x: 300, y: 415, rotate: 90 },
       { id: "M-04", codigo: "M-04", x: 300, y: 560, rotate: 90 },
@@ -80,7 +73,6 @@ export const SVG_ROOMS = {
       { id: "M-06", codigo: "M-06", x: 518, y: 415, rotate: -90 },
       { id: "M-07", codigo: "M-07", x: 518, y: 560, rotate: -90 },
 
-      // 3. Bloco Central 2 (6 lugares)
       { id: "M-08", codigo: "M-08", x: 580, y: 270, rotate: 90 },
       { id: "M-09", codigo: "M-09", x: 580, y: 415, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 580, y: 560, rotate: 90 },
@@ -88,7 +80,6 @@ export const SVG_ROOMS = {
       { id: "M-12", codigo: "M-12", x: 798, y: 415, rotate: -90 },
       { id: "M-13", codigo: "M-13", x: 798, y: 560, rotate: -90 },
 
-      // 4. Cluster L direita (6 lugares)
       { id: "M-14", codigo: "M-14", x: 875, y: 320, rotate: 0 },
       { id: "M-15", codigo: "M-15", x: 1120, y: 320, rotate: 0 },
       { id: "M-16", codigo: "M-16", x: 875, y: 425, rotate: 0 },
@@ -96,7 +87,6 @@ export const SVG_ROOMS = {
       { id: "M-18", codigo: "M-18", x: 875, y: 570, rotate: 0 },
       { id: "M-19", codigo: "M-19", x: 1120, y: 570, rotate: 0 },
 
-      // 5. Estação extrema direita (1 lugar)
       { id: "M-20", codigo: "M-20", x: 1330, y: 560, rotate: 0 },
     ],
     textLabels: [],
@@ -155,7 +145,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT
+  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Apenas as 4 mesas circuladas em azul)
   galpao_bio_reenvase_checkout: {
     id: "bio-reenvase-checkout",
     name: "Galpão — Bio / Reenvase / Check Out",
@@ -167,38 +157,25 @@ export const SVG_ROOMS = {
       { x1: 664, y1: 12, x2: 664, y2: 228 },
     ],
     furniture: [
-      { kind: "desk", x: 165, y: 25, w: 70, h: 36, label: "Mesa BIO" },
-      { kind: "cabinet", x: 330, y: 110, w: 34, h: 90 },
+      // 1. SALA BIO: Mesa circulada topo centro
+      { kind: "desk", x: 220, y: 25, w: 90, h: 48, label: "Mesa BIO" },
 
-      { kind: "desk", x: 390, y: 25, w: 45, h: 65, label: "Reenvase 1" },
-      { kind: "cabinet", x: 390, y: 100, w: 45, h: 110 },
-      { kind: "block", x: 520, y: 180, w: 60, h: 35 },
+      // 2. SALA DE REENVASE: Mesa circulada topo esquerdo
+      { kind: "desk", x: 385, y: 25, w: 55, h: 55, label: "Reenvase 1" },
 
-      { kind: "cabinet", x: 675, y: 40, w: 25, h: 160 },
-      { kind: "block", x: 800, y: 100, w: 35, h: 80 },
-
-      { kind: "block", x: 850, y: 28, w: 35, h: 30 },
-      { kind: "block", x: 890, y: 28, w: 35, h: 30 },
-      { kind: "block", x: 930, y: 28, w: 35, h: 30 },
-      { kind: "block", x: 890, y: 65, w: 35, h: 30 },
-      { kind: "block", x: 930, y: 65, w: 35, h: 30 },
-      { kind: "block", x: 890, y: 102, w: 35, h: 30 },
-      { kind: "block", x: 930, y: 102, w: 35, h: 30 },
-      { kind: "block", x: 890, y: 139, w: 35, h: 30 },
-      { kind: "block", x: 930, y: 139, w: 35, h: 30 },
-
-      { kind: "desk", x: 740, y: 180, w: 70, h: 35 },
-      { kind: "desk", x: 830, y: 180, w: 80, h: 35 },
+      // 3. CHECK OUT: 2 Mesas circuladas na base
+      { kind: "desk", x: 735, y: 175, w: 80, h: 42 },
+      { kind: "desk", x: 835, y: 175, w: 90, h: 42 },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 200, y: 80, rotate: 0 },
-      { id: "M-02", codigo: "M-02", x: 460, y: 55, rotate: -90 },
-      { id: "M-03", codigo: "M-03", x: 775, y: 140, rotate: 180 },
-      { id: "M-04", codigo: "M-04", x: 870, y: 140, rotate: 180 },
+      { id: "M-01", codigo: "M-01", x: 265, y: 95, rotate: 0 },
+      { id: "M-02", codigo: "M-02", x: 460, y: 52, rotate: -90 },
+      { id: "M-03", codigo: "M-03", x: 775, y: 132, rotate: 180 },
+      { id: "M-04", codigo: "M-04", x: 880, y: 132, rotate: 180 },
     ],
     textLabels: [
       { text: "SALA BIO", x: 40, y: 35, size: 16 },
-      { text: "SALA DE REENVASE", x: 500, y: 35, size: 16 },
+      { text: "SALA DE REENVASE", x: 480, y: 35, size: 16 },
       { text: "CHECK OUT", x: 710, y: 35, size: 16 },
     ],
   },
