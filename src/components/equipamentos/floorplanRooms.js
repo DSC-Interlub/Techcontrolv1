@@ -1,9 +1,10 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * 1. Galpão (Bio / Reenvase / Check Out): Rótulos de texto reposicionados para não sobrepor as divisórias de parede.
- * 2. Centro de Controle Operacional (CCO): Padronizado nas mesmas dimensões Widescreen (1000x500) das outras salas.
- * 3. ADM 1º Andar: Assentos removidos da mesa redonda de reunião (vermelho) e adicionados aos postos da direita (azul).
+ * Atualização Mezanino (Sala BSM / Sala DRC):
+ * - Mantidas EXCLUSIVAMENTE as mesas circuladas em vermelho da planta real enviada pelo usuário.
+ * - Removidos todos os armários, nichos e móveis não circulados.
+ * - Formatos das mesas (mesas em L, mesa dupla e bloco 2x2) e posições de assentos fiéis 100% ao desenho original.
  */
 
 export const SVG_ROOMS = {
@@ -39,7 +40,7 @@ export const SVG_ROOMS = {
     textLabels: [{ text: "SALA FINANCEIRO", x: 460, y: 480, size: 22 }],
   },
 
-  // 2. ADM 1º ANDAR (1400 x 720) — Assentos ajustados (Removidos da mesa redonda, adicionados à direita)
+  // 2. ADM 1º ANDAR (1400 x 720)
   adm_1andar: {
     id: "adm-1andar",
     name: "ADM — 1º Andar",
@@ -47,7 +48,7 @@ export const SVG_ROOMS = {
     height: 720,
     outline: { x: 8, y: 30, w: 1384, h: 660, rx: 4 },
     furniture: [
-      { kind: "round", x: 90, y: 230, w: 90, h: 90 }, // Mesa redonda de reunião (Sem assentos de máquina)
+      { kind: "round", x: 90, y: 230, w: 90, h: 90 },
       { kind: "cabinet", x: 24, y: 370, w: 44, h: 90 },
       { kind: "desk", x: 24, y: 470, w: 150, h: 120 },
       { kind: "cabinet", x: 30, y: 630, w: 44, h: 60 },
@@ -80,10 +81,8 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 1220, y: 500, w: 150, h: 120 },
     ],
     seats: [
-      // 1. Estação L inferior esquerda
       { id: "M-01", codigo: "M-01", x: 130, y: 560, rotate: -90 },
 
-      // 2. Bloco Central 1 (6 lugares)
       { id: "M-02", codigo: "M-02", x: 300, y: 270, rotate: 90 },
       { id: "M-03", codigo: "M-03", x: 300, y: 415, rotate: 90 },
       { id: "M-04", codigo: "M-04", x: 300, y: 560, rotate: 90 },
@@ -91,7 +90,6 @@ export const SVG_ROOMS = {
       { id: "M-06", codigo: "M-06", x: 518, y: 415, rotate: -90 },
       { id: "M-07", codigo: "M-07", x: 518, y: 560, rotate: -90 },
 
-      // 3. Bloco Central 2 (6 lugares)
       { id: "M-08", codigo: "M-08", x: 580, y: 270, rotate: 90 },
       { id: "M-09", codigo: "M-09", x: 580, y: 415, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 580, y: 560, rotate: 90 },
@@ -99,68 +97,83 @@ export const SVG_ROOMS = {
       { id: "M-12", codigo: "M-12", x: 798, y: 415, rotate: -90 },
       { id: "M-13", codigo: "M-13", x: 798, y: 560, rotate: -90 },
 
-      // 4. Cluster L direita (6 postos completos conforme marcações azuis)
       { id: "M-14", codigo: "M-14", x: 875, y: 320, rotate: 0 },
       { id: "M-15", codigo: "M-15", x: 1120, y: 320, rotate: 0 },
       { id: "M-16", codigo: "M-16", x: 875, y: 425, rotate: 0 },
-      { id: "M-17", codigo: "M-17", x: 1120, y: 425, rotate: 0 }, // Adicionado (Azul)
-      { id: "M-18", codigo: "M-18", x: 875, y: 570, rotate: 0 }, // Adicionado (Azul)
-      { id: "M-19", codigo: "M-19", x: 1120, y: 570, rotate: 0 }, // Adicionado (Azul)
+      { id: "M-17", codigo: "M-17", x: 1120, y: 425, rotate: 0 },
+      { id: "M-18", codigo: "M-18", x: 875, y: 570, rotate: 0 },
+      { id: "M-19", codigo: "M-19", x: 1120, y: 570, rotate: 0 },
 
-      // 5. Estação extrema direita (Adicionado conforme marcação azul)
-      { id: "M-20", codigo: "M-20", x: 1330, y: 560, rotate: 0 }, // Adicionado (Azul)
+      { id: "M-20", codigo: "M-20", x: 1330, y: 560, rotate: 0 },
     ],
     textLabels: [],
   },
 
-  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560)
+  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560 — 100% idêntico à imagem real com círculos vermelhos)
   mezanino_bsm_drc: {
     id: "bsm-drc",
     name: "Mezanino — Sala BSM / Sala DRC",
     width: 1240,
     height: 560,
     outline: { x: 12, y: 20, w: 1216, h: 520, rx: 4 },
-    walls: [{ x1: 300, y1: 20, x2: 300, y2: 540 }],
+    walls: [{ x1: 290, y1: 20, x2: 290, y2: 540 }], // Divisória central entre BSM e DRC
     furniture: [
-      { kind: "desk", x: 40, y: 40, w: 120, h: 90 },
-      { kind: "cabinet", x: 44, y: 170, w: 44, h: 60 },
-      { kind: "desk", x: 40, y: 230, w: 120, h: 90 },
-      { kind: "cabinet", x: 44, y: 300, w: 44, h: 40 },
-      { kind: "desk", x: 40, y: 400, w: 120, h: 90 },
-      { kind: "block", x: 360, y: 40, w: 150, h: 110 },
-      { kind: "cabinet", x: 250, y: 40, w: 90, h: 40 },
-      { kind: "desk", x: 620, y: 40, w: 70, h: 110 },
-      { kind: "desk", x: 692, y: 40, w: 70, h: 110 },
-      { kind: "desk", x: 400, y: 220, w: 72, h: 90 },
-      { kind: "desk", x: 474, y: 220, w: 72, h: 90 },
-      { kind: "desk", x: 400, y: 312, w: 72, h: 90 },
-      { kind: "desk", x: 474, y: 312, w: 72, h: 90 },
-      { kind: "cabinet", x: 260, y: 230, w: 34, h: 130 },
-      { kind: "desk", x: 700, y: 320, w: 70, h: 110 },
-      { kind: "desk", x: 772, y: 320, w: 70, h: 110 },
-      { kind: "cabinet", x: 1160, y: 150, w: 44, h: 90 },
+      // ── SALA BSM (3 Mesas em L circuladas em vermelho) ─────────────────────
+      // Mesa 1 em L (Topo BSM)
+      { kind: "desk", x: 35, y: 40, w: 140, h: 55 },
+      { kind: "desk", x: 35, y: 40, w: 55, h: 125 },
+
+      // Mesa 2 em L (Meio BSM)
+      { kind: "desk", x: 35, y: 210, w: 140, h: 55 },
+      { kind: "desk", x: 35, y: 210, w: 55, h: 125 },
+
+      // Mesa 3 em L (Base BSM)
+      { kind: "desk", x: 35, y: 370, w: 140, h: 55 },
+      { kind: "desk", x: 35, y: 370, w: 55, h: 125 },
+
+      // ── SALA DRC (Mesas circuladas em vermelho) ───────────────────────────
+      // Mesa em L Topo Esquerdo DRC (Circulada em vermelho)
+      { kind: "desk", x: 480, y: 40, w: 140, h: 55 },
+      { kind: "desk", x: 565, y: 40, w: 55, h: 140 },
+
+      // Mesa Dupla Superior Direita DRC (Circulada em vermelho)
+      { kind: "desk", x: 740, y: 40, w: 90, h: 140 },
+      { kind: "desk", x: 834, y: 40, w: 90, h: 140 },
+
+      // Bloco Central 2x2 DRC (Circulado em vermelho)
+      { kind: "desk", x: 480, y: 250, w: 90, h: 120 },
+      { kind: "desk", x: 574, y: 250, w: 90, h: 120 },
+      { kind: "desk", x: 480, y: 374, w: 90, h: 120 },
+      { kind: "desk", x: 574, y: 374, w: 90, h: 120 },
+
+      // Mesa Dupla Inferior Direita DRC (Circulada em vermelho)
+      { kind: "desk", x: 850, y: 350, w: 90, h: 140 },
+      { kind: "desk", x: 944, y: 350, w: 90, h: 140 },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 130, y: 95, rotate: 0 },
-      { id: "M-02", codigo: "M-02", x: 130, y: 285, rotate: 0 },
-      { id: "M-03", codigo: "M-03", x: 130, y: 455, rotate: 0 },
-      { id: "M-04", codigo: "M-04", x: 385, y: 95, rotate: 0 },
-      { id: "M-05", codigo: "M-05", x: 590, y: 70, rotate: 90 },
-      { id: "M-06", codigo: "M-06", x: 780, y: 70, rotate: -90 },
-      { id: "M-07", codigo: "M-07", x: 372, y: 250, rotate: 90 },
-      { id: "M-08", codigo: "M-08", x: 372, y: 355, rotate: 90 },
-      { id: "M-09", codigo: "M-09", x: 574, y: 250, rotate: -90 },
-      { id: "M-10", codigo: "M-10", x: 574, y: 355, rotate: -90 },
-      { id: "M-11", codigo: "M-11", x: 670, y: 375, rotate: 90 },
-      { id: "M-12", codigo: "M-12", x: 860, y: 375, rotate: -90 },
+      // ── SALA BSM (3 Assentos) ──
+      { id: "M-01", codigo: "M-01", x: 125, y: 110, rotate: 45 },
+      { id: "M-02", codigo: "M-02", x: 125, y: 275, rotate: -45 },
+      { id: "M-03", codigo: "M-03", x: 125, y: 435, rotate: -45 },
+
+      // ── SALA DRC (9 Assentos) ──
+      { id: "M-04", codigo: "M-04", x: 435, y: 95, rotate: 0 },
+      { id: "M-05", codigo: "M-05", x: 690, y: 110, rotate: 90 },
+      { id: "M-06", codigo: "M-06", x: 978, y: 110, rotate: -90 },
+      { id: "M-07", codigo: "M-07", x: 430, y: 310, rotate: 90 },
+      { id: "M-08", codigo: "M-08", x: 718, y: 310, rotate: -90 },
+      { id: "M-09", codigo: "M-09", x: 430, y: 434, rotate: 90 },
+      { id: "M-10", codigo: "M-10", x: 718, y: 434, rotate: -90 },
+      { id: "M-11", codigo: "M-11", x: 800, y: 420, rotate: 90 },
+      { id: "M-12", codigo: "M-12", x: 994, y: 420, rotate: -90 },
     ],
     textLabels: [
-      { text: "SALA BSM", x: 90, y: 150, size: 22 },
-      { text: "SALA DRC", x: 640, y: 210, size: 26 },
+      { text: "SALA BSM", x: 180, y: 200, size: 22 },
+      { text: "SALA DRC", x: 880, y: 260, size: 26 },
     ],
   },
 
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Rótulos centralizados sem sobrepor divisórias)
+  // 4. GALPÃO: BIO / REENVASE / CHECK OUT
   galpao_bio_reenvase_checkout: {
     id: "bio-reenvase-checkout",
     name: "Galpão — Bio / Reenvase / Check Out",
@@ -172,20 +185,16 @@ export const SVG_ROOMS = {
       { x1: 664, y1: 12, x2: 664, y2: 228 },
     ],
     furniture: [
-      // SALA BIO
       { kind: "desk", x: 165, y: 25, w: 70, h: 36, label: "Mesa BIO" },
       { kind: "cabinet", x: 330, y: 110, w: 34, h: 90 },
 
-      // SALA DE REENVASE
       { kind: "desk", x: 390, y: 25, w: 45, h: 65, label: "Reenvase 1" },
       { kind: "cabinet", x: 390, y: 100, w: 45, h: 110 },
       { kind: "block", x: 520, y: 180, w: 60, h: 35 },
 
-      // CHECK OUT
       { kind: "cabinet", x: 675, y: 40, w: 25, h: 160 },
       { kind: "block", x: 800, y: 100, w: 35, h: 80 },
 
-      // Paletes do Check Out
       { kind: "block", x: 850, y: 28, w: 35, h: 30 },
       { kind: "block", x: 890, y: 28, w: 35, h: 30 },
       { kind: "block", x: 930, y: 28, w: 35, h: 30 },
@@ -196,7 +205,6 @@ export const SVG_ROOMS = {
       { kind: "block", x: 890, y: 139, w: 35, h: 30 },
       { kind: "block", x: 930, y: 139, w: 35, h: 30 },
 
-      // Mesas inferiores do Check Out
       { kind: "desk", x: 740, y: 180, w: 70, h: 35 },
       { kind: "desk", x: 830, y: 180, w: 80, h: 35 },
     ],
@@ -213,7 +221,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (Padronizado nas proporções Widescreen 1000x500 igual às outras salas)
+  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO
   galpao_centro_controle_operacional: {
     id: "centro-controle",
     name: "Centro de Controle Operacional",
@@ -221,32 +229,22 @@ export const SVG_ROOMS = {
     height: 500,
     outline: { x: 20, y: 20, w: 960, h: 460, rx: 6 },
     furniture: [
-      // Mesa em L Superior Esquerda
       { kind: "desk", x: 50, y: 50, w: 240, h: 90 },
       { kind: "desk", x: 50, y: 50, w: 90, h: 240 },
 
-      // Mesa em L Inferior Esquerda
       { kind: "desk", x: 50, y: 320, w: 240, h: 90 },
       { kind: "desk", x: 50, y: 170, w: 90, h: 240 },
 
-      // Divisória / Gaveteiro Central entre as mesas em L
       { kind: "cabinet", x: 50, y: 225, w: 90, h: 35 },
 
-      // Mesa Operacional Superior Direita
       { kind: "desk", x: 380, y: 50, w: 560, h: 100 },
 
-      // Armários Inferiores Direitos
       { kind: "cabinet", x: 380, y: 380, w: 180, h: 80 },
       { kind: "cabinet", x: 580, y: 370, w: 360, h: 90 },
     ],
     seats: [
-      // 1. Assento Superior Esquerdo
       { id: "M-01", codigo: "M-01", x: 210, y: 190, rotate: 45 },
-
-      // 2. Assento Inferior Esquerdo
       { id: "M-02", codigo: "M-02", x: 210, y: 310, rotate: -45 },
-
-      // 3. Assento Superior Direito
       { id: "M-03", codigo: "M-03", x: 760, y: 190, rotate: 0 },
     ],
     textLabels: [
