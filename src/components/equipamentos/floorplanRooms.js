@@ -1,13 +1,13 @@
 /**
- * floorplanRooms.js — Desenhos Vetoriais SVG Atualizados
+ * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * 1. Sala Financeiro: Formatada DEITADA (Horizontal Landscape).
- * 2. Galpão — Bio / Reenvase / Check Out: Posição dos assentos corrigidos exatamente conforme Imagem 1 em anexo.
- * 3. Centro de Controle Operacional (CCO): Layout e os 3 assentos posicionados exatamente conforme Imagem 2 em anexo.
+ * 1. Galpão (Bio / Reenvase / Check Out): Rótulos de texto reposicionados para não sobrepor as divisórias de parede.
+ * 2. Centro de Controle Operacional (CCO): Padronizado nas mesmas dimensões Widescreen (1000x500) das outras salas.
+ * 3. ADM 1º Andar: Assentos removidos da mesa redonda de reunião (vermelho) e adicionados aos postos da direita (azul).
  */
 
 export const SVG_ROOMS = {
-  // 1. SALA FINANCEIRO (Formatada DEITADA / Horizontal 1000 x 540)
+  // 1. SALA FINANCEIRO (Horizontal 1000 x 540)
   sala_financeiro: {
     id: "financeiro",
     name: "Sala Financeiro",
@@ -39,7 +39,7 @@ export const SVG_ROOMS = {
     textLabels: [{ text: "SALA FINANCEIRO", x: 460, y: 480, size: 22 }],
   },
 
-  // 2. ADM 1º ANDAR (1400 x 720)
+  // 2. ADM 1º ANDAR (1400 x 720) — Assentos ajustados (Removidos da mesa redonda, adicionados à direita)
   adm_1andar: {
     id: "adm-1andar",
     name: "ADM — 1º Andar",
@@ -47,7 +47,7 @@ export const SVG_ROOMS = {
     height: 720,
     outline: { x: 8, y: 30, w: 1384, h: 660, rx: 4 },
     furniture: [
-      { kind: "round", x: 90, y: 230, w: 90, h: 90 },
+      { kind: "round", x: 90, y: 230, w: 90, h: 90 }, // Mesa redonda de reunião (Sem assentos de máquina)
       { kind: "cabinet", x: 24, y: 370, w: 44, h: 90 },
       { kind: "desk", x: 24, y: 470, w: 150, h: 120 },
       { kind: "cabinet", x: 30, y: 630, w: 44, h: 60 },
@@ -80,26 +80,35 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 1220, y: 500, w: 150, h: 120 },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 90, y: 175, rotate: 180 },
-      { id: "M-02", codigo: "M-02", x: 40, y: 230, rotate: 90 },
-      { id: "M-03", codigo: "M-03", x: 90, y: 285, rotate: 0 },
-      { id: "M-04", codigo: "M-04", x: 145, y: 230, rotate: -90 },
-      { id: "M-05", codigo: "M-05", x: 130, y: 560, rotate: -90 },
-      { id: "M-06", codigo: "M-06", x: 300, y: 270, rotate: 90 },
-      { id: "M-07", codigo: "M-07", x: 300, y: 415, rotate: 90 },
-      { id: "M-08", codigo: "M-08", x: 300, y: 560, rotate: 90 },
-      { id: "M-09", codigo: "M-09", x: 518, y: 270, rotate: -90 },
-      { id: "M-10", codigo: "M-10", x: 518, y: 415, rotate: -90 },
-      { id: "M-11", codigo: "M-11", x: 518, y: 560, rotate: -90 },
-      { id: "M-12", codigo: "M-12", x: 580, y: 270, rotate: 90 },
-      { id: "M-13", codigo: "M-13", x: 580, y: 415, rotate: 90 },
-      { id: "M-14", codigo: "M-14", x: 580, y: 560, rotate: 90 },
-      { id: "M-15", codigo: "M-15", x: 798, y: 270, rotate: -90 },
-      { id: "M-16", codigo: "M-16", x: 798, y: 415, rotate: -90 },
-      { id: "M-17", codigo: "M-17", x: 798, y: 560, rotate: -90 },
-      { id: "M-18", codigo: "M-18", x: 875, y: 320, rotate: 0 },
-      { id: "M-19", codigo: "M-19", x: 1120, y: 320, rotate: 0 },
-      { id: "M-20", codigo: "M-20", x: 875, y: 425, rotate: 0 },
+      // 1. Estação L inferior esquerda
+      { id: "M-01", codigo: "M-01", x: 130, y: 560, rotate: -90 },
+
+      // 2. Bloco Central 1 (6 lugares)
+      { id: "M-02", codigo: "M-02", x: 300, y: 270, rotate: 90 },
+      { id: "M-03", codigo: "M-03", x: 300, y: 415, rotate: 90 },
+      { id: "M-04", codigo: "M-04", x: 300, y: 560, rotate: 90 },
+      { id: "M-05", codigo: "M-05", x: 518, y: 270, rotate: -90 },
+      { id: "M-06", codigo: "M-06", x: 518, y: 415, rotate: -90 },
+      { id: "M-07", codigo: "M-07", x: 518, y: 560, rotate: -90 },
+
+      // 3. Bloco Central 2 (6 lugares)
+      { id: "M-08", codigo: "M-08", x: 580, y: 270, rotate: 90 },
+      { id: "M-09", codigo: "M-09", x: 580, y: 415, rotate: 90 },
+      { id: "M-10", codigo: "M-10", x: 580, y: 560, rotate: 90 },
+      { id: "M-11", codigo: "M-11", x: 798, y: 270, rotate: -90 },
+      { id: "M-12", codigo: "M-12", x: 798, y: 415, rotate: -90 },
+      { id: "M-13", codigo: "M-13", x: 798, y: 560, rotate: -90 },
+
+      // 4. Cluster L direita (6 postos completos conforme marcações azuis)
+      { id: "M-14", codigo: "M-14", x: 875, y: 320, rotate: 0 },
+      { id: "M-15", codigo: "M-15", x: 1120, y: 320, rotate: 0 },
+      { id: "M-16", codigo: "M-16", x: 875, y: 425, rotate: 0 },
+      { id: "M-17", codigo: "M-17", x: 1120, y: 425, rotate: 0 }, // Adicionado (Azul)
+      { id: "M-18", codigo: "M-18", x: 875, y: 570, rotate: 0 }, // Adicionado (Azul)
+      { id: "M-19", codigo: "M-19", x: 1120, y: 570, rotate: 0 }, // Adicionado (Azul)
+
+      // 5. Estação extrema direita (Adicionado conforme marcação azul)
+      { id: "M-20", codigo: "M-20", x: 1330, y: 560, rotate: 0 }, // Adicionado (Azul)
     ],
     textLabels: [],
   },
@@ -151,7 +160,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Posições corrigidas idênticas à Imagem 1)
+  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Rótulos centralizados sem sobrepor divisórias)
   galpao_bio_reenvase_checkout: {
     id: "bio-reenvase-checkout",
     name: "Galpão — Bio / Reenvase / Check Out",
@@ -163,20 +172,20 @@ export const SVG_ROOMS = {
       { x1: 664, y1: 12, x2: 664, y2: 228 },
     ],
     furniture: [
-      // SALA BIO (Mesa superior circulada na Imagem 1)
+      // SALA BIO
       { kind: "desk", x: 165, y: 25, w: 70, h: 36, label: "Mesa BIO" },
       { kind: "cabinet", x: 330, y: 110, w: 34, h: 90 },
 
-      // SALA DE REENVASE (Mesa superior circulada na Imagem 1)
+      // SALA DE REENVASE
       { kind: "desk", x: 390, y: 25, w: 45, h: 65, label: "Reenvase 1" },
       { kind: "cabinet", x: 390, y: 100, w: 45, h: 110 },
       { kind: "block", x: 520, y: 180, w: 60, h: 35 },
 
-      // CHECK OUT (Mesas inferiores circuladas na Imagem 1)
+      // CHECK OUT
       { kind: "cabinet", x: 675, y: 40, w: 25, h: 160 },
       { kind: "block", x: 800, y: 100, w: 35, h: 80 },
 
-      // Paletes do Check Out (grid superior direita)
+      // Paletes do Check Out
       { kind: "block", x: 850, y: 28, w: 35, h: 30 },
       { kind: "block", x: 890, y: 28, w: 35, h: 30 },
       { kind: "block", x: 930, y: 28, w: 35, h: 30 },
@@ -187,69 +196,61 @@ export const SVG_ROOMS = {
       { kind: "block", x: 890, y: 139, w: 35, h: 30 },
       { kind: "block", x: 930, y: 139, w: 35, h: 30 },
 
-      // Mesas inferiores do Check Out (circuladas na Imagem 1)
+      // Mesas inferiores do Check Out
       { kind: "desk", x: 740, y: 180, w: 70, h: 35 },
       { kind: "desk", x: 830, y: 180, w: 80, h: 35 },
     ],
     seats: [
-      // 1. SALA BIO (Assento no topo centro da Sala Bio)
       { id: "M-01", codigo: "M-01", x: 200, y: 80, rotate: 0 },
-
-      // 2. SALA DE REENVASE (Assento no topo esquerdo da Sala de Reenvase)
       { id: "M-02", codigo: "M-02", x: 460, y: 55, rotate: -90 },
-
-      // 3. CHECK OUT - Mesa Inferior Esquerda (Circulada na Imagem 1)
       { id: "M-03", codigo: "M-03", x: 775, y: 140, rotate: 180 },
-
-      // 4. CHECK OUT - Mesa Inferior Direita (Circulada na Imagem 1)
       { id: "M-04", codigo: "M-04", x: 870, y: 140, rotate: 180 },
     ],
     textLabels: [
-      { text: "SALA BIO", x: 30, y: 35, size: 16 },
-      { text: "SALA DE REENVASE", x: 640, y: 35, size: 16 },
-      { text: "CHECK OUT", x: 700, y: 35, size: 16 },
+      { text: "SALA BIO", x: 40, y: 35, size: 16 },
+      { text: "SALA DE REENVASE", x: 500, y: 35, size: 16 },
+      { text: "CHECK OUT", x: 710, y: 35, size: 16 },
     ],
   },
 
-  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (100% Idêntico à Imagem 2)
+  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (Padronizado nas proporções Widescreen 1000x500 igual às outras salas)
   galpao_centro_controle_operacional: {
     id: "centro-controle",
     name: "Centro de Controle Operacional",
-    width: 520,
-    height: 480,
-    outline: { x: 20, y: 20, w: 480, h: 440, rx: 4 },
+    width: 1000,
+    height: 500,
+    outline: { x: 20, y: 20, w: 960, h: 460, rx: 6 },
     furniture: [
       // Mesa em L Superior Esquerda
-      { kind: "desk", x: 35, y: 35, w: 140, h: 50 },
-      { kind: "desk", x: 35, y: 35, w: 50, h: 140 },
+      { kind: "desk", x: 50, y: 50, w: 240, h: 90 },
+      { kind: "desk", x: 50, y: 50, w: 90, h: 240 },
 
       // Mesa em L Inferior Esquerda
-      { kind: "desk", x: 35, y: 265, w: 140, h: 50 },
-      { kind: "desk", x: 35, y: 175, w: 50, h: 140 },
+      { kind: "desk", x: 50, y: 320, w: 240, h: 90 },
+      { kind: "desk", x: 50, y: 170, w: 90, h: 240 },
 
       // Divisória / Gaveteiro Central entre as mesas em L
-      { kind: "cabinet", x: 35, y: 165, w: 50, h: 20 },
+      { kind: "cabinet", x: 50, y: 225, w: 90, h: 35 },
 
       // Mesa Operacional Superior Direita
-      { kind: "desk", x: 195, y: 35, w: 280, h: 65 },
+      { kind: "desk", x: 380, y: 50, w: 560, h: 100 },
 
       // Armários Inferiores Direitos
-      { kind: "cabinet", x: 195, y: 390, w: 75, h: 50 },
-      { kind: "cabinet", x: 280, y: 385, w: 195, h: 55 },
+      { kind: "cabinet", x: 380, y: 380, w: 180, h: 80 },
+      { kind: "cabinet", x: 580, y: 370, w: 360, h: 90 },
     ],
     seats: [
-      // 1. Assento Superior Esquerdo (Circulado na Imagem 2)
-      { id: "M-01", codigo: "M-01", x: 115, y: 110, rotate: 45 },
+      // 1. Assento Superior Esquerdo
+      { id: "M-01", codigo: "M-01", x: 210, y: 190, rotate: 45 },
 
-      // 2. Assento Inferior Esquerdo (Circulado na Imagem 2)
-      { id: "M-02", codigo: "M-02", x: 115, y: 235, rotate: -45 },
+      // 2. Assento Inferior Esquerdo
+      { id: "M-02", codigo: "M-02", x: 210, y: 310, rotate: -45 },
 
-      // 3. Assento Superior Direito (Circulado na Imagem 2)
-      { id: "M-03", codigo: "M-03", x: 410, y: 120, rotate: 0 },
+      // 3. Assento Superior Direito
+      { id: "M-03", codigo: "M-03", x: 760, y: 190, rotate: 0 },
     ],
     textLabels: [
-      { text: "CENTRO DE CONTROLE", x: 330, y: 230, size: 20 },
-      { text: "OPERACIONAL", x: 330, y: 260, size: 20 }
+      { text: "CENTRO DE CONTROLE OPERACIONAL", x: 650, y: 280, size: 22 }
     ],
   }
 };

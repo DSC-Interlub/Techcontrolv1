@@ -1,10 +1,10 @@
 /**
  * PlantaInterativa.jsx — Réplica 100% Vetorial e Fiel ao v0
  * 
- * 1. Uso EXCLUSIVO de desenho vetorial SVG (opções "Imagem/Vetorial" removidas).
- * 2. Sala Financeiro deitada em formato horizontal landscape.
- * 3. Galpão (Bio, Reenvase, Check Out) com posições fiéis à Imagem 1 em anexo.
- * 4. Centro de Controle Operacional (CCO) com 3 assentos e mesas fiéis à Imagem 2 em anexo.
+ * Correções aplicadas:
+ * 1. Nomes das salas sem sobreposição com as divisórias de parede (Galpão Bio/Reenvase/Checkout).
+ * 2. CCO padronizado na mesma escala Widescreen 1000x500 das outras salas.
+ * 3. ADM 1º Andar com os assentos removidos da mesa de reunião (vermelho) e adicionados aos postos da direita (azul).
  */
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,7 +45,6 @@ export const SALAS = [
   }
 ];
 
-// Helper para obter as iniciais (ex: "Ana Silva" -> "AS")
 function getInitials(name) {
   if (!name) return "??";
   const parts = name.trim().split(/\s+/);
@@ -53,7 +52,6 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Cores para iniciais ocupadas (#4F46E5, #2563EB, #059669, #D97706, #7C3AED)
 const AVATAR_COLORS = [
   "#4F46E5", "#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#0284C7"
 ];
@@ -229,7 +227,7 @@ export default function PlantaInterativa({
         })}
       </div>
 
-      {/* ── MOLDURA DA PLANTA VETORIAL (DESIGN V0 100% PURO) ─────────────── */}
+      {/* ── MOLDURA DA PLANTA VETORIAL ──────────────────────────────────── */}
       <Card className="shadow-xs border-gray-200 bg-white rounded-2xl overflow-hidden">
         {/* Cabeçalho do v0: Título à esquerda, Estatísticas à direita */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-gray-100 bg-gray-50/30">
