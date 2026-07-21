@@ -1,16 +1,17 @@
 /**
- * PlantaInterativa.jsx — Mapeamento Espacial Vetorial (Landscape 16:9 & Botão "+" Interativo)
+ * PlantaInterativa.jsx — Réplica 100% Fiel do Projeto v0 (Planta Vetorial SVG + Assentos com "+")
  * 
- * 1. Formato 100% deitado/horizontal (16:9 widescreen) padronizado para todas as 5 salas.
- * 2. Botão "+" de criação/atribuição direta sobre cada lugar vago ou em qualquer ponto da planta.
- * 3. Resolução 8K matemática vetorial em SVG (0% pixelação).
+ * 1. Visual 100% idêntico às imagens do v0 (Paredes pretas de 5px, móveis com stroke escuro, assentos tracejados com "+", encosto de cadeira e iniciais coloridas).
+ * 2. Contador no topo direito: "X Lugares  Y Ocupados  Z Livres".
+ * 3. Assentos Vagos: Retângulo tracejado com encosto + símbolo "+" no centro. Ao clicar, abre atribuição de colaborador/máquinas.
+ * 4. Assentos Ocupados: Preenchimento com cor sólida (ex: Azul/Roxo #4F46E5) + Iniciais do colaborador em branco (ex: "AS").
  */
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { SVG_ROOMS } from "./floorplanRooms";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,54 +19,64 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Monitor, Laptop, Eye, Plus, Pencil, Trash2, MapPin,
-  Move, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CheckCircle, User, Loader2,
-  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon,
-  PlusCircle, UserPlus
+  Monitor, Laptop, Pencil, Trash2, AlertTriangle, UserPlus,
+  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon
 } from "lucide-react";
 
 export const SALAS = [
   {
     id: "sala_financeiro",
     nome: "Sala Financeiro",
-    descricao: "Escritório do Departamento Financeiro",
-    imagem: "/plantas/sala_financeiro.png",
+    descricao: "4 Lugares",
     icon: DollarSign,
-    corBadge: "bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold"
   },
   {
     id: "adm_1andar",
-    nome: "ADM 1º Andar (Área Aberta)",
-    descricao: "Bancadas abertas da Administração no 1º Andar",
-    imagem: "/plantas/adm_1andar.png",
+    nome: "ADM — 1º Andar",
+    descricao: "20 Lugares",
     icon: Briefcase,
-    corBadge: "bg-blue-50 text-blue-700 border-blue-200 font-semibold"
   },
   {
     id: "mezanino_bsm_drc",
-    nome: "Mezanino (BSM & DRC)",
-    descricao: "Salas BSM e DRC no Mezanino",
-    imagem: "/plantas/mezanino_bsm_drc.png",
+    nome: "Mezanino — Sala BSM / Sala DRC",
+    descricao: "12 Lugares",
     icon: Building,
-    corBadge: "bg-purple-50 text-purple-700 border-purple-200 font-semibold"
   },
   {
     id: "galpao_bio_reenvase_checkout",
-    nome: "Galpão (BIO, Reenvase & Check-out)",
-    descricao: "Área de BIO, Reenvase e Check-out",
-    imagem: "/plantas/galpao_bio_reenvase_checkout.png",
+    nome: "Galpão — Bio / Reenvase / Check Out",
+    descricao: "3 Lugares",
     icon: Package,
-    corBadge: "bg-amber-50 text-amber-700 border-amber-200 font-semibold"
   },
   {
     id: "galpao_centro_controle_operacional",
-    nome: "Centro de Controle Operacional (CCO)",
-    descricao: "Central de Operações e Monitoramento Operacional",
-    imagem: "/plantas/galpao_centro_controle_operacional.png",
+    nome: "Centro de Controle Operacional",
+    descricao: "2 Lugares",
     icon: Activity,
-    corBadge: "bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold"
   }
 ];
+
+// Helper para obter as iniciais (ex: "Ana Silva" -> "AS")
+function getInitials(name) {
+  if (!name) return "??";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// CORES DE ATRIBUIÇÃO ESTILO V0 (#4F46E5, #2563EB, #059669, #D97706, #7C3AED)
+const AVATAR_COLORS = [
+  "#4F46E5", "#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#0284C7"
+];
+
+function getColabColor(colabId) {
+  if (!colabId) return "#4F46E5";
+  let hash = 0;
+  for (let i = 0; i < colabId.length; i++) {
+    hash = colabId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 export default function PlantaInterativa({
   isAdmin = true,
@@ -76,21 +87,14 @@ export default function PlantaInterativa({
 }) {
   const queryClient = useQueryClient();
   const [salaAtivaId, setSalaAtivaId] = useState("sala_financeiro");
-  const [renderMode, setRenderMode] = useState("svg");
-  const [modoEdicao, setModoEdicao] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [draggingStation, setDraggingStation] = useState(null);
-  const [selectedStation, setSelectedStation] = useState(null);
+  const [renderMode, setRenderMode] = useState("svg"); // "svg" ou "image"
+  const [selectedSeat, setSelectedSeat] = useState(null);
 
   // Modal de Criação / Atribuição
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newStationPos, setNewStationPos] = useState({ x: 50, y: 50 });
-  const [newStationCodigo, setNewStationCodigo] = useState("");
-  const [newStationColaborador, setNewStationColaborador] = useState("__none__");
+  const [modalStationCodigo, setModalStationCodigo] = useState("");
+  const [modalColaboradorId, setModalColaboradorId] = useState("__none__");
   const [selectedEquipmentsToAssign, setSelectedEquipmentsToAssign] = useState([]);
-
-  const imgRef = useRef(null);
-  const svgRef = useRef(null);
 
   const salaAtual = useMemo(() => SALAS.find(s => s.id === salaAtivaId) || SALAS[0], [salaAtivaId]);
   const svgRoom = useMemo(() => SVG_ROOMS[salaAtual.id], [salaAtual]);
@@ -110,9 +114,9 @@ export default function PlantaInterativa({
         for (const eqId of selectedEquipmentsToAssign) {
           await base44.entities.PCs_Internos.update(eqId, {
             estacao_id: novaEstacao.id,
-            ...(newStationColaborador !== "__none__" ? {
-              colaborador_id: newStationColaborador,
-              usuario_atual: colaboradores.find(c => c.id === newStationColaborador)?.nome_completo || "",
+            ...(modalColaboradorId !== "__none__" ? {
+              colaborador_id: modalColaboradorId,
+              usuario_atual: colaboradores.find(c => c.id === modalColaboradorId)?.nome_completo || "",
               status: "Em uso"
             } : {})
           });
@@ -138,7 +142,7 @@ export default function PlantaInterativa({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['estacoes_trabalho'] });
       queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
-      setSelectedStation(null);
+      setSelectedSeat(null);
     }
   });
 
@@ -151,548 +155,307 @@ export default function PlantaInterativa({
 
   // Estações salvas no DB para a sala ativa
   const estacoesDaSala = useMemo(() => {
-    return estacoes.filter(e => e.sala === salaAtual.nome || e.imagem_planta === salaAtual.id || e.imagem_planta === salaAtual.imagem);
+    return estacoes.filter(e => e.sala === salaAtual.nome || e.imagem_planta === salaAtual.id);
   }, [estacoes, salaAtual]);
 
-  // Lista mesclada de lugares (combina assentos padrão do SVG com estações personalizadas do DB)
-  const displaySeats = useMemo(() => {
-    const mapByCodigo = new Map();
+  // Lista de assentos mapeando o SVG e o DB
+  const mappedSeats = useMemo(() => {
+    if (!svgRoom?.seats) return [];
+    return svgRoom.seats.map(seat => {
+      const dbEst = estacoesDaSala.find(e => e.codigo === seat.codigo || e.codigo === seat.id);
+      const colab = dbEst?.colaborador_id ? colaboradores.find(c => c.id === dbEst.colaborador_id) : null;
+      const eqVinculados = dbEst?.id
+        ? equipamentos.filter(eq => eq.estacao_id === dbEst.id)
+        : colab ? equipamentos.filter(eq => eq.colaborador_id === colab.id) : [];
 
-    // 1. Assentos vetoriais pré-configurados da sala
-    if (svgRoom?.seats) {
-      for (const seat of svgRoom.seats) {
-        const dbStation = estacoesDaSala.find(e => e.codigo === seat.codigo);
-        mapByCodigo.set(seat.codigo, {
-          id: dbStation?.id || seat.id,
-          codigo: seat.codigo,
-          pos_x: dbStation ? dbStation.pos_x : seat.posX,
-          pos_y: dbStation ? dbStation.pos_y : seat.posY,
-          colaborador_id: dbStation?.colaborador_id || null,
-          isDb: !!dbStation,
-          dbRecord: dbStation,
-          svgSeat: seat
-        });
-      }
+      return {
+        ...seat,
+        dbId: dbEst?.id || null,
+        colaborador: colab,
+        colaborador_id: dbEst?.colaborador_id || null,
+        eqVinculados,
+        isOcupado: !!colab || eqVinculados.length > 0
+      };
+    });
+  }, [svgRoom, estacoesDaSala, colaboradores, equipamentos]);
+
+  // Estatísticas v0
+  const roomStats = useMemo(() => {
+    const total = mappedSeats.length;
+    const occupied = mappedSeats.filter(s => s.isOcupado).length;
+    const free = total - occupied;
+    return { total, occupied, free };
+  }, [mappedSeats]);
+
+  // Abrir Modal de Atribuição
+  const handleSeatClick = (seat) => {
+    setSelectedSeat(seat);
+    setModalStationCodigo(seat.codigo || seat.id);
+    setModalColaboradorId(seat.colaborador_id || "__none__");
+    setSelectedEquipmentsToAssign([]);
+    setShowCreateModal(true);
+  };
+
+  const handleAssignSubmit = (e) => {
+    e.preventDefault();
+    const colabVal = modalColaboradorId === "__none__" ? null : modalColaboradorId;
+
+    if (selectedSeat?.dbId) {
+      updateEstacaoMut.mutate({
+        id: selectedSeat.dbId,
+        data: { colaborador_id: colabVal }
+      });
+      setShowCreateModal(false);
+    } else {
+      createEstacaoMut.mutate({
+        andar: salaAtual.nome,
+        sala: salaAtual.nome,
+        imagem_planta: salaAtual.id,
+        codigo: modalStationCodigo,
+        pos_x: selectedSeat.x,
+        pos_y: selectedSeat.y,
+        colaborador_id: colabVal
+      });
     }
-
-    // 2. Estações extras criadas manualmente no DB que não eram padrão
-    for (const est of estacoesDaSala) {
-      if (!mapByCodigo.has(est.codigo)) {
-        mapByCodigo.set(est.codigo, {
-          id: est.id,
-          codigo: est.codigo,
-          pos_x: est.pos_x,
-          pos_y: est.pos_y,
-          colaborador_id: est.colaborador_id,
-          isDb: true,
-          dbRecord: est
-        });
-      }
-    }
-
-    return Array.from(mapByCodigo.values());
-  }, [svgRoom, estacoesDaSala]);
+  };
 
   // Equipamentos sem estação
   const equipamentosSemEstacao = useMemo(() => {
     return equipamentos.filter(e => !e.estacao_id);
   }, [equipamentos]);
 
-  // Drag and Drop
-  const handlePinMouseDown = (e, station) => {
-    if (!modoEdicao) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setDraggingStation(station);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!modoEdicao || !draggingStation) return;
-    const refElem = renderMode === "image" ? imgRef.current : svgRef.current;
-    if (!refElem) return;
-
-    const rect = refElem.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    const posX = Math.max(2, Math.min(98, parseFloat(x.toFixed(2))));
-    const posY = Math.max(2, Math.min(98, parseFloat(y.toFixed(2))));
-
-    setDraggingStation(prev => prev ? { ...prev, pos_x: posX, pos_y: posY } : null);
-  };
-
-  const handleMouseUp = () => {
-    if (draggingStation) {
-      if (draggingStation.isDb) {
-        updateEstacaoMut.mutate({
-          id: draggingStation.id,
-          data: { pos_x: draggingStation.pos_x, pos_y: draggingStation.pos_y }
-        });
-      } else {
-        // Se era um assento SVG pré-configurado ainda não gravado no DB, cria o registro ao arrastar
-        createEstacaoMut.mutate({
-          andar: salaAtual.nome,
-          sala: salaAtual.nome,
-          imagem_planta: salaAtual.id,
-          codigo: draggingStation.codigo,
-          pos_x: draggingStation.pos_x,
-          pos_y: draggingStation.pos_y,
-          colaborador_id: null
-        });
-      }
-      setDraggingStation(null);
-    }
-  };
-
-  // Abrir Modal de Atribuição Direta ao Clicar no Botão "+"
-  const handlePlusClick = (seat, e) => {
-    e?.stopPropagation();
-    setNewStationPos({ x: seat.pos_x, y: seat.pos_y });
-    setNewStationCodigo(seat.codigo);
-    setNewStationColaborador("__none__");
-    setSelectedEquipmentsToAssign([]);
-    setShowCreateModal(true);
-  };
-
-  // Clique na planta em área vazia (Modo Edição)
-  const handleContainerClick = (e) => {
-    if (!modoEdicao || draggingStation) return;
-    const refElem = renderMode === "image" ? imgRef.current : svgRef.current;
-    if (!refElem) return;
-
-    const rect = refElem.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-    const posX = Math.max(2, Math.min(98, parseFloat(x.toFixed(2))));
-    const posY = Math.max(2, Math.min(98, parseFloat(y.toFixed(2))));
-
-    setNewStationPos({ x: posX, y: posY });
-    const num = displaySeats.length + 1;
-    setNewStationCodigo(`M-${num < 10 ? '0' + num : num}`);
-    setNewStationColaborador("__none__");
-    setSelectedEquipmentsToAssign([]);
-    setShowCreateModal(true);
-  };
-
-  const handleCreateStationSubmit = (e) => {
-    e.preventDefault();
-    createEstacaoMut.mutate({
-      andar: salaAtual.nome,
-      sala: salaAtual.nome,
-      imagem_planta: salaAtual.id,
-      codigo: newStationCodigo,
-      pos_x: newStationPos.x,
-      pos_y: newStationPos.y,
-      colaborador_id: newStationColaborador === "__none__" ? null : newStationColaborador,
-    });
-  };
-
-  // Status do Marcador de Estação
-  const getEstacaoStatus = (station) => {
-    const colab = colaboradores.find(c => c.id === station.colaborador_id);
-    const eqVinculados = equipamentos.filter(eq => (station.id && eq.estacao_id === station.id) || (colab && eq.colaborador_id === colab.id));
-
-    if (!station.colaborador_id && eqVinculados.length === 0) {
-      return { cor: "bg-slate-100 text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-200", label: "Vaga", tipo: "vaga", colab, eqVinculados };
-    }
-
-    const temChamadoAberto = colab ? chamados.some(c =>
-      (c.solicitante_nome === colab.nome_completo || c.solicitante_email === colab.email) &&
-      !['Resolvido', 'Cancelado'].includes(c.status)
-    ) : false;
-
-    const temEquipManutencao = eqVinculados.some(eq => ['Manutenção', 'Formatação', 'Danificado'].includes(eq.status));
-
-    if (temChamadoAberto || temEquipManutencao) {
-      return { cor: "bg-amber-500 text-white border-amber-600 shadow-md animate-pulse", label: "Alerta / Manutenção", tipo: "alerta", colab, eqVinculados, temChamadoAberto, temEquipManutencao };
-    }
-
-    return { cor: "bg-emerald-600 text-white border-emerald-700 shadow-md", label: "Operacional", tipo: "operacional", colab, eqVinculados };
-  };
-
-  // Estatísticas
-  const statsSala = useMemo(() => {
-    const totalMesas = displaySeats.length;
-    const ocupadas = displaySeats.filter(e => e.colaborador_id).length;
-    const vagas = totalMesas - ocupadas;
-    const alertas = displaySeats.filter(e => getEstacaoStatus(e).tipo === "alerta").length;
-    return { totalMesas, ocupadas, vagas, alertas };
-  }, [displaySeats, equipamentos, colaboradores, chamados]);
-
-  const SalaIcon = salaAtual.icon;
-
   return (
     <div className="space-y-6">
-      {/* ── BARRA DE SELEÇÃO DAS 5 SALAS (LANDSCAPE DEITADA) ─────────────── */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-          {SALAS.map(sala => {
-            const Icon = sala.icon;
-            const isSelected = salaAtivaId === sala.id;
-            const qtdMesas = estacoes.filter(e => e.sala === sala.nome || e.imagem_planta === sala.id).length;
-
-            return (
-              <button
-                key={sala.id}
-                onClick={() => setSalaAtivaId(sala.id)}
-                className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
-                  isSelected
-                    ? "border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-500"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 rounded-lg ${isSelected ? "bg-blue-600 text-white shadow-xs" : "bg-gray-100 text-gray-600"}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <Badge className={`text-[10px] ${sala.corBadge}`}>
-                    {qtdMesas} mesa{qtdMesas !== 1 ? "s" : ""}
-                  </Badge>
-                </div>
-                <div>
-                  <p className={`font-bold text-xs ${isSelected ? "text-blue-950" : "text-gray-900"}`}>{sala.nome}</p>
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">{sala.descricao}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+      {/* ── BARRA DE SELEÇÃO DAS SALAS (ESTILO ABAS V0) ────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {SALAS.map(sala => {
+          const isSelected = salaAtivaId === sala.id;
+          return (
+            <button
+              key={sala.id}
+              onClick={() => {
+                setSalaAtivaId(sala.id);
+                setSelectedSeat(null);
+              }}
+              className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all duration-150 shadow-2xs ${
+                isSelected
+                  ? "border-blue-600 bg-blue-600 text-white shadow-xs"
+                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+              }`}
+            >
+              {sala.nome}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── CARD DA SALA (FORMATO DEITADO LANDSCAPE 16:9 PADRONIZADO) ──────── */}
-      <Card className="shadow-xs border-gray-200 bg-white overflow-hidden rounded-2xl">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/40">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-xs">
-                <SalaIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CardTitle className="text-lg font-bold text-gray-900">{salaAtual.nome}</CardTitle>
-                  <Badge className={salaAtual.corBadge}>Planta Deitada Widescreen (16:9)</Badge>
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">Clique nos botões <strong className="text-blue-600 font-bold">+</strong> para atribuir colaboradores e equipamentos a cada lugar</p>
-              </div>
-            </div>
-
-            {/* Alternador SVG / Imagem + Zoom + Modo Edição */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
-                <Button
-                  size="sm"
-                  variant={renderMode === "svg" ? "default" : "ghost"}
-                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "svg" ? "bg-blue-600 text-white" : "text-gray-600"}`}
-                  onClick={() => setRenderMode("svg")}
-                  title="Planta Vetorial SVG deitada (0% pixelação)"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Vetorial 8K SVG
-                </Button>
-                <Button
-                  size="sm"
-                  variant={renderMode === "image" ? "default" : "ghost"}
-                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "image" ? "bg-blue-600 text-white" : "text-gray-600"}`}
-                  onClick={() => setRenderMode("image")}
-                  title="Imagem Hi-Res"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" /> Imagem Hi-Res
-                </Button>
-              </div>
-
-              {/* Controles de Zoom */}
-              <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.max(0.8, z - 0.2))} title="Zoom Out">
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </Button>
-                <span className="text-[11px] font-mono font-medium px-1 text-gray-600">{Math.round(zoomLevel * 100)}%</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.min(2.5, z + 0.2))} title="Zoom In">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(1)} title="Resetar">
-                  <RotateCcw className="w-3 h-3 text-gray-500" />
-                </Button>
-              </div>
-
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  variant={modoEdicao ? "destructive" : "outline"}
-                  className="text-xs font-medium border-gray-300"
-                  onClick={() => setModoEdicao(!modoEdicao)}
-                >
-                  {modoEdicao ? "✓ Concluir Edição" : "✏️ Editar Posicionamento das Mesas"}
-                </Button>
-              )}
-            </div>
+      {/* ── PAINEL PRINCIPAL DA PLANTA (MOLDURA E CABEÇALHO IDÊNTICO AO V0) ─ */}
+      <Card className="shadow-xs border-gray-200 bg-white rounded-2xl overflow-hidden">
+        {/* Cabeçalho do v0: Título à esquerda, Estatísticas à direita */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-gray-100 bg-gray-50/30">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{salaAtual.nome}</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Clique em qualquer cadeira com <strong className="text-slate-600 font-bold">+</strong> para atribuir ou alterar uma pessoa</p>
           </div>
 
-          {/* Quick Stats Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200/60 mt-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-gray-500 font-medium">Lugares de Máquina</p>
-              <p className="text-base font-black text-gray-900 mt-0.5">{statsSala.totalMesas}</p>
+          {/* Estatísticas numéricas idênticas ao v0 */}
+          <div className="flex items-center gap-4 text-sm font-medium">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-extrabold text-gray-900">{roomStats.total}</span>
+              <span className="text-gray-500 text-xs">Lugares</span>
             </div>
-            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-emerald-700 font-semibold">Ocupadas / Operacionais</p>
-              <p className="text-base font-black text-emerald-950 mt-0.5">{statsSala.ocupadas}</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-extrabold text-indigo-600">{roomStats.occupied}</span>
+              <span className="text-gray-500 text-xs">Ocupados</span>
             </div>
-            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-amber-700 font-semibold">Em Alerta / Manutenção</p>
-              <p className="text-base font-black text-amber-950 mt-0.5">{statsSala.alertas}</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base font-extrabold text-slate-500">{roomStats.free}</span>
+              <span className="text-gray-500 text-xs">Livres</span>
             </div>
-            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-blue-700 font-semibold">Lugares Vagos (+)</p>
-              <p className="text-base font-black text-blue-950 mt-0.5">{statsSala.vagas}</p>
+
+            {/* Alternador de Renderização */}
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-white ml-2">
+              <Button
+                size="sm"
+                variant={renderMode === "svg" ? "default" : "ghost"}
+                className={`h-7 text-[11px] px-2 font-bold ${renderMode === "svg" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                onClick={() => setRenderMode("svg")}
+              >
+                <Sparkles className="w-3 h-3 mr-1" /> Vetorial v0
+              </Button>
+              <Button
+                size="sm"
+                variant={renderMode === "image" ? "default" : "ghost"}
+                className={`h-7 text-[11px] px-2 font-bold ${renderMode === "image" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                onClick={() => setRenderMode("image")}
+              >
+                <ImageIcon className="w-3 h-3 mr-1" /> Imagem
+              </Button>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-4 sm:p-6 bg-gray-50/40">
-          {modoEdicao && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
-              <div className="flex items-center gap-2">
-                <Move className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins para reposicionar mesas na planta. Clique em qualquer área vazia para adicionar uma nova mesa.
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* ── MOLDURA DA PLANTA EM FORMATO LANDSCAPE DEITADO 16:9 ──────────── */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center">
-            <div
-              className="relative transition-transform duration-150 origin-top-left inline-block w-full max-w-5xl aspect-video"
-              style={{ transform: `scale(${zoomLevel})` }}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
-              {/* VETORIAL SVG CRISP 8K (DEITADA 1200x675) */}
-              {renderMode === "svg" && svgRoom ? (
-                <div ref={svgRef} onClick={handleContainerClick} className="relative w-full h-full cursor-pointer">
-                  <svg
-                    viewBox={`0 0 ${svgRoom.width} ${svgRoom.height}`}
-                    className="w-full h-full block rounded-lg select-none shadow-2xs border border-gray-200 bg-white"
-                  >
-                    {/* Fundo do piso */}
-                    <rect x={0} y={0} width={svgRoom.width} height={svgRoom.height} fill="#FFFFFF" />
-
-                    {/* Paredes perimetrais */}
-                    <rect
-                      x={svgRoom.outline.x}
-                      y={svgRoom.outline.y}
-                      width={svgRoom.outline.w}
-                      height={svgRoom.outline.h}
-                      rx={svgRoom.outline.rx || 4}
-                      fill="#FAFAFA"
-                      stroke="#0F172A"
-                      strokeWidth={6}
-                    />
-
-                    {/* Divisórias de paredes internas */}
-                    {svgRoom.walls?.map((w, i) => (
-                      <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke="#0F172A" strokeWidth={6} />
-                    ))}
-
-                    {/* Móveis (Mesas, TVs, Armários, Mesas Redondas) */}
-                    {svgRoom.furniture?.map((f, i) => {
-                      if (f.kind === "round") {
-                        return <circle key={i} cx={f.x + f.w / 2} cy={f.y + f.h / 2} r={f.w / 2} fill="#F1F5F9" stroke="#334155" strokeWidth={2.5} />;
-                      }
-                      if (f.kind === "tv") {
-                        return (
-                          <g key={i}>
-                            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={4} fill="#0F172A" stroke="#020617" strokeWidth={2} />
-                            <rect x={f.x + 4} y={f.y + 4} width={f.w - 8} height={f.h - 8} rx={2} fill="#0284C7" opacity={0.7} />
-                            <text x={f.x + f.w/2} y={f.y + f.h/2 + 4} fill="#FFFFFF" fontSize={11} fontWeight="bold" textAnchor="middle">{f.label || "MONITOR CCO"}</text>
-                          </g>
-                        );
-                      }
-                      return (
-                        <g key={i}>
-                          <rect
-                            x={f.x}
-                            y={f.y}
-                            width={f.w}
-                            height={f.h}
-                            rx={4}
-                            fill="#F8FAFC"
-                            stroke="#334155"
-                            strokeWidth={2.5}
-                          />
-                          {f.label && (
-                            <text x={f.x + f.w/2} y={f.y + f.h/2 + 4} fill="#64748B" fontSize={10} fontWeight="bold" textAnchor="middle">{f.label}</text>
-                          )}
-                        </g>
-                      );
-                    })}
-
-                    {/* Rótulos de Texto Arquitetônicos */}
-                    {svgRoom.textLabels?.map((t, i) => (
-                      <text
-                        key={i}
-                        x={t.x}
-                        y={t.y}
-                        transform={t.rotate ? `rotate(${t.rotate} ${t.x} ${t.y})` : undefined}
-                        fill="#94A3B8"
-                        className="font-bold tracking-widest font-sans uppercase"
-                        fontSize={t.size || 22}
-                        textAnchor="middle"
-                      >
-                        {t.text}
-                      </text>
-                    ))}
-                  </svg>
-                </div>
-              ) : (
-                /* IMAGEM HI-RES LANDSCAPE */
-                <img
-                  ref={imgRef}
-                  src={salaAtual.imagem}
-                  alt={salaAtual.nome}
-                  className="w-full h-full object-cover block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
-                  onClick={handleContainerClick}
-                  draggable={false}
+        <CardContent className="p-4 sm:p-8 bg-gray-50/20">
+          {/* MOLDURA EXTERNA DA PLANTA EM SVG (IDÊNTICA AO V0) */}
+          <div className="w-full overflow-auto rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-2xs flex justify-center items-center">
+            {renderMode === "svg" && svgRoom ? (
+              <svg
+                viewBox={`0 0 ${svgRoom.width} ${svgRoom.height}`}
+                className="w-full h-auto block select-none"
+                style={{ maxHeight: "75vh" }}
+              >
+                {/* 1. Contorno externo das paredes (Paredes Grossas #0F172A) */}
+                <rect
+                  x={svgRoom.outline.x}
+                  y={svgRoom.outline.y}
+                  width={svgRoom.outline.w}
+                  height={svgRoom.outline.h}
+                  rx={svgRoom.outline.rx ?? 4}
+                  fill="#FFFFFF"
+                  stroke="#0F172A"
+                  strokeWidth={5}
                 />
-              )}
 
-              {/* PINS / LUGARES DE MÁQUINA COM BOTÃO "+" QUANDO VAGOS */}
-              {displaySeats.map(station => {
-                const statusInfo = getEstacaoStatus(station);
-                const isDraggingThis = draggingStation?.codigo === station.codigo;
-                const posX = isDraggingThis ? draggingStation.pos_x : station.pos_x;
-                const posY = isDraggingThis ? draggingStation.pos_y : station.pos_y;
-                const isVago = !station.colaborador_id && statusInfo.eqVinculados.length === 0;
+                {/* 2. Divisórias de paredes internas */}
+                {svgRoom.walls?.map((w, i) => (
+                  <line
+                    key={i}
+                    x1={w.x1}
+                    y1={w.y1}
+                    x2={w.x2}
+                    y2={w.y2}
+                    stroke="#0F172A"
+                    strokeWidth={5}
+                  />
+                ))}
 
-                return (
-                  <Popover key={station.codigo}>
-                    <PopoverTrigger asChild>
-                      <div
-                        className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform hover:scale-110 z-10 flex flex-col items-center ${
-                          isDraggingThis ? "scale-125 z-30 opacity-90" : ""
-                        }`}
-                        style={{ left: `${posX}%`, top: `${posY}%` }}
-                        onMouseDown={(e) => handlePinMouseDown(e, station)}
-                      >
-                        {/* Se o lugar está VAGO: Botão "+" bem visível e amigável */}
-                        {isVago ? (
-                          <button
-                            onClick={(e) => handlePlusClick(station, e)}
-                            className="group flex items-center gap-1 bg-white hover:bg-blue-600 text-blue-600 hover:text-white border-2 border-blue-500 rounded-full px-2.5 py-1 shadow-md transition-all duration-200 transform hover:scale-105"
-                            title={`Atribuir colaborador/computador à mesa ${station.codigo}`}
+                {/* 3. Móveis (Mesas, TVs, Armários, Mesas Redondas) */}
+                {svgRoom.furniture?.map((f, i) => {
+                  if (f.kind === "round") {
+                    return (
+                      <circle
+                        key={i}
+                        cx={f.x + f.w / 2}
+                        cy={f.y + f.h / 2}
+                        r={f.w / 2}
+                        fill="#F8FAFC"
+                        stroke="#334155"
+                        strokeWidth={2}
+                      />
+                    );
+                  }
+                  if (f.kind === "tv") {
+                    return (
+                      <g key={i}>
+                        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} fill="#0F172A" stroke="#020617" strokeWidth={2} />
+                        <rect x={f.x + 4} y={f.y + 4} width={f.w - 8} height={f.h - 8} rx={2} fill="#F1F5F9" />
+                      </g>
+                    );
+                  }
+                  return (
+                    <rect
+                      key={i}
+                      x={f.x}
+                      y={f.y}
+                      width={f.w}
+                      height={f.h}
+                      rx={f.kind === "desk" ? 2 : 3}
+                      fill="#F8FAFC"
+                      stroke="#475569"
+                      strokeWidth={2}
+                    />
+                  );
+                })}
+
+                {/* 4. Rótulos de Texto Arquitetônicos v0 */}
+                {svgRoom.textLabels?.map((t, i) => (
+                  <text
+                    key={i}
+                    x={t.x}
+                    y={t.y}
+                    transform={t.rotate ? `rotate(${t.rotate} ${t.x} ${t.y})` : undefined}
+                    fill="#CBD5E1"
+                    className="font-bold tracking-wider font-sans uppercase"
+                    fontSize={t.size ?? 18}
+                  >
+                    {t.text}
+                  </text>
+                ))}
+
+                {/* 5. CADEIRAS / ASSENTOS INTERATIVOS DO V0 (CADEIRA COM ENCOSTO + '+' OU INICIAIS) */}
+                {mappedSeats.map((seat) => {
+                  const size = 40;
+                  const half = size / 2;
+                  const occupied = seat.isOcupado;
+                  const seatColor = occupied ? getColabColor(seat.colaborador_id) : "#FFFFFF";
+
+                  return (
+                    <g
+                      key={seat.id}
+                      transform={`translate(${seat.x} ${seat.y}) rotate(${seat.rotate ?? 0})`}
+                      onClick={() => handleSeatClick(seat)}
+                      className="cursor-pointer group"
+                      role="button"
+                    >
+                      {/* Encosto da cadeira v0 */}
+                      <rect
+                        x={-half}
+                        y={-half - 6}
+                        width={size}
+                        height={10}
+                        rx={3}
+                        fill="#94A3B8"
+                        opacity={0.7}
+                      />
+
+                      {/* Base do assento v0 (Tracejado se livre, Sólido se ocupado) */}
+                      <rect
+                        x={-half}
+                        y={-half + 2}
+                        width={size}
+                        height={size}
+                        rx={8}
+                        fill={seatColor}
+                        stroke={occupied ? "#1E293B" : "#94A3B8"}
+                        strokeDasharray={occupied ? undefined : "4 3"}
+                        strokeWidth={2}
+                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-2"
+                      />
+
+                      {/* Conteúdo: Iniciais do Colaborador (ex: "AS") ou Símbolo "+" */}
+                      <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
+                        {occupied && seat.colaborador ? (
+                          <text
+                            x={0}
+                            y={half - 10}
+                            textAnchor="middle"
+                            style={{ fontSize: 14, fill: "white", fontWeight: "bold" }}
                           >
-                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                            <span className="font-bold text-[11px] font-mono">{station.codigo}</span>
-                          </button>
+                            {getInitials(seat.colaborador.nome_completo)}
+                          </text>
                         ) : (
-                          /* Se a mesa está OCUPADA / EM ALERTA: Pin Colorido com Iniciais / Código */
-                          <div className={`w-8 h-8 rounded-full border-2 shadow-md flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
-                            {station.codigo}
-                          </div>
+                          <text
+                            x={0}
+                            y={half - 6}
+                            textAnchor="middle"
+                            style={{ fontSize: 20, fill: "#64748B" }}
+                          >
+                            +
+                          </text>
                         )}
-
-                        {/* Rótulo de Nome (ou "+ Adicionar") */}
-                        <div className="bg-gray-900/90 text-white text-[10px] px-2 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap font-medium border border-gray-800">
-                          {statusInfo.colab?.nome_completo ? statusInfo.colab.nome_completo.split(" ")[0] : "+ Adicionar"}
-                        </div>
-                      </div>
-                    </PopoverTrigger>
-
-                    {/* Popover Card */}
-                    <PopoverContent className="w-80 p-4 shadow-xl border-gray-200">
-                      <div className="space-y-3 text-xs">
-                        <div className="flex items-start justify-between border-b pb-2">
-                          <div>
-                            <p className="font-bold text-gray-900 text-sm">{station.codigo} • {salaAtual.nome}</p>
-                            <p className="text-[11px] text-gray-500">Mapeamento Vetorial da Sala</p>
-                          </div>
-                          <Badge className={
-                            statusInfo.tipo === "vaga" ? "bg-blue-50 text-blue-700 border-blue-200 font-bold" :
-                            statusInfo.tipo === "alerta" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                          }>
-                            {statusInfo.label}
-                          </Badge>
-                        </div>
-
-                        {/* Colaborador */}
-                        {statusInfo.colab ? (
-                          <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                            {statusInfo.colab.foto_url ? (
-                              <img src={statusInfo.colab.foto_url} alt="" className="w-10 h-10 rounded-full object-cover border" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
-                                {statusInfo.colab.nome_completo?.charAt(0)}
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="font-bold text-gray-900 truncate">{statusInfo.colab.nome_completo}</p>
-                              <p className="text-gray-500 text-[11px] truncate">{statusInfo.colab.cargo || "Sem cargo"} • {statusInfo.colab.area}</p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-center">
-                            <p className="text-blue-900 font-medium text-xs mb-2">Lugar de máquina disponível</p>
-                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs gap-1 h-7" onClick={(e) => handlePlusClick(station, e)}>
-                              <UserPlus className="w-3.5 h-3.5" /> Vincular Colaborador / Máquina
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* Alerta de Chamado */}
-                        {statusInfo.temChamadoAberto && (
-                          <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-amber-900 text-[11px] flex items-center gap-1.5 font-medium">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <span>Colaborador possui chamado aberto no Helpdesk!</span>
-                          </div>
-                        )}
-
-                        {/* Equipamentos Vinculados */}
-                        <div>
-                          <p className="font-semibold text-gray-700 mb-1.5 uppercase text-[10px] tracking-wider">
-                            Equipamentos nesta mesa ({statusInfo.eqVinculados.length})
-                          </p>
-                          {statusInfo.eqVinculados.length === 0 ? (
-                            <p className="text-gray-400 italic text-[11px]">Nenhum equipamento atribuído.</p>
-                          ) : (
-                            <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                              {statusInfo.eqVinculados.map(eq => (
-                                <div key={eq.id} className="flex items-center justify-between bg-white border border-gray-200 p-2 rounded-lg text-[11px]">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    {eq.tipo === "Notebook" ? <Laptop className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> : <Monitor className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                                    <div className="truncate">
-                                      <p className="font-semibold text-gray-900 truncate">{eq.tipo}: {eq.marca} {eq.modelo}</p>
-                                      <p className="text-gray-400 text-[10px] font-mono">{eq.etiqueta_interna || eq.service_tag}</p>
-                                    </div>
-                                  </div>
-                                  <Badge className={eq.status === "Em uso" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-amber-50 text-amber-700 border-amber-200"}>
-                                    {eq.status}
-                                  </Badge>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Ações Admin */}
-                        {isAdmin && (
-                          <div className="flex gap-2 border-t pt-2.5">
-                            <Button size="sm" variant="outline" className="flex-1 text-[11px] h-7" onClick={() => setSelectedStation(station.dbRecord || { id: station.id, codigo: station.codigo, colaborador_id: station.colaborador_id })}>
-                              <Pencil className="w-3 h-3 mr-1" /> Gerenciar Mesa
-                            </Button>
-                            {station.isDb && (
-                              <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0" onClick={() => deleteEstacaoMut.mutate(station.id)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                );
-              })}
-            </div>
+                      </g>
+                    </g>
+                  );
+                })}
+              </svg>
+            ) : (
+              /* MODO IMAGEM HI-RES */
+              <img
+                src={salaAtual.imagem}
+                alt={salaAtual.nome}
+                className="w-full h-auto block rounded-lg select-none border border-gray-100 shadow-2xs"
+              />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -700,19 +463,14 @@ export default function PlantaInterativa({
       {/* ── GAVETA DE EQUIPAMENTOS NÃO POSICIONADOS ────────────────────────── */}
       {equipamentosSemEstacao.length > 0 && (
         <Card className="border-amber-200 bg-amber-50/20 shadow-xs rounded-2xl">
-          <CardHeader className="pb-3 border-b border-amber-100">
-            <CardTitle className="text-sm font-semibold text-amber-900 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                ⚠️ Equipamentos ainda não posicionados na planta ({equipamentosSemEstacao.length})
-              </span>
-            </CardTitle>
-          </CardHeader>
+          <div className="p-4 border-b border-amber-100 flex items-center justify-between">
+            <span className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              ⚠️ Equipamentos pendentes de atribuição ({equipamentosSemEstacao.length})
+            </span>
+          </div>
           <CardContent className="p-4">
-            <p className="text-xs text-amber-800 mb-3">
-              Estes equipamentos estão no sistema, mas ainda não possuem mesa física atribuída no mapa das salas.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
               {equipamentosSemEstacao.map(eq => (
                 <div key={eq.id} className="bg-white border border-amber-200 rounded-lg p-2.5 text-xs flex items-center justify-between">
                   <div className="min-w-0 flex-1 pr-2">
@@ -731,34 +489,27 @@ export default function PlantaInterativa({
         </Card>
       )}
 
-      {/* ── MODAL: ATRIBUIR / CRIAR ESTAÇÃO ────────────────────────────────── */}
+      {/* ── MODAL DE ATRIBUIÇÃO DE ASSENTO ─────────────────────────────────── */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Vincular Colaborador e Máquina — Mesa {newStationCodigo}</DialogTitle>
-            <DialogDescription className="text-xs">
-              {salaAtual.nome} (Posição: X {newStationPos.x}%, Y {newStationPos.y}%)
+            <DialogTitle className="text-base font-bold text-gray-900">
+              Gerenciar Assento {modalStationCodigo} — {salaAtual.nome}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">
+              Selecione o colaborador que ocupará este lugar e atribua os equipamentos de TI.
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCreateStationSubmit} className="space-y-4 text-xs">
+          <form onSubmit={handleAssignSubmit} className="space-y-4 text-xs">
             <div>
-              <Label className="text-xs">Código da Mesa / Estação <span className="text-red-500">*</span></Label>
-              <Input
-                className="mt-1 h-8 text-xs font-mono"
-                placeholder="Ex: M-01, M-02"
-                value={newStationCodigo}
-                onChange={e => setNewStationCodigo(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs">Colaborador Alocado nesta Mesa</Label>
-              <Select value={newStationColaborador} onValueChange={setNewStationColaborador}>
-                <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+              <Label className="text-xs font-semibold text-gray-700">Colaborador Ocupante</Label>
+              <Select value={modalColaboradorId} onValueChange={setModalColaboradorId}>
+                <SelectTrigger className="mt-1 h-9 text-xs"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__" className="text-xs">— Mesa Vaga (Sem Colaborador) —</SelectItem>
+                  <SelectItem value="__none__" className="text-xs font-semibold text-gray-500">
+                    — Assento Vago (Ninguém alocado) —
+                  </SelectItem>
                   {colaboradores.map(c => (
                     <SelectItem key={c.id} value={c.id} className="text-xs">
                       {c.nome_completo} ({c.area})
@@ -768,8 +519,9 @@ export default function PlantaInterativa({
               </Select>
             </div>
 
+            {/* Equipamentos alocados / disponíveis */}
             <div>
-              <Label className="text-xs">Vincular Equipamentos Existentes (Opcional)</Label>
+              <Label className="text-xs font-semibold text-gray-700">Equipamentos para Atribuir a esta Mesa</Label>
               <div className="mt-1 border rounded-lg p-2 max-h-36 overflow-y-auto space-y-1.5 bg-gray-50">
                 {equipamentosSemEstacao.length === 0 ? (
                   <p className="text-gray-400 text-[11px] italic">Não há equipamentos sem estação disponível.</p>
@@ -795,80 +547,28 @@ export default function PlantaInterativa({
               </div>
             </div>
 
-            <DialogFooter className="pt-2 border-t">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
-              <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 font-bold" disabled={createEstacaoMut.isPending}>
-                {createEstacaoMut.isPending ? "Salvando..." : "Salvar Atribuição"}
-              </Button>
+            <DialogFooter className="pt-3 border-t flex items-center justify-between">
+              {selectedSeat?.dbId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:bg-red-50 text-xs"
+                  onClick={() => deleteEstacaoMut.mutate(selectedSeat.dbId)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Desvincular Mesa
+                </Button>
+              )}
+              <div className="flex gap-2 ml-auto">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
+                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700 font-bold">
+                  Salvar Alterações
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* ── MODAL: GERENCIAR ESTAÇÃO EXISTENTE ────────────────────────────── */}
-      {selectedStation && (
-        <Dialog open={!!selectedStation} onOpenChange={v => !v && setSelectedStation(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-sm">Gerenciar Mesa {selectedStation.codigo} — {salaAtual.nome}</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 text-xs">
-              <div>
-                <Label className="text-xs">Colaborador Vinculado</Label>
-                <Select
-                  value={selectedStation.colaborador_id || "__none__"}
-                  onValueChange={colabId => {
-                    const val = colabId === "__none__" ? null : colabId;
-                    updateEstacaoMut.mutate({ id: selectedStation.id, data: { colaborador_id: val } });
-                    setSelectedStation(prev => prev ? { ...prev, colaborador_id: val } : null);
-                  }}
-                >
-                  <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__" className="text-xs">— Mesa Vaga (Sem Colaborador) —</SelectItem>
-                    {colaboradores.map(c => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs">
-                        {c.nome_completo} ({c.area})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="border-t pt-3">
-                <p className="font-bold text-gray-800 mb-2">Equipamentos alocados nesta mesa</p>
-                {equipamentos.filter(eq => eq.estacao_id === selectedStation.id).length === 0 ? (
-                  <p className="text-gray-400 italic text-[11px]">Nenhum computador ou monitor vinculado.</p>
-                ) : (
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                    {equipamentos.filter(eq => eq.estacao_id === selectedStation.id).map(eq => (
-                      <div key={eq.id} className="flex items-center justify-between bg-gray-50 border p-2 rounded text-[11px]">
-                        <div>
-                          <p className="font-bold text-gray-900">{eq.tipo} - {eq.marca} {eq.modelo}</p>
-                          <p className="text-[10px] text-gray-400 font-mono">{eq.etiqueta_interna}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-500 h-6 text-[10px]"
-                          onClick={() => updatePcsMut.mutate({ id: eq.id, data: { estacao_id: null } })}
-                        >
-                          Desvincular
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 border-t pt-3">
-                <Button variant="outline" size="sm" onClick={() => setSelectedStation(null)}>Fechar</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
