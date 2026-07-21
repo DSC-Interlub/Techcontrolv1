@@ -1,8 +1,7 @@
 /**
  * floorplanRooms.js — Definição da Planta Espacial Única Padronizada
  * 
- * Reúne todas as 8 salas do TechControl em um único mapa interativo de alta definição (688 x 1024).
- * Suporta zoom, atalhos de seção e posicionamento dinâmico por coordenadas/porcentagem.
+ * Seção CCO (Centro de Controle Operacional) atualizada conforme o layout de referência real.
  */
 
 export const UNIFIED_FLOORPLAN = {
@@ -16,14 +15,14 @@ export const UNIFIED_FLOORPLAN = {
   sections: [
     { id: "all", label: "🗺️ Planta Geral", viewBox: "0 0 688 1024" },
     { id: "adm", label: "🏢 ADM — 1º Andar", viewBox: "0 0 688 290" },
-    { id: "cco", label: "🖥️ CCO", viewBox: "380 280 308 150" },
+    { id: "cco", label: "🖥️ CCO", viewBox: "370 295 310 160" },
     { id: "bsm_drc", label: "📊 Sala BSM / DRC", viewBox: "230 425 458 230" },
     { id: "galpao", label: "📦 Galpão (Bio/Reenv/Check)", viewBox: "0 310 240 714" },
     { id: "bsm_terreo", label: "📋 Sala BSM (Térreo)", viewBox: "230 670 235 354" },
     { id: "financeiro", label: "💰 Sala Financeiro", viewBox: "460 670 228 354" },
   ],
 
-  // Assentos Predefinidos mapeados sobre o traço da imagem unificada (38 postos)
+  // Assentos Predefinidos mapeados sobre a planta unificada (incluindo o novo CCO)
   seats: [
     // ADM 1º Andar - Mesa Reunião Redonda (Top Left)
     { id: "ADM-01", codigo: "ADM-01", sala: "ADM — 1º Andar", x: 86, y: 45 },
@@ -62,9 +61,11 @@ export const UNIFIED_FLOORPLAN = {
     { id: "ADM-24", codigo: "ADM-24", sala: "ADM — 1º Andar", x: 638, y: 80 },
     { id: "ADM-25", codigo: "ADM-25", sala: "ADM — 1º Andar", x: 605, y: 210 },
 
-    // CCO - Centro de Controle Operacional (2 lugares)
-    { id: "CCO-01", codigo: "CCO-01", sala: "Centro de Controle Operacional", x: 460, y: 355 },
-    { id: "CCO-02", codigo: "CCO-02", sala: "Centro de Controle Operacional", x: 635, y: 355 },
+    // CCO - Centro de Controle Operacional (Novo Layout Real: 4 lugares fiéis)
+    { id: "CCO-01", codigo: "CCO-01", sala: "Centro de Controle Operacional", x: 425, y: 345 }, // Bancada L Top-Left
+    { id: "CCO-02", codigo: "CCO-02", sala: "Centro de Controle Operacional", x: 615, y: 348 }, // Cadeira Avulsa Top-Right
+    { id: "CCO-03", codigo: "CCO-03", sala: "Centro de Controle Operacional", x: 425, y: 412 }, // Bancada L Bot-Left
+    { id: "CCO-04", codigo: "CCO-04", sala: "Centro de Controle Operacional", x: 585, y: 412 }, // Cadeira Bot-Right (próximo aos móveis)
 
     // Galpão (3 lugares)
     { id: "CHK-01", codigo: "CHK-01", sala: "Check Out", x: 115, y: 475 },
@@ -93,7 +94,6 @@ export const UNIFIED_FLOORPLAN = {
   ]
 };
 
-// Mantido para compatibilidade com partes existentes do sistema
 export const SVG_ROOMS = {
   planta_padronizada: UNIFIED_FLOORPLAN,
   sala_financeiro: UNIFIED_FLOORPLAN,
