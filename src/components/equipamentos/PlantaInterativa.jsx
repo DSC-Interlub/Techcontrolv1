@@ -1,17 +1,15 @@
 /**
- * PlantaInterativa.jsx — Mapeamento Espacial das Salas Físicas
- * Integrado perfeitamente à interface clara e elegante do TechControl.
+ * PlantaInterativa.jsx — Mapeamento Espacial das Salas Físicas (Vetorial SVG 8K & Hi-Res)
+ * Integrado perfeitamente à interface clara do TechControl.
  * 
- * Suporte às 5 plantas de sala limpas (sem marcas d'água / resíduos de rota de fuga):
- * 1. Sala Financeiro
- * 2. ADM 1º Andar (Área Aberta)
- * 3. Mezanino (BSM & DRC)
- * 4. Galpão (BIO, Reenvase & Check-out)
- * 5. Centro de Controle Operacional (CCO)
+ * Oferece renderização dupla:
+ * 1. 📐 Desenho Vetorial SVG (0% pixelação / Resolução 8K matemática infinita)
+ * 2. 🖼️ Imagem Hi-Res Padronizada (3840x2160 Ultra HD)
  */
 import React, { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { SVG_ROOMS } from "./floorplanRooms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Monitor, Laptop, Eye, Plus, Pencil, Trash2, MapPin,
   Move, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CheckCircle, User, Loader2,
-  DollarSign, Briefcase, Building, Package, Activity, Layers, ArrowRight
+  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon
 } from "lucide-react";
 
 export const SALAS = [
@@ -78,12 +76,13 @@ export default function PlantaInterativa({
 }) {
   const queryClient = useQueryClient();
   const [salaAtivaId, setSalaAtivaId] = useState("sala_financeiro");
+  const [renderMode, setRenderMode] = useState("svg"); // "svg" (vetorial 8K) ou "image" (imagem hi-res)
   const [modoEdicao, setModoEdicao] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [draggingStation, setDraggingStation] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
 
-  // Estados do Modal de Criação de Estação
+  // Modal de Criação
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newStationPos, setNewStationPos] = useState({ x: 50, y: 50 });
   const [newStationCodigo, setNewStationCodigo] = useState("");
@@ -91,9 +90,11 @@ export default function PlantaInterativa({
   const [selectedEquipmentsToAssign, setSelectedEquipmentsToAssign] = useState([]);
 
   const imgRef = useRef(null);
+  const svgRef = useRef(null);
   const salaAtual = useMemo(() => SALAS.find(s => s.id === salaAtivaId) || SALAS[0], [salaAtivaId]);
+  const svgRoom = useMemo(() => SVG_ROOMS[salaAtual.id], [salaAtual]);
 
-  // Queries de Estações de Trabalho
+  // Queries
   const { data: estacoes = [] } = useQuery({
     queryKey: ['estacoes_trabalho'],
     queryFn: () => base44.entities.Estacoes_Trabalho.list(),
@@ -166,8 +167,11 @@ export default function PlantaInterativa({
   };
 
   const handleMouseMove = (e) => {
-    if (!modoEdicao || !draggingStation || !imgRef.current) return;
-    const rect = imgRef.current.getBoundingClientRect();
+    if (!modoEdicao || !draggingStation) return;
+    const refElem = renderMode === "image" ? imgRef.current : svgRef.current;
+    if (!refElem) return;
+
+    const rect = refElem.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -187,10 +191,13 @@ export default function PlantaInterativa({
     }
   };
 
-  // Clique na planta para criar nova estação (Modo Edição)
-  const handleImageClick = (e) => {
-    if (!modoEdicao || draggingStation || !imgRef.current) return;
-    const rect = imgRef.current.getBoundingClientRect();
+  // Clique na planta para criar nova estação
+  const handleContainerClick = (e) => {
+    if (!modoEdicao || draggingStation) return;
+    const refElem = renderMode === "image" ? imgRef.current : svgRef.current;
+    if (!refElem) return;
+
+    const rect = refElem.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -241,7 +248,7 @@ export default function PlantaInterativa({
     return { cor: "bg-emerald-600 text-white border-emerald-700 shadow-md", label: "Operacional", tipo: "operacional", colab, eqVinculados };
   };
 
-  // Estatísticas da Sala Ativa
+  // Estatísticas
   const statsSala = useMemo(() => {
     const totalMesas = estacoesDaSala.length;
     const ocupadas = estacoesDaSala.filter(e => e.colaborador_id).length;
@@ -254,7 +261,7 @@ export default function PlantaInterativa({
 
   return (
     <div className="space-y-6">
-      {/* ── BARRA DE NAVEGAÇÃO DAS 5 SALAS (VISUAL CLARO DE SISTEMA) ──────── */}
+      {/* ── BARRA DE SELEÇÃO DAS 5 SALAS ─────────────────────────────────── */}
       <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           {SALAS.map(sala => {
@@ -290,9 +297,8 @@ export default function PlantaInterativa({
         </div>
       </div>
 
-      {/* ── CARD PRINCIPAL DA PLANTA (LAYOUT CLARO INTEGRADO AO TECHCONTROL) ─ */}
+      {/* ── CARD PRINCIPAL DA SALA ────────────────────────────────────────── */}
       <Card className="shadow-xs border-gray-200 bg-white overflow-hidden rounded-2xl">
-        {/* Cabeçalho do Card da Sala */}
         <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -304,12 +310,35 @@ export default function PlantaInterativa({
                   <CardTitle className="text-lg font-bold text-gray-900">{salaAtual.nome}</CardTitle>
                   <Badge className={salaAtual.corBadge}>{salaAtual.descricao}</Badge>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Mapeamento espacial em tempo real dos computadores e mesas de trabalho</p>
+                <p className="text-xs text-gray-500 mt-0.5">Mapeamento vetorial de alta definição sem perda de nitidez</p>
               </div>
             </div>
 
-            {/* Controles de Zoom e Edição */}
+            {/* Alternador de Renderização + Zoom + Modo Edição */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Toggle SVG Vetorial 8K vs Imagem Hi-Res */}
+              <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
+                <Button
+                  size="sm"
+                  variant={renderMode === "svg" ? "default" : "ghost"}
+                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "svg" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                  onClick={() => setRenderMode("svg")}
+                  title="Planta Vetorial SVG (0% pixelação / 8K crisp)"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> Vetorial 8K SVG
+                </Button>
+                <Button
+                  size="sm"
+                  variant={renderMode === "image" ? "default" : "ghost"}
+                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "image" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                  onClick={() => setRenderMode("image")}
+                  title="Imagem Hi-Res"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" /> Imagem Hi-Res
+                </Button>
+              </div>
+
+              {/* Controles de Zoom */}
               <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.max(0.8, z - 0.2))} title="Zoom Out">
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -336,7 +365,7 @@ export default function PlantaInterativa({
             </div>
           </div>
 
-          {/* Barra de Estatísticas da Sala */}
+          {/* Quick Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200/60 mt-4">
             <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-2xs">
               <p className="text-[11px] text-gray-500 font-medium">Total de Mesas</p>
@@ -363,29 +392,102 @@ export default function PlantaInterativa({
               <div className="flex items-center gap-2">
                 <Move className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>
-                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins sobre a planta para posicionar as mesas. Clique em uma área vazia da imagem para adicionar uma nova estação de trabalho.
+                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins sobre o desenho da sala para posicioná-los. Clique em qualquer ponto da planta para criar uma nova mesa.
                 </span>
               </div>
             </div>
           )}
 
-          {/* ── MOLDURA INTEGRADA DA IMAGEM DA PLANTA DA SALA ────────────────── */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center">
+          {/* ── MOLDURA DA PLANTA (SISTEMA LOOK & FEEL) ──────────────────────── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center min-h-[450px]">
             <div
               className="relative transition-transform duration-150 origin-top-left inline-block w-full max-w-4xl"
               style={{ transform: `scale(${zoomLevel})` }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             >
-              {/* Imagem Limpa da Sala (Fundo Branco Puro) */}
-              <img
-                ref={imgRef}
-                src={salaAtual.imagem}
-                alt={salaAtual.nome}
-                className="w-full h-auto max-w-full block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
-                onClick={handleImageClick}
-                draggable={false}
-              />
+              {/* OPÇÃO A: DESENHO VETORIAL SVG (0% PIXELAÇÃO / 8K CRISP) */}
+              {renderMode === "svg" && svgRoom ? (
+                <div ref={svgRef} onClick={handleContainerClick} className="relative w-full cursor-pointer">
+                  <svg
+                    viewBox={`0 0 ${svgRoom.width} ${svgRoom.height}`}
+                    className="w-full h-auto max-w-full block rounded-lg select-none shadow-2xs border border-gray-200 bg-white"
+                  >
+                    {/* Fundo do piso */}
+                    <rect x={0} y={0} width={svgRoom.width} height={svgRoom.height} fill="#FFFFFF" />
+
+                    {/* Paredes perimetrais */}
+                    <rect
+                      x={svgRoom.outline.x}
+                      y={svgRoom.outline.y}
+                      width={svgRoom.outline.w}
+                      height={svgRoom.outline.h}
+                      rx={svgRoom.outline.rx || 4}
+                      fill="#FAFAFA"
+                      stroke="#0F172A"
+                      strokeWidth={6}
+                    />
+
+                    {/* Divisórias de paredes internas */}
+                    {svgRoom.walls?.map((w, i) => (
+                      <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke="#0F172A" strokeWidth={6} />
+                    ))}
+
+                    {/* Móveis (Mesas, TVs, Armários, Mesas Redondas) */}
+                    {svgRoom.furniture?.map((f, i) => {
+                      if (f.kind === "round") {
+                        return <circle key={i} cx={f.x + f.w / 2} cy={f.y + f.h / 2} r={f.w / 2} fill="#F1F5F9" stroke="#334155" strokeWidth={2.5} />;
+                      }
+                      if (f.kind === "tv") {
+                        return (
+                          <g key={i}>
+                            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} fill="#0F172A" stroke="#020617" strokeWidth={2} />
+                            <rect x={f.x + 4} y={f.y + 4} width={f.w - 8} height={f.h - 8} rx={2} fill="#0284C7" opacity={0.7} />
+                          </g>
+                        );
+                      }
+                      return (
+                        <rect
+                          key={i}
+                          x={f.x}
+                          y={f.y}
+                          width={f.w}
+                          height={f.h}
+                          rx={4}
+                          fill="#F8FAFC"
+                          stroke="#334155"
+                          strokeWidth={2.5}
+                        />
+                      );
+                    })}
+
+                    {/* Rótulos de Texto Arquitetônicos */}
+                    {svgRoom.textLabels?.map((t, i) => (
+                      <text
+                        key={i}
+                        x={t.x}
+                        y={t.y}
+                        transform={t.rotate ? `rotate(${t.rotate} ${t.x} ${t.y})` : undefined}
+                        fill="#94A3B8"
+                        className="font-bold tracking-widest font-sans uppercase"
+                        fontSize={t.size || 18}
+                      >
+                        {t.text}
+                      </text>
+                    ))}
+                  </svg>
+                </div>
+              ) : (
+                /* OPÇÃO B: IMAGEM HI-RES PADRONIZADA */
+                <img
+                  ref={imgRef}
+                  src={salaAtual.imagem}
+                  alt={salaAtual.nome}
+                  className="w-full h-auto max-w-full block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
+                  onClick={handleContainerClick}
+                  draggable={false}
+                />
+              )}
 
               {/* PINS DAS ESTAÇÕES DE TRABALHO SOBRE A PLANTA */}
               {estacoesDaSala.map(estacao => {
@@ -404,25 +506,23 @@ export default function PlantaInterativa({
                         style={{ left: `${posX}%`, top: `${posY}%` }}
                         onMouseDown={(e) => handlePinMouseDown(e, estacao)}
                       >
-                        {/* Circulo Pin */}
                         <div className={`w-8 h-8 rounded-full border-2 shadow-md flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
                           {estacao.codigo}
                         </div>
 
-                        {/* Rótulo com Nome do Colaborador */}
                         <div className="bg-gray-900/90 text-white text-[10px] px-2 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap font-medium border border-gray-800">
                           {statusInfo.colab?.nome_completo ? statusInfo.colab.nome_completo.split(" ")[0] : "Vaga"}
                         </div>
                       </div>
                     </PopoverTrigger>
 
-                    {/* Popover Card com Detalhes da Mesa */}
+                    {/* Popover Card */}
                     <PopoverContent className="w-80 p-4 shadow-xl border-gray-200">
                       <div className="space-y-3 text-xs">
                         <div className="flex items-start justify-between border-b pb-2">
                           <div>
                             <p className="font-bold text-gray-900 text-sm">{estacao.codigo} • {salaAtual.nome}</p>
-                            <p className="text-[11px] text-gray-500">Mapeamento Físico de TI</p>
+                            <p className="text-[11px] text-gray-500">Mapeamento Vetorial em Tempo Real</p>
                           </div>
                           <Badge className={
                             statusInfo.tipo === "vaga" ? "bg-slate-100 text-slate-700" :
