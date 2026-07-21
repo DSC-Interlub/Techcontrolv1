@@ -1,14 +1,11 @@
 /**
  * PlantaInterativa.jsx — Controle Único de Máquinas em Vetor SVG Real (100% Pure SVG Vector)
  * 
- * Recria a planta inteira como desenho vetorial SVG com precisão matemática (0% raster/imagem).
- * Segue o padrão de design visual v0:
- * - Preenchimento de móveis em cinza-azulado suave (#F1F5F9)
- * - Contorno fino e consistente (#64748B, strokeWidth=1.5)
- * - Cantos arredondados suavizados (rx=4)
- * - Rótulos de salas nítidos em maiúsculas
- * - 38 Assentos e estações com avatares/fotos flutuantes e botão +
- * - Responsivo e escalável em qualquer nível de zoom sem perda de nitidez
+ * Atualizações aplicadas:
+ * 1. Fidelidade dos Móveis: Mesa redonda com 4 cadeiras, baias L com curvas e prateleiras de check-out com linhas de rack.
+ * 2. Legibilidade do Texto: Rótulos escuros (#1E293B) sobre fundo claro (#F8FAFC) com alto contraste.
+ * 3. Proporção e Limpeza: Sem caixas escuras ou cortes na Sala Financeiro e DRC/BSM.
+ * 4. Tamanho dos Pins: Marcadores compactos (28px) que não escondem os móveis por baixo.
  */
 
 import React, { useState, useMemo, useRef } from "react";
@@ -44,19 +41,29 @@ function getColabColor(colabId) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-// ── COMPONENTE DE DESENHO VETORIAL DOS MÓVEIS (STYLE V0) ──────────────────────
+// ── COMPONENTE DE DESENHO VETORIAL DOS MÓVEIS (STYLE V0 FIEL) ─────────────────
 function FurnitureVectorShape({ f }) {
-  const common = {
-    fill: "#F1F5F9",
-    stroke: "#64748B",
-    strokeWidth: 1.5,
-    rx: 4,
-  };
+  const strokeColor = "#64748B";
 
-  if (f.kind === "round") {
-    return <circle cx={f.cx} cy={f.cy} r={f.r} {...common} />;
+  // Mesa Redonda com 4 Cadeiras ao redor
+  if (f.kind === "round_table") {
+    return (
+      <g>
+        {/* Cadeira Superior */}
+        <rect x={f.cx - 11} y={f.cy - f.r - 11} width={22} height={8} rx={3} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.3} />
+        {/* Cadeira Inferior */}
+        <rect x={f.cx - 11} y={f.cy + f.r + 3} width={22} height={8} rx={3} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.3} />
+        {/* Cadeira Esquerda */}
+        <rect x={f.cx - f.r - 11} y={f.cy - 11} width={8} height={22} rx={3} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.3} />
+        {/* Cadeira Direita */}
+        <rect x={f.cx + f.r + 3} y={f.cy - 11} width={8} height={22} rx={3} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.3} />
+        {/* Tampo Redondo da Mesa */}
+        <circle cx={f.cx} cy={f.cy} r={f.r} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.5} />
+      </g>
+    );
   }
 
+  // TV / Display de Parede
   if (f.kind === "tv") {
     return (
       <g>
@@ -66,23 +73,47 @@ function FurnitureVectorShape({ f }) {
     );
   }
 
+  // Baia / Estação em L com Cadeira Ergonômica Interna
   if (f.kind === "desk_l") {
-    const cutW = f.w * 0.35;
-    const cutH = f.h * 0.35;
+    const cutW = f.w * 0.38;
+    const cutH = f.h * 0.38;
     const pathD = `M ${f.x} ${f.y} h ${f.w} v ${f.h} h -${cutW} v -${cutH} h -${f.w - cutW} Z`;
-    return <path d={pathD} fill="#F1F5F9" stroke="#64748B" strokeWidth={1.5} strokeLinejoin="round" />;
-  }
-
-  if (f.kind === "cabinet" || f.kind === "cabinet_top") {
     return (
       <g>
-        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} {...common} />
-        <line x1={f.x} y1={f.y + f.h / 2} x2={f.x + f.w} y2={f.y + f.h / 2} stroke="#CBD5E1" strokeWidth={1} />
+        {/* Tampo em L */}
+        <path d={pathD} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.5} strokeLinejoin="round" />
+        {/* Cadeira embutida no recorte do L */}
+        <rect
+          x={f.x + f.w * 0.3}
+          y={f.y + f.h * 0.3}
+          width={18}
+          height={18}
+          rx={4}
+          fill="#E2E8F0"
+          stroke={strokeColor}
+          strokeWidth={1.2}
+        />
       </g>
     );
   }
 
-  if (f.kind === "shelves_grid") {
+  // Armários Superiores / Gabinetes
+  if (f.kind === "cabinet" || f.kind === "cabinet_top") {
+    return (
+      <g>
+        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.5} />
+        <line x1={f.x} y1={f.y + f.h / 2} x2={f.x + f.w} y2={f.y + f.h / 2} stroke="#CBD5E1" strokeWidth={1} />
+        {f.label && (
+          <text x={f.x + 4} y={f.y + f.h / 2 + 3} fontSize={8} fill="#64748B" className="font-semibold select-none">
+            {f.label}
+          </text>
+        )}
+      </g>
+    );
+  }
+
+  // Check-out: Prateleiras / Racks com linhas horizontais de prateleira
+  if (f.kind === "racks_grid") {
     const cols = 3;
     const rows = 3;
     const itemW = (f.w - 8) / cols;
@@ -90,41 +121,53 @@ function FurnitureVectorShape({ f }) {
     const items = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        const rx = f.x + 2 + c * (itemW + 2);
+        const ry = f.y + 2 + r * (itemH + 2);
         items.push(
-          <rect
-            key={`${r}-${c}`}
-            x={f.x + 2 + c * (itemW + 2)}
-            y={f.y + 2 + r * (itemH + 2)}
-            width={itemW}
-            height={itemH}
-            rx={2}
-            fill="#F1F5F9"
-            stroke="#94A3B8"
-            strokeWidth={1}
-          />
+          <g key={`${r}-${c}`}>
+            <rect
+              x={rx}
+              y={ry}
+              width={itemW}
+              height={itemH}
+              rx={2}
+              fill="#F1F5F9"
+              stroke="#64748B"
+              strokeWidth={1.2}
+            />
+            {/* Linha de Prateleira Interna */}
+            <line
+              x1={rx + 3}
+              y1={ry + itemH / 2}
+              x2={rx + itemW - 3}
+              y2={ry + itemH / 2}
+              stroke="#94A3B8"
+              strokeWidth={1}
+            />
+          </g>
         );
       }
     }
     return <g>{items}</g>;
   }
 
+  // Pia / Higienização na Sala de Reenvase
   if (f.kind === "sink") {
     return (
       <g>
-        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={4} fill="#E2E8F0" stroke="#64748B" strokeWidth={1.5} />
-        <circle cx={f.x + f.w / 2} cy={f.y + f.h / 2} r={8} fill="#CBD5E1" stroke="#64748B" strokeWidth={1} />
+        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={4} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.5} />
+        <circle cx={f.x + f.w / 2} cy={f.y + f.h / 2} r={7} fill="#CBD5E1" stroke={strokeColor} strokeWidth={1} />
       </g>
     );
   }
 
+  // Mesa Retangular Dupla ou Simples
   return (
     <g>
-      <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.rx ?? 4} {...common} />
+      <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={f.rx ?? 4} fill="#F1F5F9" stroke={strokeColor} strokeWidth={1.5} />
       {f.hasGadgets && (
         <g opacity={0.55}>
-          {/* Monitor Minimalista Widescreen */}
           <rect x={f.x + f.w / 2 - 12} y={f.y + 4} width={24} height={3} rx={1} fill="#1E293B" />
-          {/* Teclado Minimalista */}
           <rect x={f.x + f.w / 2 - 10} y={f.y + 11} width={20} height={6} rx={1} fill="#CBD5E1" />
         </g>
       )}
@@ -146,17 +189,17 @@ export default function PlantaInterativa({
   const [currentViewBox, setCurrentViewBox] = useState("0 0 688 1024");
   const [zoomScale, setZoomScale] = useState(1);
 
-  // Modo de Edição e Reposicionamento
+  // Modo de Edição
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Modal de Atribuição de Estação
+  // Modal de Atribuição
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [modalStationCodigo, setModalStationCodigo] = useState("");
   const [modalColaboradorId, setModalColaboradorId] = useState("__none__");
   const [selectedEquipmentsToAssign, setSelectedEquipmentsToAssign] = useState([]);
 
-  // Buscar estações salvas no DB
+  // Queries
   const { data: estacoesDb = [] } = useQuery({
     queryKey: ['estacoes_trabalho'],
     queryFn: () => base44.entities.Estacoes_Trabalho.list(),
@@ -204,7 +247,7 @@ export default function PlantaInterativa({
     }
   });
 
-  // Mapeamento dos Assentos Predefinidos + DB
+  // Mapeamento dos Assentos com DB
   const mappedSeats = useMemo(() => {
     const baseSeats = UNIFIED_FLOORPLAN.seats;
     
@@ -243,7 +286,7 @@ export default function PlantaInterativa({
     });
   }, [estacoesDb, colaboradores, equipamentos]);
 
-  // Estatísticas Gerais
+  // Estatísticas
   const stats = useMemo(() => {
     const total = mappedSeats.length;
     const occupied = mappedSeats.filter(s => s.isOcupado).length;
@@ -251,7 +294,7 @@ export default function PlantaInterativa({
     return { total, occupied, free };
   }, [mappedSeats]);
 
-  // Troca de Seção / Atalhos Rápidos
+  // Troca de Seção
   const handleSelectSection = (sec) => {
     setActiveSectionId(sec.id);
     setCurrentViewBox(sec.viewBox);
@@ -280,7 +323,7 @@ export default function PlantaInterativa({
     setShowCreateModal(true);
   };
 
-  // Salvar Modal
+  // Submeter Modal
   const handleAssignSubmit = (e) => {
     e.preventDefault();
     const colabVal = modalColaboradorId === "__none__" ? null : modalColaboradorId;
@@ -304,7 +347,6 @@ export default function PlantaInterativa({
     }
   };
 
-  // Equipamentos pendentes
   const equipamentosSemEstacao = useMemo(() => {
     return equipamentos.filter(e => !e.estacao_id);
   }, [equipamentos]);
@@ -333,33 +375,15 @@ export default function PlantaInterativa({
           })}
         </div>
 
-        {/* Controles de Zoom & Edição */}
+        {/* Zoom e Edição */}
         <div className="flex items-center gap-1 ml-auto shrink-0 border-l border-slate-200 pl-3">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0 border-slate-200"
-            onClick={handleZoomIn}
-            title="Aumentar Zoom"
-          >
+          <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-slate-200" onClick={handleZoomIn} title="Aumentar Zoom">
             <ZoomIn className="w-4 h-4 text-slate-700" />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0 border-slate-200"
-            onClick={handleZoomOut}
-            title="Reduzir Zoom"
-          >
+          <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-slate-200" onClick={handleZoomOut} title="Reduzir Zoom">
             <ZoomOut className="w-4 h-4 text-slate-700" />
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-8 p-0 border-slate-200"
-            onClick={handleResetZoom}
-            title="Resetar Visão"
-          >
+          <Button size="sm" variant="outline" className="h-8 w-8 p-0 border-slate-200" onClick={handleResetZoom} title="Resetar Visão">
             <Maximize2 className="w-4 h-4 text-slate-700" />
           </Button>
 
@@ -379,15 +403,14 @@ export default function PlantaInterativa({
         </div>
       </div>
 
-      {/* ── CARD PRINCIPAL DO MAPA VETORIAL SVG (0% PIXELAÇÃO) ────────────── */}
+      {/* ── CARD PRINCIPAL DO MAPA VETORIAL SVG ──────────────────────────── */}
       <Card className="shadow-xs border-slate-200/80 bg-white rounded-2xl overflow-hidden">
-        {/* Cabeçalho do Card */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>Layout Geral de Salas (Desenho Vetorial SVG)</span>
-              <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full">
-                Vetor 100% Nítido (Estilo v0)
+              <span>Layout Geral de Salas (Vetor SVG Nítido)</span>
+              <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 rounded-full">
+                Estilo v0 Original
               </span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -395,7 +418,6 @@ export default function PlantaInterativa({
             </p>
           </div>
 
-          {/* Capacidade */}
           <div className="flex items-center gap-4 text-xs font-medium bg-white px-3 py-1.5 rounded-xl border border-slate-200/60 shadow-2xs">
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-slate-900 text-sm">{stats.total}</span>
@@ -413,7 +435,6 @@ export default function PlantaInterativa({
         </div>
 
         <CardContent className="p-3 sm:p-6 bg-slate-50/40">
-          {/* Container Responsivo sem Scroll Horizontal com Fundo Limpo */}
           <div className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-2 sm:p-4 shadow-2xs flex justify-center items-center relative">
             <div
               className="w-full transition-transform duration-300 ease-out origin-top flex justify-center"
@@ -425,10 +446,9 @@ export default function PlantaInterativa({
                 className="w-full h-auto max-h-[82vh] block select-none rounded-lg"
                 preserveAspectRatio="xMidYMid meet"
               >
-                {/* 1. PAREDES EXTERNAS & OUTLINES DAS SALAS (Estilo v0) */}
+                {/* 1. OUTLINES DAS SALAS E DIVISÓRIAS (Paredes #1E293B) */}
                 {UNIFIED_FLOORPLAN.rooms.map((room) => (
                   <g key={room.id}>
-                    {/* Fundo de cada sala (Cinza-azulado muito suave) */}
                     <rect
                       x={room.x}
                       y={room.y}
@@ -440,7 +460,6 @@ export default function PlantaInterativa({
                       strokeWidth={3.5}
                     />
 
-                    {/* Divisória interna única */}
                     {room.divider && (
                       <line
                         x1={room.divider.x1}
@@ -452,7 +471,6 @@ export default function PlantaInterativa({
                       />
                     )}
 
-                    {/* Divisórias múltiplas */}
                     {room.dividers?.map((d, idx) => (
                       <line
                         key={idx}
@@ -465,27 +483,26 @@ export default function PlantaInterativa({
                       />
                     ))}
 
-                    {/* Rótulo de Texto Principal */}
+                    {/* RÓTULOS COM ESCURO ALTO CONTRASTE (#1E293B) */}
                     {room.textX && (
                       <text
                         x={room.textX}
                         y={room.textY}
-                        fill="#94A3B8"
-                        className="font-bold tracking-widest font-sans uppercase opacity-65 select-none"
+                        fill="#1E293B"
+                        className="font-extrabold tracking-wider font-sans uppercase select-none"
                         fontSize={11}
                       >
                         {room.name}
                       </text>
                     )}
 
-                    {/* Rótulos múltiplos */}
                     {room.textLabels?.map((t, idx) => (
                       <text
                         key={idx}
                         x={t.x}
                         y={t.y}
-                        fill="#94A3B8"
-                        className="font-bold tracking-widest font-sans uppercase opacity-65 select-none"
+                        fill="#1E293B"
+                        className="font-extrabold tracking-wider font-sans uppercase select-none"
                         fontSize={11}
                       >
                         {t.text}
@@ -494,14 +511,14 @@ export default function PlantaInterativa({
                   </g>
                 ))}
 
-                {/* 2. MÓVEIS VETORIAIS (Mesas, Baias, Armários, TVs, Balcões) */}
+                {/* 2. MÓVEIS VETORIAIS FIÉIS AO DESENHO REAL */}
                 {UNIFIED_FLOORPLAN.furniture.map((f, i) => (
                   <FurnitureVectorShape key={i} f={f} />
                 ))}
 
-                {/* 3. ASSENTOS INTERATIVOS & WORKSTATIONS (FOTO OU BOTÃO + FLUTUANTE) */}
+                {/* 3. ASSENTOS E PINS COMPACTOS (28px - NÃO ESCONDEM OS MÓVEIS) */}
                 {mappedSeats.map((seat) => {
-                  const size = 36;
+                  const size = 28;
                   const half = size / 2;
                   const occupied = seat.isOcupado;
                   const colab = seat.colaborador;
@@ -522,55 +539,52 @@ export default function PlantaInterativa({
                       role="button"
                     >
                       <defs>
-                        <clipPath id={`avatar-clip-v2-${seat.id}`}>
-                          <circle cx={0} cy={0} r={13} />
+                        <clipPath id={`avatar-clip-v3-${seat.id}`}>
+                          <circle cx={0} cy={0} r={11} />
                         </clipPath>
                       </defs>
 
-                      {/* Sombra no chão */}
-                      <ellipse cx={0} cy={4} rx={14} ry={4} fill="#000000" opacity={0.15} className="transition-opacity group-hover:opacity-25" />
-
-                      {/* Base da Cadeira */}
+                      {/* Base compacta do assento */}
                       <rect
                         x={-half}
                         y={-half}
                         width={size}
                         height={size}
-                        rx={7}
+                        rx={6}
                         fill={occupied ? "rgba(15, 23, 42, 0.05)" : "rgba(37, 99, 235, 0.04)"}
                         stroke={occupied ? "#0F172A" : "#3B82F6"}
-                        strokeWidth={occupied ? 1.5 : 1}
-                        strokeDasharray={occupied ? undefined : "3 2"}
+                        strokeWidth={occupied ? 1.3 : 1}
+                        strokeDasharray={occupied ? undefined : "2 2"}
                         className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-2"
                       />
 
-                      {/* ELEMENTO FLUTUANTE (FOTO OU BOTÃO +) */}
+                      {/* Elemento flutuante compacto */}
                       <g
-                        transform="translate(0, -6)"
-                        className="transition-transform duration-200 group-hover:translate-y-[-10px]"
+                        transform="translate(0, -4)"
+                        className="transition-transform duration-200 group-hover:translate-y-[-8px]"
                       >
                         {occupied && colab ? (
                           <g>
-                            <circle cx={0} cy={0} r={15} fill="#FFFFFF" stroke={seatColor} strokeWidth={2.2} className="shadow-md" />
+                            <circle cx={0} cy={0} r={12} fill="#FFFFFF" stroke={seatColor} strokeWidth={2} className="shadow-md" />
                             {photoUrl ? (
                               <image
                                 href={photoUrl}
-                                x={-13}
-                                y={-13}
-                                width={26}
-                                height={26}
-                                clipPath={`url(#avatar-clip-v2-${seat.id})`}
+                                x={-11}
+                                y={-11}
+                                width={22}
+                                height={22}
+                                clipPath={`url(#avatar-clip-v3-${seat.id})`}
                                 preserveAspectRatio="xMidYMid slice"
                               />
                             ) : (
-                              <circle cx={0} cy={0} r={13} fill={seatColor} />
+                              <circle cx={0} cy={0} r={11} fill={seatColor} />
                             )}
                             {!photoUrl && (
                               <text
                                 x={0}
-                                y={4}
+                                y={3.5}
                                 textAnchor="middle"
-                                style={{ fontSize: 10, fill: "white", fontWeight: "bold" }}
+                                style={{ fontSize: 9, fill: "white", fontWeight: "bold" }}
                               >
                                 {getInitials(colab.nome_completo)}
                               </text>
@@ -581,17 +595,17 @@ export default function PlantaInterativa({
                             <circle
                               cx={0}
                               cy={0}
-                              r={12}
+                              r={10}
                               fill="#2563EB"
                               stroke="#FFFFFF"
-                              strokeWidth={2}
+                              strokeWidth={1.8}
                               className="shadow-md transition-colors group-hover:fill-blue-700"
                             />
                             <text
                               x={0}
-                              y={4}
+                              y={3.5}
                               textAnchor="middle"
-                              style={{ fontSize: 15, fill: "white", fontWeight: "bold" }}
+                              style={{ fontSize: 13, fill: "white", fontWeight: "bold" }}
                             >
                               +
                             </text>

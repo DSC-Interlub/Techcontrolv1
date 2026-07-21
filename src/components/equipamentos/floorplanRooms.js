@@ -1,9 +1,12 @@
 /**
  * floorplanRooms.js — Definição da Planta Espacial Única 100% Vetorial (SVG Pure Vector)
  * 
- * Substitui o PNG raster por um mapa vetorial completo em código SVG com precisão matemática.
- * Todas as 8 salas (ADM, CCO, BSM, DRC, Check-out, Reenvase, BIO, Financeiro) são renderizadas
- * como elementos SVG vetoriais nítidos (sem pixelação em nenhum nível de zoom).
+ * Atualizada com alta fidelidade aos móveis de referência:
+ * 1. Mesa redonda com 4 cadeiras ao redor
+ * 2. Baias em L reconhecíveis com cadeiras ergonômicas
+ * 3. Check-out com prateleiras em linhas horizontais
+ * 4. Rótulos com contraste escuro (#1E293B) sem colisões
+ * 5. Layouts do Mezanino (DRC/BSM) e Financeiro limpos e organizados
  */
 
 export const UNIFIED_FLOORPLAN = {
@@ -23,19 +26,19 @@ export const UNIFIED_FLOORPLAN = {
     { id: "financeiro", label: "💰 Sala Financeiro", viewBox: "455 665 233 359" },
   ],
 
-  // ── DESENHO VETORIAL DAS SALAS (Paredes, Divisórias, Rótulos e Móveis) ─────
+  // ── PAREDES E DIVISÓRIAS DAS 8 SALAS (OUTLINES E RÓTULOS COM ALTO CONTRASTE)
   rooms: [
     {
       id: "adm",
       name: "ADM — 1º ANDAR",
       x: 16, y: 16, w: 656, h: 265, rx: 6,
-      textX: 300, textY: 34,
+      textX: 310, textY: 34,
     },
     {
       id: "cco",
       name: "CENTRO DE CONTROLE OPERACIONAL",
       x: 380, y: 295, w: 292, h: 145, rx: 6,
-      textX: 430, textY: 375,
+      textX: 420, textY: 388,
     },
     {
       id: "bsm_drc",
@@ -43,7 +46,7 @@ export const UNIFIED_FLOORPLAN = {
       x: 236, y: 445, w: 436, h: 215, rx: 6,
       divider: { x1: 340, y1: 445, x2: 340, y2: 660 },
       textLabels: [
-        { text: "SALA BSM", x: 255, y: 462 },
+        { text: "SALA BSM", x: 252, y: 462 },
         { text: "SALA DRC", x: 480, y: 462 }
       ]
     },
@@ -75,14 +78,14 @@ export const UNIFIED_FLOORPLAN = {
     }
   ],
 
-  // ── MÓVEIS VETORIAIS (Mesas, Baias L, Armários, Prateleiras, TVs) ──────────
+  // ── MÓVEIS VETORIAIS FIÉIS AO LAYOUT DA V0 ───────────────────────────────
   furniture: [
-    // ADM 1º Andar (Mesa Redonda, Baias, Mesas em L)
-    { kind: "round", cx: 86, cy: 68, r: 24 }, // Mesa reunião
+    // ADM 1º Andar
+    { kind: "round_table", cx: 86, cy: 68, r: 24 }, // Mesa reunião com 4 cadeiras
     { kind: "cabinet", x: 26, y: 190, w: 32, h: 70, label: "Armário" },
-    { kind: "desk_l", x: 70, y: 190, w: 55, h: 65 }, // Estação L
+    { kind: "desk_l", x: 70, y: 190, w: 55, h: 65, dir: "top-left" }, // Estação L
 
-    // Baias Centrais ADM Bloco 1 (6 tampos)
+    // Baias Centrais ADM Bloco 1 (6 tampos com monitores)
     { kind: "desk", x: 140, y: 45, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 194, y: 45, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 140, y: 112, w: 52, h: 65, hasGadgets: true },
@@ -90,7 +93,7 @@ export const UNIFIED_FLOORPLAN = {
     { kind: "desk", x: 140, y: 179, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 194, y: 179, w: 52, h: 65, hasGadgets: true },
 
-    // Baias Centrais ADM Bloco 2 (6 tampos)
+    // Baias Centrais ADM Bloco 2 (6 tampos com monitores)
     { kind: "desk", x: 252, y: 45, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 306, y: 45, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 252, y: 112, w: 52, h: 65, hasGadgets: true },
@@ -98,7 +101,7 @@ export const UNIFIED_FLOORPLAN = {
     { kind: "desk", x: 252, y: 179, w: 52, h: 65, hasGadgets: true },
     { kind: "desk", x: 306, y: 179, w: 52, h: 65, hasGadgets: true },
 
-    // Baias L Direita ADM (6 tampos)
+    // Baias L Direita ADM (6 estações em L reconhecíveis)
     { kind: "desk_l", x: 375, y: 45, w: 60, h: 65 },
     { kind: "desk_l", x: 440, y: 45, w: 60, h: 65 },
     { kind: "desk_l", x: 375, y: 112, w: 60, h: 65 },
@@ -118,7 +121,7 @@ export const UNIFIED_FLOORPLAN = {
     { kind: "cabinet", x: 570, y: 405, w: 92, h: 28 }, // Gabinete 2
 
     // Galpão (Check Out / Reenvase / Bio)
-    { kind: "shelves_grid", x: 30, y: 320, w: 176, h: 135 }, // Paletes / Prateleiras
+    { kind: "racks_grid", x: 30, y: 322, w: 176, h: 135 }, // Prateleiras/Racks com linhas horizontais
     { kind: "desk", x: 30, y: 470, w: 120, h: 45, label: "Balcão Check-out" },
     { kind: "cabinet", x: 30, y: 545, w: 176, h: 30 },
     { kind: "sink", x: 170, y: 640, w: 35, h: 60 },
@@ -127,39 +130,39 @@ export const UNIFIED_FLOORPLAN = {
     { kind: "cabinet", x: 30, y: 955, w: 70, h: 35 },
 
     // Mezanino (Sala BSM & Sala DRC)
-    { kind: "desk_l", x: 248, y: 460, w: 75, h: 75 },
-    { kind: "desk_l", x: 248, y: 550, w: 75, h: 75 },
-    { kind: "desk_l", x: 355, y: 460, w: 85, h: 65 },
-    { kind: "cabinet", x: 355, y: 535, w: 25, h: 100 },
+    { kind: "desk_l", x: 248, y: 475, w: 75, h: 70 },
+    { kind: "desk_l", x: 248, y: 560, w: 75, h: 70 },
+    { kind: "desk_l", x: 355, y: 475, w: 85, h: 65 },
+    { kind: "cabinet", x: 355, y: 550, w: 25, h: 90 },
     { kind: "desk", x: 400, y: 540, w: 55, h: 45, hasGadgets: true },
     { kind: "desk", x: 460, y: 540, w: 55, h: 45, hasGadgets: true },
     { kind: "desk", x: 400, y: 590, w: 55, h: 45, hasGadgets: true },
     { kind: "desk", x: 460, y: 590, w: 55, h: 45, hasGadgets: true },
-    { kind: "desk", x: 535, y: 460, w: 65, h: 45 },
+    { kind: "desk", x: 535, y: 475, w: 65, h: 45 },
     { kind: "desk", x: 535, y: 585, w: 65, h: 45 },
 
     // Sala BSM Térreo
-    { kind: "desk_l", x: 250, y: 700, w: 100, h: 80 },
-    { kind: "desk_l", x: 250, y: 795, w: 100, h: 80 },
-    { kind: "desk_l", x: 250, y: 890, w: 100, h: 80 },
+    { kind: "desk_l", x: 250, y: 710, w: 100, h: 75 },
+    { kind: "desk_l", x: 250, y: 800, w: 100, h: 75 },
+    { kind: "desk_l", x: 250, y: 890, w: 100, h: 75 },
     { kind: "cabinet", x: 395, y: 890, w: 40, h: 100 },
 
-    // Sala Financeiro
-    { kind: "cabinet", x: 476, y: 690, w: 180, h: 30, label: "Armário" },
-    { kind: "tv", x: 535, y: 680, w: 60, h: 8 },
-    { kind: "desk", x: 500, y: 760, w: 65, h: 100, hasGadgets: true },
-    { kind: "desk", x: 570, y: 760, w: 65, h: 100, hasGadgets: true },
-    { kind: "desk", x: 500, y: 875, w: 65, h: 100, hasGadgets: true },
-    { kind: "desk", x: 570, y: 875, w: 65, h: 100, hasGadgets: true },
+    // Sala Financeiro (Sem barra preta, armário limpo + mesas duplas)
+    { kind: "cabinet", x: 476, y: 705, w: 180, h: 28, label: "Armário" },
+    { kind: "tv", x: 535, y: 698, w: 60, h: 6 },
+    { kind: "desk", x: 500, y: 760, w: 65, h: 95, hasGadgets: true },
+    { kind: "desk", x: 570, y: 760, w: 65, h: 95, hasGadgets: true },
+    { kind: "desk", x: 500, y: 875, w: 65, h: 95, hasGadgets: true },
+    { kind: "desk", x: 570, y: 875, w: 65, h: 95, hasGadgets: true },
   ],
 
   // ── ASSENTOS PREDEFINIDOS / PINS (38 Estações de Trabalho) ────────────────
   seats: [
     // ADM 1º Andar - Mesa Reunião Redonda (4 lugares)
-    { id: "ADM-01", codigo: "ADM-01", sala: "ADM — 1º Andar", x: 86, y: 38 },
-    { id: "ADM-02", codigo: "ADM-02", sala: "ADM — 1º Andar", x: 86, y: 98 },
-    { id: "ADM-03", codigo: "ADM-03", sala: "ADM — 1º Andar", x: 56, y: 68 },
-    { id: "ADM-04", codigo: "ADM-04", sala: "ADM — 1º Andar", x: 116, y: 68 },
+    { id: "ADM-01", codigo: "ADM-01", sala: "ADM — 1º Andar", x: 86, y: 34 },
+    { id: "ADM-02", codigo: "ADM-02", sala: "ADM — 1º Andar", x: 86, y: 102 },
+    { id: "ADM-03", codigo: "ADM-03", sala: "ADM — 1º Andar", x: 52, y: 68 },
+    { id: "ADM-04", codigo: "ADM-04", sala: "ADM — 1º Andar", x: 120, y: 68 },
 
     // ADM 1º Andar - Mesa L Canto Superior Esquerdo
     { id: "ADM-05", codigo: "ADM-05", sala: "ADM — 1º Andar", x: 75, y: 210 },
