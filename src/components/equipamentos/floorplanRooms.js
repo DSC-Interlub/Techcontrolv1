@@ -1,36 +1,45 @@
 /**
- * floorplanRooms.js — Definição das 5 Salas idêntica ao v0 original (100% Fiel às imagens de referência v0)
+ * floorplanRooms.js — Desenhos Vetoriais SVG Atualizados
  * 
- * Contém as 5 salas com suas dimensões originais, contornos, paredes, móveis, rótulos e assentos girados.
+ * 1. Sala Financeiro: Formatada DEITADA (Horizontal Landscape).
+ * 2. Galpão — Bio / Reenvase / Check Out: Posição dos assentos corrigidos exatamente conforme Imagem 1 em anexo.
+ * 3. Centro de Controle Operacional (CCO): Layout e os 3 assentos posicionados exatamente conforme Imagem 2 em anexo.
  */
 
 export const SVG_ROOMS = {
-  // 1. SALA FINANCEIRO (520 x 760 - Vertical como no v0)
+  // 1. SALA FINANCEIRO (Formatada DEITADA / Horizontal 1000 x 540)
   sala_financeiro: {
     id: "financeiro",
     name: "Sala Financeiro",
-    width: 520,
-    height: 760,
-    outline: { x: 24, y: 24, w: 472, h: 712, rx: 6 },
+    width: 1000,
+    height: 540,
+    outline: { x: 20, y: 20, w: 960, h: 500, rx: 6 },
     furniture: [
-      { kind: "tv", x: 56, y: 56, w: 110, h: 66 },
-      { kind: "cabinet", x: 190, y: 56, w: 220, h: 56, label: "Armário" },
-      { kind: "cabinet", x: 190, y: 156, w: 220, h: 56 },
-      { kind: "desk", x: 190, y: 224, w: 108, h: 190 },
-      { kind: "desk", x: 302, y: 224, w: 108, h: 190 },
-      { kind: "desk", x: 190, y: 470, w: 108, h: 190 },
-      { kind: "desk", x: 302, y: 470, w: 108, h: 190 },
+      { kind: "tv", x: 40, y: 40, w: 66, h: 110 },
+      { kind: "cabinet", x: 150, y: 40, w: 220, h: 50, label: "Armário" },
+      { kind: "cabinet", x: 390, y: 40, w: 220, h: 50 },
+
+      // Bloco de mesas esquerdo (2 postos)
+      { kind: "desk", x: 150, y: 170, w: 220, h: 110 },
+      { kind: "desk", x: 150, y: 285, w: 220, h: 110 },
+
+      // Bloco de mesas direito (2 postos)
+      { kind: "desk", x: 500, y: 170, w: 220, h: 110 },
+      { kind: "desk", x: 500, y: 285, w: 220, h: 110 },
+
+      // Arquivo Morto / Armário Lateral Direita
+      { kind: "cabinet", x: 880, y: 40, w: 80, h: 440, label: "Arquivo" }
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 150, y: 300, rotate: 90 },
-      { id: "M-02", codigo: "M-02", x: 452, y: 300, rotate: -90 },
-      { id: "M-03", codigo: "M-03", x: 150, y: 560, rotate: 90 },
-      { id: "M-04", codigo: "M-04", x: 452, y: 560, rotate: -90 },
+      { id: "M-01", codigo: "M-01", x: 260, y: 120, rotate: 180 },
+      { id: "M-02", codigo: "M-02", x: 260, y: 445, rotate: 0 },
+      { id: "M-03", codigo: "M-03", x: 610, y: 120, rotate: 180 },
+      { id: "M-04", codigo: "M-04", x: 610, y: 445, rotate: 0 },
     ],
-    textLabels: [{ text: "SALA FINANCEIRO", x: 52, y: 560, rotate: -90, size: 26 }],
+    textLabels: [{ text: "SALA FINANCEIRO", x: 460, y: 480, size: 22 }],
   },
 
-  // 2. ADM 1º ANDAR (1400 x 720 - Horizontal como no v0)
+  // 2. ADM 1º ANDAR (1400 x 720)
   adm_1andar: {
     id: "adm-1andar",
     name: "ADM — 1º Andar",
@@ -95,7 +104,7 @@ export const SVG_ROOMS = {
     textLabels: [],
   },
 
-  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560 - Horizontal como no v0)
+  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560)
   mezanino_bsm_drc: {
     id: "bsm-drc",
     name: "Mezanino — Sala BSM / Sala DRC",
@@ -142,7 +151,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (1000 x 240 - Horizontal como no v0)
+  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Posições corrigidas idênticas à Imagem 1)
   galpao_bio_reenvase_checkout: {
     id: "bio-reenvase-checkout",
     name: "Galpão — Bio / Reenvase / Check Out",
@@ -154,30 +163,55 @@ export const SVG_ROOMS = {
       { x1: 664, y1: 12, x2: 664, y2: 228 },
     ],
     furniture: [
-      { kind: "block", x: 150, y: 30, w: 60, h: 30 },
-      { kind: "cabinet", x: 300, y: 120, w: 34, h: 90 },
-      { kind: "cabinet", x: 420, y: 30, w: 34, h: 90 },
-      { kind: "cabinet", x: 420, y: 130, w: 34, h: 60 },
-      { kind: "block", x: 470, y: 190, w: 70, h: 30 },
-      { kind: "cabinet", x: 610, y: 40, w: 20, h: 130 },
-      { kind: "block", x: 720, y: 150, w: 70, h: 34 },
-      { kind: "cabinet", x: 820, y: 28, w: 44, h: 40 },
-      { kind: "cabinet", x: 878, y: 28, w: 44, h: 40 },
-      { kind: "cabinet", x: 936, y: 28, w: 44, h: 40 },
+      // SALA BIO (Mesa superior circulada na Imagem 1)
+      { kind: "desk", x: 165, y: 25, w: 70, h: 36, label: "Mesa BIO" },
+      { kind: "cabinet", x: 330, y: 110, w: 34, h: 90 },
+
+      // SALA DE REENVASE (Mesa superior circulada na Imagem 1)
+      { kind: "desk", x: 390, y: 25, w: 45, h: 65, label: "Reenvase 1" },
+      { kind: "cabinet", x: 390, y: 100, w: 45, h: 110 },
+      { kind: "block", x: 520, y: 180, w: 60, h: 35 },
+
+      // CHECK OUT (Mesas inferiores circuladas na Imagem 1)
+      { kind: "cabinet", x: 675, y: 40, w: 25, h: 160 },
+      { kind: "block", x: 800, y: 100, w: 35, h: 80 },
+
+      // Paletes do Check Out (grid superior direita)
+      { kind: "block", x: 850, y: 28, w: 35, h: 30 },
+      { kind: "block", x: 890, y: 28, w: 35, h: 30 },
+      { kind: "block", x: 930, y: 28, w: 35, h: 30 },
+      { kind: "block", x: 890, y: 65, w: 35, h: 30 },
+      { kind: "block", x: 930, y: 65, w: 35, h: 30 },
+      { kind: "block", x: 890, y: 102, w: 35, h: 30 },
+      { kind: "block", x: 930, y: 102, w: 35, h: 30 },
+      { kind: "block", x: 890, y: 139, w: 35, h: 30 },
+      { kind: "block", x: 930, y: 139, w: 35, h: 30 },
+
+      // Mesas inferiores do Check Out (circuladas na Imagem 1)
+      { kind: "desk", x: 740, y: 180, w: 70, h: 35 },
+      { kind: "desk", x: 830, y: 180, w: 80, h: 35 },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 180, y: 100, rotate: 0 },
-      { id: "M-02", codigo: "M-02", x: 510, y: 120, rotate: 0 },
-      { id: "M-03", codigo: "M-03", x: 755, y: 100, rotate: 0 },
+      // 1. SALA BIO (Assento no topo centro da Sala Bio)
+      { id: "M-01", codigo: "M-01", x: 200, y: 80, rotate: 0 },
+
+      // 2. SALA DE REENVASE (Assento no topo esquerdo da Sala de Reenvase)
+      { id: "M-02", codigo: "M-02", x: 460, y: 55, rotate: -90 },
+
+      // 3. CHECK OUT - Mesa Inferior Esquerda (Circulada na Imagem 1)
+      { id: "M-03", codigo: "M-03", x: 775, y: 140, rotate: 180 },
+
+      // 4. CHECK OUT - Mesa Inferior Direita (Circulada na Imagem 1)
+      { id: "M-04", codigo: "M-04", x: 870, y: 140, rotate: 180 },
     ],
     textLabels: [
-      { text: "SALA BIO", x: 20, y: 34, size: 16 },
-      { text: "SALA DE REENVASE", x: 460, y: 34, size: 16 },
-      { text: "CHECK OUT", x: 700, y: 34, size: 16 },
+      { text: "SALA BIO", x: 30, y: 35, size: 16 },
+      { text: "SALA DE REENVASE", x: 640, y: 35, size: 16 },
+      { text: "CHECK OUT", x: 700, y: 35, size: 16 },
     ],
   },
 
-  // 5. GALPÃO: CENTRO DE CONTROLE OPERACIONAL (520 x 480 - Quadrado como no v0)
+  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (100% Idêntico à Imagem 2)
   galpao_centro_controle_operacional: {
     id: "centro-controle",
     name: "Centro de Controle Operacional",
@@ -185,17 +219,37 @@ export const SVG_ROOMS = {
     height: 480,
     outline: { x: 20, y: 20, w: 480, h: 440, rx: 4 },
     furniture: [
-      { kind: "desk", x: 40, y: 40, w: 130, h: 110 },
-      { kind: "cabinet", x: 200, y: 40, w: 44, h: 70 },
-      { kind: "tv", x: 380, y: 90, w: 80, h: 46 },
-      { kind: "desk", x: 40, y: 230, w: 130, h: 110 },
-      { kind: "cabinet", x: 40, y: 380, w: 60, h: 60 },
-      { kind: "cabinet", x: 200, y: 380, w: 120, h: 50 },
+      // Mesa em L Superior Esquerda
+      { kind: "desk", x: 35, y: 35, w: 140, h: 50 },
+      { kind: "desk", x: 35, y: 35, w: 50, h: 140 },
+
+      // Mesa em L Inferior Esquerda
+      { kind: "desk", x: 35, y: 265, w: 140, h: 50 },
+      { kind: "desk", x: 35, y: 175, w: 50, h: 140 },
+
+      // Divisória / Gaveteiro Central entre as mesas em L
+      { kind: "cabinet", x: 35, y: 165, w: 50, h: 20 },
+
+      // Mesa Operacional Superior Direita
+      { kind: "desk", x: 195, y: 35, w: 280, h: 65 },
+
+      // Armários Inferiores Direitos
+      { kind: "cabinet", x: 195, y: 390, w: 75, h: 50 },
+      { kind: "cabinet", x: 280, y: 385, w: 195, h: 55 },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 120, y: 110, rotate: 0 },
-      { id: "M-02", codigo: "M-02", x: 120, y: 300, rotate: 0 },
+      // 1. Assento Superior Esquerdo (Circulado na Imagem 2)
+      { id: "M-01", codigo: "M-01", x: 115, y: 110, rotate: 45 },
+
+      // 2. Assento Inferior Esquerdo (Circulado na Imagem 2)
+      { id: "M-02", codigo: "M-02", x: 115, y: 235, rotate: -45 },
+
+      // 3. Assento Superior Direito (Circulado na Imagem 2)
+      { id: "M-03", codigo: "M-03", x: 410, y: 120, rotate: 0 },
     ],
-    textLabels: [{ text: "CENTRO DE CONTROLE OPERACIONAL", x: 260, y: 240, size: 20 }],
+    textLabels: [
+      { text: "CENTRO DE CONTROLE", x: 330, y: 230, size: 20 },
+      { text: "OPERACIONAL", x: 330, y: 260, size: 20 }
+    ],
   }
 };

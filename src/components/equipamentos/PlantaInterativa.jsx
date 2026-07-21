@@ -1,10 +1,10 @@
 /**
- * PlantaInterativa.jsx — Réplica 100% Fiel do Projeto v0 (Planta Vetorial SVG + Assentos com "+")
+ * PlantaInterativa.jsx — Réplica 100% Vetorial e Fiel ao v0
  * 
- * 1. Visual 100% idêntico às imagens do v0 (Paredes pretas de 5px, móveis com stroke escuro, assentos tracejados com "+", encosto de cadeira e iniciais coloridas).
- * 2. Contador no topo direito: "X Lugares  Y Ocupados  Z Livres".
- * 3. Assentos Vagos: Retângulo tracejado com encosto + símbolo "+" no centro. Ao clicar, abre atribuição de colaborador/máquinas.
- * 4. Assentos Ocupados: Preenchimento com cor sólida (ex: Azul/Roxo #4F46E5) + Iniciais do colaborador em branco (ex: "AS").
+ * 1. Uso EXCLUSIVO de desenho vetorial SVG (opções "Imagem/Vetorial" removidas).
+ * 2. Sala Financeiro deitada em formato horizontal landscape.
+ * 3. Galpão (Bio, Reenvase, Check Out) com posições fiéis à Imagem 1 em anexo.
+ * 4. Centro de Controle Operacional (CCO) com 3 assentos e mesas fiéis à Imagem 2 em anexo.
  */
 import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,47 +12,36 @@ import { base44 } from "@/api/base44Client";
 import { SVG_ROOMS } from "./floorplanRooms";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Monitor, Laptop, Pencil, Trash2, AlertTriangle, UserPlus,
-  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon
-} from "lucide-react";
+import { Trash2, AlertTriangle } from "lucide-react";
 
 export const SALAS = [
   {
     id: "sala_financeiro",
     nome: "Sala Financeiro",
     descricao: "4 Lugares",
-    icon: DollarSign,
   },
   {
     id: "adm_1andar",
     nome: "ADM — 1º Andar",
     descricao: "20 Lugares",
-    icon: Briefcase,
   },
   {
     id: "mezanino_bsm_drc",
     nome: "Mezanino — Sala BSM / Sala DRC",
     descricao: "12 Lugares",
-    icon: Building,
   },
   {
     id: "galpao_bio_reenvase_checkout",
     nome: "Galpão — Bio / Reenvase / Check Out",
-    descricao: "3 Lugares",
-    icon: Package,
+    descricao: "4 Lugares",
   },
   {
     id: "galpao_centro_controle_operacional",
     nome: "Centro de Controle Operacional",
-    descricao: "2 Lugares",
-    icon: Activity,
+    descricao: "3 Lugares",
   }
 ];
 
@@ -64,7 +53,7 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// CORES DE ATRIBUIÇÃO ESTILO V0 (#4F46E5, #2563EB, #059669, #D97706, #7C3AED)
+// Cores para iniciais ocupadas (#4F46E5, #2563EB, #059669, #D97706, #7C3AED)
 const AVATAR_COLORS = [
   "#4F46E5", "#2563EB", "#059669", "#D97706", "#7C3AED", "#DB2777", "#0284C7"
 ];
@@ -82,15 +71,13 @@ export default function PlantaInterativa({
   isAdmin = true,
   equipamentos = [],
   colaboradores = [],
-  chamados = [],
   onEditEquipamento
 }) {
   const queryClient = useQueryClient();
   const [salaAtivaId, setSalaAtivaId] = useState("sala_financeiro");
-  const [renderMode, setRenderMode] = useState("svg"); // "svg" ou "image"
   const [selectedSeat, setSelectedSeat] = useState(null);
 
-  // Modal de Criação / Atribuição
+  // Modal de Atribuição
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [modalStationCodigo, setModalStationCodigo] = useState("");
   const [modalColaboradorId, setModalColaboradorId] = useState("__none__");
@@ -146,19 +133,12 @@ export default function PlantaInterativa({
     }
   });
 
-  const updatePcsMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.PCs_Internos.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
-    }
-  });
-
   // Estações salvas no DB para a sala ativa
   const estacoesDaSala = useMemo(() => {
     return estacoes.filter(e => e.sala === salaAtual.nome || e.imagem_planta === salaAtual.id);
   }, [estacoes, salaAtual]);
 
-  // Lista de assentos mapeando o SVG e o DB
+  // Mapeamento dos assentos SVG com os dados do DB
   const mappedSeats = useMemo(() => {
     if (!svgRoom?.seats) return [];
     return svgRoom.seats.map(seat => {
@@ -226,7 +206,7 @@ export default function PlantaInterativa({
 
   return (
     <div className="space-y-6">
-      {/* ── BARRA DE SELEÇÃO DAS SALAS (ESTILO ABAS V0) ────────────────── */}
+      {/* ── BARRA DE SELEÇÃO DAS SALAS (ABAS V0) ───────────────────────── */}
       <div className="flex flex-wrap gap-2">
         {SALAS.map(sala => {
           const isSelected = salaAtivaId === sala.id;
@@ -249,7 +229,7 @@ export default function PlantaInterativa({
         })}
       </div>
 
-      {/* ── PAINEL PRINCIPAL DA PLANTA (MOLDURA E CABEÇALHO IDÊNTICO AO V0) ─ */}
+      {/* ── MOLDURA DA PLANTA VETORIAL (DESIGN V0 100% PURO) ─────────────── */}
       <Card className="shadow-xs border-gray-200 bg-white rounded-2xl overflow-hidden">
         {/* Cabeçalho do v0: Título à esquerda, Estatísticas à direita */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-gray-100 bg-gray-50/30">
@@ -272,33 +252,13 @@ export default function PlantaInterativa({
               <span className="text-base font-extrabold text-slate-500">{roomStats.free}</span>
               <span className="text-gray-500 text-xs">Livres</span>
             </div>
-
-            {/* Alternador de Renderização */}
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-white ml-2">
-              <Button
-                size="sm"
-                variant={renderMode === "svg" ? "default" : "ghost"}
-                className={`h-7 text-[11px] px-2 font-bold ${renderMode === "svg" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
-                onClick={() => setRenderMode("svg")}
-              >
-                <Sparkles className="w-3 h-3 mr-1" /> Vetorial v0
-              </Button>
-              <Button
-                size="sm"
-                variant={renderMode === "image" ? "default" : "ghost"}
-                className={`h-7 text-[11px] px-2 font-bold ${renderMode === "image" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
-                onClick={() => setRenderMode("image")}
-              >
-                <ImageIcon className="w-3 h-3 mr-1" /> Imagem
-              </Button>
-            </div>
           </div>
         </div>
 
         <CardContent className="p-4 sm:p-8 bg-gray-50/20">
-          {/* MOLDURA EXTERNA DA PLANTA EM SVG (IDÊNTICA AO V0) */}
+          {/* PLANTA VETORIAL SVG (0% PIXELAÇÃO) */}
           <div className="w-full overflow-auto rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-2xs flex justify-center items-center">
-            {renderMode === "svg" && svgRoom ? (
+            {svgRoom && (
               <svg
                 viewBox={`0 0 ${svgRoom.width} ${svgRoom.height}`}
                 className="w-full h-auto block select-none"
@@ -382,7 +342,7 @@ export default function PlantaInterativa({
                   </text>
                 ))}
 
-                {/* 5. CADEIRAS / ASSENTOS INTERATIVOS DO V0 (CADEIRA COM ENCOSTO + '+' OU INICIAIS) */}
+                {/* 5. CADEIRAS / ASSENTOS INTERATIVOS DO V0 (ENCOSTO + '+' OU INICIAIS) */}
                 {mappedSeats.map((seat) => {
                   const size = 40;
                   const half = size / 2;
@@ -397,7 +357,7 @@ export default function PlantaInterativa({
                       className="cursor-pointer group"
                       role="button"
                     >
-                      {/* Encosto da cadeira v0 */}
+                      {/* Encosto da cadeira */}
                       <rect
                         x={-half}
                         y={-half - 6}
@@ -408,7 +368,7 @@ export default function PlantaInterativa({
                         opacity={0.7}
                       />
 
-                      {/* Base do assento v0 (Tracejado se livre, Sólido se ocupado) */}
+                      {/* Base do assento (Tracejado se livre, Sólido se ocupado) */}
                       <rect
                         x={-half}
                         y={-half + 2}
@@ -448,13 +408,6 @@ export default function PlantaInterativa({
                   );
                 })}
               </svg>
-            ) : (
-              /* MODO IMAGEM HI-RES */
-              <img
-                src={salaAtual.imagem}
-                alt={salaAtual.nome}
-                className="w-full h-auto block rounded-lg select-none border border-gray-100 shadow-2xs"
-              />
             )}
           </div>
         </CardContent>
