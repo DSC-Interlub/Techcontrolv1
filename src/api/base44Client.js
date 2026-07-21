@@ -24,6 +24,7 @@ const tableMap = {
   Tablets: 'tablets',
   Configuracoes: 'configuracoes',
   EmpresasTerceiras: 'empresas_terceiras',
+  Estacoes_Trabalho: 'estacoes_trabalho',
   User: 'profiles'
 };
 

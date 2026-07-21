@@ -13,10 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
+import PlantaInterativa from "../components/equipamentos/PlantaInterativa";
 import { useAuth } from "@/lib/AuthContext";
+import { MapPin } from "lucide-react";
 
 export default function PCs_Internos() {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const [mainTab, setMainTab] = useState("planta"); // "planta" or "tabela"
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [selectedEquipamento, setSelectedEquipamento] = useState(null);
@@ -40,6 +44,12 @@ export default function PCs_Internos() {
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    staleTime: 30000,
+  });
+
+  const { data: chamados = [] } = useQuery({
+    queryKey: ['chamados_pcs'],
+    queryFn: () => base44.entities.Chamados.list(),
     staleTime: 30000,
   });
 
@@ -326,12 +336,41 @@ export default function PCs_Internos() {
           />
         )}
 
-        <Card>
-          <CardHeader className="border-b">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <CardTitle>Equipamentos</CardTitle>
+        {/* ── SELETOR PRINCIPAL DE VISUALIZAÇÃO (PLANTA vs TABELA) ───────── */}
+        <div className="mb-6">
+          <Tabs value={mainTab} onValueChange={setMainTab} className="w-full">
+            <TabsList className="grid grid-cols-2 w-full md:w-96 bg-gray-200 p-1 rounded-xl">
+              <TabsTrigger value="planta" className="text-xs font-bold gap-2">
+                <MapPin className="w-4 h-4 text-indigo-600" />
+                🗺️ Planta Espacial da Empresa
+              </TabsTrigger>
+              <TabsTrigger value="tabela" className="text-xs font-bold gap-2">
+                <List className="w-4 h-4 text-blue-600" />
+                📋 Lista em Tabela
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* VISÃO 1: MAPA DA PLANTA INTERATIVA */}
+        {mainTab === "planta" && (
+          <PlantaInterativa
+            isAdmin={isAdmin}
+            equipamentos={equipamentos}
+            colaboradores={colaboradores}
+            chamados={chamados}
+            onEditEquipamento={handleEdit}
+          />
+        )}
+
+        {/* VISÃO 2: TABELA DE EQUIPAMENTOS */}
+        {mainTab === "tabela" && (
+          <Card>
+            <CardHeader className="border-b">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <CardTitle>Equipamentos em Tabela</CardTitle>
                   <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
                     <TabsList>
                       <TabsTrigger value="grouped" className="gap-2">
@@ -589,6 +628,7 @@ export default function PCs_Internos() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {selectedEquipamento && (
           <EquipamentoDetalhes
