@@ -1,42 +1,34 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * Ajuste Fino Mezanino:
- * - Reposicionado a mesa dupla inferior direita da Sala DRC para x:880 e x:974.
- * - Assento M-11 ajustado para x:835, perfeitamente alinhado à esquerda da mesa, eliminado o acavalgamento com o assento M-10.
+ * Atualização Sala Financeiro:
+ * - 100% Fiel à imagem real de referência (orientação vertical original).
+ * - Mantidos EXCLUSIVAMENTE os 4 postos de trabalho circulados em azul na imagem.
+ * - Removidos todos os armários, TVs e móveis secundários não circulados.
  */
 
 export const SVG_ROOMS = {
-  // 1. SALA FINANCEIRO (Horizontal 1000 x 540)
+  // 1. SALA FINANCEIRO (100% Idêntica à imagem de referência real com círculos azuis)
   sala_financeiro: {
     id: "financeiro",
     name: "Sala Financeiro",
-    width: 1000,
-    height: 540,
-    outline: { x: 20, y: 20, w: 960, h: 500, rx: 6 },
+    width: 520,
+    height: 760,
+    outline: { x: 24, y: 24, w: 472, h: 712, rx: 6 },
     furniture: [
-      { kind: "tv", x: 40, y: 40, w: 66, h: 110 },
-      { kind: "cabinet", x: 150, y: 40, w: 220, h: 50, label: "Armário" },
-      { kind: "cabinet", x: 390, y: 40, w: 220, h: 50 },
-
-      // Bloco de mesas esquerdo (2 postos)
-      { kind: "desk", x: 150, y: 170, w: 220, h: 110 },
-      { kind: "desk", x: 150, y: 285, w: 220, h: 110 },
-
-      // Bloco de mesas direito (2 postos)
-      { kind: "desk", x: 500, y: 170, w: 220, h: 110 },
-      { kind: "desk", x: 500, y: 285, w: 220, h: 110 },
-
-      // Arquivo Morto / Armário Lateral Direita
-      { kind: "cabinet", x: 880, y: 40, w: 80, h: 440, label: "Arquivo" }
+      // Bloco Central 2x2 com as 4 Mesas Circuladas em Azul na Imagem Real
+      { kind: "desk", x: 185, y: 220, w: 110, h: 195 }, // Mesa Superior Esquerda
+      { kind: "desk", x: 297, y: 220, w: 110, h: 195 }, // Mesa Superior Direita
+      { kind: "desk", x: 185, y: 417, w: 110, h: 195 }, // Mesa Inferior Esquerda
+      { kind: "desk", x: 297, y: 417, w: 110, h: 195 }, // Mesa Inferior Direita
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 260, y: 120, rotate: 180 },
-      { id: "M-02", codigo: "M-02", x: 260, y: 445, rotate: 0 },
-      { id: "M-03", codigo: "M-03", x: 610, y: 120, rotate: 180 },
-      { id: "M-04", codigo: "M-04", x: 610, y: 445, rotate: 0 },
+      { id: "M-01", codigo: "M-01", x: 145, y: 317, rotate: 90 },
+      { id: "M-02", codigo: "M-02", x: 447, y: 317, rotate: -90 },
+      { id: "M-03", codigo: "M-03", x: 145, y: 514, rotate: 90 },
+      { id: "M-04", codigo: "M-04", x: 447, y: 514, rotate: -90 },
     ],
-    textLabels: [{ text: "SALA FINANCEIRO", x: 460, y: 480, size: 22 }],
+    textLabels: [{ text: "SALA FINANCEIRO", x: 50, y: 560, rotate: -90, size: 24 }],
   },
 
   // 2. ADM 1º ANDAR (1400 x 720)
@@ -108,7 +100,7 @@ export const SVG_ROOMS = {
     textLabels: [],
   },
 
-  // 3. MEZANINO: SALA BSM / SALA DRC (Ajustado M-11 alinhado perfeitamente)
+  // 3. MEZANINO: SALA BSM / SALA DRC (1240 x 560)
   mezanino_bsm_drc: {
     id: "bsm-drc",
     name: "Mezanino — Sala BSM / Sala DRC",
@@ -117,7 +109,6 @@ export const SVG_ROOMS = {
     outline: { x: 12, y: 20, w: 1216, h: 520, rx: 4 },
     walls: [{ x1: 290, y1: 20, x2: 290, y2: 540 }],
     furniture: [
-      // SALA BSM (3 Mesas em L)
       { kind: "desk", x: 35, y: 40, w: 140, h: 55 },
       { kind: "desk", x: 35, y: 40, w: 55, h: 125 },
 
@@ -127,7 +118,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 35, y: 370, w: 140, h: 55 },
       { kind: "desk", x: 35, y: 370, w: 55, h: 125 },
 
-      // SALA DRC
       { kind: "desk", x: 480, y: 40, w: 140, h: 55 },
       { kind: "desk", x: 565, y: 40, w: 55, h: 140 },
 
@@ -139,7 +129,6 @@ export const SVG_ROOMS = {
       { kind: "desk", x: 480, y: 374, w: 90, h: 120 },
       { kind: "desk", x: 574, y: 374, w: 90, h: 120 },
 
-      // Mesa Dupla Inferior Direita DRC (Ajustada para x:880 e x:974)
       { kind: "desk", x: 880, y: 350, w: 90, h: 140 },
       { kind: "desk", x: 974, y: 350, w: 90, h: 140 },
     ],
@@ -155,8 +144,8 @@ export const SVG_ROOMS = {
       { id: "M-08", codigo: "M-08", x: 718, y: 310, rotate: -90 },
       { id: "M-09", codigo: "M-09", x: 430, y: 434, rotate: 90 },
       { id: "M-10", codigo: "M-10", x: 718, y: 434, rotate: -90 },
-      { id: "M-11", codigo: "M-11", x: 832, y: 420, rotate: 90 }, // Perfeitamente alinhado à esquerda da mesa
-      { id: "M-12", codigo: "M-12", x: 1024, y: 420, rotate: -90 }, // Perfeitamente alinhado à direita da mesa
+      { id: "M-11", codigo: "M-11", x: 832, y: 420, rotate: 90 },
+      { id: "M-12", codigo: "M-12", x: 1024, y: 420, rotate: -90 },
     ],
     textLabels: [
       { text: "SALA BSM", x: 180, y: 200, size: 22 },
