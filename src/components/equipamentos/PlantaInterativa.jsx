@@ -262,134 +262,40 @@ export default function PlantaInterativa({
                 className="w-full h-auto block select-none"
                 style={{ maxHeight: "75vh" }}
               >
-                {/* 1. Contorno externo das paredes (Paredes Grossas #0F172A) */}
-                <rect
-                  x={svgRoom.outline.x}
-                  y={svgRoom.outline.y}
-                  width={svgRoom.outline.w}
-                  height={svgRoom.outline.h}
-                  rx={svgRoom.outline.rx ?? 4}
-                  fill="#FFFFFF"
-                  stroke="#0F172A"
-                  strokeWidth={5}
-                />
-
-                {/* 2. Divisórias de paredes internas */}
-                {svgRoom.walls?.map((w, i) => (
-                  <line
-                    key={i}
-                    x1={w.x1}
-                    y1={w.y1}
-                    x2={w.x2}
-                    y2={w.y2}
-                    stroke="#0F172A"
-                    strokeWidth={5}
+                {/* 1. Imagem Realista em Alta Definição da Planta (Fundo HD) */}
+                {svgRoom.image ? (
+                  <image
+                    href={svgRoom.image}
+                    x={0}
+                    y={0}
+                    width={svgRoom.width}
+                    height={svgRoom.height}
+                    preserveAspectRatio="none"
                   />
-                ))}
+                ) : (
+                  <>
+                    <rect
+                      x={svgRoom.outline?.x ?? 0}
+                      y={svgRoom.outline?.y ?? 0}
+                      width={svgRoom.outline?.w ?? svgRoom.width}
+                      height={svgRoom.outline?.h ?? svgRoom.height}
+                      rx={svgRoom.outline?.rx ?? 4}
+                      fill="#FFFFFF"
+                      stroke="#0F172A"
+                      strokeWidth={5}
+                    />
+                    {svgRoom.walls?.map((w, i) => (
+                      <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke="#0F172A" strokeWidth={5} />
+                    ))}
+                  </>
+                )}
 
-                {/* 2b. Portas e Arcos de Abertura CAD */}
-                {svgRoom.doors?.map((d, i) => (
-                  <g key={i}>
-                    {/* Linha da Porta */}
-                    <line x1={d.x} y1={d.y} x2={d.x + (d.dx ?? 0)} y2={d.y + (d.dy ?? 40)} stroke="#0F172A" strokeWidth={3} />
-                    {/* Arco de Varredura da Porta */}
-                    {d.arcPath && (
-                      <path d={d.arcPath} fill="none" stroke="#475569" strokeWidth={1.5} strokeDasharray="3 2" />
-                    )}
-                  </g>
-                ))}
-
-                {/* 3. Móveis e Gadgets Arquitetônicos CAD (Mesas, Monitores, Teclados, Mouses) */}
-                {svgRoom.furniture?.map((f, i) => {
-                  if (f.kind === "round") {
-                    return (
-                      <circle
-                        key={i}
-                        cx={f.x + f.w / 2}
-                        cy={f.y + f.h / 2}
-                        r={f.w / 2}
-                        fill="#F8FAFC"
-                        stroke="#334155"
-                        strokeWidth={2}
-                      />
-                    );
-                  }
-                  if (f.kind === "tv") {
-                    return (
-                      <g key={i}>
-                        <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} fill="#0F172A" stroke="#020617" strokeWidth={2} />
-                        <rect x={f.x + 4} y={f.y + 4} width={f.w - 8} height={f.h - 8} rx={2} fill="#F1F5F9" />
-                      </g>
-                    );
-                  }
-
-                  const isHorizontalDesk = f.w >= f.h;
-
-                  return (
-                    <g key={i}>
-                      {/* Corpo da Mesa CAD */}
-                      <rect
-                        x={f.x}
-                        y={f.y}
-                        width={f.w}
-                        height={f.h}
-                        rx={f.kind === "desk" ? 2 : 3}
-                        fill="#FFFFFF"
-                        stroke="#334155"
-                        strokeWidth={2}
-                      />
-
-                      {/* Acessórios CAD de Computador na Mesa (Monitores, Teclado e Mouse) */}
-                      {f.hasGadgets && (
-                        <g opacity={0.65}>
-                          {isHorizontalDesk ? (
-                            <>
-                              {/* Monitor Widescreen */}
-                              <rect x={f.x + f.w / 2 - 16} y={f.y + 6} width={32} height={4} rx={1} fill="#1E293B" stroke="#475569" strokeWidth={0.8} />
-                              <rect x={f.x + f.w / 2 - 5} y={f.y + 10} width={10} height={3} fill="#64748B" />
-                              {/* Teclado */}
-                              <rect x={f.x + f.w / 2 - 14} y={f.y + 16} width={22} height={8} rx={1} fill="#F1F5F9" stroke="#94A3B8" strokeWidth={0.8} />
-                              {/* Mouse */}
-                              <ellipse cx={f.x + f.w / 2 + 13} cy={f.y + 20} rx={2.5} ry={4} fill="#E2E8F0" stroke="#64748B" strokeWidth={0.8} />
-                            </>
-                          ) : (
-                            <>
-                              {/* Monitor Vertical */}
-                              <rect x={f.x + 6} y={f.y + f.h / 2 - 16} width={4} height={32} rx={1} fill="#1E293B" stroke="#475569" strokeWidth={0.8} />
-                              <rect x={f.x + 10} y={f.y + f.h / 2 - 5} width={3} height={10} fill="#64748B" />
-                              {/* Teclado */}
-                              <rect x={f.x + 16} y={f.y + f.h / 2 - 14} width={8} height={22} rx={1} fill="#F1F5F9" stroke="#94A3B8" strokeWidth={0.8} />
-                              {/* Mouse */}
-                              <ellipse cx={f.x + 20} cy={f.y + f.h / 2 + 13} rx={4} ry={2.5} fill="#E2E8F0" stroke="#64748B" strokeWidth={0.8} />
-                            </>
-                          )}
-                        </g>
-                      )}
-                    </g>
-                  );
-                })}
-
-                {/* 4. Rótulos de Texto Arquitetônicos v0 */}
-                {svgRoom.textLabels?.map((t, i) => (
-                  <text
-                    key={i}
-                    x={t.x}
-                    y={t.y}
-                    transform={t.rotate ? `rotate(${t.rotate} ${t.x} ${t.y})` : undefined}
-                    fill="#CBD5E1"
-                    className="font-bold tracking-wider font-sans uppercase"
-                    fontSize={t.size ?? 18}
-                  >
-                    {t.text}
-                  </text>
-                ))}
-
-                {/* 5. CADEIRAS ERGONÔMICAS CAD DE ESCRITÓRIO (RODÍZIOS 5 PONTAS, BRAÇOS, BOTAO + E AVATAR) */}
+                {/* 2. CADEIRAS INTERATIVAS / ASSENTOS (CLIQUE DIRETO NA CADEIRA DA PLANTA REALISTA) */}
                 {mappedSeats.map((seat) => {
                   const size = 44;
                   const half = size / 2;
                   const occupied = seat.isOcupado;
-                  const seatColor = occupied ? getColabColor(seat.colaborador_id) : "#FFFFFF";
+                  const seatColor = occupied ? getColabColor(seat.colaborador_id) : "rgba(59, 130, 246, 0.15)";
 
                   return (
                     <g
@@ -399,55 +305,38 @@ export default function PlantaInterativa({
                       className="cursor-pointer group"
                       role="button"
                     >
-                      {/* Base de 5 Rodízios CAD (Swivel 5-Star Wheel Base) */}
-                      <g stroke="#64748B" strokeWidth="1.5" opacity={0.6}>
-                        <line x1={0} y1={-half - 2} x2={0} y2={-half - 8} />
-                        <line x1={-6} y1={-half - 2} x2={-10} y2={-half - 6} />
-                        <line x1={6} y1={-half - 2} x2={10} y2={-half - 6} />
-                        <circle cx={0} cy={-half - 9} r={2} fill="#475569" />
-                        <circle cx={-11} cy={-half - 7} r={2} fill="#475569" />
-                        <circle cx={11} cy={-half - 7} r={2} fill="#475569" />
-                      </g>
-
-                      {/* Braços da Cadeira (Armrests CAD) */}
-                      <rect x={-half - 5} y={-half + 8} width={5} height={20} rx={2.5} fill="#475569" stroke="#1E293B" strokeWidth={1} />
-                      <rect x={half} y={-half + 8} width={5} height={20} rx={2.5} fill="#475569" stroke="#1E293B" strokeWidth={1} />
-
-                      {/* Encosto Curvo Ergonômico da Cadeira */}
-                      <path
-                        d={`M ${-half + 2} ${-half + 2} Q 0 ${-half - 4} ${half - 2} ${-half + 2} L ${half - 2} ${-half + 8} Q 0 ${-half + 4} ${-half + 2} ${-half + 8} Z`}
-                        fill="#334155"
-                        stroke="#0F172A"
-                        strokeWidth={1}
-                      />
-
-                      {/* Assento Principal (Cushion CAD) */}
+                      {/* Assento Interativo Overlay sobre a cadeira real */}
                       <rect
-                        x={-half + 2}
-                        y={-half + 7}
-                        width={size - 4}
-                        height={size - 6}
-                        rx={8}
-                        fill={seatColor}
-                        stroke={occupied ? "#0F172A" : "#64748B"}
-                        strokeDasharray={occupied ? undefined : "4 3"}
-                        strokeWidth={2}
-                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-3 group-hover:shadow-md"
+                        x={-half}
+                        y={-half}
+                        width={size}
+                        height={size}
+                        rx={10}
+                        fill={occupied ? seatColor : "transparent"}
+                        stroke={occupied ? "#0F172A" : "transparent"}
+                        strokeWidth={occupied ? 2 : 0}
+                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-3 group-hover:fill-blue-500/20"
                       />
 
-                      {/* Conteúdo: Iniciais do Colaborador quando ocupado (ex: "AS") ou Cadeira CAD limpa quando livre */}
-                      {occupied && seat.colaborador && (
-                        <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
+                      {/* Conteúdo do Assento: Iniciais do Colaborador quando ocupado ou Indicador Discreto quando livre */}
+                      <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
+                        {occupied && seat.colaborador ? (
                           <text
                             x={0}
-                            y={half - 10}
+                            y={5}
                             textAnchor="middle"
                             style={{ fontSize: 14, fill: "white", fontWeight: "bold" }}
                           >
                             {getInitials(seat.colaborador.nome_completo)}
                           </text>
-                        </g>
-                      )}
+                        ) : (
+                          <circle
+                            r={4}
+                            fill="#3B82F6"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          />
+                        )}
+                      </g>
                     </g>
                   );
                 })}
