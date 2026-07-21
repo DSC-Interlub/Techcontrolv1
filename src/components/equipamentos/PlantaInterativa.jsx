@@ -1,6 +1,8 @@
 /**
  * PlantaInterativa.jsx — Mapeamento Espacial das Salas Físicas
- * Integrado visualmente ao TechControl com suporte às 5 plantas recortadas de salas:
+ * Integrado perfeitamente à interface clara e elegante do TechControl.
+ * 
+ * Suporte às 5 plantas de sala limpas (sem marcas d'água / resíduos de rota de fuga):
  * 1. Sala Financeiro
  * 2. ADM 1º Andar (Área Aberta)
  * 3. Mezanino (BSM & DRC)
@@ -21,7 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Monitor, Laptop, Eye, Plus, Pencil, Trash2, MapPin,
   Move, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CheckCircle, User, Loader2,
-  DollarSign, Briefcase, Building, Package, Activity, RefreshCw, Check
+  DollarSign, Briefcase, Building, Package, Activity, Layers, ArrowRight
 } from "lucide-react";
 
 export const SALAS = [
@@ -31,7 +33,7 @@ export const SALAS = [
     descricao: "Escritório do Departamento Financeiro",
     imagem: "/plantas/sala_financeiro.png",
     icon: DollarSign,
-    corBadge: "bg-emerald-100 text-emerald-800 border-emerald-200"
+    corBadge: "bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold"
   },
   {
     id: "adm_1andar",
@@ -39,23 +41,23 @@ export const SALAS = [
     descricao: "Bancadas abertas da Administração no 1º Andar",
     imagem: "/plantas/adm_1andar.png",
     icon: Briefcase,
-    corBadge: "bg-blue-100 text-blue-800 border-blue-200"
+    corBadge: "bg-blue-50 text-blue-700 border-blue-200 font-semibold"
   },
   {
     id: "mezanino_bsm_drc",
     nome: "Mezanino (BSM & DRC)",
-    descricao: "Salas BSM e DRC localizadas no Mezanino",
+    descricao: "Salas BSM e DRC no Mezanino",
     imagem: "/plantas/mezanino_bsm_drc.png",
     icon: Building,
-    corBadge: "bg-purple-100 text-purple-800 border-purple-200"
+    corBadge: "bg-purple-50 text-purple-700 border-purple-200 font-semibold"
   },
   {
     id: "galpao_bio_reenvase_checkout",
     nome: "Galpão (BIO, Reenvase & Check-out)",
-    descricao: "Área operacional de BIO, Reenvase e Check-out",
+    descricao: "Área de BIO, Reenvase e Check-out",
     imagem: "/plantas/galpao_bio_reenvase_checkout.png",
     icon: Package,
-    corBadge: "bg-amber-100 text-amber-800 border-amber-200"
+    corBadge: "bg-amber-50 text-amber-700 border-amber-200 font-semibold"
   },
   {
     id: "galpao_centro_controle_operacional",
@@ -63,7 +65,7 @@ export const SALAS = [
     descricao: "Central de Operações e Monitoramento Operacional",
     imagem: "/plantas/galpao_centro_controle_operacional.png",
     icon: Activity,
-    corBadge: "bg-indigo-100 text-indigo-800 border-indigo-200"
+    corBadge: "bg-indigo-50 text-indigo-700 border-indigo-200 font-semibold"
   }
 ];
 
@@ -92,7 +94,7 @@ export default function PlantaInterativa({
   const salaAtual = useMemo(() => SALAS.find(s => s.id === salaAtivaId) || SALAS[0], [salaAtivaId]);
 
   // Queries de Estações de Trabalho
-  const { data: estacoes = [], isLoading: loadEstacoes } = useQuery({
+  const { data: estacoes = [] } = useQuery({
     queryKey: ['estacoes_trabalho'],
     queryFn: () => base44.entities.Estacoes_Trabalho.list(),
     staleTime: 10_000,
@@ -102,7 +104,6 @@ export default function PlantaInterativa({
   const createEstacaoMut = useMutation({
     mutationFn: (data) => base44.entities.Estacoes_Trabalho.create(data),
     onSuccess: async (novaEstacao) => {
-      // Se selecionou equipamentos para atribuir no momento da criação
       if (selectedEquipmentsToAssign.length > 0 && novaEstacao?.id) {
         for (const eqId of selectedEquipmentsToAssign) {
           await base44.entities.PCs_Internos.update(eqId, {
@@ -170,8 +171,8 @@ export default function PlantaInterativa({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    const posX = Math.max(3, Math.min(97, parseFloat(x.toFixed(2))));
-    const posY = Math.max(3, Math.min(97, parseFloat(y.toFixed(2))));
+    const posX = Math.max(2, Math.min(98, parseFloat(x.toFixed(2))));
+    const posY = Math.max(2, Math.min(98, parseFloat(y.toFixed(2))));
 
     setDraggingStation(prev => prev ? { ...prev, pos_x: posX, pos_y: posY } : null);
   };
@@ -193,8 +194,8 @@ export default function PlantaInterativa({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    const posX = Math.max(3, Math.min(97, parseFloat(x.toFixed(2))));
-    const posY = Math.max(3, Math.min(97, parseFloat(y.toFixed(2))));
+    const posX = Math.max(2, Math.min(98, parseFloat(x.toFixed(2))));
+    const posY = Math.max(2, Math.min(98, parseFloat(y.toFixed(2))));
 
     setNewStationPos({ x: posX, y: posY });
     const num = estacoesDaSala.length + 1;
@@ -217,13 +218,13 @@ export default function PlantaInterativa({
     });
   };
 
-  // Calcular status do Pin da Estação
+  // Status do Pin da Estação
   const getEstacaoStatus = (estacao) => {
     const colab = colaboradores.find(c => c.id === estacao.colaborador_id);
     const eqVinculados = equipamentos.filter(eq => eq.estacao_id === estacao.id || (colab && eq.colaborador_id === colab.id));
 
     if (!estacao.colaborador_id && eqVinculados.length === 0) {
-      return { cor: "bg-slate-400 text-white border-slate-600", label: "Vaga", tipo: "vaga", colab, eqVinculados };
+      return { cor: "bg-slate-400 text-white border-slate-600 shadow-md", label: "Vaga", tipo: "vaga", colab, eqVinculados };
     }
 
     const temChamadoAberto = colab ? chamados.some(c =>
@@ -234,28 +235,27 @@ export default function PlantaInterativa({
     const temEquipManutencao = eqVinculados.some(eq => ['Manutenção', 'Formatação', 'Danificado'].includes(eq.status));
 
     if (temChamadoAberto || temEquipManutencao) {
-      return { cor: "bg-amber-500 text-white border-amber-600 animate-pulse", label: "Alerta / Manutenção", tipo: "alerta", colab, eqVinculados, temChamadoAberto, temEquipManutencao };
+      return { cor: "bg-amber-500 text-white border-amber-600 shadow-md animate-pulse", label: "Alerta / Manutenção", tipo: "alerta", colab, eqVinculados, temChamadoAberto, temEquipManutencao };
     }
 
-    return { cor: "bg-emerald-600 text-white border-emerald-700", label: "Operacional", tipo: "operacional", colab, eqVinculados };
+    return { cor: "bg-emerald-600 text-white border-emerald-700 shadow-md", label: "Operacional", tipo: "operacional", colab, eqVinculados };
   };
 
-  // Stats da Sala Ativa
+  // Estatísticas da Sala Ativa
   const statsSala = useMemo(() => {
     const totalMesas = estacoesDaSala.length;
     const ocupadas = estacoesDaSala.filter(e => e.colaborador_id).length;
     const vagas = totalMesas - ocupadas;
     const alertas = estacoesDaSala.filter(e => getEstacaoStatus(e).tipo === "alerta").length;
-    const totalEquips = equipamentos.filter(eq => estacoesDaSala.some(es => es.id === eq.estacao_id)).length;
-    return { totalMesas, ocupadas, vagas, alertas, totalEquips };
+    return { totalMesas, ocupadas, vagas, alertas };
   }, [estacoesDaSala, equipamentos, colaboradores, chamados]);
 
   const SalaIcon = salaAtual.icon;
 
   return (
     <div className="space-y-6">
-      {/* ── BARRA DE SELEÇÃO DAS 5 SALAS (NAVEGAÇÃO POR SALA) ──────────────── */}
-      <div className="bg-white border rounded-2xl p-3 shadow-sm">
+      {/* ── BARRA DE NAVEGAÇÃO DAS 5 SALAS (VISUAL CLARO DE SISTEMA) ──────── */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           {SALAS.map(sala => {
             const Icon = sala.icon;
@@ -268,12 +268,12 @@ export default function PlantaInterativa({
                 onClick={() => setSalaAtivaId(sala.id)}
                 className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
                   isSelected
-                    ? "border-indigo-600 bg-indigo-50/50 shadow-sm ring-1 ring-indigo-500"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"
+                    ? "border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-500"
+                    : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/60"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 rounded-lg ${isSelected ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"}`}>
+                  <div className={`p-2 rounded-lg ${isSelected ? "bg-blue-600 text-white shadow-xs" : "bg-gray-100 text-gray-600"}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <Badge className={`text-[10px] ${sala.corBadge}`}>
@@ -281,7 +281,7 @@ export default function PlantaInterativa({
                   </Badge>
                 </div>
                 <div>
-                  <p className={`font-bold text-xs ${isSelected ? "text-indigo-950" : "text-gray-900"}`}>{sala.nome}</p>
+                  <p className={`font-bold text-xs ${isSelected ? "text-blue-950" : "text-gray-900"}`}>{sala.nome}</p>
                   <p className="text-[10px] text-gray-500 truncate mt-0.5">{sala.descricao}</p>
                 </div>
               </button>
@@ -290,26 +290,27 @@ export default function PlantaInterativa({
         </div>
       </div>
 
-      {/* ── CABEÇALHO DO CARD DA SALA SELECIONADA (SISTEMA LOOK & FEEL) ────── */}
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="pb-4 border-b bg-gray-50/50 rounded-t-xl">
+      {/* ── CARD PRINCIPAL DA PLANTA (LAYOUT CLARO INTEGRADO AO TECHCONTROL) ─ */}
+      <Card className="shadow-xs border-gray-200 bg-white overflow-hidden rounded-2xl">
+        {/* Cabeçalho do Card da Sala */}
+        <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-xs">
                 <SalaIcon className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-lg font-bold text-gray-900">{salaAtual.nome}</CardTitle>
                   <Badge className={salaAtual.corBadge}>{salaAtual.descricao}</Badge>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Mapeamento físico em tempo real dos computadores e colaboradores</p>
+                <p className="text-xs text-gray-500 mt-0.5">Mapeamento espacial em tempo real dos computadores e mesas de trabalho</p>
               </div>
             </div>
 
-            {/* Ações: Zoom + Toggle Edição */}
+            {/* Controles de Zoom e Edição */}
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 border rounded-lg p-1 bg-white shadow-xs">
+              <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoomLevel(z => Math.max(0.8, z - 0.2))} title="Zoom Out">
                   <ZoomOut className="w-3.5 h-3.5" />
                 </Button>
@@ -326,7 +327,7 @@ export default function PlantaInterativa({
                 <Button
                   size="sm"
                   variant={modoEdicao ? "destructive" : "outline"}
-                  className="text-xs font-medium"
+                  className="text-xs font-medium border-gray-300"
                   onClick={() => setModoEdicao(!modoEdicao)}
                 >
                   {modoEdicao ? "✓ Concluir Edição" : "✏️ Editar Posicionamento das Mesas"}
@@ -335,58 +336,58 @@ export default function PlantaInterativa({
             </div>
           </div>
 
-          {/* Quick Stats Bar da Sala */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t mt-4">
-            <div className="bg-white border rounded-lg p-2.5 text-center">
-              <p className="text-[11px] text-gray-500">Total de Mesas</p>
-              <p className="text-base font-black text-gray-900">{statsSala.totalMesas}</p>
+          {/* Barra de Estatísticas da Sala */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200/60 mt-4">
+            <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-2xs">
+              <p className="text-[11px] text-gray-500 font-medium">Total de Mesas</p>
+              <p className="text-base font-black text-gray-900 mt-0.5">{statsSala.totalMesas}</p>
             </div>
-            <div className="bg-emerald-50/60 border border-emerald-200 rounded-lg p-2.5 text-center">
-              <p className="text-[11px] text-emerald-700 font-medium">Ocupadas / Operacionais</p>
-              <p className="text-base font-black text-emerald-950">{statsSala.ocupadas}</p>
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-center shadow-2xs">
+              <p className="text-[11px] text-emerald-700 font-semibold">Ocupadas / Operacionais</p>
+              <p className="text-base font-black text-emerald-950 mt-0.5">{statsSala.ocupadas}</p>
             </div>
-            <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-2.5 text-center">
-              <p className="text-[11px] text-amber-700 font-medium">Em Alerta / Manutenção</p>
-              <p className="text-base font-black text-amber-950">{statsSala.alertas}</p>
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-center shadow-2xs">
+              <p className="text-[11px] text-amber-700 font-semibold">Em Alerta / Manutenção</p>
+              <p className="text-base font-black text-amber-950 mt-0.5">{statsSala.alertas}</p>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-center">
-              <p className="text-[11px] text-slate-600">Mesas Vagas</p>
-              <p className="text-base font-black text-slate-800">{statsSala.vagas}</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center shadow-2xs">
+              <p className="text-[11px] text-slate-600 font-medium">Mesas Vagas</p>
+              <p className="text-base font-black text-slate-800 mt-0.5">{statsSala.vagas}</p>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 sm:p-6 bg-slate-900/95 overflow-hidden">
+        <CardContent className="p-4 sm:p-6 bg-gray-50/40">
           {modoEdicao && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 text-xs text-amber-300 flex items-center justify-between">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-2">
-                <Move className="w-4 h-4 text-amber-400 shrink-0" />
+                <Move className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>
-                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins sobre a planta para definir posições exatas. Clique em uma área vazia da imagem para adicionar uma nova mesa.
+                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins sobre a planta para posicionar as mesas. Clique em uma área vazia da imagem para adicionar uma nova estação de trabalho.
                 </span>
               </div>
             </div>
           )}
 
-          {/* ── CONTAINER DA IMAGEM DA PLANTA DA SALA ────────────────────── */}
-          <div className="rounded-xl border border-slate-800 overflow-auto bg-slate-950 p-4 shadow-inner relative flex justify-center">
+          {/* ── MOLDURA INTEGRADA DA IMAGEM DA PLANTA DA SALA ────────────────── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center">
             <div
-              className="relative transition-transform duration-150 origin-top-left inline-block"
+              className="relative transition-transform duration-150 origin-top-left inline-block w-full max-w-4xl"
               style={{ transform: `scale(${zoomLevel})` }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             >
-              {/* Imagem da Planta da Sala */}
+              {/* Imagem Limpa da Sala (Fundo Branco Puro) */}
               <img
                 ref={imgRef}
                 src={salaAtual.imagem}
                 alt={salaAtual.nome}
-                className="max-w-none w-auto h-auto rounded-lg block select-none cursor-pointer shadow-2xl"
+                className="w-full h-auto max-w-full block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
                 onClick={handleImageClick}
                 draggable={false}
               />
 
-              {/* PINS DAS MESAS / ESTAÇÕES */}
+              {/* PINS DAS ESTAÇÕES DE TRABALHO SOBRE A PLANTA */}
               {estacoesDaSala.map(estacao => {
                 const statusInfo = getEstacaoStatus(estacao);
                 const isDraggingThis = draggingStation?.id === estacao.id;
@@ -403,19 +404,19 @@ export default function PlantaInterativa({
                         style={{ left: `${posX}%`, top: `${posY}%` }}
                         onMouseDown={(e) => handlePinMouseDown(e, estacao)}
                       >
-                        {/* Pin Visual */}
-                        <div className={`w-8 h-8 rounded-full border-2 shadow-xl flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
+                        {/* Circulo Pin */}
+                        <div className={`w-8 h-8 rounded-full border-2 shadow-md flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
                           {estacao.codigo}
                         </div>
 
-                        {/* Rótulo Colaborador abaixo do Pin */}
-                        <div className="bg-slate-900/95 text-white text-[10px] px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap font-medium border border-slate-700">
+                        {/* Rótulo com Nome do Colaborador */}
+                        <div className="bg-gray-900/90 text-white text-[10px] px-2 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap font-medium border border-gray-800">
                           {statusInfo.colab?.nome_completo ? statusInfo.colab.nome_completo.split(" ")[0] : "Vaga"}
                         </div>
                       </div>
                     </PopoverTrigger>
 
-                    {/* Popover com Detalhes da Mesa */}
+                    {/* Popover Card com Detalhes da Mesa */}
                     <PopoverContent className="w-80 p-4 shadow-xl border-gray-200">
                       <div className="space-y-3 text-xs">
                         <div className="flex items-start justify-between border-b pb-2">
@@ -433,11 +434,11 @@ export default function PlantaInterativa({
 
                         {/* Colaborador */}
                         {statusInfo.colab ? (
-                          <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border">
+                          <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
                             {statusInfo.colab.foto_url ? (
                               <img src={statusInfo.colab.foto_url} alt="" className="w-10 h-10 rounded-full object-cover border" />
                             ) : (
-                              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
+                              <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
                                 {statusInfo.colab.nome_completo?.charAt(0)}
                               </div>
                             )}
@@ -452,25 +453,25 @@ export default function PlantaInterativa({
                           </div>
                         )}
 
-                        {/* Alertas */}
+                        {/* Alerta de Chamado */}
                         {statusInfo.temChamadoAberto && (
-                          <div className="bg-amber-50 border border-amber-200 p-2 rounded text-amber-900 text-[11px] flex items-center gap-1.5 font-medium">
+                          <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-amber-900 text-[11px] flex items-center gap-1.5 font-medium">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                            <span>Possui chamado aberto no Helpdesk!</span>
+                            <span>Colaborador possui chamado aberto no Helpdesk!</span>
                           </div>
                         )}
 
-                        {/* Equipamentos */}
+                        {/* Equipamentos Vinculados */}
                         <div>
                           <p className="font-semibold text-gray-700 mb-1.5 uppercase text-[10px] tracking-wider">
-                            Equipamentos nesta bancada ({statusInfo.eqVinculados.length})
+                            Equipamentos nesta mesa ({statusInfo.eqVinculados.length})
                           </p>
                           {statusInfo.eqVinculados.length === 0 ? (
                             <p className="text-gray-400 italic text-[11px]">Nenhum equipamento atribuído.</p>
                           ) : (
                             <div className="space-y-1.5 max-h-36 overflow-y-auto">
                               {statusInfo.eqVinculados.map(eq => (
-                                <div key={eq.id} className="flex items-center justify-between bg-white border p-2 rounded text-[11px]">
+                                <div key={eq.id} className="flex items-center justify-between bg-white border border-gray-200 p-2 rounded-lg text-[11px]">
                                   <div className="flex items-center gap-2 min-w-0">
                                     {eq.tipo === "Notebook" ? <Laptop className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> : <Monitor className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
                                     <div className="truncate">
@@ -510,7 +511,7 @@ export default function PlantaInterativa({
 
       {/* ── GAVETA DE EQUIPAMENTOS NÃO POSICIONADOS ────────────────────────── */}
       {equipamentosSemEstacao.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/20 shadow-sm">
+        <Card className="border-amber-200 bg-amber-50/20 shadow-xs rounded-2xl">
           <CardHeader className="pb-3 border-b border-amber-100">
             <CardTitle className="text-sm font-semibold text-amber-900 flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -531,7 +532,7 @@ export default function PlantaInterativa({
                     <p className="text-gray-500 text-[11px] truncate">Usuário: {eq.usuario_atual || "Sem usuário"}</p>
                   </div>
                   {isAdmin && (
-                    <Button size="sm" variant="outline" className="h-7 text-[10px] shrink-0" onClick={() => onEditEquipamento?.(eq)}>
+                    <Button size="sm" variant="outline" className="h-7 text-[10px] shrink-0 border-amber-300 hover:bg-amber-100" onClick={() => onEditEquipamento?.(eq)}>
                       Vincular
                     </Button>
                   )}
@@ -548,7 +549,7 @@ export default function PlantaInterativa({
           <DialogHeader>
             <DialogTitle className="text-sm">Criar Nova Estação — {salaAtual.nome}</DialogTitle>
             <DialogDescription className="text-xs">
-              Posição percentual no mapa: X: {newStationPos.x}%, Y: {newStationPos.y}%
+              Posição no mapa da sala: X: {newStationPos.x}%, Y: {newStationPos.y}%
             </DialogDescription>
           </DialogHeader>
 
@@ -579,7 +580,7 @@ export default function PlantaInterativa({
               </Select>
             </div>
 
-            {/* Seleção de Equipamentos Disponíveis no ato da criação */}
+            {/* Seleção de Equipamentos Disponíveis */}
             <div>
               <Label className="text-xs">Vincular Equipamentos Existentes (Opcional)</Label>
               <div className="mt-1 border rounded-lg p-2 max-h-36 overflow-y-auto space-y-1.5 bg-gray-50">
@@ -596,7 +597,7 @@ export default function PlantaInterativa({
                     return (
                       <div key={eq.id} className="flex items-center justify-between bg-white border p-2 rounded text-[11px] cursor-pointer" onClick={toggleEq}>
                         <div className="flex items-center gap-2">
-                          <input type="checkbox" checked={isChecked} onChange={() => {}} className="w-3.5 h-3.5 accent-indigo-600" />
+                          <input type="checkbox" checked={isChecked} onChange={() => {}} className="w-3.5 h-3.5 accent-blue-600" />
                           <span className="font-semibold text-gray-900">{eq.tipo}: {eq.marca} {eq.modelo}</span>
                         </div>
                         <span className="font-mono text-gray-400">{eq.etiqueta_interna}</span>
@@ -609,7 +610,7 @@ export default function PlantaInterativa({
 
             <DialogFooter className="pt-2 border-t">
               <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
-              <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-700" disabled={createEstacaoMut.isPending}>
+              <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={createEstacaoMut.isPending}>
                 {createEstacaoMut.isPending ? "Salvando..." : "Criar Estação"}
               </Button>
             </DialogFooter>
