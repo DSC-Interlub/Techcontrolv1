@@ -1,10 +1,9 @@
 /**
- * PlantaInterativa.jsx — Mapeamento Espacial das Salas Físicas (Vetorial SVG 8K & Hi-Res)
- * Integrado perfeitamente à interface clara do TechControl.
+ * PlantaInterativa.jsx — Mapeamento Espacial Vetorial (Landscape 16:9 & Botão "+" Interativo)
  * 
- * Oferece renderização dupla:
- * 1. 📐 Desenho Vetorial SVG (0% pixelação / Resolução 8K matemática infinita)
- * 2. 🖼️ Imagem Hi-Res Padronizada (3840x2160 Ultra HD)
+ * 1. Formato 100% deitado/horizontal (16:9 widescreen) padronizado para todas as 5 salas.
+ * 2. Botão "+" de criação/atribuição direta sobre cada lugar vago ou em qualquer ponto da planta.
+ * 3. Resolução 8K matemática vetorial em SVG (0% pixelação).
  */
 import React, { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import {
   Monitor, Laptop, Eye, Plus, Pencil, Trash2, MapPin,
   Move, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CheckCircle, User, Loader2,
-  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon
+  DollarSign, Briefcase, Building, Package, Activity, Sparkles, Image as ImageIcon,
+  PlusCircle, UserPlus
 } from "lucide-react";
 
 export const SALAS = [
@@ -76,13 +76,13 @@ export default function PlantaInterativa({
 }) {
   const queryClient = useQueryClient();
   const [salaAtivaId, setSalaAtivaId] = useState("sala_financeiro");
-  const [renderMode, setRenderMode] = useState("svg"); // "svg" (vetorial 8K) ou "image" (imagem hi-res)
+  const [renderMode, setRenderMode] = useState("svg");
   const [modoEdicao, setModoEdicao] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [draggingStation, setDraggingStation] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
 
-  // Modal de Criação
+  // Modal de Criação / Atribuição
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newStationPos, setNewStationPos] = useState({ x: 50, y: 50 });
   const [newStationCodigo, setNewStationCodigo] = useState("");
@@ -91,6 +91,7 @@ export default function PlantaInterativa({
 
   const imgRef = useRef(null);
   const svgRef = useRef(null);
+
   const salaAtual = useMemo(() => SALAS.find(s => s.id === salaAtivaId) || SALAS[0], [salaAtivaId]);
   const svgRoom = useMemo(() => SVG_ROOMS[salaAtual.id], [salaAtual]);
 
@@ -148,22 +149,61 @@ export default function PlantaInterativa({
     }
   });
 
-  // Estações da Sala Selecionada
+  // Estações salvas no DB para a sala ativa
   const estacoesDaSala = useMemo(() => {
     return estacoes.filter(e => e.sala === salaAtual.nome || e.imagem_planta === salaAtual.id || e.imagem_planta === salaAtual.imagem);
   }, [estacoes, salaAtual]);
 
-  // Equipamentos sem estação vinculada
+  // Lista mesclada de lugares (combina assentos padrão do SVG com estações personalizadas do DB)
+  const displaySeats = useMemo(() => {
+    const mapByCodigo = new Map();
+
+    // 1. Assentos vetoriais pré-configurados da sala
+    if (svgRoom?.seats) {
+      for (const seat of svgRoom.seats) {
+        const dbStation = estacoesDaSala.find(e => e.codigo === seat.codigo);
+        mapByCodigo.set(seat.codigo, {
+          id: dbStation?.id || seat.id,
+          codigo: seat.codigo,
+          pos_x: dbStation ? dbStation.pos_x : seat.posX,
+          pos_y: dbStation ? dbStation.pos_y : seat.posY,
+          colaborador_id: dbStation?.colaborador_id || null,
+          isDb: !!dbStation,
+          dbRecord: dbStation,
+          svgSeat: seat
+        });
+      }
+    }
+
+    // 2. Estações extras criadas manualmente no DB que não eram padrão
+    for (const est of estacoesDaSala) {
+      if (!mapByCodigo.has(est.codigo)) {
+        mapByCodigo.set(est.codigo, {
+          id: est.id,
+          codigo: est.codigo,
+          pos_x: est.pos_x,
+          pos_y: est.pos_y,
+          colaborador_id: est.colaborador_id,
+          isDb: true,
+          dbRecord: est
+        });
+      }
+    }
+
+    return Array.from(mapByCodigo.values());
+  }, [svgRoom, estacoesDaSala]);
+
+  // Equipamentos sem estação
   const equipamentosSemEstacao = useMemo(() => {
     return equipamentos.filter(e => !e.estacao_id);
   }, [equipamentos]);
 
-  // Handlers para Drag and Drop de Pins
-  const handlePinMouseDown = (e, estacao) => {
+  // Drag and Drop
+  const handlePinMouseDown = (e, station) => {
     if (!modoEdicao) return;
     e.stopPropagation();
     e.preventDefault();
-    setDraggingStation(estacao);
+    setDraggingStation(station);
   };
 
   const handleMouseMove = (e) => {
@@ -183,15 +223,38 @@ export default function PlantaInterativa({
 
   const handleMouseUp = () => {
     if (draggingStation) {
-      updateEstacaoMut.mutate({
-        id: draggingStation.id,
-        data: { pos_x: draggingStation.pos_x, pos_y: draggingStation.pos_y }
-      });
+      if (draggingStation.isDb) {
+        updateEstacaoMut.mutate({
+          id: draggingStation.id,
+          data: { pos_x: draggingStation.pos_x, pos_y: draggingStation.pos_y }
+        });
+      } else {
+        // Se era um assento SVG pré-configurado ainda não gravado no DB, cria o registro ao arrastar
+        createEstacaoMut.mutate({
+          andar: salaAtual.nome,
+          sala: salaAtual.nome,
+          imagem_planta: salaAtual.id,
+          codigo: draggingStation.codigo,
+          pos_x: draggingStation.pos_x,
+          pos_y: draggingStation.pos_y,
+          colaborador_id: null
+        });
+      }
       setDraggingStation(null);
     }
   };
 
-  // Clique na planta para criar nova estação
+  // Abrir Modal de Atribuição Direta ao Clicar no Botão "+"
+  const handlePlusClick = (seat, e) => {
+    e?.stopPropagation();
+    setNewStationPos({ x: seat.pos_x, y: seat.pos_y });
+    setNewStationCodigo(seat.codigo);
+    setNewStationColaborador("__none__");
+    setSelectedEquipmentsToAssign([]);
+    setShowCreateModal(true);
+  };
+
+  // Clique na planta em área vazia (Modo Edição)
   const handleContainerClick = (e) => {
     if (!modoEdicao || draggingStation) return;
     const refElem = renderMode === "image" ? imgRef.current : svgRef.current;
@@ -205,7 +268,7 @@ export default function PlantaInterativa({
     const posY = Math.max(2, Math.min(98, parseFloat(y.toFixed(2))));
 
     setNewStationPos({ x: posX, y: posY });
-    const num = estacoesDaSala.length + 1;
+    const num = displaySeats.length + 1;
     setNewStationCodigo(`M-${num < 10 ? '0' + num : num}`);
     setNewStationColaborador("__none__");
     setSelectedEquipmentsToAssign([]);
@@ -225,13 +288,13 @@ export default function PlantaInterativa({
     });
   };
 
-  // Status do Pin da Estação
-  const getEstacaoStatus = (estacao) => {
-    const colab = colaboradores.find(c => c.id === estacao.colaborador_id);
-    const eqVinculados = equipamentos.filter(eq => eq.estacao_id === estacao.id || (colab && eq.colaborador_id === colab.id));
+  // Status do Marcador de Estação
+  const getEstacaoStatus = (station) => {
+    const colab = colaboradores.find(c => c.id === station.colaborador_id);
+    const eqVinculados = equipamentos.filter(eq => (station.id && eq.estacao_id === station.id) || (colab && eq.colaborador_id === colab.id));
 
-    if (!estacao.colaborador_id && eqVinculados.length === 0) {
-      return { cor: "bg-slate-400 text-white border-slate-600 shadow-md", label: "Vaga", tipo: "vaga", colab, eqVinculados };
+    if (!station.colaborador_id && eqVinculados.length === 0) {
+      return { cor: "bg-slate-100 text-slate-700 border-slate-300 shadow-2xs hover:bg-slate-200", label: "Vaga", tipo: "vaga", colab, eqVinculados };
     }
 
     const temChamadoAberto = colab ? chamados.some(c =>
@@ -250,18 +313,18 @@ export default function PlantaInterativa({
 
   // Estatísticas
   const statsSala = useMemo(() => {
-    const totalMesas = estacoesDaSala.length;
-    const ocupadas = estacoesDaSala.filter(e => e.colaborador_id).length;
+    const totalMesas = displaySeats.length;
+    const ocupadas = displaySeats.filter(e => e.colaborador_id).length;
     const vagas = totalMesas - ocupadas;
-    const alertas = estacoesDaSala.filter(e => getEstacaoStatus(e).tipo === "alerta").length;
+    const alertas = displaySeats.filter(e => getEstacaoStatus(e).tipo === "alerta").length;
     return { totalMesas, ocupadas, vagas, alertas };
-  }, [estacoesDaSala, equipamentos, colaboradores, chamados]);
+  }, [displaySeats, equipamentos, colaboradores, chamados]);
 
   const SalaIcon = salaAtual.icon;
 
   return (
     <div className="space-y-6">
-      {/* ── BARRA DE SELEÇÃO DAS 5 SALAS ─────────────────────────────────── */}
+      {/* ── BARRA DE SELEÇÃO DAS 5 SALAS (LANDSCAPE DEITADA) ─────────────── */}
       <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           {SALAS.map(sala => {
@@ -297,7 +360,7 @@ export default function PlantaInterativa({
         </div>
       </div>
 
-      {/* ── CARD PRINCIPAL DA SALA ────────────────────────────────────────── */}
+      {/* ── CARD DA SALA (FORMATO DEITADO LANDSCAPE 16:9 PADRONIZADO) ──────── */}
       <Card className="shadow-xs border-gray-200 bg-white overflow-hidden rounded-2xl">
         <CardHeader className="pb-4 border-b border-gray-100 bg-gray-50/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -308,29 +371,28 @@ export default function PlantaInterativa({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-lg font-bold text-gray-900">{salaAtual.nome}</CardTitle>
-                  <Badge className={salaAtual.corBadge}>{salaAtual.descricao}</Badge>
+                  <Badge className={salaAtual.corBadge}>Planta Deitada Widescreen (16:9)</Badge>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Mapeamento vetorial de alta definição sem perda de nitidez</p>
+                <p className="text-xs text-gray-500 mt-0.5">Clique nos botões <strong className="text-blue-600 font-bold">+</strong> para atribuir colaboradores e equipamentos a cada lugar</p>
               </div>
             </div>
 
-            {/* Alternador de Renderização + Zoom + Modo Edição */}
+            {/* Alternador SVG / Imagem + Zoom + Modo Edição */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Toggle SVG Vetorial 8K vs Imagem Hi-Res */}
               <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white shadow-2xs">
                 <Button
                   size="sm"
                   variant={renderMode === "svg" ? "default" : "ghost"}
-                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "svg" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "svg" ? "bg-blue-600 text-white" : "text-gray-600"}`}
                   onClick={() => setRenderMode("svg")}
-                  title="Planta Vetorial SVG (0% pixelação / 8K crisp)"
+                  title="Planta Vetorial SVG deitada (0% pixelação)"
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Vetorial 8K SVG
                 </Button>
                 <Button
                   size="sm"
                   variant={renderMode === "image" ? "default" : "ghost"}
-                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "image" ? "bg-indigo-600 text-white" : "text-gray-600"}`}
+                  className={`h-7 text-[11px] gap-1 font-bold ${renderMode === "image" ? "bg-blue-600 text-white" : "text-gray-600"}`}
                   onClick={() => setRenderMode("image")}
                   title="Imagem Hi-Res"
                 >
@@ -365,10 +427,10 @@ export default function PlantaInterativa({
             </div>
           </div>
 
-          {/* Quick Stats */}
+          {/* Quick Stats Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-gray-200/60 mt-4">
             <div className="bg-white border border-gray-200 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-gray-500 font-medium">Total de Mesas</p>
+              <p className="text-[11px] text-gray-500 font-medium">Lugares de Máquina</p>
               <p className="text-base font-black text-gray-900 mt-0.5">{statsSala.totalMesas}</p>
             </div>
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-center shadow-2xs">
@@ -379,9 +441,9 @@ export default function PlantaInterativa({
               <p className="text-[11px] text-amber-700 font-semibold">Em Alerta / Manutenção</p>
               <p className="text-base font-black text-amber-950 mt-0.5">{statsSala.alertas}</p>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center shadow-2xs">
-              <p className="text-[11px] text-slate-600 font-medium">Mesas Vagas</p>
-              <p className="text-base font-black text-slate-800 mt-0.5">{statsSala.vagas}</p>
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 text-center shadow-2xs">
+              <p className="text-[11px] text-blue-700 font-semibold">Lugares Vagos (+)</p>
+              <p className="text-base font-black text-blue-950 mt-0.5">{statsSala.vagas}</p>
             </div>
           </div>
         </CardHeader>
@@ -392,26 +454,26 @@ export default function PlantaInterativa({
               <div className="flex items-center gap-2">
                 <Move className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>
-                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins sobre o desenho da sala para posicioná-los. Clique em qualquer ponto da planta para criar uma nova mesa.
+                  <strong>Modo de Edição Ativo:</strong> Arraste os Pins para reposicionar mesas na planta. Clique em qualquer área vazia para adicionar uma nova mesa.
                 </span>
               </div>
             </div>
           )}
 
-          {/* ── MOLDURA DA PLANTA (SISTEMA LOOK & FEEL) ──────────────────────── */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center min-h-[450px]">
+          {/* ── MOLDURA DA PLANTA EM FORMATO LANDSCAPE DEITADO 16:9 ──────────── */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-xs overflow-hidden flex justify-center items-center">
             <div
-              className="relative transition-transform duration-150 origin-top-left inline-block w-full max-w-4xl"
+              className="relative transition-transform duration-150 origin-top-left inline-block w-full max-w-5xl aspect-video"
               style={{ transform: `scale(${zoomLevel})` }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             >
-              {/* OPÇÃO A: DESENHO VETORIAL SVG (0% PIXELAÇÃO / 8K CRISP) */}
+              {/* VETORIAL SVG CRISP 8K (DEITADA 1200x675) */}
               {renderMode === "svg" && svgRoom ? (
-                <div ref={svgRef} onClick={handleContainerClick} className="relative w-full cursor-pointer">
+                <div ref={svgRef} onClick={handleContainerClick} className="relative w-full h-full cursor-pointer">
                   <svg
                     viewBox={`0 0 ${svgRoom.width} ${svgRoom.height}`}
-                    className="w-full h-auto max-w-full block rounded-lg select-none shadow-2xs border border-gray-200 bg-white"
+                    className="w-full h-full block rounded-lg select-none shadow-2xs border border-gray-200 bg-white"
                   >
                     {/* Fundo do piso */}
                     <rect x={0} y={0} width={svgRoom.width} height={svgRoom.height} fill="#FFFFFF" />
@@ -441,23 +503,28 @@ export default function PlantaInterativa({
                       if (f.kind === "tv") {
                         return (
                           <g key={i}>
-                            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={3} fill="#0F172A" stroke="#020617" strokeWidth={2} />
+                            <rect x={f.x} y={f.y} width={f.w} height={f.h} rx={4} fill="#0F172A" stroke="#020617" strokeWidth={2} />
                             <rect x={f.x + 4} y={f.y + 4} width={f.w - 8} height={f.h - 8} rx={2} fill="#0284C7" opacity={0.7} />
+                            <text x={f.x + f.w/2} y={f.y + f.h/2 + 4} fill="#FFFFFF" fontSize={11} fontWeight="bold" textAnchor="middle">{f.label || "MONITOR CCO"}</text>
                           </g>
                         );
                       }
                       return (
-                        <rect
-                          key={i}
-                          x={f.x}
-                          y={f.y}
-                          width={f.w}
-                          height={f.h}
-                          rx={4}
-                          fill="#F8FAFC"
-                          stroke="#334155"
-                          strokeWidth={2.5}
-                        />
+                        <g key={i}>
+                          <rect
+                            x={f.x}
+                            y={f.y}
+                            width={f.w}
+                            height={f.h}
+                            rx={4}
+                            fill="#F8FAFC"
+                            stroke="#334155"
+                            strokeWidth={2.5}
+                          />
+                          {f.label && (
+                            <text x={f.x + f.w/2} y={f.y + f.h/2 + 4} fill="#64748B" fontSize={10} fontWeight="bold" textAnchor="middle">{f.label}</text>
+                          )}
+                        </g>
                       );
                     })}
 
@@ -470,7 +537,8 @@ export default function PlantaInterativa({
                         transform={t.rotate ? `rotate(${t.rotate} ${t.x} ${t.y})` : undefined}
                         fill="#94A3B8"
                         className="font-bold tracking-widest font-sans uppercase"
-                        fontSize={t.size || 18}
+                        fontSize={t.size || 22}
+                        textAnchor="middle"
                       >
                         {t.text}
                       </text>
@@ -478,40 +546,55 @@ export default function PlantaInterativa({
                   </svg>
                 </div>
               ) : (
-                /* OPÇÃO B: IMAGEM HI-RES PADRONIZADA */
+                /* IMAGEM HI-RES LANDSCAPE */
                 <img
                   ref={imgRef}
                   src={salaAtual.imagem}
                   alt={salaAtual.nome}
-                  className="w-full h-auto max-w-full block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
+                  className="w-full h-full object-cover block rounded-lg select-none cursor-pointer border border-gray-100 shadow-2xs"
                   onClick={handleContainerClick}
                   draggable={false}
                 />
               )}
 
-              {/* PINS DAS ESTAÇÕES DE TRABALHO SOBRE A PLANTA */}
-              {estacoesDaSala.map(estacao => {
-                const statusInfo = getEstacaoStatus(estacao);
-                const isDraggingThis = draggingStation?.id === estacao.id;
-                const posX = isDraggingThis ? draggingStation.pos_x : estacao.pos_x;
-                const posY = isDraggingThis ? draggingStation.pos_y : estacao.pos_y;
+              {/* PINS / LUGARES DE MÁQUINA COM BOTÃO "+" QUANDO VAGOS */}
+              {displaySeats.map(station => {
+                const statusInfo = getEstacaoStatus(station);
+                const isDraggingThis = draggingStation?.codigo === station.codigo;
+                const posX = isDraggingThis ? draggingStation.pos_x : station.pos_x;
+                const posY = isDraggingThis ? draggingStation.pos_y : station.pos_y;
+                const isVago = !station.colaborador_id && statusInfo.eqVinculados.length === 0;
 
                 return (
-                  <Popover key={estacao.id}>
+                  <Popover key={station.codigo}>
                     <PopoverTrigger asChild>
                       <div
                         className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-transform hover:scale-110 z-10 flex flex-col items-center ${
                           isDraggingThis ? "scale-125 z-30 opacity-90" : ""
                         }`}
                         style={{ left: `${posX}%`, top: `${posY}%` }}
-                        onMouseDown={(e) => handlePinMouseDown(e, estacao)}
+                        onMouseDown={(e) => handlePinMouseDown(e, station)}
                       >
-                        <div className={`w-8 h-8 rounded-full border-2 shadow-md flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
-                          {estacao.codigo}
-                        </div>
+                        {/* Se o lugar está VAGO: Botão "+" bem visível e amigável */}
+                        {isVago ? (
+                          <button
+                            onClick={(e) => handlePlusClick(station, e)}
+                            className="group flex items-center gap-1 bg-white hover:bg-blue-600 text-blue-600 hover:text-white border-2 border-blue-500 rounded-full px-2.5 py-1 shadow-md transition-all duration-200 transform hover:scale-105"
+                            title={`Atribuir colaborador/computador à mesa ${station.codigo}`}
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                            <span className="font-bold text-[11px] font-mono">{station.codigo}</span>
+                          </button>
+                        ) : (
+                          /* Se a mesa está OCUPADA / EM ALERTA: Pin Colorido com Iniciais / Código */
+                          <div className={`w-8 h-8 rounded-full border-2 shadow-md flex items-center justify-center font-black text-xs ${statusInfo.cor}`}>
+                            {station.codigo}
+                          </div>
+                        )}
 
+                        {/* Rótulo de Nome (ou "+ Adicionar") */}
                         <div className="bg-gray-900/90 text-white text-[10px] px-2 py-0.5 rounded shadow-sm mt-1 whitespace-nowrap font-medium border border-gray-800">
-                          {statusInfo.colab?.nome_completo ? statusInfo.colab.nome_completo.split(" ")[0] : "Vaga"}
+                          {statusInfo.colab?.nome_completo ? statusInfo.colab.nome_completo.split(" ")[0] : "+ Adicionar"}
                         </div>
                       </div>
                     </PopoverTrigger>
@@ -521,11 +604,11 @@ export default function PlantaInterativa({
                       <div className="space-y-3 text-xs">
                         <div className="flex items-start justify-between border-b pb-2">
                           <div>
-                            <p className="font-bold text-gray-900 text-sm">{estacao.codigo} • {salaAtual.nome}</p>
-                            <p className="text-[11px] text-gray-500">Mapeamento Vetorial em Tempo Real</p>
+                            <p className="font-bold text-gray-900 text-sm">{station.codigo} • {salaAtual.nome}</p>
+                            <p className="text-[11px] text-gray-500">Mapeamento Vetorial da Sala</p>
                           </div>
                           <Badge className={
-                            statusInfo.tipo === "vaga" ? "bg-slate-100 text-slate-700" :
+                            statusInfo.tipo === "vaga" ? "bg-blue-50 text-blue-700 border-blue-200 font-bold" :
                             statusInfo.tipo === "alerta" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
                           }>
                             {statusInfo.label}
@@ -548,8 +631,11 @@ export default function PlantaInterativa({
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-gray-50 p-2.5 rounded-lg border text-center text-gray-400 italic">
-                            Mesa atualmente vaga sem colaborador.
+                          <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-center">
+                            <p className="text-blue-900 font-medium text-xs mb-2">Lugar de máquina disponível</p>
+                            <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-xs gap-1 h-7" onClick={(e) => handlePlusClick(station, e)}>
+                              <UserPlus className="w-3.5 h-3.5" /> Vincular Colaborador / Máquina
+                            </Button>
                           </div>
                         )}
 
@@ -591,12 +677,14 @@ export default function PlantaInterativa({
                         {/* Ações Admin */}
                         {isAdmin && (
                           <div className="flex gap-2 border-t pt-2.5">
-                            <Button size="sm" variant="outline" className="flex-1 text-[11px] h-7" onClick={() => setSelectedStation(estacao)}>
+                            <Button size="sm" variant="outline" className="flex-1 text-[11px] h-7" onClick={() => setSelectedStation(station.dbRecord || { id: station.id, codigo: station.codigo, colaborador_id: station.colaborador_id })}>
                               <Pencil className="w-3 h-3 mr-1" /> Gerenciar Mesa
                             </Button>
-                            <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0" onClick={() => deleteEstacaoMut.mutate(estacao.id)}>
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                            {station.isDb && (
+                              <Button size="sm" variant="ghost" className="text-red-500 h-7 w-7 p-0" onClick={() => deleteEstacaoMut.mutate(station.id)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -643,13 +731,13 @@ export default function PlantaInterativa({
         </Card>
       )}
 
-      {/* ── MODAL: CRIAR NOVA ESTAÇÃO NA PLANTA DA SALA ATIVA ──────────────── */}
+      {/* ── MODAL: ATRIBUIR / CRIAR ESTAÇÃO ────────────────────────────────── */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm">Criar Nova Estação — {salaAtual.nome}</DialogTitle>
+            <DialogTitle className="text-sm">Vincular Colaborador e Máquina — Mesa {newStationCodigo}</DialogTitle>
             <DialogDescription className="text-xs">
-              Posição no mapa da sala: X: {newStationPos.x}%, Y: {newStationPos.y}%
+              {salaAtual.nome} (Posição: X {newStationPos.x}%, Y {newStationPos.y}%)
             </DialogDescription>
           </DialogHeader>
 
@@ -668,7 +756,7 @@ export default function PlantaInterativa({
             <div>
               <Label className="text-xs">Colaborador Alocado nesta Mesa</Label>
               <Select value={newStationColaborador} onValueChange={setNewStationColaborador}>
-                <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Nenhum (Mesa vaga)" /></SelectTrigger>
+                <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__" className="text-xs">— Mesa Vaga (Sem Colaborador) —</SelectItem>
                   {colaboradores.map(c => (
@@ -680,7 +768,6 @@ export default function PlantaInterativa({
               </Select>
             </div>
 
-            {/* Seleção de Equipamentos Disponíveis */}
             <div>
               <Label className="text-xs">Vincular Equipamentos Existentes (Opcional)</Label>
               <div className="mt-1 border rounded-lg p-2 max-h-36 overflow-y-auto space-y-1.5 bg-gray-50">
@@ -710,8 +797,8 @@ export default function PlantaInterativa({
 
             <DialogFooter className="pt-2 border-t">
               <Button type="button" variant="outline" size="sm" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
-              <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700" disabled={createEstacaoMut.isPending}>
-                {createEstacaoMut.isPending ? "Salvando..." : "Criar Estação"}
+              <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 font-bold" disabled={createEstacaoMut.isPending}>
+                {createEstacaoMut.isPending ? "Salvando..." : "Salvar Atribuição"}
               </Button>
             </DialogFooter>
           </form>
