@@ -1,10 +1,10 @@
 /**
  * floorplanRooms.js — Definição Vetorial SVG das 5 Salas
  * 
- * Atualização Galpão — Bio / Reenvase / Check Out:
+ * Atualização Centro de Controle Operacional (CCO):
  * - 1000% Fiel à imagem real de referência com círculos azuis.
- * - Mantidas EXCLUSIVAMENTE as 4 mesas circuladas em azul.
- * - Removidos todos os armários, paletes, caixas e bancadas secundárias não circuladas.
+ * - Mantidas EXCLUSIVAMENTE as 3 mesas circuladas em azul.
+ * - Removidos todos os armários e gaveteiros do rodapé e da divisória lateral não circulados.
  */
 
 export const SVG_ROOMS = {
@@ -145,7 +145,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (Apenas as 4 mesas circuladas em azul)
+  // 4. GALPÃO: BIO / REENVASE / CHECK OUT (1000 x 240)
   galpao_bio_reenvase_checkout: {
     id: "bio-reenvase-checkout",
     name: "Galpão — Bio / Reenvase / Check Out",
@@ -157,13 +157,8 @@ export const SVG_ROOMS = {
       { x1: 664, y1: 12, x2: 664, y2: 228 },
     ],
     furniture: [
-      // 1. SALA BIO: Mesa circulada topo centro
       { kind: "desk", x: 220, y: 25, w: 90, h: 48, label: "Mesa BIO" },
-
-      // 2. SALA DE REENVASE: Mesa circulada topo esquerdo
       { kind: "desk", x: 385, y: 25, w: 55, h: 55, label: "Reenvase 1" },
-
-      // 3. CHECK OUT: 2 Mesas circuladas na base
       { kind: "desk", x: 735, y: 175, w: 80, h: 42 },
       { kind: "desk", x: 835, y: 175, w: 90, h: 42 },
     ],
@@ -180,7 +175,7 @@ export const SVG_ROOMS = {
     ],
   },
 
-  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO
+  // 5. CENTRO DE CONTROLE OPERACIONAL - CCO (Apenas as 3 mesas circuladas em azul)
   galpao_centro_controle_operacional: {
     id: "centro-controle",
     name: "Centro de Controle Operacional",
@@ -188,26 +183,24 @@ export const SVG_ROOMS = {
     height: 500,
     outline: { x: 20, y: 20, w: 960, h: 460, rx: 6 },
     furniture: [
-      { kind: "desk", x: 50, y: 50, w: 240, h: 90 },
-      { kind: "desk", x: 50, y: 50, w: 90, h: 240 },
+      // 1. Mesa em L topo esquerda (Circulada em Azul)
+      { kind: "desk", x: 45, y: 45, w: 250, h: 80 },
+      { kind: "desk", x: 45, y: 45, w: 80, h: 200 },
 
-      { kind: "desk", x: 50, y: 320, w: 240, h: 90 },
-      { kind: "desk", x: 50, y: 170, w: 90, h: 240 },
+      // 2. Mesa em L base esquerda (Circulada em Azul)
+      { kind: "desk", x: 45, y: 375, w: 250, h: 80 },
+      { kind: "desk", x: 45, y: 255, w: 80, h: 200 },
 
-      { kind: "cabinet", x: 50, y: 225, w: 90, h: 35 },
-
-      { kind: "desk", x: 380, y: 50, w: 560, h: 100 },
-
-      { kind: "cabinet", x: 380, y: 380, w: 180, h: 80 },
-      { kind: "cabinet", x: 580, y: 370, w: 360, h: 90 },
+      // 3. Bancada superior direita (Circulada em Azul)
+      { kind: "desk", x: 350, y: 45, w: 580, h: 85, label: "Bancada CCO" },
     ],
     seats: [
-      { id: "M-01", codigo: "M-01", x: 210, y: 190, rotate: 45 },
-      { id: "M-02", codigo: "M-02", x: 210, y: 310, rotate: -45 },
-      { id: "M-03", codigo: "M-03", x: 760, y: 190, rotate: 0 },
+      { id: "M-01", codigo: "M-01", x: 215, y: 175, rotate: 45 },
+      { id: "M-02", codigo: "M-02", x: 215, y: 325, rotate: -45 },
+      { id: "M-03", codigo: "M-03", x: 750, y: 175, rotate: 0 },
     ],
     textLabels: [
-      { text: "CENTRO DE CONTROLE OPERACIONAL", x: 650, y: 280, size: 22 }
+      { text: "CENTRO DE CONTROLE OPERACIONAL", x: 640, y: 320, size: 24 }
     ],
   }
 };
