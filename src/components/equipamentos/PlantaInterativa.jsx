@@ -264,38 +264,56 @@ export default function PlantaInterativa({
               >
                 {/* 1. Imagem Realista em Alta Definição da Planta (Fundo HD) */}
                 {svgRoom.image ? (
-                  <image
-                    href={svgRoom.image}
+                  <g>
+                    {/* Se for a Sala Financeiro (originalmente vertical), rotacionar suavemente para ficar DEITADA 100% alinhada */}
+                    {svgRoom.id === "financeiro" ? (
+                      <g transform={`rotate(-90 ${svgRoom.width / 2} ${svgRoom.height / 2}) translate(-168, 0)`}>
+                        <image
+                          href={svgRoom.image}
+                          x={0}
+                          y={0}
+                          width={svgRoom.width}
+                          height={svgRoom.height}
+                          preserveAspectRatio="xMidYMid meet"
+                        />
+                      </g>
+                    ) : (
+                      <image
+                        href={svgRoom.image}
+                        x={0}
+                        y={0}
+                        width={svgRoom.width}
+                        height={svgRoom.height}
+                        preserveAspectRatio="xMidYMid meet"
+                      />
+                    )}
+                  </g>
+                ) : (
+                  <rect
                     x={0}
                     y={0}
                     width={svgRoom.width}
                     height={svgRoom.height}
-                    preserveAspectRatio="none"
+                    fill="#FFFFFF"
+                    stroke="#0F172A"
+                    strokeWidth={5}
                   />
-                ) : (
-                  <>
-                    <rect
-                      x={svgRoom.outline?.x ?? 0}
-                      y={svgRoom.outline?.y ?? 0}
-                      width={svgRoom.outline?.w ?? svgRoom.width}
-                      height={svgRoom.outline?.h ?? svgRoom.height}
-                      rx={svgRoom.outline?.rx ?? 4}
-                      fill="#FFFFFF"
-                      stroke="#0F172A"
-                      strokeWidth={5}
-                    />
-                    {svgRoom.walls?.map((w, i) => (
-                      <line key={i} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} stroke="#0F172A" strokeWidth={5} />
-                    ))}
-                  </>
                 )}
 
-                {/* 2. CADEIRAS INTERATIVAS / ASSENTOS (CLIQUE DIRETO NA CADEIRA DA PLANTA REALISTA) */}
+                {/* 2. CADEIRAS INTERATIVAS COM FOTO DO COLABORADOR FLUTUANDO E BOTAO + */}
                 {mappedSeats.map((seat) => {
-                  const size = 44;
+                  const size = 42;
                   const half = size / 2;
                   const occupied = seat.isOcupado;
-                  const seatColor = occupied ? getColabColor(seat.colaborador_id) : "rgba(59, 130, 246, 0.15)";
+                  const colab = seat.colaborador;
+                  const seatColor = occupied ? getColabColor(seat.colaborador_id) : "#2563EB";
+
+                  // Foto real do colaborador ou UI Avatar com iniciais
+                  const photoUrl = colab?.foto_url || colab?.avatar_url || colab?.foto || (
+                    colab?.nome_completo
+                      ? `https://ui-avatars.com/api/?name=${encodeURIComponent(colab.nome_completo)}&background=${seatColor.replace('#', '')}&color=fff&bold=true`
+                      : null
+                  );
 
                   return (
                     <g
@@ -305,36 +323,89 @@ export default function PlantaInterativa({
                       className="cursor-pointer group"
                       role="button"
                     >
-                      {/* Assento Interativo Overlay sobre a cadeira real */}
+                      {/* Definições de Máscara de Corte para Foto Circular */}
+                      <defs>
+                        <clipPath id={`avatar-clip-${seat.id}`}>
+                          <circle cx={0} cy={0} r={15} />
+                        </clipPath>
+                      </defs>
+
+                      {/* Sombra projetada no chão abaixo da cadeira/foto */}
+                      <ellipse cx={0} cy={6} rx={18} ry={6} fill="#000000" opacity={0.18} className="transition-opacity group-hover:opacity-30" />
+
+                      {/* Assento base discreto da cadeira */}
                       <rect
                         x={-half}
                         y={-half}
                         width={size}
                         height={size}
                         rx={10}
-                        fill={occupied ? seatColor : "transparent"}
-                        stroke={occupied ? "#0F172A" : "transparent"}
-                        strokeWidth={occupied ? 2 : 0}
-                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-3 group-hover:fill-blue-500/20"
+                        fill={occupied ? "rgba(15, 23, 42, 0.08)" : "rgba(37, 99, 235, 0.05)"}
+                        stroke={occupied ? "#0F172A" : "#3B82F6"}
+                        strokeWidth={occupied ? 1.5 : 1}
+                        strokeDasharray={occupied ? undefined : "3 2"}
+                        className="transition-all duration-150 group-hover:stroke-blue-600 group-hover:stroke-2"
                       />
 
-                      {/* Conteúdo do Assento: Iniciais do Colaborador quando ocupado ou Indicador Discreto quando livre */}
-                      <g transform={`rotate(${-(seat.rotate ?? 0)})`}>
-                        {occupied && seat.colaborador ? (
-                          <text
-                            x={0}
-                            y={5}
-                            textAnchor="middle"
-                            style={{ fontSize: 14, fill: "white", fontWeight: "bold" }}
-                          >
-                            {getInitials(seat.colaborador.nome_completo)}
-                          </text>
+                      {/* ELEMENTO FLUTUANDO (FOTO DO COLABORADOR OU BOTAO DE ADICIONAR +) */}
+                      <g
+                        transform={`rotate(${-(seat.rotate ?? 0)}) translate(0, -10)`}
+                        className="transition-transform duration-200 group-hover:translate-y-[-14px]"
+                      >
+                        {occupied && colab ? (
+                          /* ── FOTO FLUTUANTE DO COLABORADOR ────────────────────────────── */
+                          <g>
+                            {/* Anel Externo Elegante */}
+                            <circle cx={0} cy={0} r={17} fill="#FFFFFF" stroke={seatColor} strokeWidth={2.5} className="shadow-md" />
+
+                            {/* Foto Real ou Avatar Renderizado */}
+                            {photoUrl ? (
+                              <image
+                                href={photoUrl}
+                                x={-15}
+                                y={-15}
+                                width={30}
+                                height={30}
+                                clipPath={`url(#avatar-clip-${seat.id})`}
+                                preserveAspectRatio="xMidYMid slice"
+                              />
+                            ) : (
+                              <circle cx={0} cy={0} r={15} fill={seatColor} />
+                            )}
+
+                            {/* Iniciais de fallback se foto não carregar */}
+                            {!photoUrl && (
+                              <text
+                                x={0}
+                                y={4}
+                                textAnchor="middle"
+                                style={{ fontSize: 11, fill: "white", fontWeight: "bold" }}
+                              >
+                                {getInitials(colab.nome_completo)}
+                              </text>
+                            )}
+                          </g>
                         ) : (
-                          <circle
-                            r={4}
-                            fill="#3B82F6"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          />
+                          /* ── BOTAO + DE ADICIONAR COLABORADOR FLUTUANTE ────────────────── */
+                          <g>
+                            <circle
+                              cx={0}
+                              cy={0}
+                              r={14}
+                              fill="#2563EB"
+                              stroke="#FFFFFF"
+                              strokeWidth={2}
+                              className="shadow-md transition-colors group-hover:fill-blue-700"
+                            />
+                            <text
+                              x={0}
+                              y={5}
+                              textAnchor="middle"
+                              style={{ fontSize: 17, fill: "white", fontWeight: "bold" }}
+                            >
+                              +
+                            </text>
+                          </g>
                         )}
                       </g>
                     </g>
