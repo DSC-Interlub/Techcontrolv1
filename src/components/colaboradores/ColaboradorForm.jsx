@@ -133,23 +133,6 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       }
       return;
     }
-
-    if (formData.email?.trim()) {
-      const emailDuplicado = colaboradoresExistentes.some(c =>
-        c.email?.trim().toLowerCase() === formData.email?.trim().toLowerCase() &&
-        c.id !== colaborador?.id
-      );
-      if (emailDuplicado) {
-        setErrors(prev => ({
-          ...prev,
-          email: "Este e-mail já está cadastrado para outro colaborador.",
-          _form: "Este e-mail já está cadastrado para outro colaborador."
-        }));
-        setActiveTab("profissional");
-        return;
-      }
-    }
-
     if (colaborador) {
       updateMutation.mutate({ id: colaborador.id, data: formData });
     } else {
