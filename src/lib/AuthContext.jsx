@@ -18,10 +18,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(!user);
 
   const fetchCurrentUser = useCallback(async () => {
-    console.log("[DEBUG-AUTH] fetchCurrentUser started. Current isLoadingAuth:", isLoadingAuth);
     try {
       const u = await base44.auth.me();
-      console.log("[DEBUG-AUTH] fetchCurrentUser resolved user:", u?.email || "none");
       setUser(u);
       if (u) {
         sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(u));
@@ -30,11 +28,10 @@ export const AuthProvider = ({ children }) => {
       }
       return u;
     } catch (err) {
-      console.error("[DEBUG-AUTH] [AuthContext] Erro ao carregar usuário:", err);
+      console.error("[AuthContext] Erro ao carregar usuário:", err);
       return null;
     } finally {
       setIsLoadingAuth(false);
-      console.log("[DEBUG-AUTH] fetchCurrentUser completed. New isLoadingAuth: false");
     }
   }, []);
 
@@ -45,11 +42,8 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
 
     // Escuta alterações na sessão do Supabase Auth
-    console.log("[DEBUG-AUTH] Setting up supabase.auth.onAuthStateChange listener");
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(`[DEBUG-AUTH] onAuthStateChange event fired: ${event} | User email: ${session?.user?.email || "none"}`);
       if (!mounted) {
-        console.log("[DEBUG-AUTH] onAuthStateChange event skipped (component unmounted)");
         return;
       }
 
@@ -57,7 +51,6 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         sessionStorage.removeItem('techcontrol_user_cache');
         setIsLoadingAuth(false);
-        console.log("[DEBUG-AUTH] event SIGNED_OUT or empty session handled");
       } else {
         // b) Construa o usuário/sessão inicial de forma síncrona usando apenas o parâmetro session já recebido pelo callback
         const userObj = session.user;
@@ -71,12 +64,10 @@ export const AuthProvider = ({ children }) => {
         setUser(baseUser);
         sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(baseUser));
         setIsLoadingAuth(false);
-        console.log("[DEBUG-AUTH] Initial user constructed synchronously from session");
 
         // c) Qualquer chamada adicional ao Supabase necessária (buscar perfil, role, etc.) seja adiada com setTimeout(fn, 0) para rodar depois que o callback termina
         setTimeout(async () => {
           if (!mounted) return;
-          console.log("[DEBUG-AUTH] Deferred query running for user profile information");
           try {
             // Busca dados complementares de perfil (profiles / colaboradores) usando chamadas diretas de banco (NÃO usando auth.*)
             const { data: profile } = await supabase
@@ -86,14 +77,13 @@ export const AuthProvider = ({ children }) => {
               .maybeSingle();
 
             if (profile && mounted) {
-              const updatedUser = {
+               const updatedUser = {
                 ...baseUser,
                 role: profile.role || baseUser.role,
                 name: profile.full_name || profile.nome_exibicao || baseUser.name
               };
               setUser(updatedUser);
               sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(updatedUser));
-              console.log("[DEBUG-AUTH] Deferred query resolved profile details:", updatedUser.role);
               return;
             }
 
@@ -111,10 +101,9 @@ export const AuthProvider = ({ children }) => {
               };
               setUser(updatedUser);
               sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(updatedUser));
-              console.log("[DEBUG-AUTH] Deferred query resolved colaborador details");
             }
           } catch (err) {
-            console.warn("[DEBUG-AUTH] [AuthContext] Erro ao carregar detalhes complementares no setTimeout:", err);
+            console.warn("[AuthContext] Erro ao carregar detalhes complementares no setTimeout:", err);
           }
         }, 0);
       }

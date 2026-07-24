@@ -111,6 +111,26 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = "E-mail inválido";
     if (formData.data_nascimento && formData.data_nascimento > hoje) e.data_nascimento = "Data não pode ser futura";
     if (formData.conjuge_data_nascimento && formData.conjuge_data_nascimento > hoje) e.conjuge_data_nascimento = "Data não pode ser futura";
+
+    // Validação de senha duplicada para e-mail compartilhado
+    if (formData.senha_portal && formData.email) {
+      const emailLower = formData.email.trim().toLowerCase();
+      
+      // Filtra outros colaboradores ATIVOS com o mesmo email
+      const outrosComMesmoEmail = todosColaboradores.filter(c => 
+        c.email && c.email.trim().toLowerCase() === emailLower && 
+        c.id !== colaborador?.id
+      );
+
+      // Se houver mais de um colaborador com esse e-mail (ou seja, é um email compartilhado)
+      if (outrosComMesmoEmail.length > 0) {
+        const senhaJaExiste = outrosComMesmoEmail.some(c => c.senha_portal === formData.senha_portal);
+        if (senhaJaExiste) {
+          e.senha_portal = "Essa senha já está em uso por outra pessoa com o mesmo e-mail de acesso. Escolha uma senha diferente.";
+        }
+      }
+    }
+
     return e;
   };
 
@@ -130,11 +150,36 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
           ...prev,
           _form: 'Preencha os campos obrigatórios na aba "Profissional": Nome e Área.',
         }));
+      } else if (v.senha_portal) {
+        setActiveTab("acesso");
+        setErrors(prev => ({
+          ...prev,
+          _form: v.senha_portal,
+        }));
       }
       return;
     }
 
-    const cleanedData = { ...formData };
+    const cleanedData = {};
+    for (const key in formData) {
+      let val = formData[key];
+      if (typeof val === 'string' && val.trim() === '') {
+        const isUuidField = key.endsWith('_id') || key === 'colaborador_id';
+        const isDateField = key.startsWith('data_') || 
+                            key.endsWith('_desde') || 
+                            key.endsWith('_ate') || 
+                            key.endsWith('_nascimento') || 
+                            key.endsWith('_admissao') || 
+                            key.endsWith('_desligamento') || 
+                            key === 'data';
+        
+        if (isUuidField || isDateField) {
+          val = null;
+        }
+      }
+      cleanedData[key] = val;
+    }
+
     if (!cleanedData.responsavel_id) {
       cleanedData.responsavel_id = null;
     }
@@ -570,12 +615,15 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                           placeholder="Definir senha de acesso"
                           value={formData.senha_portal || ""}
                           onChange={e => set('senha_portal', e.target.value)}
-                          className="pr-10 text-xs"
+                          className={`pr-10 text-xs ${errors.senha_portal ? "border-red-500" : ""}`}
                         />
                         <button type="button" onClick={() => toggleShowSenha('portal')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                           {showSenhas.portal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                      {errors.senha_portal && (
+                        <p className="text-red-500 text-[10px] mt-1 font-medium">{errors.senha_portal}</p>
+                      )}
                     </div>
                     <div className="space-y-2 pt-2">
                       <div className="flex items-center gap-2">

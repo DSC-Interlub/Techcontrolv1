@@ -162,8 +162,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     for (const key in dataToSubmit) {
       if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
         let val = dataToSubmit[key];
-        if (typeof val === 'string' && val.trim() === '' && (key === 'colaborador_id' || key.endsWith('_id'))) {
-          val = null;
+        if (typeof val === 'string' && val.trim() === '') {
+          const isUuidField = key === 'colaborador_id' || key.endsWith('_id');
+          const isDateField = key.startsWith('data_') || 
+                              key.endsWith('_desde') || 
+                              key.endsWith('_ate') || 
+                              key.endsWith('_nascimento') || 
+                              key.endsWith('_admissao') || 
+                              key.endsWith('_desligamento') || 
+                              key === 'data';
+          
+          if (isUuidField || isDateField) {
+            val = null;
+          }
         }
         cleanData[key] = val;
       }

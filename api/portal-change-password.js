@@ -35,12 +35,41 @@ export default async function handler(req, res) {
     // Primeiro buscamos o colaborador para garantir que ele existe e precisa trocar a senha
     const { data: colaborador, error: fetchError } = await supabase
       .from('colaboradores')
-      .select('id, senha_precisa_trocar')
+      .select('id, email, status, senha_precisa_trocar')
       .eq('id', colaboradorId)
       .single();
 
     if (fetchError || !colaborador) {
       return res.status(404).json({ ok: false, error: 'Colaborador não encontrado.' });
+    }
+
+    // Validação de senha duplicada para e-mail compartilhado
+    if (colaborador.email) {
+      const emailLower = colaborador.email.trim().toLowerCase();
+
+      // Busca todos os colaboradores ativos com o mesmo e-mail (diferentes do atual)
+      const { data: outrosColaboradores, error: outrosError } = await supabase
+        .from('colaboradores')
+        .select('id, senha_portal')
+        .eq('email', emailLower)
+        .eq('status', 'Ativo')
+        .neq('id', colaboradorId);
+
+      if (outrosError) {
+        console.error('[portal-change-password] Error fetching siblings:', outrosError);
+        return res.status(500).json({ ok: false, error: 'Erro ao validar e-mails duplicados.' });
+      }
+
+      // Se houver mais de um colaborador com esse email (outrosColaboradores.length > 0)
+      if (outrosColaboradores && outrosColaboradores.length > 0) {
+        const senhaJaExiste = outrosColaboradores.some(c => c.senha_portal === novaSenha);
+        if (senhaJaExiste) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Essa senha já está em uso por outra pessoa com o mesmo e-mail de acesso. Escolha uma senha diferente.'
+          });
+        }
+      }
     }
 
     // Atualizamos a senha_portal e a flag senha_precisa_trocar
