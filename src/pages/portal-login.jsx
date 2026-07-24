@@ -143,25 +143,20 @@ export default function PortalLogin() {
 
     setSalvandoSenha(true);
     try {
-      // 1. Atualiza a senha no Supabase Auth
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: novaSenha
+      // Chama o endpoint de backend seguro para atualizar a senha
+      const res = await fetch('/api/portal-change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          colaboradorId: colaboradorLogando.id,
+          novaSenha: novaSenha
+        })
       });
 
-      if (updateError) throw updateError;
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Erro ao salvar a nova senha.');
 
-      // 2. Atualiza a flag e a senha_portal na tabela public.colaboradores
-      const { error: colabError } = await supabase
-        .from('colaboradores')
-        .update({ 
-          senha_portal: novaSenha, 
-          senha_precisa_trocar: false 
-        })
-        .eq('id', colaboradorLogando.id);
-
-      if (colabError) throw colabError;
-
-      // 3. Salva a sessão no sessionStorage
+      // Salva a sessão no sessionStorage
       sessionStorage.setItem('portal_colaborador', JSON.stringify({
         id: colaboradorLogando.id,
         nome_completo: colaboradorLogando.nome_completo,

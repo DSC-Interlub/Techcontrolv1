@@ -161,7 +161,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     const cleanData = {};
     for (const key in dataToSubmit) {
       if (!fieldsToRemove.includes(key) && dataToSubmit[key] !== undefined) {
-        cleanData[key] = dataToSubmit[key];
+        let val = dataToSubmit[key];
+        if (typeof val === 'string' && val.trim() === '' && (key === 'colaborador_id' || key.endsWith('_id'))) {
+          val = null;
+        }
+        cleanData[key] = val;
       }
     }
 
@@ -352,7 +356,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                       handleChange("uf", colaborador.area);
                     }
                   } else {
-                    handleChange("colaborador_id", "");
+                    handleChange("colaborador_id", null);
                   }
                   // Define data atual como usuario_desde quando atribuir usuário
                   if (value && !formData.usuario_desde) {
@@ -575,7 +579,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                     handleChange("area", colaborador.area);
                     handleChange("colaborador_id", colaborador.id);
                   } else {
-                    handleChange("colaborador_id", "");
+                    handleChange("colaborador_id", null);
                   }
                   // Define data atual como usuario_desde quando atribuir usuário
                   if (value && !formData.usuario_desde) {
