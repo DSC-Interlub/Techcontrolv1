@@ -5,8 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Settings, Eye, EyeOff, Loader2, AlertCircle, Lock } from "lucide-react";
+import { Settings, Eye, EyeOff, Loader2, AlertCircle, Lock, Users } from "lucide-react";
 import { createPageUrl } from "@/utils";
+
+function getInitials(name) {
+  if (!name) return "??";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function PortalLogin() {
   const [email, setEmail] = useState("");
@@ -14,6 +21,10 @@ export default function PortalLogin() {
   const [showSenha, setShowSenha] = useState(false);
   const [erro, setErro] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Estado para escolher perfil em logins com múltiplos colaboradores no mesmo e-mail
+  const [escolherPerfil, setEscolherPerfil] = useState(false);
+  const [candidatos, setCandidatos] = useState([]);
 
   // Estado para troca de senha obrigatória
   const [trocarSenha, setTrocarSenha] = useState(false);
@@ -39,9 +50,16 @@ export default function PortalLogin() {
       
       if (!data.ok) throw new Error(data.error || 'Credenciais invalidas');
 
+      if (data.precisaEscolherPerfil) {
+        setCandidatos(data.candidatos);
+        setEscolherPerfil(true);
+        setLoading(false);
+        return;
+      }
+
       const colaborador = data.colaborador;
 
-      // 3. Verifica se precisa trocar senha
+      // Verifica se precisa trocar senha
       if (colaborador.senha_precisa_trocar) {
         setColaboradorLogando(colaborador);
         setTrocarSenha(true);
@@ -49,7 +67,7 @@ export default function PortalLogin() {
         return;
       }
 
-      // 4. Salva a sessão no sessionStorage para retrocompatibilidade
+      // Salva a sessão no sessionStorage para retrocompatibilidade
       sessionStorage.setItem('portal_colaborador', JSON.stringify({
         id: colaborador.id,
         nome_completo: colaborador.nome_completo,
@@ -62,6 +80,49 @@ export default function PortalLogin() {
       window.location.href = createPageUrl("portal");
     } catch (err) {
       setErro(err.message || "Erro desconhecido ao logar.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSelecionarPerfil = async (candidato) => {
+    setErro("");
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/portal-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), senha: senha, colaboradorId: candidato.id })
+      });
+      const data = await res.json();
+      
+      if (!data.ok) throw new Error(data.error || 'Erro ao selecionar perfil');
+
+      const colaborador = data.colaborador;
+
+      // Verifica se precisa trocar senha
+      if (colaborador.senha_precisa_trocar) {
+        setColaboradorLogando(colaborador);
+        setTrocarSenha(true);
+        setEscolherPerfil(false);
+        setLoading(false);
+        return;
+      }
+
+      // Salva a sessão no sessionStorage
+      sessionStorage.setItem('portal_colaborador', JSON.stringify({
+        id: colaborador.id,
+        nome_completo: colaborador.nome_completo,
+        email: colaborador.email,
+        area: colaborador.area,
+        tipo_funcionario: colaborador.tipo_funcionario,
+        permissoes_comunicados: colaborador.permissoes_comunicados || [],
+      }));
+
+      window.location.href = createPageUrl("portal");
+    } catch (err) {
+      setErro(err.message || "Erro desconhecido ao selecionar perfil.");
     } finally {
       setLoading(false);
     }
@@ -117,6 +178,84 @@ export default function PortalLogin() {
       setSalvandoSenha(false);
     }
   };
+
+  if (escolherPerfil && candidatos.length > 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Users className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-900">TechControl</h1>
+            <p className="text-gray-600 mt-1">Escolha seu perfil</p>
+          </div>
+
+          <Card className="shadow-2xl">
+            <CardHeader className="border-b">
+              <CardTitle className="text-center text-lg">Quem é você?</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              {erro && (
+                <Alert className="bg-red-50 border-red-200">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <AlertDescription className="text-red-800">{erro}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid grid-cols-1 gap-3">
+                {candidatos.map((cand) => {
+                  const initials = getInitials(cand.nome_completo);
+                  return (
+                    <button
+                      key={cand.id}
+                      type="button"
+                      onClick={() => handleSelecionarPerfil(cand)}
+                      disabled={loading}
+                      className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 text-left transition-all duration-200 group w-full"
+                    >
+                      {cand.foto_url ? (
+                        <img
+                          src={cand.foto_url}
+                          alt={cand.nome_completo}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-slate-100 group-hover:border-blue-500 transition-colors"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm group-hover:bg-blue-200 transition-colors shrink-0">
+                          {initials}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
+                          {cand.nome_completo}
+                        </p>
+                        {cand.cargo && (
+                          <p className="text-xs text-slate-500 truncate">{cand.cargo}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-slate-200"
+                onClick={() => {
+                  setEscolherPerfil(false);
+                  setCandidatos([]);
+                  setErro("");
+                }}
+                disabled={loading}
+              >
+                Voltar ao Login
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (trocarSenha && colaboradorLogando) {
     return (

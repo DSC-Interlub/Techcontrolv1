@@ -21,18 +21,18 @@ export function usePortalColaborador() {
     }
   });
 
-  const email = colaborador?.email || null;
+  const id = colaborador?.id || null;
   const queryClient = useQueryClient();
 
   // Query com staleTime alto: só refaz a busca após 5 minutos de inatividade
   const { data: fresco } = useQuery({
-    queryKey: ["portal_colaborador", email],
+    queryKey: ["portal_colaborador", id],
     queryFn: async () => {
-      if (!email) return null;
-      const results = await base44.entities.Colaboradores.filter({ email });
-      return results?.[0] || null;
+      if (!id) return null;
+      const result = await base44.entities.Colaboradores.get(id);
+      return result || null;
     },
-    enabled: !!email,
+    enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutos — não rebusca em troca de rota
     gcTime: 10 * 60 * 1000,   // mantém no cache por 10 minutos
   });

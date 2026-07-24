@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
-  const { email, senha } = req.body || {};
+  const { email, senha, colaboradorId } = req.body || {};
 
   if (!email || !senha) {
     return res.status(400).json({ ok: false, error: 'Email e senha são obrigatórios.' });
@@ -28,47 +28,84 @@ export default async function handler(req, res) {
   try {
     const supabase = createSupabaseAdmin();
 
-    // Busca colaborador pelo email usando service role (bypassa RLS)
+    // Busca todos os colaboradores ativos com o email especificado usando service role (bypassa RLS)
     const { data: colaboradores, error } = await supabase
       .from('colaboradores')
       .select('*')
       .eq('email', email.trim().toLowerCase())
-      .eq('status', 'Ativo')
-      .limit(1);
+      .eq('status', 'Ativo');
 
     if (error) {
       console.error('[portal-auth] Supabase error:', error);
       return res.status(500).json({ ok: false, error: 'Erro interno. Tente novamente.' });
     }
 
-    const colaborador = colaboradores?.[0];
-
-    if (!colaborador) {
+    if (!colaboradores || colaboradores.length === 0) {
       // Tempo constante para prevenir user enumeration
       await new Promise(r => setTimeout(r, 200));
       return res.status(401).json({ ok: false, error: 'Credenciais inválidas.' });
     }
 
-    // Verifica senha — comparação constante para evitar timing attacks
-    const senhaCorreta = colaborador.senha_portal;
-    if (!senhaCorreta) {
-      return res.status(401).json({ ok: false, error: 'Conta sem senha configurada. Contate o TI.' });
+    // Filtra colaboradores com senhas válidas
+    const candidatosValidos = [];
+
+    for (const colab of colaboradores) {
+      const senhaCorreta = colab.senha_portal;
+      if (!senhaCorreta) continue;
+
+      // Comparação caractere a caractere (constant-time)
+      let match = senhaCorreta.length === senha.length;
+      let diffBits = 0;
+      const maxLen = Math.max(senhaCorreta.length, senha.length);
+      for (let i = 0; i < maxLen; i++) {
+        const a = senhaCorreta.charCodeAt(i) || 0;
+        const b = senha.charCodeAt(i) || 0;
+        diffBits |= a ^ b;
+      }
+      match = match && diffBits === 0;
+
+      if (match) {
+        candidatosValidos.push(colab);
+      }
     }
 
-    // Comparação caractere a caractere (constant-time)
-    let match = senhaCorreta.length === senha.length;
-    let diffBits = 0;
-    const maxLen = Math.max(senhaCorreta.length, senha.length);
-    for (let i = 0; i < maxLen; i++) {
-      const a = senhaCorreta.charCodeAt(i) || 0;
-      const b = senha.charCodeAt(i) || 0;
-      diffBits |= a ^ b;
-    }
-    match = match && diffBits === 0;
-
-    if (!match) {
+    if (candidatosValidos.length === 0) {
       return res.status(401).json({ ok: false, error: 'Credenciais inválidas.' });
     }
+
+    // Se o frontend solicitou um colaboradorId específico (após a seleção)
+    if (colaboradorId) {
+      const colabMatch = candidatosValidos.find(c => c.id === colaboradorId);
+      if (!colabMatch) {
+        return res.status(401).json({ ok: false, error: 'Perfil inválido ou não autorizado.' });
+      }
+
+      const {
+        senha_portal: _senha,
+        ...colaboradorSemSenha
+      } = colabMatch;
+
+      return res.status(200).json({ ok: true, colaborador: colaboradorSemSenha });
+    }
+
+    // Se mais de um colaborador válido compartilha o e-mail, retorna a lista para escolha
+    if (candidatosValidos.length > 1) {
+      const candidatosSaneados = candidatosValidos.map(c => ({
+        id: c.id,
+        nome_completo: c.nome_completo,
+        cargo: c.cargo,
+        foto_url: c.foto_url
+      }));
+
+      return res.status(200).json({
+        ok: true,
+        precisaEscolherPerfil: true,
+        candidatos: candidatosSaneados
+      });
+    }
+
+    // Caso contrário (apenas 1 válido), login direto
+    const colaborador = candidatosValidos[0];
 
     // Monta resposta SEM expor senha_portal
     const {
