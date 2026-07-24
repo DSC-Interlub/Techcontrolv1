@@ -1,5 +1,9 @@
 if (typeof window !== 'undefined') {
-  console.log('=== TECHCONTROL INSTRUMENTATION INITIALIZED ===');
+  const isDev = import.meta.env.DEV;
+
+  if (isDev) {
+    console.log('=== TECHCONTROL INSTRUMENTATION INITIALIZED ===');
+  }
   
   // Track active fetch requests
   const activeRequests = new Map();
@@ -15,7 +19,9 @@ if (typeof window !== 'undefined') {
     const reqInfo = { id, url, method, startTime, stack: new Error().stack };
     activeRequests.set(id, reqInfo);
     
-    console.log(`[DEBUG-FETCH-START] #${id} ${method} ${url}`);
+    if (isDev) {
+      console.log(`[DEBUG-FETCH-START] #${id} ${method} ${url}`);
+    }
     
     // Set a timer to detect slow or hung requests
     const timeoutTimer = setTimeout(() => {
@@ -26,12 +32,15 @@ if (typeof window !== 'undefined') {
       const response = await originalFetch.apply(this, arguments);
       clearTimeout(timeoutTimer);
       const duration = Date.now() - startTime;
-      console.log(`[DEBUG-FETCH-SUCCESS] #${id} ${method} ${url} resolved with status ${response.status} in ${duration}ms`);
+      if (isDev) {
+        console.log(`[DEBUG-FETCH-SUCCESS] #${id} ${method} ${url} resolved with status ${response.status} in ${duration}ms`);
+      }
       activeRequests.delete(id);
       return response;
     } catch (err) {
       clearTimeout(timeoutTimer);
       const duration = Date.now() - startTime;
+      // Real fetch error is logged on both environment levels
       console.error(`[DEBUG-FETCH-ERROR] #${id} ${method} ${url} rejected after ${duration}ms:`, err);
       activeRequests.delete(id);
       throw err;
@@ -43,21 +52,29 @@ if (typeof window !== 'undefined') {
   const originalWebSocket = window.WebSocket;
   
   window.WebSocket = function (url, protocols) {
-    console.log(`[DEBUG-WS-CREATE] New WebSocket to ${url}`);
+    if (isDev) {
+      console.log(`[DEBUG-WS-CREATE] New WebSocket to ${url}`);
+    }
     const ws = new originalWebSocket(url, protocols);
     activeWebSockets.add(ws);
     
     ws.addEventListener('open', () => {
-      console.log(`[DEBUG-WS-OPEN] Connected to ${url}`);
+      if (isDev) {
+        console.log(`[DEBUG-WS-OPEN] Connected to ${url}`);
+      }
     });
     
     ws.addEventListener('close', (event) => {
-      console.log(`[DEBUG-WS-CLOSE] Closed WebSocket to ${url}. Code: ${event.code}, Reason: ${event.reason}`);
+      if (isDev) {
+        console.log(`[DEBUG-WS-CLOSE] Closed WebSocket to ${url}. Code: ${event.code}, Reason: ${event.reason}`);
+      }
       activeWebSockets.delete(ws);
     });
     
     ws.addEventListener('error', (err) => {
-      console.error(`[DEBUG-WS-ERROR] WebSocket to ${url} error:`, err);
+      if (isDev) {
+        console.error(`[DEBUG-WS-ERROR] WebSocket to ${url} error:`, err);
+      }
     });
     
     return ws;

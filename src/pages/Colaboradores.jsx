@@ -41,6 +41,93 @@ export default function Colaboradores() {
     queryFn: () => base44.entities.Colaboradores.list('-created_date'),
   });
 
+  const { data: ramais = [] } = useQuery({
+    queryKey: ['ramais'],
+    queryFn: () => base44.entities.Ramais.list(),
+  });
+
+  const { data: pcsInternos = [] } = useQuery({
+    queryKey: ['pcs_internos'],
+    queryFn: () => base44.entities.PCs_Internos.list(),
+  });
+
+  const { data: notebooksExternos = [] } = useQuery({
+    queryKey: ['notebooks_externos'],
+    queryFn: () => base44.entities.Notebooks_Externos.list(),
+  });
+
+  const { data: smartphones = [] } = useQuery({
+    queryKey: ['smartphones'],
+    queryFn: () => base44.entities.Smartphones.list(),
+  });
+
+  const { data: cameras = [] } = useQuery({
+    queryKey: ['cameras'],
+    queryFn: () => base44.entities.Cameras.list(),
+  });
+
+  const { data: coletores = [] } = useQuery({
+    queryKey: ['coletores'],
+    queryFn: () => base44.entities.Coletores.list(),
+  });
+
+  const { data: canetas = [] } = useQuery({
+    queryKey: ['canetas_vibracao'],
+    queryFn: () => base44.entities.Canetas_Vibracao.list(),
+  });
+
+  const obterPendencias = (colab) => {
+    const pendencias = [];
+
+    // 1. Sem E-mail Próprio (Crítico)
+    if (!colab.email || !colab.email.trim()) {
+      pendencias.push({ tipo: "sem_email", label: "Sem E-mail Próprio", critico: true });
+    }
+
+    // 2. Sem Gestor (Nome)
+    const respNome = colab.responsavel_nome || '';
+    const respEmail = colab.responsavel_email || '';
+    
+    if (!respNome.trim()) {
+      pendencias.push({ tipo: "sem_gestor_nome", label: "Gestor não informado", critico: false });
+    } else {
+      // 3. Sem E-mail do Gestor (apenas se tem nome de gestor)
+      if (!respEmail.trim()) {
+        pendencias.push({ tipo: "sem_gestor_email", label: "E-mail do gestor não informado", critico: false });
+      }
+    }
+
+    // 4. Cônjuge sem E-mail (apenas se tem cônjuge)
+    if (colab.conjuge_nome && colab.conjuge_nome.trim() && (!colab.conjuge_email || !colab.conjuge_email.trim())) {
+      pendencias.push({ tipo: "conjuge_sem_email", label: "E-mail do cônjuge não informado", critico: false });
+    }
+
+    // 5. Sem Ramal (apenas para Interno)
+    if (colab.tipo_funcionario === "Interno") {
+      const temRamal = ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === colab.nome_completo.trim().toLowerCase());
+      if (!temRamal) {
+        pendencias.push({ tipo: "sem_ramal", label: "Ramal não associado", critico: false });
+      }
+    }
+
+    // 6. Sem Equipamento (apenas para Interno)
+    if (colab.tipo_funcionario === "Interno") {
+      const nomeLower = colab.nome_completo.trim().toLowerCase();
+      const temPc = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temNb = notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temSm = smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temCam = cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temCol = coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temCan = canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+
+      if (!temPc && !temNb && !temSm && !temCam && !temCol && !temCan) {
+        pendencias.push({ tipo: "sem_equipamento", label: "Nenhum equipamento associado", critico: false });
+      }
+    }
+
+    return pendencias;
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (colaborador) => {
       // Check for active chamados
@@ -106,6 +193,29 @@ export default function Colaboradores() {
     ferias: colaboradores.filter(c => c.status === "Férias").length,
     afastados: colaboradores.filter(c => c.status === "Afastado").length,
   };
+
+  const totalSemEmailProprio = colaboradores.filter(c => !c.email || !c.email.trim()).length;
+  const totalSemGestorNome = colaboradores.filter(c => !c.responsavel_nome || !c.responsavel_nome.trim()).length;
+  const totalSemGestorEmail = colaboradores.filter(c => c.responsavel_nome && c.responsavel_nome.trim() && (!c.responsavel_email || !c.responsavel_email.trim())).length;
+  const totalConjugeSemEmail = colaboradores.filter(c => c.conjuge_nome && c.conjuge_nome.trim() && (!c.conjuge_email || !c.conjuge_email.trim())).length;
+  
+  const totalSemRamal = colaboradores.filter(c => {
+    if (c.tipo_funcionario !== "Interno") return false;
+    return !ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === c.nome_completo.trim().toLowerCase());
+  }).length;
+
+  const totalSemEquipamento = colaboradores.filter(c => {
+    if (c.tipo_funcionario !== "Interno") return false;
+    const nomeLower = c.nome_completo.trim().toLowerCase();
+    return !pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower) &&
+           !notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower) &&
+           !smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower) &&
+           !cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower) &&
+           !coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower) &&
+           !canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+  }).length;
+
+  const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorNome > 0 || totalSemGestorEmail > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemEquipamento > 0;
 
   if (selectedColaborador) {
     return (
@@ -184,6 +294,57 @@ export default function Colaboradores() {
           </Card>
         </div>
 
+        {temQualquerPendencia && (
+          <Card className="mb-6 border-amber-200 dark:border-amber-900 bg-amber-50/10 dark:bg-amber-950/5">
+            <CardHeader className="py-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <CardTitle className="text-lg text-amber-800 dark:text-amber-300">Pendências de Cadastro</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {totalSemEmailProprio > 0 && (
+                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium">Sem E-mail Próprio</p>
+                    <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">{totalSemEmailProprio}</p>
+                  </div>
+                )}
+                {totalSemGestorNome > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Gestor</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorNome}</p>
+                  </div>
+                )}
+                {totalSemGestorEmail > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">E-mail Gestor Vazio</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorEmail}</p>
+                  </div>
+                )}
+                {totalConjugeSemEmail > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Cônjuge Sem E-mail</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalConjugeSemEmail}</p>
+                  </div>
+                )}
+                {totalSemRamal > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Ramal</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemRamal}</p>
+                  </div>
+                )}
+                {totalSemEquipamento > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Equipamento</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemEquipamento}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {showForm && (
           <ColaboradorForm
             colaborador={editingColaborador}
@@ -246,10 +407,22 @@ export default function Colaboradores() {
                           <TableRow key={colaborador.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span>{colaborador.nome_completo}</span>
+                                <span className="font-semibold">{colaborador.nome_completo}</span>
                                 {(colaborador.permissoes_comunicados || []).length > 0 && (
                                   <Badge className="bg-indigo-100 text-indigo-700 text-xs">Acesso Comunicados</Badge>
                                 )}
+                                {obterPendencias(colaborador).map((p, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    className={
+                                      p.critico
+                                        ? "bg-red-100 text-red-800 hover:bg-red-200 border border-red-200 text-[10px] px-1.5 py-0"
+                                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[10px] px-1.5 py-0"
+                                    }
+                                  >
+                                    {p.label}
+                                  </Badge>
+                                ))}
                               </div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">{colaborador.email || "-"}</TableCell>
@@ -330,10 +503,22 @@ export default function Colaboradores() {
                           <TableRow key={colaborador.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setSelectedColaborador(colaborador)}>
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span>{colaborador.nome_completo}</span>
+                                <span className="font-semibold">{colaborador.nome_completo}</span>
                                 {(colaborador.permissoes_comunicados || []).length > 0 && (
                                   <Badge className="bg-indigo-100 text-indigo-700 text-xs">Acesso Comunicados</Badge>
                                 )}
+                                {obterPendencias(colaborador).map((p, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    className={
+                                      p.critico
+                                        ? "bg-red-100 text-red-800 hover:bg-red-200 border border-red-200 text-[10px] px-1.5 py-0"
+                                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-[10px] px-1.5 py-0"
+                                    }
+                                  >
+                                    {p.label}
+                                  </Badge>
+                                ))}
                               </div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">{colaborador.email || "-"}</TableCell>

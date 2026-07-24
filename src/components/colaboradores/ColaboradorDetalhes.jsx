@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ArrowLeft, Pencil, Monitor, Laptop, Smartphone, Camera, Barcode, Pen, Phone, Headset,
-  Eye, EyeOff, Copy, Check, User, Briefcase, Heart, ShoppingCart, Megaphone, Lock, Mail, Calendar, ShieldCheck
+  Eye, EyeOff, Copy, Check, User, Briefcase, Heart, ShoppingCart, Megaphone, Lock, Mail, Calendar, ShieldCheck,
+  AlertTriangle
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -73,6 +74,57 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
   };
 
   const totalEquipamentos = Object.values(equipamentosColaborador).reduce((sum, arr) => sum + arr.length, 0);
+
+  const obterPendenciasLocal = () => {
+    const pendencias = [];
+
+    // 1. Sem E-mail Próprio (Crítico)
+    if (!colaborador.email || !colaborador.email.trim()) {
+      pendencias.push({ label: "E-mail próprio não informado", critico: true });
+    }
+
+    // 2. Sem Gestor (Nome)
+    const respNome = colaborador.responsavel_nome || '';
+    const respEmail = colaborador.responsavel_email || '';
+    
+    if (!respNome.trim()) {
+      pendencias.push({ label: "Gestor não informado", critico: false });
+    } else {
+      // 3. Sem E-mail do Gestor (apenas se tem nome de gestor)
+      if (!respEmail.trim()) {
+        pendencias.push({ label: "E-mail do gestor não informado", critico: false });
+      }
+    }
+
+    // 4. Cônjuge sem E-mail (apenas se tem cônjuge)
+    if (colaborador.conjuge_nome && colaborador.conjuge_nome.trim() && (!colaborador.conjuge_email || !colaborador.conjuge_email.trim())) {
+      pendencias.push({ label: "E-mail do cônjuge não informado", critico: false });
+    }
+
+    // 5. Sem Ramal (apenas para Interno)
+    if (colaborador.tipo_funcionario === "Interno" && (equipamentosColaborador.ramais || []).length === 0) {
+      pendencias.push({ label: "Ramal não associado", critico: false });
+    }
+
+    // 6. Sem Equipamento (apenas para Interno)
+    if (colaborador.tipo_funcionario === "Interno") {
+      const temEquipamento = (
+        (equipamentosColaborador.pcs || []).length > 0 ||
+        (equipamentosColaborador.notebooks || []).length > 0 ||
+        (equipamentosColaborador.smartphones || []).length > 0 ||
+        (equipamentosColaborador.cameras || []).length > 0 ||
+        (equipamentosColaborador.coletores || []).length > 0 ||
+        (equipamentosColaborador.canetas || []).length > 0
+      );
+      if (!temEquipamento) {
+        pendencias.push({ label: "Nenhum equipamento associado", critico: false });
+      }
+    }
+
+    return pendencias;
+  };
+
+  const pendenciasColab = obterPendenciasLocal();
 
   const chamadosColaborador = chamados.filter(c =>
     normalizeNome(c.solicitante_nome) === nomeColaborador &&
@@ -153,6 +205,25 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
           </CardHeader>
         </Card>
 
+        {pendenciasColab.length > 0 && (
+          <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/10 dark:bg-amber-950/5">
+            <CardHeader className="py-3 flex flex-row items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <CardTitle className="text-sm font-bold text-amber-800 dark:text-amber-300">Pendências de Cadastro Detectadas</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4 text-xs space-y-2">
+              <p className="text-muted-foreground mb-2">Este colaborador possui dados incompletos ou falta de associações necessárias no sistema:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {pendenciasColab.map((p, idx) => (
+                  <li key={idx} className={p.critico ? "text-red-600 dark:text-red-400 font-semibold" : "text-amber-700 dark:text-amber-400"}>
+                    • {p.label}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Abas Organizadas por Assunto */}
         <Tabs defaultValue="geral" className="space-y-6">
           <TabsList className="flex flex-wrap w-full bg-gray-100 p-1 gap-1 rounded-xl h-auto">
@@ -188,8 +259,8 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
                   <div className="grid grid-cols-2 gap-2">
                     <div><p className="text-gray-400">Data de Nascimento</p><p className="font-semibold text-gray-900">{colaborador.data_nascimento || "-"}</p></div>
                     <div><p className="text-gray-400">Graduação</p><p className="font-semibold text-gray-900">{colaborador.graduacao || "-"}</p></div>
-                    <div><p className="text-gray-400">Gestor Direto</p><p className="font-medium text-gray-800">{colaborador.contato_responsavel_nome || "-"}</p></div>
-                    <div><p className="text-gray-400">E-mail do Gestor</p><p className="font-medium text-gray-800">{colaborador.contato_responsavel_email || "-"}</p></div>
+                    <div><p className="text-gray-400">Gestor Direto</p><p className="font-medium text-gray-800">{colaborador.responsavel_nome || "-"}</p></div>
+                    <div><p className="text-gray-400">E-mail do Gestor</p><p className="font-medium text-gray-800">{colaborador.responsavel_email || "-"}</p></div>
                   </div>
                   {colaborador.resumo_experiencia && (
                     <div className="pt-2 border-t">
