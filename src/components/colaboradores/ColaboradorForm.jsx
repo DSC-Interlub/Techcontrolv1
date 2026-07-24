@@ -133,10 +133,16 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       }
       return;
     }
+
+    const cleanedData = { ...formData };
+    if (!cleanedData.responsavel_id) {
+      cleanedData.responsavel_id = null;
+    }
+
     if (colaborador) {
-      updateMutation.mutate({ id: colaborador.id, data: formData });
+      updateMutation.mutate({ id: colaborador.id, data: cleanedData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(cleanedData);
     }
   };
 
