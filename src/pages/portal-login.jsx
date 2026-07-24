@@ -136,6 +136,10 @@ export default function PortalLogin() {
       setErro("A senha deve ter pelo menos 6 caracteres."); 
       return; 
     }
+    if (novaSenha === 'demo123') {
+      setErro("Essa senha não pode ser usada. Escolha outra senha.");
+      return;
+    }
     if (novaSenha !== confirmarSenha) { 
       setErro("As senhas não coincidem."); 
       return; 

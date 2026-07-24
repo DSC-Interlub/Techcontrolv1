@@ -29,6 +29,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'A senha deve ter pelo menos 6 caracteres.' });
   }
 
+  if (novaSenha === 'demo123') {
+    return res.status(400).json({ ok: false, error: 'Essa senha não pode ser usada. Escolha outra senha.' });
+  }
+
   try {
     const supabase = createSupabaseAdmin();
 
@@ -66,7 +70,7 @@ export default async function handler(req, res) {
         if (senhaJaExiste) {
           return res.status(400).json({
             ok: false,
-            error: 'Essa senha já está em uso por outra pessoa com o mesmo e-mail de acesso. Escolha uma senha diferente.'
+            error: 'Essa senha não pode ser usada. Escolha outra senha.'
           });
         }
       }

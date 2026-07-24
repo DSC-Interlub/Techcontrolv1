@@ -113,7 +113,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     if (formData.conjuge_data_nascimento && formData.conjuge_data_nascimento > hoje) e.conjuge_data_nascimento = "Data não pode ser futura";
 
     // Validação de senha duplicada para e-mail compartilhado
-    if (formData.senha_portal && formData.email) {
+    if (formData.senha_portal && formData.senha_portal !== "demo123" && formData.email) {
       const emailLower = formData.email.trim().toLowerCase();
       
       // Filtra outros colaboradores ATIVOS com o mesmo email
@@ -126,7 +126,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       if (outrosComMesmoEmail.length > 0) {
         const senhaJaExiste = outrosComMesmoEmail.some(c => c.senha_portal === formData.senha_portal);
         if (senhaJaExiste) {
-          e.senha_portal = "Essa senha já está em uso por outra pessoa com o mesmo e-mail de acesso. Escolha uma senha diferente.";
+          e.senha_portal = "Essa senha não pode ser usada. Escolha outra senha.";
         }
       }
     }
