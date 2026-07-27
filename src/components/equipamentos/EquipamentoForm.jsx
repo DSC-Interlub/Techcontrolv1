@@ -28,6 +28,13 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     return "colaborador";
   });
 
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!currentAuthUser,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const areasDisponiveis = useMemo(() => {
     const set = new Set(colaboradores.map(c => c.area).filter(Boolean));
     return Array.from(set).sort();
@@ -38,13 +45,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const [activeTab, setActiveTab] = useState("dados");
   const [avaliacaoExpandida, setAvaliacaoExpandida] = useState(null);
   const queryClient = useQueryClient();
-
-  const { data: colaboradores = [] } = useQuery({
-    queryKey: ['colaboradores'],
-    queryFn: () => base44.entities.Colaboradores.list(),
-    enabled: !!currentAuthUser,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const { data: equipamentosExistentes = [] } = useQuery({
     queryKey: [entityType?.toLowerCase()],
