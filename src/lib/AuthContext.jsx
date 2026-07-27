@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }) => {
                const updatedUser = {
                 ...baseUser,
                 role: profile.role || baseUser.role,
-                name: profile.full_name || profile.nome_exibicao || baseUser.name
+                name: profile.nome_exibicao || profile.full_name || baseUser.name
               };
               setUser(updatedUser);
               sessionStorage.setItem('techcontrol_user_cache', JSON.stringify(updatedUser));

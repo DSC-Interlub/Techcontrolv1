@@ -24,5 +24,9 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  if (user?.user_metadata?.senha_precisa_trocar) {
+    return <Navigate to="/reset-password" replace />;
+  }
+
   return <>{children}</>;
 }

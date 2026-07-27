@@ -283,14 +283,21 @@ export default function PCs_Internos() {
     const groupsMap = new Map();
 
     filteredEquipamentos.forEach(eq => {
-      const uName = eq.usuario_atual?.trim() || "Estoque / Sem Usuário";
+      let uName;
+      if (!eq.colaborador_id && eq.area) {
+        uName = `Compartilhado — ${eq.area}`;
+      } else {
+        uName = eq.usuario_atual?.trim() || "Estoque / Sem Usuário";
+      }
+
       if (!groupsMap.has(uName)) {
-        const colabObj = colaboradores.find(c => c.nome_completo === uName);
+        const isCompartilhado = uName.startsWith("Compartilhado — ");
+        const colabObj = !isCompartilhado ? colaboradores.find(c => c.nome_completo === uName) : null;
         groupsMap.set(uName, {
           usuario: uName,
           colaborador: colabObj,
-          area: colabObj?.area || eq.area || "-",
-          cargo: colabObj?.cargo || "Colaborador",
+          area: isCompartilhado ? eq.area : (colabObj?.area || eq.area || "-"),
+          cargo: isCompartilhado ? "Equipamento Compartilhado" : (colabObj?.cargo || "Colaborador"),
           items: [],
           desktops: [],
           monitores: [],
@@ -317,7 +324,7 @@ export default function PCs_Internos() {
 
   // Equipamentos Disponíveis no Estoque
   const availableEquipments = useMemo(() => {
-    return equipamentos.filter(e => !e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível");
+    return equipamentos.filter(e => (!e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível") && !(!e.colaborador_id && e.area));
   }, [equipamentos]);
 
   // KPIs
@@ -553,7 +560,7 @@ export default function PCs_Internos() {
                         <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold bg-white px-3 py-1 rounded-xl border border-slate-200/60">
                           <span>{group.items.length} equipamento(s)</span>
                         </div>
-                        {isAdmin && (
+                        {isAdmin && !group.usuario.startsWith("Compartilhado — ") && (
                           <Button
                             variant="outline"
                             size="sm"

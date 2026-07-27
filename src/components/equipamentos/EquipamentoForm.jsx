@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +21,18 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
   const [formData, setFormData] = useState(equipamento || {
     usuarios_anteriores: []
   });
+  const [modoAtribuicao, setModoAtribuicao] = useState(() => {
+    if (equipamento?.area && !equipamento?.colaborador_id && equipamento?.usuario_atual?.startsWith("Compartilhado — ")) {
+      return "setor";
+    }
+    return "colaborador";
+  });
+
+  const areasDisponiveis = useMemo(() => {
+    const set = new Set(colaboradores.map(c => c.area).filter(Boolean));
+    return Array.from(set).sort();
+  }, [colaboradores]);
+
   const [novaFormatacao, setNovaFormatacao] = useState({ data_formatacao: "", observacoes: "" });
   const [showFormatacaoForm, setShowFormatacaoForm] = useState(false);
   const [activeTab, setActiveTab] = useState("dados");
@@ -352,68 +364,157 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50/50 p-4 border rounded-xl mb-4 space-y-4">
             <div>
-              <Label>Usuário Atual</Label>
-              <Combobox
-                value={formData.usuario_atual || ""}
-                onValueChange={(value) => {
-                  handleChange("usuario_atual", value);
-                  const colaborador = colaboradores.find(c => c.nome_completo === value);
-                  if (colaborador) {
-                    handleChange("area", colaborador.area);
-                    handleChange("colaborador_id", colaborador.id);
-                    if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
-                      handleChange("uf", colaborador.area);
-                    }
-                  } else {
-                    handleChange("colaborador_id", null);
-                  }
-                  // Define data atual como usuario_desde quando atribuir usuário
-                  if (value && !formData.usuario_desde) {
-                    handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
-                  } else if (!value) {
-                    handleChange("usuario_desde", "");
-                  }
-                }}
-                options={[
-                  { value: "", label: "Nenhum (Disponível)" },
-                  ...colaboradores
-                    .filter(c => c.status === "Ativo")
-                    .map(c => ({
-                      value: c.nome_completo,
-                      label: `${c.nome_completo} - ${c.area}`
-                    }))
-                ]}
-                placeholder="Selecione o colaborador"
-                searchPlaceholder="Buscar colaborador..."
-                emptyText="Nenhum colaborador encontrado"
-              />
+              <Label className="text-xs font-bold text-slate-700">Modo de Atribuição</Label>
+              <div className="flex gap-4 mt-1.5">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-700 font-medium">
+                  <input
+                    type="radio"
+                    name="modo_atribuicao_1"
+                    value="colaborador"
+                    checked={modoAtribuicao === "colaborador"}
+                    onChange={() => {
+                      setModoAtribuicao("colaborador");
+                      handleChange("colaborador_id", null);
+                      handleChange("usuario_atual", "");
+                      handleChange("area", "");
+                      if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
+                        handleChange("uf", "");
+                      }
+                      handleChange("status", "Disponível");
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  Colaborador específico
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-700 font-medium">
+                  <input
+                    type="radio"
+                    name="modo_atribuicao_1"
+                    value="setor"
+                    checked={modoAtribuicao === "setor"}
+                    onChange={() => {
+                      setModoAtribuicao("setor");
+                      handleChange("colaborador_id", null);
+                      handleChange("usuario_atual", "");
+                      handleChange("area", "");
+                      if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
+                        handleChange("uf", "");
+                      }
+                      handleChange("status", "Em uso");
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  Setor inteiro (Compartilhado)
+                </label>
+              </div>
             </div>
-            <div>
-              <Label>Usuário Desde</Label>
-              <Input
-                type="date"
-                value={formData.usuario_desde || ""}
-                onChange={(e) => handleChange("usuario_desde", e.target.value)}
-                disabled={!formData.usuario_atual}
-                className={!formData.usuario_atual ? "bg-gray-50" : ""}
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Área {(entityType === "Notebooks_Externos" || entityType === "Tablets") ? "/ UF" : ""}</Label>
-              <Input
-                placeholder="Departamento ou área"
-                value={(entityType === "Notebooks_Externos" || entityType === "Tablets") ? formData.uf || "" : formData.area || ""}
-                onChange={(e) => handleChange((entityType === "Notebooks_Externos" || entityType === "Tablets") ? "uf" : "area", e.target.value)}
-                className="bg-gray-50"
-                readOnly
-              />
-            </div>
-            <div></div>
+            {modoAtribuicao === "colaborador" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Usuário Atual</Label>
+                    <Combobox
+                      value={formData.usuario_atual || ""}
+                      onValueChange={(value) => {
+                        handleChange("usuario_atual", value);
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
+                        if (colaborador) {
+                          handleChange("area", colaborador.area);
+                          handleChange("colaborador_id", colaborador.id);
+                          if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
+                            handleChange("uf", colaborador.area);
+                          }
+                        } else {
+                          handleChange("colaborador_id", null);
+                        }
+                        // Define data atual como usuario_desde quando atribuir usuário
+                        if (value && !formData.usuario_desde) {
+                          handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                        } else if (!value) {
+                          handleChange("usuario_desde", "");
+                        }
+                      }}
+                      options={[
+                        { value: "", label: "Nenhum (Disponível)" },
+                        ...colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map(c => ({
+                            value: c.nome_completo,
+                            label: `${c.nome_completo} - ${c.area}`
+                          }))
+                      ]}
+                      placeholder="Selecione o colaborador"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
+                    />
+                  </div>
+                  <div>
+                    <Label>Usuário Desde</Label>
+                    <Input
+                      type="date"
+                      value={formData.usuario_desde || ""}
+                      onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                      disabled={!formData.usuario_atual}
+                      className={!formData.usuario_atual ? "bg-gray-50" : ""}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Área {(entityType === "Notebooks_Externos" || entityType === "Tablets") ? "/ UF" : ""}</Label>
+                    <Input
+                      placeholder="Departamento ou área"
+                      value={(entityType === "Notebooks_Externos" || entityType === "Tablets") ? formData.uf || "" : formData.area || ""}
+                      onChange={(e) => handleChange((entityType === "Notebooks_Externos" || entityType === "Tablets") ? "uf" : "area", e.target.value)}
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                  <div></div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Setor / Área Compartilhada</Label>
+                    <Select
+                      value={(entityType === "Notebooks_Externos" || entityType === "Tablets") ? formData.uf || "" : formData.area || ""}
+                      onValueChange={(value) => {
+                        handleChange("area", value);
+                        if (entityType === "Notebooks_Externos" || entityType === "Tablets") {
+                          handleChange("uf", value);
+                        }
+                        handleChange("usuario_atual", `Compartilhado — ${value}`);
+                        handleChange("colaborador_id", null);
+                        handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {areasDisponiveis.map(a => (
+                          <SelectItem key={a} value={a}>{a}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Atribuído Desde</Label>
+                    <Input
+                      type="date"
+                      value={formData.usuario_desde || ""}
+                      onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -578,65 +679,145 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50/50 p-4 border rounded-xl mb-4 space-y-4">
             <div>
-              <Label>Usuário Atual</Label>
-              <Combobox
-                value={formData.usuario_atual || ""}
-                onValueChange={(value) => {
-                  handleChange("usuario_atual", value);
-                  const colaborador = colaboradores.find(c => c.nome_completo === value);
-                  if (colaborador) {
-                    handleChange("area", colaborador.area);
-                    handleChange("colaborador_id", colaborador.id);
-                  } else {
-                    handleChange("colaborador_id", null);
-                  }
-                  // Define data atual como usuario_desde quando atribuir usuário
-                  if (value && !formData.usuario_desde) {
-                    handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
-                  } else if (!value) {
-                    handleChange("usuario_desde", "");
-                  }
-                }}
-                options={[
-                  { value: "", label: "Nenhum (Disponível)" },
-                  ...colaboradores
-                    .filter(c => c.status === "Ativo")
-                    .map(c => ({
-                      value: c.nome_completo,
-                      label: `${c.nome_completo} - ${c.area}`
-                    }))
-                ]}
-                placeholder="Selecione o colaborador"
-                searchPlaceholder="Buscar colaborador..."
-                emptyText="Nenhum colaborador encontrado"
-              />
+              <Label className="text-xs font-bold text-slate-700">Modo de Atribuição</Label>
+              <div className="flex gap-4 mt-1.5">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-700 font-medium">
+                  <input
+                    type="radio"
+                    name="modo_atribuicao_2"
+                    value="colaborador"
+                    checked={modoAtribuicao === "colaborador"}
+                    onChange={() => {
+                      setModoAtribuicao("colaborador");
+                      handleChange("colaborador_id", null);
+                      handleChange("usuario_atual", "");
+                      handleChange("area", "");
+                      handleChange("status", "Disponível");
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  Colaborador específico
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer text-slate-700 font-medium">
+                  <input
+                    type="radio"
+                    name="modo_atribuicao_2"
+                    value="setor"
+                    checked={modoAtribuicao === "setor"}
+                    onChange={() => {
+                      setModoAtribuicao("setor");
+                      handleChange("colaborador_id", null);
+                      handleChange("usuario_atual", "");
+                      handleChange("area", "");
+                      handleChange("status", "Em uso");
+                    }}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  Setor inteiro (Compartilhado)
+                </label>
+              </div>
             </div>
-            <div>
-              <Label>Usuário Desde</Label>
-              <Input
-                type="date"
-                value={formData.usuario_desde || ""}
-                onChange={(e) => handleChange("usuario_desde", e.target.value)}
-                disabled={!formData.usuario_atual}
-                className={!formData.usuario_atual ? "bg-gray-50" : ""}
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Área</Label>
-              <Input
-                placeholder="Departamento ou área"
-                value={formData.area || ""}
-                onChange={(e) => handleChange("area", e.target.value)}
-                className="bg-gray-50"
-                readOnly
-              />
-            </div>
-            <div></div>
+            {modoAtribuicao === "colaborador" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Usuário Atual</Label>
+                    <Combobox
+                      value={formData.usuario_atual || ""}
+                      onValueChange={(value) => {
+                        handleChange("usuario_atual", value);
+                        const colaborador = colaboradores.find(c => c.nome_completo === value);
+                        if (colaborador) {
+                          handleChange("area", colaborador.area);
+                          handleChange("colaborador_id", colaborador.id);
+                        } else {
+                          handleChange("colaborador_id", null);
+                        }
+                        // Define data atual como usuario_desde quando atribuir usuário
+                        if (value && !formData.usuario_desde) {
+                          handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                        } else if (!value) {
+                          handleChange("usuario_desde", "");
+                        }
+                      }}
+                      options={[
+                        { value: "", label: "Nenhum (Disponível)" },
+                        ...colaboradores
+                          .filter(c => c.status === "Ativo")
+                          .map(c => ({
+                            value: c.nome_completo,
+                            label: `${c.nome_completo} - ${c.area}`
+                          }))
+                      ]}
+                      placeholder="Selecione o colaborador"
+                      searchPlaceholder="Buscar colaborador..."
+                      emptyText="Nenhum colaborador encontrado"
+                    />
+                  </div>
+                  <div>
+                    <Label>Usuário Desde</Label>
+                    <Input
+                      type="date"
+                      value={formData.usuario_desde || ""}
+                      onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                      disabled={!formData.usuario_atual}
+                      className={!formData.usuario_atual ? "bg-gray-50" : ""}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Área</Label>
+                    <Input
+                      placeholder="Departamento ou área"
+                      value={formData.area || ""}
+                      onChange={(e) => handleChange("area", e.target.value)}
+                      className="bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                  <div></div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Setor / Área Compartilhada</Label>
+                    <Select
+                      value={formData.area || ""}
+                      onValueChange={(value) => {
+                        handleChange("area", value);
+                        handleChange("usuario_atual", `Compartilhado — ${value}`);
+                        handleChange("colaborador_id", null);
+                        handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {areasDisponiveis.map(a => (
+                          <SelectItem key={a} value={a}>{a}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Atribuído Desde</Label>
+                    <Input
+                      type="date"
+                      value={formData.usuario_desde || ""}
+                      onChange={(e) => handleChange("usuario_desde", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

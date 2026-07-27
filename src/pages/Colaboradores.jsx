@@ -120,7 +120,17 @@ export default function Colaboradores() {
       const temCol = coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
       const temCan = canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
 
-      if (!temPc && !temNb && !temSm && !temCam && !temCol && !temCan) {
+      const colabArea = (colab.area || "").trim().toLowerCase();
+      const temCompartilhado = colabArea ? (
+        pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea) ||
+        notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea) ||
+        smartphones.some(s => !s.colaborador_id && s.area && s.area.trim().toLowerCase() === colabArea) ||
+        cameras.some(c => !c.colaborador_id && c.area && c.area.trim().toLowerCase() === colabArea) ||
+        coletores.some(col => !col.colaborador_id && col.area && col.area.trim().toLowerCase() === colabArea) ||
+        canetas.some(can => !can.colaborador_id && can.area && can.area.trim().toLowerCase() === colabArea)
+      ) : false;
+
+      if (!temPc && !temNb && !temSm && !temCam && !temCol && !temCan && !temCompartilhado) {
         pendencias.push({ tipo: "sem_equipamento", label: "Nenhum equipamento associado", critico: false });
       }
     }
@@ -207,12 +217,25 @@ export default function Colaboradores() {
   const totalSemEquipamento = colaboradores.filter(c => {
     if (c.tipo_funcionario !== "Interno") return false;
     const nomeLower = c.nome_completo.trim().toLowerCase();
-    return !pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower) &&
-           !notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower) &&
-           !smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower) &&
-           !cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower) &&
-           !coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower) &&
-           !canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+    const colabArea = (c.area || "").trim().toLowerCase();
+    
+    const temPc = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temNb = notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temSm = smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temCam = cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temCol = coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temCan = canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
+
+    const temCompartilhado = colabArea ? (
+      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea) ||
+      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea) ||
+      smartphones.some(s => !s.colaborador_id && s.area && s.area.trim().toLowerCase() === colabArea) ||
+      cameras.some(c => !c.colaborador_id && c.area && c.area.trim().toLowerCase() === colabArea) ||
+      coletores.some(col => !col.colaborador_id && col.area && col.area.trim().toLowerCase() === colabArea) ||
+      canetas.some(can => !can.colaborador_id && can.area && can.area.trim().toLowerCase() === colabArea)
+    ) : false;
+
+    return !temPc && !temNb && !temSm && !temCam && !temCol && !temCan && !temCompartilhado;
   }).length;
 
   const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorNome > 0 || totalSemGestorEmail > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemEquipamento > 0;

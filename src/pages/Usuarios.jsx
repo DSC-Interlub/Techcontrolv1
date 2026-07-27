@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -207,6 +208,141 @@ function ModalEditarNome({ usuario, onClose, onSuccess }) {
   );
 }
 
+// ─── Modal: Criar Usuário Diretamente ─────────────────────────────────────────
+function ModalCriar({ onClose, onSuccess }) {
+  const [email, setEmail] = useState("");
+  const [nomeExibicao, setNomeExibicao] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState("user");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  const roleAtual = getRoleInfo(role);
+
+  const handleCriar = async () => {
+    if (!email.trim() || !nomeExibicao.trim()) {
+      setError("E-mail e Nome de Exibição são obrigatórios");
+      return;
+    }
+    setSending(false);
+    setError("");
+    setSending(true);
+    try {
+      const sessionData = await supabase.auth.getSession();
+      const token = sessionData.data.session?.access_token;
+      if (!token) throw new Error("Sessão não encontrada");
+
+      const res = await fetch('/api/createUser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          role,
+          nome_exibicao: nomeExibicao.trim(),
+          full_name: fullName.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro ao criar usuário');
+
+      onSuccess("Usuário criado e ativado com sucesso! Senha inicial: demo123");
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Criar Novo Usuário</DialogTitle>
+          <DialogDescription>Crie uma conta ativa no sistema (senha inicial padrão: demo123)</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {error && (
+            <Alert className="border-red-200 bg-red-50">
+              <XCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-1">
+            <Label>Nome de Exibição *</Label>
+            <Input
+              placeholder="Ex: João Silva"
+              value={nomeExibicao}
+              onChange={e => setNomeExibicao(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Nome Completo</Label>
+            <Input
+              placeholder="Ex: João da Silva Santos"
+              value={fullName}
+              onChange={e => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>E-mail *</Label>
+            <Input
+              type="email"
+              placeholder="usuario@interlub.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Nível de Acesso</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map(r => (
+                  <SelectItem key={r.value} value={r.value}>
+                    <div className="flex items-center gap-2">
+                      <r.icon className="w-3.5 h-3.5" />
+                      {r.label}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-blue-800 mb-0.5">{roleAtual.label}</p>
+                <p className="text-xs text-blue-700">{roleAtual.description}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleCriar} disabled={sending} className="bg-blue-600 hover:bg-blue-700">
+            {sending ? "Criando..." : "Criar Usuário"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Modal: Convidar ──────────────────────────────────────────────────────────
 function ModalConvidar({ onClose, onSuccess }) {
   const [email, setEmail] = useState("");
@@ -298,6 +434,7 @@ export default function Usuarios() {
   const { user, isLoadingAuth: loading } = useAuth();
 
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [permissaoUser, setPermissaoUser] = useState(null);
 
@@ -353,10 +490,16 @@ export default function Usuarios() {
               </h1>
               <p className="text-gray-600 mt-1">Controle de acesso e permissões por usuário</p>
             </div>
-            <Button onClick={() => setShowInvite(true)} className="bg-blue-600 hover:bg-blue-700">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Convidar Usuário
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowInvite(true)} variant="outline">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Convidar Usuário
+              </Button>
+              <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Criar Usuário
+              </Button>
+            </div>
           </div>
 
           {success && (
@@ -524,6 +667,12 @@ export default function Usuarios() {
       {showInvite && (
         <ModalConvidar
           onClose={() => setShowInvite(false)}
+          onSuccess={showSuccess}
+        />
+      )}
+      {showCreate && (
+        <ModalCriar
+          onClose={() => setShowCreate(false)}
           onSuccess={showSuccess}
         />
       )}

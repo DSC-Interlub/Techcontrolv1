@@ -204,7 +204,7 @@ export const base44 = {
             return {
               ...baseUser,
               role: profile.role || baseUser.role,
-              name: profile.full_name || profile.nome_exibicao || baseUser.name
+              name: profile.nome_exibicao || profile.full_name || baseUser.name
             };
           }
 
