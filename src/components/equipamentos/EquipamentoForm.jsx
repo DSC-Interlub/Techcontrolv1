@@ -146,6 +146,20 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
     let dataToSubmit = { ...formData };
 
+    // Sincronização automática de status com base em Usuário Atual / Colaborador
+    const temColaborador = dataToSubmit.colaborador_id || (dataToSubmit.usuario_atual && dataToSubmit.usuario_atual.trim() !== "");
+    const statusAtual = dataToSubmit.status || "Disponível";
+
+    if (temColaborador) {
+      if (statusAtual === "Disponível" || statusAtual.trim() === "") {
+        dataToSubmit.status = "Em uso";
+      }
+    } else {
+      if (statusAtual === "Em uso") {
+        dataToSubmit.status = "Disponível";
+      }
+    }
+
     if (equipamento && equipamento.usuario_atual && equipamento.usuario_atual !== dataToSubmit.usuario_atual) {
       const usuariosAnteriores = dataToSubmit.usuarios_anteriores || equipamento.usuarios_anteriores || [];
       usuariosAnteriores.push({
@@ -541,55 +555,60 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   <SelectItem value="Danificado">Danificado</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Os status "Disponível" e "Em uso" são calculados automaticamente a partir do vínculo de usuário, não precisam ser escolhidos à mão.
+              </p>
             </div>
             <div></div>
           </div>
 
-          {/* Histórico de Formatações */}
-          <div className="border rounded-lg p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">Histórico de Formatações</Label>
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowFormatacaoForm(v => !v)} className="gap-1 text-xs">
-                <Plus className="w-3 h-3" />
-                Registrar Formatação
-              </Button>
-            </div>
-            {showFormatacaoForm && (
-              <div className="bg-gray-50 rounded p-3 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Data</Label>
-                    <Input type="date" value={novaFormatacao.data_formatacao} onChange={e => setNovaFormatacao(v => ({ ...v, data_formatacao: e.target.value }))} className="h-8" />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Observações</Label>
-                    <Input placeholder="Ex: Office 365 instalado" value={novaFormatacao.observacoes} onChange={e => setNovaFormatacao(v => ({ ...v, observacoes: e.target.value }))} className="h-8" />
-                  </div>
-                </div>
-                <Button type="button" size="sm" onClick={adicionarFormatacao} disabled={!novaFormatacao.data_formatacao} className="w-full">
-                  Adicionar
+          {/* Histórico de Formatações - Ocultado para Monitor */}
+          {formData.tipo !== "Monitor" && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Histórico de Formatações</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowFormatacaoForm(v => !v)} className="gap-1 text-xs">
+                  <Plus className="w-3 h-3" />
+                  Registrar Formatação
                 </Button>
               </div>
-            )}
-            {(formData.historico_formatacoes || []).length === 0 ? (
-              <p className="text-xs text-gray-400">Nenhuma formatação registrada</p>
-            ) : (
-              <div className="space-y-1">
-                {(formData.historico_formatacoes || []).map((f, i) => (
-                  <div key={i} className="flex items-center justify-between bg-white border rounded px-3 py-1.5 text-sm">
+              {showFormatacaoForm && (
+                <div className="bg-gray-50 rounded p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="font-medium">{formatarDataSemFuso(f.data_formatacao)}</span>
-                      {f.observacoes && <span className="text-gray-500 ml-2">{f.observacoes}</span>}
-                      {i === 0 && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1 rounded">Última</span>}
+                      <Label className="text-xs">Data</Label>
+                      <Input type="date" value={novaFormatacao.data_formatacao} onChange={e => setNovaFormatacao(v => ({ ...v, data_formatacao: e.target.value }))} className="h-8" />
                     </div>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removerFormatacao(i)}>
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </Button>
+                    <div>
+                      <Label className="text-xs">Observações</Label>
+                      <Input placeholder="Ex: Office 365 instalado" value={novaFormatacao.observacoes} onChange={e => setNovaFormatacao(v => ({ ...v, observacoes: e.target.value }))} className="h-8" />
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <Button type="button" size="sm" onClick={adicionarFormatacao} disabled={!novaFormatacao.data_formatacao} className="w-full">
+                    Adicionar
+                  </Button>
+                </div>
+              )}
+              {(formData.historico_formatacoes || []).length === 0 ? (
+                <p className="text-xs text-gray-400">Nenhuma formatação registrada</p>
+              ) : (
+                <div className="space-y-1">
+                  {(formData.historico_formatacoes || []).map((f, i) => (
+                    <div key={i} className="flex items-center justify-between bg-white border rounded px-3 py-1.5 text-sm">
+                      <div>
+                        <span className="font-medium">{formatarDataSemFuso(f.data_formatacao)}</span>
+                        {f.observacoes && <span className="text-gray-500 ml-2">{f.observacoes}</span>}
+                        {i === 0 && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1 rounded">Última</span>}
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => removerFormatacao(i)}>
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <UsuariosAnteriores
             usuarios={formData.usuarios_anteriores || []}

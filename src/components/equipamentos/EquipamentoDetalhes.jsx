@@ -171,7 +171,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           </div>
 
-          {equipamento.data_formatacao && (
+          {equipamento.tipo !== "Monitor" && equipamento.data_formatacao && (
             <div>
               <p className="text-sm text-gray-500">Última Formatação</p>
               <p className="font-medium">
