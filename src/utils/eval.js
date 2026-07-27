@@ -60,7 +60,7 @@ export function calcularPontuacaoEquipamento(dados, dataAquisicao) {
   if (dataAquisicao) {
     const hoje = new Date();
     const aquisicao = new Date(dataAquisicao);
-    tempoUsoAnos = (hoje - aquisicao) / (1000 * 60 * 60 * 24 * 365);
+    tempoUsoAnos = (hoje.getTime() - aquisicao.getTime()) / (1000 * 60 * 60 * 24 * 365);
   }
 
   let pontosTempoUso = 0;
