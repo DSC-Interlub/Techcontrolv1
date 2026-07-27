@@ -48,6 +48,7 @@ const Login = lazy(() => import('./pages/Login'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const RequisicaoCompras = lazy(() => import('./pages/RequisicaoCompras'));
 const CentrosCusto = lazy(() => import('./pages/CentrosCusto'));
+const Painel_Maquinas = lazy(() => import('./pages/Painel_Maquinas'));
 
 export const PAGES = {
     "Avaliacoes_Equipamentos": avaliacoesEquipamentos,
@@ -87,6 +88,7 @@ export const PAGES = {
     "reset-password": ResetPassword,
     "RequisicaoCompras": RequisicaoCompras,
     "CentrosCusto": CentrosCusto,
+    "Painel_Maquinas": Painel_Maquinas,
 }
 
 export const pagesConfig = {
