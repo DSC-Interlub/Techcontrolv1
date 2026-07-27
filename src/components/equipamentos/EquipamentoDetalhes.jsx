@@ -4,8 +4,81 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { formatarDataSemFuso, formatarDataHoraSemFuso } from "@/utils/date";
 import { Shield, ShieldOff } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 
 export default function EquipamentoDetalhes({ equipamento, onClose }) {
+  const { data: avaliacoes = [] } = useQuery({
+    queryKey: ['portal_avaliacoes'],
+    queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
+    enabled: !!equipamento,
+  });
+
+  const ultimaAvaliacao = avaliacoes.find(a => a.equipamento_id === equipamento?.id);
+
+  const getCondicao = () => {
+    if (["Desktop", "Notebook", "Tablet"].includes(equipamento?.tipo)) {
+      if (ultimaAvaliacao) {
+        return <Badge variant="secondary">{ultimaAvaliacao.desempenho || "Sem resposta"}</Badge>;
+      }
+      return <span className="text-gray-400 italic">Ainda não avaliado</span>;
+    }
+    if (equipamento?.tipo === "Monitor") {
+      return <span className="text-gray-400">Não se aplica</span>;
+    }
+    return equipamento?.condicao ? <Badge variant="secondary">{equipamento.condicao}</Badge> : "-";
+  };
+
+  const getAntivirus = () => {
+    if (["Desktop", "Notebook", "Tablet"].includes(equipamento?.tipo)) {
+      if (ultimaAvaliacao) {
+        const antivirusVal = (ultimaAvaliacao.antivirus || "").toLowerCase();
+        const isProtected = antivirusVal.includes("ativo") || antivirusVal.includes("sim");
+        const hasWarning = antivirusVal.includes("aviso");
+        
+        if (isProtected) {
+          return (
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-green-600" />
+              <span className="font-medium text-green-600">{ultimaAvaliacao.antivirus}</span>
+            </div>
+          );
+        } else if (hasWarning) {
+          return (
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-600" />
+              <span className="font-medium text-amber-600">{ultimaAvaliacao.antivirus}</span>
+            </div>
+          );
+        } else {
+          return (
+            <div className="flex items-center gap-2">
+              <ShieldOff className="w-4 h-4 text-red-600" />
+              <span className="font-medium text-red-600">{ultimaAvaliacao.antivirus || "Não instalado"}</span>
+            </div>
+          );
+        }
+      }
+      return <span className="text-gray-400 italic">Ainda não avaliado</span>;
+    }
+    if (equipamento?.tipo === "Monitor") {
+      return <span className="text-gray-500">Não se aplica</span>;
+    }
+    return equipamento?.antivirus === "Sim" ? (
+      <div className="flex items-center gap-2">
+        <Shield className="w-4 h-4 text-green-600" />
+        <span className="font-medium text-green-600">Sim</span>
+      </div>
+    ) : equipamento?.antivirus === "Não" ? (
+      <div className="flex items-center gap-2">
+        <ShieldOff className="w-4 h-4 text-red-600" />
+        <span className="font-medium text-red-600">Não</span>
+      </div>
+    ) : (
+      <span className="font-medium text-gray-500">{equipamento?.antivirus || "Não se aplica"}</span>
+    );
+  };
+
   return (
     <Dialog open={!!equipamento} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -71,10 +144,8 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Condição</p>
-              {equipamento.condicao ? (
-                <Badge variant="secondary">{equipamento.condicao}</Badge>
-              ) : "-"}
+              <p className="text-sm text-gray-500">Condição {["Desktop", "Notebook", "Tablet"].includes(equipamento?.tipo) ? "(última avaliação)" : ""}</p>
+              {getCondicao()}
             </div>
           </div>
 
@@ -95,22 +166,8 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
               <p className="font-medium">{equipamento.office || "-"}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Antivírus</p>
-              <div className="flex items-center gap-2">
-                {equipamento.antivirus === "Sim" ? (
-                  <>
-                    <Shield className="w-4 h-4 text-green-600" />
-                    <span className="font-medium text-green-600">Instalado</span>
-                  </>
-                ) : equipamento.antivirus === "Não" ? (
-                  <>
-                    <ShieldOff className="w-4 h-4 text-red-600" />
-                    <span className="font-medium text-red-600">Não instalado</span>
-                  </>
-                ) : (
-                  <span className="font-medium text-gray-500">Não se aplica</span>
-                )}
-              </div>
+              <p className="text-sm text-gray-500">Antivírus {["Desktop", "Notebook", "Tablet"].includes(equipamento?.tipo) ? "(última avaliação)" : ""}</p>
+              {getAntivirus()}
             </div>
           </div>
 

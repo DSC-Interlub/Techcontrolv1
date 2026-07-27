@@ -317,14 +317,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 onChange={(e) => handleChange("modelo", e.target.value)}
               />
             </div>
-            <div>
-              <Label>Processador</Label>
-              <Input
-                placeholder="Ex: Intel i5, AMD Ryzen"
-                value={formData.processador || ""}
-                onChange={(e) => handleChange("processador", e.target.value)}
-              />
-            </div>
+            {formData.tipo !== "Monitor" && (
+              <div>
+                <Label>Processador</Label>
+                <Input
+                  placeholder="Ex: Intel i5, AMD Ryzen"
+                  value={formData.processador || ""}
+                  onChange={(e) => handleChange("processador", e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -355,14 +357,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 onChange={(e) => handleChange("service_tag", e.target.value)}
               />
             </div>
-            <div>
-              <Label>Office</Label>
-              <Input
-                placeholder="Ex: Office 2021"
-                value={formData.office || ""}
-                onChange={(e) => handleChange("office", e.target.value)}
-              />
-            </div>
+            {formData.tipo !== "Monitor" && (
+              <div>
+                <Label>Office</Label>
+                <Input
+                  placeholder="Ex: Office 2021"
+                  value={formData.office || ""}
+                  onChange={(e) => handleChange("office", e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           <div className="bg-slate-50/50 p-4 border rounded-xl mb-4 space-y-4">
@@ -518,7 +522,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Status</Label>
               <Select
@@ -535,39 +539,6 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
                   <SelectItem value="Formatação">Formatação</SelectItem>
                   <SelectItem value="Danificado">Danificado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Condição</Label>
-              <Select
-                value={formData.condicao || ""}
-                onValueChange={(value) => handleChange("condicao", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Rápido">Rápido</SelectItem>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="Lento">Lento</SelectItem>
-                  <SelectItem value="Com Problema">Com Problema</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Antivírus</Label>
-              <Select
-                value={formData.antivirus || "Não"}
-                onValueChange={(value) => handleChange("antivirus", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sim">Sim</SelectItem>
-                  <SelectItem value="Não">Não</SelectItem>
-                  <SelectItem value="Não se aplica">Não se aplica</SelectItem>
                 </SelectContent>
               </Select>
             </div>

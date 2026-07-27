@@ -48,6 +48,11 @@ const visaoGeralItems = [
     icon: LayoutDashboard,
   },
   {
+    title: "Painel de Máquinas",
+    url: createPageUrl("Painel_Maquinas"),
+    icon: Activity,
+  },
+  {
     title: "Relatórios & BI",
     url: createPageUrl("Resumo"),
     icon: FileSpreadsheet,

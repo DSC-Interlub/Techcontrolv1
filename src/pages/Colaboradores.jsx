@@ -115,28 +115,37 @@ export default function Colaboradores() {
       }
     }
 
-    // 6. Sem Equipamento (apenas para Interno)
+    // 6. Alertas de Computador e Monitor (apenas para Interno)
     if (colab.tipo_funcionario === "Interno") {
       const nomeLower = colab.nome_completo.trim().toLowerCase();
-      const temPc = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temNb = notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temSm = smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temCam = cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temCol = coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temCan = canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
-
       const colabArea = (colab.area || "").trim().toLowerCase();
-      const temCompartilhado = colabArea ? (
-        pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea) ||
-        notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea) ||
-        smartphones.some(s => !s.colaborador_id && s.area && s.area.trim().toLowerCase() === colabArea) ||
-        cameras.some(c => !c.colaborador_id && c.area && c.area.trim().toLowerCase() === colabArea) ||
-        coletores.some(col => !col.colaborador_id && col.area && col.area.trim().toLowerCase() === colabArea) ||
-        canetas.some(can => !can.colaborador_id && can.area && can.area.trim().toLowerCase() === colabArea)
-      ) : false;
 
-      if (!temPc && !temNb && !temSm && !temCam && !temCol && !temCan && !temCompartilhado) {
-        pendencias.push({ tipo: "sem_equipamento", label: "Nenhum equipamento associado", critico: false });
+      // Computadores e Monitores Individuais
+      const temDesktopProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Desktop");
+      const temNotebookProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Notebook") ||
+                                 notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temMonitorProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Monitor");
+
+      // Compartilhados de Setor
+      const temDesktopSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Desktop") : false;
+      const temNotebookSetor = colabArea ? (
+        pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Notebook") ||
+        notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea)
+      ) : false;
+      const temMonitorSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Monitor") : false;
+
+      const temDesktop = temDesktopProprio || temDesktopSetor;
+      const temNotebook = temNotebookProprio || temNotebookSetor;
+      const temMonitor = temMonitorProprio || temMonitorSetor;
+
+      // 6.1. Alerta: Sem desktop/notebook (nem individual, nem do setor)
+      if (!temDesktop && !temNotebook) {
+        pendencias.push({ tipo: "sem_computador", label: "Sem desktop/notebook", critico: false });
+      }
+
+      // 6.2. Alerta: Desktop sem monitor
+      if (temDesktop && !temNotebook && !temMonitor) {
+        pendencias.push({ tipo: "desktop_sem_monitor", label: "Desktop sem monitor", critico: false });
       }
     }
 
@@ -223,30 +232,47 @@ export default function Colaboradores() {
     return !ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === c.nome_completo.trim().toLowerCase());
   }).length;
 
-  const totalSemEquipamento = colabsInternos.filter(c => {
+  const totalSemComputador = colabsInternos.filter(c => {
     const nomeLower = c.nome_completo.trim().toLowerCase();
     const colabArea = (c.area || "").trim().toLowerCase();
-    
-    const temPc = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temNb = notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temSm = smartphones.some(s => s.usuario_atual && s.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temCam = cameras.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temCol = coletores.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temCan = canetas.some(c => c.usuario_atual && c.usuario_atual.trim().toLowerCase() === nomeLower);
 
-    const temCompartilhado = colabArea ? (
-      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea) ||
-      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea) ||
-      smartphones.some(s => !s.colaborador_id && s.area && s.area.trim().toLowerCase() === colabArea) ||
-      cameras.some(c => !c.colaborador_id && c.area && c.area.trim().toLowerCase() === colabArea) ||
-      coletores.some(col => !col.colaborador_id && col.area && col.area.trim().toLowerCase() === colabArea) ||
-      canetas.some(can => !can.colaborador_id && can.area && can.area.trim().toLowerCase() === colabArea)
+    const temDesktopProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Desktop");
+    const temNotebookProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Notebook") ||
+                               notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
+
+    const temDesktopSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Desktop") : false;
+    const temNotebookSetor = colabArea ? (
+      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Notebook") ||
+      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea)
     ) : false;
 
-    return !temPc && !temNb && !temSm && !temCam && !temCol && !temCan && !temCompartilhado;
+    return !temDesktopProprio && !temNotebookProprio && !temDesktopSetor && !temNotebookSetor;
   }).length;
 
-  const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorDiretoNome > 0 || totalSemGestorDiretoEmail > 0 || totalSemAprovadorCompras > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemEquipamento > 0;
+  const totalDesktopSemMonitor = colabsInternos.filter(c => {
+    const nomeLower = c.nome_completo.trim().toLowerCase();
+    const colabArea = (c.area || "").trim().toLowerCase();
+
+    const temDesktopProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Desktop");
+    const temNotebookProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Notebook") ||
+                               notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
+    const temMonitorProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Monitor");
+
+    const temDesktopSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Desktop") : false;
+    const temNotebookSetor = colabArea ? (
+      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Notebook") ||
+      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea)
+    ) : false;
+    const temMonitorSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Monitor") : false;
+
+    const temDesktop = temDesktopProprio || temDesktopSetor;
+    const temNotebook = temNotebookProprio || temNotebookSetor;
+    const temMonitor = temMonitorProprio || temMonitorSetor;
+
+    return temDesktop && !temNotebook && !temMonitor;
+  }).length;
+
+  const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorDiretoNome > 0 || totalSemGestorDiretoEmail > 0 || totalSemAprovadorCompras > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemComputador > 0 || totalDesktopSemMonitor > 0;
 
   if (selectedColaborador) {
     return (
@@ -371,10 +397,16 @@ export default function Colaboradores() {
                     <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemRamal}</p>
                   </div>
                 )}
-                {totalSemEquipamento > 0 && (
+                {totalSemComputador > 0 && (
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
-                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Equipamento</p>
-                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemEquipamento}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem PC/Notebook</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemComputador}</p>
+                  </div>
+                )}
+                {totalDesktopSemMonitor > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Desktop sem Monitor</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalDesktopSemMonitor}</p>
                   </div>
                 )}
               </div>

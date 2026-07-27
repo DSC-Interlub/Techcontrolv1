@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Activity, TrendingUp, AlertTriangle, XCircle, Save, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatarDataSemFuso } from "@/utils/date";
+import { calcularPontuacaoEquipamento } from "@/utils/eval";
 const problemasOpcoes = [
   "Demora para ligar",
   "Programas travam",
@@ -115,72 +116,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
   const [salvando, setSalvando] = useState(false);
 
   const calcularPontuacao = (dados) => {
-    let pontos = 0;
-
-    if (dados.memoria_ram === "Menos de 50%") pontos += 0;
-    else if (dados.memoria_ram === "Entre 50% e 70%") pontos += 3;
-    else if (dados.memoria_ram === "Entre 70% e 90%") pontos += 6;
-    else if (dados.memoria_ram === "Acima de 90%") pontos += 10;
-
-    if (dados.tipo_armazenamento === "HD") pontos += 5;
-    else if (dados.tipo_armazenamento === "SSD") pontos += 0;
-
-    if (dados.espaco_disco === "Mais de 100 GB livres") pontos += 0;
-    else if (dados.espaco_disco === "Entre 50 e 100 GB livres") pontos += 3;
-    else if (dados.espaco_disco === "Entre 20 e 50 GB livres") pontos += 6;
-    else if (dados.espaco_disco === "Menos de 20 GB livres") pontos += 10;
-
-    if (dados.versao_windows === "Windows 10") pontos += 5;
-    else if (dados.versao_windows === "Windows 11") pontos += 0;
-
-    if (dados.antivirus === "Sim, está ativo") pontos += 0;
-    else if (dados.antivirus === "Aparece aviso de desativado") pontos += 5;
-    else if (dados.antivirus === "Não tem antivírus") pontos += 10;
-
-    if (dados.desempenho === "Muito rápido") pontos += 0;
-    else if (dados.desempenho === "Bom") pontos += 3;
-    else if (dados.desempenho === "Normal") pontos += 6;
-    else if (dados.desempenho === "Lento") pontos += 8;
-    else if (dados.desempenho === "Muito lento") pontos += 10;
-
-    const numProblemas = dados.problemas?.length || 0;
-    pontos += numProblemas * 1.25;
-
-    if (dados.atende_trabalho === "Sim") pontos += 0;
-    else if (dados.atende_trabalho === "Parcialmente") pontos += 5;
-    else if (dados.atende_trabalho === "Não") pontos += 10;
-
-    if (dados.recomendacao_usuario === "Continuar como está") pontos += 0;
-    else if (dados.recomendacao_usuario === "Receber melhorias (upgrade)") pontos += 3;
-    else if (dados.recomendacao_usuario === "Ser substituído") pontos += 5;
-
-    if (dados.satisfacao === "Nota 8 a 10") pontos += 0;
-    else if (dados.satisfacao === "Nota 5 a 7") pontos += 3;
-    else if (dados.satisfacao === "Nota 0 a 4") pontos += 5;
-
-    let tempoUsoAnos = 0;
-    if (equipamento?.data_aquisicao) {
-      const hoje = new Date();
-      const aquisicao = new Date(equipamento.data_aquisicao);
-      tempoUsoAnos = (hoje - aquisicao) / (1000 * 60 * 60 * 24 * 365);
-    }
-
-    let pontosTempoUso = 0;
-    if (tempoUsoAnos < 2) pontosTempoUso = 0;
-    else if (tempoUsoAnos < 3) pontosTempoUso = 5;
-    else if (tempoUsoAnos < 4) pontosTempoUso = 10;
-    else if (tempoUsoAnos < 5) pontosTempoUso = 15;
-    else pontosTempoUso = 20;
-
-    pontos += pontosTempoUso;
-    pontos = Math.min(100, Math.round(pontos * 10) / 10);
-
-    let classificacao;
-    if (pontos <= 39) classificacao = "Manter";
-    else if (pontos <= 69) classificacao = "Upgrade";
-    else classificacao = "Substituir";
-
-    return { pontuacao_total: pontos, classificacao, tempo_uso_anos: tempoUsoAnos, pontosTempoUso };
+    return calcularPontuacaoEquipamento(dados, equipamento?.data_aquisicao);
   };
 
   const resultado = calcularPontuacao(avaliacao);
