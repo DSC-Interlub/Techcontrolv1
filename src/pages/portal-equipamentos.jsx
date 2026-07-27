@@ -54,7 +54,7 @@ export default function PortalEquipamentos() {
   const salvarAvaliacaoMutation = useMutation({
     mutationFn: async (dados) => {
       const eq = equipamentoSelecionado;
-      const avaliacoesDoEq = avaliacoes.filter(a => a.equipamento_id === eq.id);
+      const avaliacoesDoEq = avaliacoes.filter(a => a.equipamento_id === eq.id && a.avaliador === colaborador.nome_completo);
       const numeroAvaliacao = avaliacoesDoEq.length + 1;
 
       return base44.entities.Avaliacoes.create({
@@ -83,22 +83,37 @@ export default function PortalEquipamentos() {
   }
 
   const nomeNorm = normalizeUserName(colaborador.nome_completo);
+  const colabArea = (colaborador.area || "").trim().toLowerCase();
 
   const meusEquipamentos = [
     ...pcsInternos
-      .filter(pc => normalizeUserName(pc.usuario_atual) === nomeNorm && pc.tipo !== "Monitor")
-      .map(pc => ({ ...pc, entityType: "PCs_Internos", IconComp: pc.tipo === "Notebook" ? Laptop : Monitor })),
+      .filter(pc => {
+        const isOwner = normalizeUserName(pc.usuario_atual) === nomeNorm;
+        const isSharedSector = !pc.colaborador_id && pc.area && colabArea && pc.area.trim().toLowerCase() === colabArea;
+        return (isOwner || isSharedSector) && pc.tipo !== "Monitor";
+      })
+      .map(pc => {
+        const isShared = !pc.colaborador_id && pc.area && colabArea && pc.area.trim().toLowerCase() === colabArea;
+        return { ...pc, entityType: "PCs_Internos", IconComp: pc.tipo === "Notebook" ? Laptop : Monitor, isSharedSector: isShared };
+      }),
     ...notebooksExternos
-      .filter(nb => normalizeUserName(nb.usuario_atual) === nomeNorm)
-      .map(nb => ({ ...nb, entityType: "Notebooks_Externos", IconComp: Laptop })),
+      .filter(nb => {
+        const isOwner = normalizeUserName(nb.usuario_atual) === nomeNorm;
+        const isSharedSector = !nb.colaborador_id && nb.uf && colabArea && nb.uf.trim().toLowerCase() === colabArea;
+        return isOwner || isSharedSector;
+      })
+      .map(nb => {
+        const isShared = !nb.colaborador_id && nb.uf && colabArea && nb.uf.trim().toLowerCase() === colabArea;
+        return { ...nb, entityType: "Notebooks_Externos", IconComp: Laptop, isSharedSector: isShared };
+      }),
   ];
 
-  // Todas avaliações dos meus equipamentos (histórico completo)
+  // Todas avaliações dos meus equipamentos (histórico completo filtrado por este avaliador)
   const meusEquipamentosIds = meusEquipamentos.map(e => e.id);
-  const minhasAvaliacoes = avaliacoes.filter(a => meusEquipamentosIds.includes(a.equipamento_id));
+  const minhasAvaliacoes = avaliacoes.filter(a => meusEquipamentosIds.includes(a.equipamento_id) && a.avaliador === colaborador.nome_completo);
 
-  const getUltimaAvaliacao = (id) => avaliacoes.find(a => a.equipamento_id === id);
-  const getHistoricoEquipamento = (id) => avaliacoes.filter(a => a.equipamento_id === id).sort((a, b) => new Date(b.data_avaliacao) - new Date(a.data_avaliacao));
+  const getUltimaAvaliacao = (id) => avaliacoes.find(a => a.equipamento_id === id && a.avaliador === colaborador.nome_completo);
+  const getHistoricoEquipamento = (id) => avaliacoes.filter(a => a.equipamento_id === id && a.avaliador === colaborador.nome_completo).sort((a, b) => new Date(b.data_avaliacao) - new Date(a.data_avaliacao));
 
   // Tela de avaliação de equipamento específico
   if (equipamentoSelecionado) {
@@ -235,6 +250,11 @@ export default function PortalEquipamentos() {
                               "bg-orange-100 text-orange-800"
                             }>{eq.status}</Badge>
                             {eq.tipo && <Badge variant="outline">{eq.tipo}</Badge>}
+                            {eq.isSharedSector && (
+                              <Badge className="bg-purple-100 text-purple-850 border-purple-200 font-medium">
+                                Equipamento do setor
+                              </Badge>
+                            )}
                             {avaliacao && <Badge className={getClassColor(avaliacao.classificacao)}>{avaliacao.classificacao}</Badge>}
                           </div>
                           {avaliacao ? (

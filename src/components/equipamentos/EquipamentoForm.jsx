@@ -14,6 +14,7 @@ import { X, FileText, Activity, Plus, Trash2, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
+import { formatarDataSemFuso } from "@/utils/date";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType, isLoading = false }) {
@@ -606,7 +607,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 {(formData.historico_formatacoes || []).map((f, i) => (
                   <div key={i} className="flex items-center justify-between bg-white border rounded px-3 py-1.5 text-sm">
                     <div>
-                      <span className="font-medium">{new Date(f.data_formatacao).toLocaleDateString('pt-BR')}</span>
+                      <span className="font-medium">{formatarDataSemFuso(f.data_formatacao)}</span>
                       {f.observacoes && <span className="text-gray-500 ml-2">{f.observacoes}</span>}
                       {i === 0 && <span className="ml-2 text-xs bg-green-100 text-green-700 px-1 rounded">Última</span>}
                     </div>

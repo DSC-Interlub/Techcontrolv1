@@ -84,16 +84,21 @@ export default function Colaboradores() {
       pendencias.push({ tipo: "sem_email", label: "Sem E-mail Próprio", critico: true });
     }
 
-    // 2. Sem Gestor (Nome)
-    const respNome = colab.responsavel_nome || '';
-    const respEmail = colab.responsavel_email || '';
-    
-    if (!respNome.trim()) {
-      pendencias.push({ tipo: "sem_gestor_nome", label: "Gestor não informado", critico: false });
-    } else {
-      // 3. Sem E-mail do Gestor (apenas se tem nome de gestor)
-      if (!respEmail.trim()) {
-        pendencias.push({ tipo: "sem_gestor_email", label: "E-mail do gestor não informado", critico: false });
+    // 2. Gestor Direto (Nome/E-mail) - Apenas para Interno
+    if (colab.tipo_funcionario === "Interno") {
+      const contatoNome = colab.contato_responsavel_nome || '';
+      const contatoEmail = colab.contato_responsavel_email || '';
+      
+      if (!contatoNome.trim()) {
+        pendencias.push({ tipo: "sem_gestor_direto_nome", label: "Gestor Direto não informado", critico: false });
+      } else if (!contatoEmail.trim()) {
+        pendencias.push({ tipo: "sem_gestor_direto_email", label: "E-mail do gestor direto não informado", critico: false });
+      }
+
+      // 3. Aprovador de Compras - Apenas para Interno
+      const aprovadorNome = colab.responsavel_nome || '';
+      if (!aprovadorNome.trim()) {
+        pendencias.push({ tipo: "sem_aprovador_compras", label: "Aprovador de Compras não definido", critico: false });
       }
     }
 
@@ -197,25 +202,28 @@ export default function Colaboradores() {
     return matchSearch && matchStatus;
   });
 
+  const validColaboradores = colaboradores.filter(c => c.tipo_funcionario === "Interno" || c.tipo_funcionario === "Externo");
+
   const stats = {
-    total: colaboradores.length,
-    ativos: colaboradores.filter(c => c.status === "Ativo").length,
-    ferias: colaboradores.filter(c => c.status === "Férias").length,
-    afastados: colaboradores.filter(c => c.status === "Afastado").length,
+    total: validColaboradores.length,
+    ativos: validColaboradores.filter(c => c.status === "Ativo").length,
+    ferias: validColaboradores.filter(c => c.status === "Férias").length,
+    afastados: validColaboradores.filter(c => c.status === "Afastado").length,
   };
 
-  const totalSemEmailProprio = colaboradores.filter(c => !c.email || !c.email.trim()).length;
-  const totalSemGestorNome = colaboradores.filter(c => !c.responsavel_nome || !c.responsavel_nome.trim()).length;
-  const totalSemGestorEmail = colaboradores.filter(c => c.responsavel_nome && c.responsavel_nome.trim() && (!c.responsavel_email || !c.responsavel_email.trim())).length;
-  const totalConjugeSemEmail = colaboradores.filter(c => c.conjuge_nome && c.conjuge_nome.trim() && (!c.conjuge_email || !c.conjuge_email.trim())).length;
+  const colabsInternos = colaboradores.filter(c => c.tipo_funcionario === "Interno");
+
+  const totalSemEmailProprio = colabsInternos.filter(c => !c.email || !c.email.trim()).length;
+  const totalSemGestorDiretoNome = colabsInternos.filter(c => !c.contato_responsavel_nome || !c.contato_responsavel_nome.trim()).length;
+  const totalSemGestorDiretoEmail = colabsInternos.filter(c => c.contato_responsavel_nome && c.contato_responsavel_nome.trim() && (!c.contato_responsavel_email || !c.contato_responsavel_email.trim())).length;
+  const totalSemAprovadorCompras = colabsInternos.filter(c => !c.responsavel_nome || !c.responsavel_nome.trim()).length;
+  const totalConjugeSemEmail = colabsInternos.filter(c => c.conjuge_nome && c.conjuge_nome.trim() && (!c.conjuge_email || !c.conjuge_email.trim())).length;
   
-  const totalSemRamal = colaboradores.filter(c => {
-    if (c.tipo_funcionario !== "Interno") return false;
+  const totalSemRamal = colabsInternos.filter(c => {
     return !ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === c.nome_completo.trim().toLowerCase());
   }).length;
 
-  const totalSemEquipamento = colaboradores.filter(c => {
-    if (c.tipo_funcionario !== "Interno") return false;
+  const totalSemEquipamento = colabsInternos.filter(c => {
     const nomeLower = c.nome_completo.trim().toLowerCase();
     const colabArea = (c.area || "").trim().toLowerCase();
     
@@ -238,7 +246,7 @@ export default function Colaboradores() {
     return !temPc && !temNb && !temSm && !temCam && !temCol && !temCan && !temCompartilhado;
   }).length;
 
-  const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorNome > 0 || totalSemGestorEmail > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemEquipamento > 0;
+  const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorDiretoNome > 0 || totalSemGestorDiretoEmail > 0 || totalSemAprovadorCompras > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemEquipamento > 0;
 
   if (selectedColaborador) {
     return (
@@ -326,23 +334,29 @@ export default function Colaboradores() {
               </div>
             </CardHeader>
             <CardContent className="pb-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-3">
                 {totalSemEmailProprio > 0 && (
                   <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 p-3 rounded-lg text-center">
                     <p className="text-xs text-red-600 dark:text-red-400 font-medium">Sem E-mail Próprio</p>
                     <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">{totalSemEmailProprio}</p>
                   </div>
                 )}
-                {totalSemGestorNome > 0 && (
+                {totalSemGestorDiretoNome > 0 && (
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
-                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Gestor</p>
-                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorNome}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Gestor Direto</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorDiretoNome}</p>
                   </div>
                 )}
-                {totalSemGestorEmail > 0 && (
+                {totalSemGestorDiretoEmail > 0 && (
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
                     <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">E-mail Gestor Vazio</p>
-                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorEmail}</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemGestorDiretoEmail}</p>
+                  </div>
+                )}
+                {totalSemAprovadorCompras > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900 p-3 rounded-lg text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Sem Aprovador Compras</p>
+                    <p className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{totalSemAprovadorCompras}</p>
                   </div>
                 )}
                 {totalConjugeSemEmail > 0 && (

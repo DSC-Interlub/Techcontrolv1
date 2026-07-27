@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Users, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { formatarDataSemFuso } from "@/utils/date";
 
 export default function UsuariosAnteriores({ usuarios = [], onChange }) {
   const [novoUsuario, setNovoUsuario] = useState({
@@ -56,11 +56,11 @@ export default function UsuariosAnteriores({ usuarios = [], onChange }) {
                   <p className="font-medium text-sm">{usuario.nome}</p>
                   <p className="text-xs text-gray-600">
                     {usuario.data_inicio 
-                      ? format(new Date(usuario.data_inicio), "dd/MM/yyyy") 
+                      ? formatarDataSemFuso(usuario.data_inicio) 
                       : "Sem data"}
                     {" → "}
                     {usuario.data_fim 
-                      ? format(new Date(usuario.data_fim), "dd/MM/yyyy")
+                      ? formatarDataSemFuso(usuario.data_fim)
                       : "Sem data"}
                   </p>
                 </div>

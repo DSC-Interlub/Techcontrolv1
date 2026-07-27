@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Activity, TrendingUp, AlertTriangle, XCircle, Save, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
+import { formatarDataSemFuso } from "@/utils/date";
 const problemasOpcoes = [
   "Demora para ligar",
   "Programas travam",
@@ -253,7 +253,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
               <Info className="w-4 h-4 text-amber-600" />
               <AlertDescription className="text-amber-800 text-sm">
                 <strong>{pontosTempoUso} pontos</strong> foram adicionados automaticamente por conta do <strong>tempo de uso</strong>:{" "}
-                este equipamento foi adquirido em {new Date(equipamento.data_aquisicao).toLocaleDateString('pt-BR')},{" "}
+                este equipamento foi adquirido em {formatarDataSemFuso(equipamento.data_aquisicao)},{" "}
                 há aproximadamente <strong>{Math.floor(resultado.tempo_uso_anos)} ano(s)</strong>.
                 Equipamentos mais antigos recebem pontuação maior, indicando maior necessidade de avaliação.
                 {resultado.tempo_uso_anos >= 5 && " (5+ anos: +20 pts)"}

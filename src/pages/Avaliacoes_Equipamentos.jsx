@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/AuthContext";
+import { formatarDataSemFuso } from "@/utils/date";
 
 export default function AvaliacoesEquipamentos() {
   const { user } = useAuth();
@@ -490,9 +491,7 @@ export default function AvaliacoesEquipamentos() {
                               </TableCell>
                               <TableCell>{eq.marca || "—"}</TableCell>
                               <TableCell className="text-sm text-gray-600">
-                                {eq.data_aquisicao 
-                                  ? new Date(eq.data_aquisicao).toLocaleDateString('pt-BR')
-                                  : "—"}
+                                {formatarDataSemFuso(eq.data_aquisicao)}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Link 

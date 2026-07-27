@@ -2,6 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { formatarDataSemFuso, formatarDataHoraSemFuso } from "@/utils/date";
 import { Shield, ShieldOff } from "lucide-react";
 
 export default function EquipamentoDetalhes({ equipamento, onClose }) {
@@ -49,9 +50,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             <div>
               <p className="text-sm text-gray-500">Data de Aquisição</p>
               <p className="font-medium">
-                {equipamento.data_aquisicao 
-                  ? format(new Date(equipamento.data_aquisicao), "dd/MM/yyyy") 
-                  : "-"}
+                {formatarDataSemFuso(equipamento.data_aquisicao)}
               </p>
             </div>
             <div>
@@ -119,7 +118,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             <div>
               <p className="text-sm text-gray-500">Última Formatação</p>
               <p className="font-medium">
-                {format(new Date(equipamento.data_formatacao), "dd/MM/yyyy")}
+                {formatarDataSemFuso(equipamento.data_formatacao)}
               </p>
             </div>
           )}
@@ -158,7 +157,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
               </div>
               {equipamento.avaliacao_data && (
                 <p className="text-xs text-gray-500 mt-2">
-                  Avaliado em: {format(new Date(equipamento.avaliacao_data), "dd/MM/yyyy 'às' HH:mm")}
+                  Avaliado em: {formatarDataHoraSemFuso(equipamento.avaliacao_data)}
                 </p>
               )}
             </div>
@@ -178,10 +177,10 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
                       <span className="font-medium">Período:</span>{" "}
-                      {usuario.data_inicio && format(new Date(usuario.data_inicio), "dd/MM/yyyy")}
+                      {usuario.data_inicio && formatarDataSemFuso(usuario.data_inicio)}
                       {" → "}
                       {usuario.data_fim 
-                        ? format(new Date(usuario.data_fim), "dd/MM/yyyy")
+                        ? formatarDataSemFuso(usuario.data_fim)
                         : <span className="text-blue-600 font-medium">Atual</span>}
                     </p>
                   </div>

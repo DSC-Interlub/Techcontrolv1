@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
+import { formatarDataSemFuso } from "@/utils/date";
 const Skeleton = ({ className }) => (
   <div className={`animate-pulse bg-gray-200 dark:bg-gray-800 rounded ${className}`} />
 );
@@ -395,7 +395,7 @@ export default function Dashboard() {
                         <p className="font-medium text-sm">{reserva.solicitante_nome}</p>
                         <p className="text-xs text-gray-600 mt-1">{reserva.equipamento_nome}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {new Date(reserva.data_inicio).toLocaleDateString('pt-BR')} - {reserva.hora_inicio}
+                          {formatarDataSemFuso(reserva.data_inicio)} - {reserva.hora_inicio}
                         </p>
                       </div>
                       <Badge className={
