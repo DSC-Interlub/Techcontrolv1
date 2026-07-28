@@ -60,6 +60,20 @@ export default function PortalEquipamentos() {
 
       const { pontosTempoUso, tempo_uso_anos, ...dadosSanitizados } = dados;
 
+      // Salvar ID do AnyDesk na própria máquina
+      if (dados.anydesk_id && dados.anydesk_id.trim()) {
+        const anydeskVal = dados.anydesk_id.trim();
+        try {
+          if (eq.entityType === 'PCs_Internos') {
+            await base44.entities.PCs_Internos.update(eq.id, { anydesk_id: anydeskVal });
+          } else if (eq.entityType === 'Notebooks_Externos') {
+            await base44.entities.Notebooks_Externos.update(eq.id, { anydesk_id: anydeskVal });
+          }
+        } catch (errEq) {
+          console.error("Erro ao atualizar anydesk_id na máquina:", errEq);
+        }
+      }
+
       return base44.entities.Avaliacoes.create({
         equipamento_id: eq.id,
         equipamento_tipo: eq.entityType,

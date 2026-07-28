@@ -78,17 +78,27 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
   "Liberar espaço em disco (arquivos temporários, downloads antigos)": {
     tipo: "PowerShell",
     comando: `Remove-Item -Path "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
-    desc: "Limpa pasta TEMP e esvazia Lixeira silenciosamente."
+    desc: "Limpa pasta TEMP e esvazia Lixeira do Windows silenciosamente."
+  },
+  "Limpar arquivos temporários do sistema e verificar integridade de arquivos (%temp% e sfc /scannow)": {
+    tipo: "CMD (Admin)",
+    comando: `sfc /scannow & DISM /Online /Cleanup-Image /RestoreHealth`,
+    desc: "Varre e repara arquivos de sistema corrompidos no Windows."
   },
   "Verificar processos consumindo memória RAM em excesso / considerar upgrade de memória": {
     tipo: "PowerShell",
-    comando: `Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet / 1MB, 1)}}`,
-    desc: "Lista os 10 processos que mais consomem memória RAM no sistema."
+    comando: `Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet64 / 1MB, 1)}}`,
+    desc: "Identifica os 10 processos com maior consumo de memória RAM."
   },
-  "Reativar ou instalar antivírus": {
+  "Investigar consumo de RAM por processos em segundo plano / executar diagnóstico de integridade": {
     tipo: "PowerShell",
-    comando: `Set-MpPreference -DisableRealtimeMonitoring $false; Update-MpSignature`,
-    desc: "Ativa a proteção em tempo real e atualiza as assinaturas do Windows Defender."
+    comando: `Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet64 / 1MB, 1)}}`,
+    desc: "Exibe top 10 processos em consumo de memória para diagnóstico."
+  },
+  "Verificar e solicitar instalação/ativação do antivírus corporativo via filial do México": {
+    tipo: "Ação de TI",
+    comando: `SOLICITACAO_ANTIVIRUS_MEXICO`,
+    desc: "Solicitar instalação / ativação do antivírus corporativo à filial do México."
   },
   "Reiniciar a máquina regularmente (uptime muito alto detectado)": {
     tipo: "CMD / PowerShell",
@@ -98,15 +108,15 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
   "Atualizar para Windows 11 (ou avaliar compatibilidade de hardware)": {
     tipo: "PowerShell",
     comando: `usoclient StartInteractiveScan`,
-    desc: "Inicia a busca por atualizações pendentes do Windows Update."
+    desc: "Inicia a busca por atualizações pendentes para o Windows 11."
   },
-  "Investigar processos em segundo plano / possível malware / verificar logs de erro": {
+  "Investigar causa da lentidão ao ligar (inicialização pesada, muitos programas no boot)": {
     tipo: "PowerShell",
-    comando: `Start-MpScan -ScanType QuickScan`,
-    desc: "Executa uma varredura rápida de segurança contra malwares com o Windows Defender."
+    comando: `Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, User`,
+    desc: "Lista todos os aplicativos configurados para iniciar com o Windows."
   },
-  "Testar placa de rede / atualizar drivers / verificar cabo ou sinal Wi-Fi": {
-    tipo: "CMD",
+  "Testar placa de rede / atualizar drivers / redefinir pilha TCP/IP e DNS": {
+    tipo: "CMD (Admin)",
     comando: `ipconfig /flushdns & netsh int ip reset & netsh winsock reset`,
     desc: "Reseta o cache DNS, protocolo TCP/IP e biblioteca Winsock da rede."
   }
@@ -554,6 +564,60 @@ export default function Painel_Maquinas() {
     }).filter(d => d.tarefasDaEval.length > 0); // Exibe demandas que geraram checklist
   }, [avaliacoes, tarefas, maquinasConsolidadas, colaboradores]);
 
+  // Sugestões Inteligentes de Movimentação do Sistema
+  const sugestoesMovimentacao = useMemo(() => {
+    const sugestoes = [];
+
+    // 1. Sugestões de Troca de Máquinas (Máquinas com Windows 10 descontinuado ou saúde ruim)
+    const maquinasParaTrocar = rankingMaquinas.filter(m => m.classificacao === "Substituir" || (m.versao_windows && m.versao_windows.toLowerCase().includes("windows 10")));
+
+    const maquinasLivresEmEstoque = maquinasConsolidadas.filter(m => m.status === 'Disponível');
+
+    maquinasParaTrocar.forEach(mRuim => {
+      // Encontrar máquina disponível do mesmo tipo ou notebook com melhor pontuação técnica
+      const melhorEmEstoque = [...maquinasLivresEmEstoque].sort((a, b) => {
+        const scoreA = a.pontuacao || 0;
+        const scoreB = b.pontuacao || 0;
+        return scoreA - scoreB;
+      })[0];
+
+      sugestoes.push({
+        id: `troca-${mRuim.id}`,
+        tipo: 'Troca Recomendada',
+        nivel: mRuim.classificacao === "Substituir" ? 'Crítico' : 'Recomendado',
+        titulo: `Substituir equipamento de ${mRuim.usuario_atual}`,
+        motivo: mRuim.classificacao === "Substituir" 
+          ? `Pontuação de saúde técnica baixa (Nota ${mRuim.pontuacao}).`
+          : `Equipamento rodando Windows 10 descontinuado.`,
+        colaborador: mRuim.usuario_atual,
+        area: mRuim.area,
+        maquinaAtual: mRuim,
+        maquinaSugerida: melhorEmEstoque || null
+      });
+    });
+
+    // 2. Sugestões de Formatação (Máquinas com queixas de lentidão na avaliação)
+    const demandasComLentidao = demandasAvaliacao.filter(d => 
+      d.emAberto && d.evalItem?.desempenho && (d.evalItem.desempenho.includes("lento") || d.evalItem.desempenho.includes("Com Problema"))
+    );
+
+    demandasComLentidao.forEach(d => {
+      sugestoes.push({
+        id: `formatar-${d.evalId}`,
+        tipo: 'Formatação Recomendada',
+        nivel: 'Atenção',
+        titulo: `Agendar formatação técnica para ${d.usuarioNome}`,
+        motivo: `Usuário relatou desempenho '${d.evalItem.desempenho}' na avaliação. Limpeza de arquivos temporários e reinstalação do SO recomendada.`,
+        colaborador: d.usuarioNome,
+        area: d.area,
+        maquinaAtual: d.equipamento,
+        dataAvaliacao: d.dataAvaliacao
+      });
+    });
+
+    return sugestoes;
+  }, [rankingMaquinas, maquinasConsolidadas, demandasAvaliacao]);
+
   // Função para retornar badge de saúde formatado
   const renderSaudeBadge = (classificacao, pontuacao) => {
     if (classificacao === "Manter") {
@@ -625,6 +689,10 @@ export default function Painel_Maquinas() {
               <TabsTrigger value="demandas" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition">
                 <ClipboardList className="w-4 h-4 text-indigo-600" />
                 Demandas por Avaliação ({demandasAvaliacao.filter(d => d.emAberto).length} em aberto)
+              </TabsTrigger>
+              <TabsTrigger value="sugestoes" className="data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition">
+                <SlidersHorizontal className="w-4 h-4 text-amber-600" />
+                💡 Sugestões Inteligentes ({sugestoesMovimentacao.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1196,76 +1264,155 @@ export default function Painel_Maquinas() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="p-5 space-y-3">
-                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Wrench className="w-3.5 h-3.5 text-teal-600" />
-                        Checklist de Tarefas da Demanda ({d.tarefasDaEval.length}):
-                      </p>
+                    <CardContent className="p-5 space-y-4">
+                      {/* PAINEL DE DADOS TÉCNICOS & ANYDESK DA MÁQUINA */}
+                      <div className="bg-slate-50 dark:bg-slate-900 border rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Código / Etiqueta</span>
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-200 mt-0.5 block">
+                            🏷️ {d.equipamento?.etiqueta_interna || "Sem Etiqueta"}
+                          </span>
+                        </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {d.tarefasDaEval.map(t => {
-                          const infoCmd = COMANDOS_RESOLUCAO_TAREFAS[t.descricao];
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AnyDesk (Acesso Remoto)</span>
+                          {d.equipamento?.anydesk_id || d.evalItem?.anydesk_id ? (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                💻 {d.equipamento?.anydesk_id || d.evalItem?.anydesk_id}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const code = d.equipamento?.anydesk_id || d.evalItem?.anydesk_id;
+                                  navigator.clipboard.writeText(code);
+                                  alert(`AnyDesk ${code} copiado para a área de transferência!`);
+                                }}
+                                className="h-5 px-1 text-[10px] text-indigo-700 hover:bg-indigo-100"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">Não informado</span>
+                          )}
+                        </div>
 
-                          return (
-                            <div
-                              key={t.id}
-                              className={`flex flex-col justify-between p-3 rounded-xl border text-xs transition ${
-                                t.status === 'Concluída'
-                                  ? 'bg-slate-100/60 dark:bg-slate-900/10 border-slate-200/60 opacity-60 line-through text-slate-400'
-                                  : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 shadow-sm'
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <input
-                                  type="checkbox"
-                                  checked={t.status === 'Concluída'}
-                                  onChange={(e) => {
-                                    toggleTarefaMutation.mutate({
-                                      id: t.id,
-                                      status: e.target.checked ? 'Concluída' : 'Pendente',
-                                      tarefa: t,
-                                      maquina: d.equipamento || { id: d.evalItem.equipamento_id, origem: 'interno' }
-                                    });
-                                  }}
-                                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold leading-normal">{t.descricao}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[9px] font-semibold uppercase text-slate-500">
-                                      {t.origem}
-                                    </span>
-                                    {t.created_date && (
-                                      <span className="text-[9px] text-slate-400">
-                                        • gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Última Formatação</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300 mt-0.5 block">
+                            📅 {d.equipamento?.data_ultima_formatacao ? new Date(d.equipamento.data_ultima_formatacao).toLocaleDateString('pt-BR') : "Não informada"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tempo de Uso do Ativo</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-300 mt-0.5 block">
+                            ⏳ {d.equipamento?.data_aquisicao ? `${Math.floor((new Date() - new Date(d.equipamento.data_aquisicao))/(1000*60*60*24*365))} ano(s)` : "Não informado"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* RESPOSTAS DO QUESTIONÁRIO DA AVALIAÇÃO */}
+                      {d.evalItem && (
+                        <div className="bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 rounded-xl p-3.5 space-y-2 text-xs">
+                          <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs">
+                            🔍 Respostas Relatadas pelo Colaborador:
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-700 dark:text-slate-300">
+                            <p><strong>Desempenho:</strong> {d.evalItem.desempenho || "N/I"}</p>
+                            <p><strong>Atende ao trabalho:</strong> {d.evalItem.atende_trabalho || "N/I"}</p>
+                            <p><strong>Recomendação:</strong> {d.evalItem.recomendacao_usuario || "N/I"}</p>
+                          </div>
+                          {d.evalItem.problemas && d.evalItem.problemas.length > 0 && (
+                            <div className="pt-1.5 border-t border-amber-200/40">
+                              <span className="font-bold text-red-700 dark:text-red-400">Problemas relatados: </span>
+                              <span className="text-slate-700 dark:text-slate-300">{d.evalItem.problemas.join(", ")}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* LISTA DE TAREFAS DO CHECKLIST */}
+                      <div className="space-y-2 pt-1">
+                        <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5 text-teal-600" />
+                          Checklist de Manutenção & Ações de TI ({d.tarefasDaEval.length}):
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {d.tarefasDaEval.map(t => {
+                            const infoCmd = COMANDOS_RESOLUCAO_TAREFAS[t.descricao];
+
+                            return (
+                              <div
+                                key={t.id}
+                                className={`flex flex-col justify-between p-3.5 rounded-xl border text-xs transition ${
+                                  t.status === 'Concluída'
+                                    ? 'bg-slate-100/60 dark:bg-slate-900/10 border-slate-200/60 opacity-60 line-through text-slate-400'
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 shadow-sm'
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={t.status === 'Concluída'}
+                                    onChange={(e) => {
+                                      toggleTarefaMutation.mutate({
+                                        id: t.id,
+                                        status: e.target.checked ? 'Concluída' : 'Pendente',
+                                        tarefa: t,
+                                        maquina: d.equipamento || { id: d.evalItem.equipamento_id, origem: 'interno' }
+                                      });
+                                    }}
+                                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold leading-relaxed break-words">{t.descricao}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-[9px] font-semibold uppercase text-slate-500">
+                                        {t.origem}
                                       </span>
-                                    )}
+                                      {t.created_date && (
+                                        <span className="text-[9px] text-slate-400">
+                                          • gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
 
-                              {infoCmd && t.status !== 'Concluída' && (
-                                <div className="mt-2 pt-2 border-t flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg">
-                                  <p className="text-[10px] text-slate-500 font-medium truncate max-w-[180px]" title={infoCmd.desc}>
-                                    💡 {infoCmd.desc}
-                                  </p>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(infoCmd.comando);
-                                      alert(`Comando copiado (${infoCmd.tipo}):\n\n${infoCmd.comando}`);
-                                    }}
-                                    className="h-6 text-[10px] gap-1 font-semibold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
-                                  >
-                                    <Copy className="w-3 h-3" /> Copiar ({infoCmd.tipo})
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                {infoCmd && t.status !== 'Concluída' && (
+                                  <div className="mt-2.5 pt-2 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-lg gap-2">
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-normal break-words flex-1">
+                                      💡 {infoCmd.desc}
+                                    </p>
+                                    {infoCmd.comando !== 'SOLICITACAO_ANTIVIRUS_MEXICO' ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(infoCmd.comando);
+                                          alert(`Comando copiado (${infoCmd.tipo}):\n\n${infoCmd.comando}`);
+                                        }}
+                                        className="h-7 text-[10px] gap-1 font-semibold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 shrink-0"
+                                      >
+                                        <Copy className="w-3 h-3" /> Copiar ({infoCmd.tipo})
+                                      </Button>
+                                    ) : (
+                                      <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] shrink-0">
+                                        Solicitar à Filial México
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1273,6 +1420,81 @@ export default function Painel_Maquinas() {
               </div>
             );
           })()}
+        </TabsContent>
+
+        {/* ABA 3: 💡 SUGESTÕES INTELIGENTES DE MOVIMENTAÇÃO */}
+        <TabsContent value="sugestoes" className="space-y-6 m-0">
+          <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-500 text-white rounded-lg">
+                <SlidersHorizontal className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
+                  Sugestões Inteligentes de Movimentação & Manutenção
+                </h3>
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                  Análises automáticas baseadas em tempo de uso, pontuação técnica de saúde e queixas relatadas.
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-bold text-xs">
+              {sugestoesMovimentacao.length} Recomendações
+            </Badge>
+          </div>
+
+          {sugestoesMovimentacao.length === 0 ? (
+            <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm">
+              <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
+              <p className="text-sm font-semibold text-slate-700">Parque técnico em perfeito estado!</p>
+              <p className="text-xs text-slate-400 mt-1">Nenhuma necessidade urgente de troca ou formatação identificada no momento.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sugestoesMovimentacao.map(s => (
+                <Card key={s.id} className="shadow-sm hover:shadow border-slate-200 overflow-hidden">
+                  <CardHeader className="bg-slate-50 dark:bg-slate-800/40 py-3 px-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <Badge className={s.nivel === 'Crítico' ? "bg-red-100 text-red-800 border-red-200" : "bg-amber-100 text-amber-800 border-amber-200"}>
+                        {s.tipo} • {s.nivel}
+                      </Badge>
+                      <span className="text-[10px] text-slate-400 font-mono font-medium">{s.area}</span>
+                    </div>
+                    <CardTitle className="text-sm font-bold mt-2 text-slate-800 dark:text-white">
+                      {s.titulo}
+                    </CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="p-4 space-y-3 text-xs">
+                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                      💡 <strong>Motivo da Análise:</strong> {s.motivo}
+                    </p>
+
+                    {s.tipo === 'Troca Recomendada' && s.maquinaSugerida && (
+                      <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
+                          <span>📦 Ativo em Estoque Recomendado para Atribuir:</span>
+                          <Badge className="bg-emerald-600 text-white text-[10px]">
+                            Disponível
+                          </Badge>
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300">
+                          <strong>Modelo:</strong> {s.maquinaSugerida.marca} {s.maquinaSugerida.modelo} (Etiqueta: {s.maquinaSugerida.etiqueta_interna || "—"})
+                        </p>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSugestaoTroca(s.maquinaAtual, s.maquinaSugerida)}
+                          className="w-full mt-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
+                        >
+                          <ArrowRightLeft className="w-3.5 h-3.5" /> Efetuar Troca Direta com {s.colaborador?.split(" ")[0]}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
         </>
       </Tabs>

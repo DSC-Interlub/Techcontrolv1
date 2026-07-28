@@ -87,6 +87,19 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         avaliador: user.email,
       };
 
+      if (dados.anydesk_id && dados.anydesk_id.trim()) {
+        const anydeskVal = dados.anydesk_id.trim();
+        try {
+          if (tipoEquipamento === 'PCs_Internos') {
+            await base44.entities.PCs_Internos.update(equipamento.id, { anydesk_id: anydeskVal });
+          } else if (tipoEquipamento === 'Notebooks_Externos') {
+            await base44.entities.Notebooks_Externos.update(equipamento.id, { anydesk_id: anydeskVal });
+          }
+        } catch (errEq) {
+          console.error("Erro ao atualizar anydesk_id no equipamento:", errEq);
+        }
+      }
+
       return base44.entities.Avaliacoes.create(avaliacaoData);
     },
     onSuccess: async (novaAvaliacao) => {

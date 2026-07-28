@@ -227,11 +227,11 @@ export async function gerarTarefasManutencao(avaliacao) {
     });
   }
 
-  // 5. Antivírus Inativo
+  // 5. Antivírus Inativo ou Faltando
   const avVal = avaliacao.antivirus;
-  if (typeof avVal === 'string' && avVal.toLowerCase().includes("inativo")) {
+  if (typeof avVal === 'string' && (avVal.toLowerCase().includes("inativo") || avVal.toLowerCase().includes("não") || avVal.toLowerCase().includes("aviso"))) {
     tarefasASeremCriadas.push({
-      descricao: "Reativar ou instalar antivírus",
+      descricao: "Verificar e solicitar instalação/ativação do antivírus corporativo via filial do México",
       origem: "Regra automática"
     });
   }
@@ -250,6 +250,12 @@ export async function gerarTarefasManutencao(avaliacao) {
     }
   }
 
+  // 7. Manutenção Preventiva de Sistema
+  tarefasASeremCriadas.push({
+    descricao: "Limpar arquivos temporários do sistema e verificar integridade de arquivos (%temp% e sfc /scannow)",
+    origem: "Regra automática"
+  });
+
   // --- PROBLEMAS RELATADOS PELO USUÁRIO ---
   const problemas = avaliacao.problemas || [];
   if (Array.isArray(problemas)) {
@@ -258,17 +264,15 @@ export async function gerarTarefasManutencao(avaliacao) {
       if (prob === "Demora para ligar") {
         descTarefa = "Investigar causa da lentidão ao ligar (inicialização pesada, muitos programas no boot)";
       } else if (prob === "Programas travam") {
-        descTarefa = "Investigar processos em segundo plano / possível malware / verificar logs de erro";
+        descTarefa = "Investigar consumo de RAM por processos em segundo plano / executar diagnóstico de integridade";
       } else if (prob === "Internet lenta (somente neste computador)") {
-        descTarefa = "Testar placa de rede / atualizar drivers / verificar cabo ou sinal Wi-Fi";
+        descTarefa = "Testar placa de rede / atualizar drivers / redefinir pilha TCP/IP e DNS";
       } else if (prob === "Tela piscando ou apagando") {
         descTarefa = "Verificar cabo de vídeo / drivers da placa de vídeo / testar com outro monitor";
       } else if (prob === "Teclado ou mouse com defeito") {
         descTarefa = "Verificar ou trocar periféricos (teclado/mouse)";
-      } else if (prob === "Barulho excessivo") {
-        descTarefa = "Levar para limpeza física interna e lubrificação/troca de coolers";
-      } else if (prob === "Aquecimento") {
-        descTarefa = "Levar para limpeza física interna e troca de pasta térmica";
+      } else if (prob === "Barulho excessivo" || prob === "Aquecimento") {
+        descTarefa = "Verificar desobstrução das saídas de ar, base elevadora e otimizar processos de alto uso de CPU";
       } else {
         descTarefa = `Investigar e resolver problema relatado: ${prob}`;
       }

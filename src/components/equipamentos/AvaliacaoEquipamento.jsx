@@ -268,6 +268,36 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
           <CardTitle>{somenteLeitura ? "Respostas da Avaliação" : "Questionário de Avaliação"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Pergunta: ID do AnyDesk da Máquina */}
+          <div className="space-y-3 bg-indigo-50/60 dark:bg-indigo-950/20 p-4 rounded-xl border border-indigo-200">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
+                <Monitor className="w-4 h-4 text-indigo-600" />
+                ID do AnyDesk do Equipamento (Acesso Remoto TI) *
+              </Label>
+              <Badge variant="outline" className="bg-indigo-100 text-indigo-800 border-indigo-300 font-mono text-[10px]">
+                Acesso Remoto
+              </Badge>
+            </div>
+            <Input
+              placeholder="Ex: 145 890 123 ou 987654321"
+              value={avaliacao.anydesk_id || ""}
+              onChange={(e) => handleChange("anydesk_id", e.target.value)}
+              disabled={somenteLeitura}
+              className="bg-white dark:bg-slate-900 text-sm border-indigo-300 focus:ring-indigo-500 font-mono font-bold text-slate-800 dark:text-slate-100"
+            />
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border text-xs text-slate-600 space-y-1.5 shadow-sm">
+              <p className="font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5 text-xs">
+                💡 Como encontrar o número do AnyDesk no seu computador?
+              </p>
+              <ol className="list-decimal pl-4 space-y-1 text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+                <li>Abra o menu iniciar do Windows e digite ou procure pelo aplicativo <strong>AnyDesk</strong>.</li>
+                <li>Na janela aberta do AnyDesk, busque pelo campo rotulado como <strong>"Este Dispositivo"</strong> (ou "Endereço do AnyDesk").</li>
+                <li>Copie o número de 9 ou 10 dígitos (exemplo: <code>145 890 123</code>) e cole no campo acima.</li>
+              </ol>
+            </div>
+          </div>
+
           {/* Perguntas Técnicas (1 a 5) - Ocultadas para Monitor */}
           {!ehMonitor && (
             <div className="space-y-6">

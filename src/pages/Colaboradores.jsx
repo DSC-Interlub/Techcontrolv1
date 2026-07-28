@@ -231,55 +231,14 @@ export default function Colaboradores() {
 
   const colabsInternos = colaboradores.filter(c => c.tipo_funcionario === "Interno");
 
-  const totalSemEmailProprio = colabsInternos.filter(c => !c.email || !c.email.trim()).length;
-  const totalSemGestorDiretoNome = colabsInternos.filter(c => !c.contato_responsavel_nome || !c.contato_responsavel_nome.trim()).length;
-  const totalSemGestorDiretoEmail = colabsInternos.filter(c => c.contato_responsavel_nome && c.contato_responsavel_nome.trim() && (!c.contato_responsavel_email || !c.contato_responsavel_email.trim())).length;
-  const totalSemAprovadorCompras = colabsInternos.filter(c => !c.responsavel_nome || !c.responsavel_nome.trim()).length;
-  const totalConjugeSemEmail = colabsInternos.filter(c => c.conjuge_nome && c.conjuge_nome.trim() && (!c.conjuge_email || !c.conjuge_email.trim())).length;
-  
-  const totalSemRamal = colabsInternos.filter(c => {
-    return !ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === c.nome_completo.trim().toLowerCase());
-  }).length;
-
-  const totalSemComputador = colabsInternos.filter(c => {
-    const nomeLower = c.nome_completo.trim().toLowerCase();
-    const colabArea = (c.area || "").trim().toLowerCase();
-
-    const temDesktopProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Desktop");
-    const temNotebookProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Notebook") ||
-                               notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
-
-    const temDesktopSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Desktop") : false;
-    const temNotebookSetor = colabArea ? (
-      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Notebook") ||
-      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea)
-    ) : false;
-
-    return !temDesktopProprio && !temNotebookProprio && !temDesktopSetor && !temNotebookSetor;
-  }).length;
-
-  const totalDesktopSemMonitor = colabsInternos.filter(c => {
-    const nomeLower = c.nome_completo.trim().toLowerCase();
-    const colabArea = (c.area || "").trim().toLowerCase();
-
-    const temDesktopProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Desktop");
-    const temNotebookProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Notebook") ||
-                               notebooksExternos.some(n => n.usuario_atual && n.usuario_atual.trim().toLowerCase() === nomeLower);
-    const temMonitorProprio = pcsInternos.some(p => p.usuario_atual && p.usuario_atual.trim().toLowerCase() === nomeLower && p.tipo === "Monitor");
-
-    const temDesktopSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Desktop") : false;
-    const temNotebookSetor = colabArea ? (
-      pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Notebook") ||
-      notebooksExternos.some(n => !n.colaborador_id && n.uf && n.uf.trim().toLowerCase() === colabArea)
-    ) : false;
-    const temMonitorSetor = colabArea ? pcsInternos.some(p => !p.colaborador_id && p.area && p.area.trim().toLowerCase() === colabArea && p.tipo === "Monitor") : false;
-
-    const temDesktop = temDesktopProprio || temDesktopSetor;
-    const temNotebook = temNotebookProprio || temNotebookSetor;
-    const temMonitor = temMonitorProprio || temMonitorSetor;
-
-    return temDesktop && !temNotebook && !temMonitor;
-  }).length;
+  const totalSemEmailProprio = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_email")).length;
+  const totalSemGestorDiretoNome = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_gestor_direto_nome")).length;
+  const totalSemGestorDiretoEmail = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_gestor_direto_email")).length;
+  const totalSemAprovadorCompras = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_aprovador_compras")).length;
+  const totalConjugeSemEmail = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "conjuge_sem_email")).length;
+  const totalSemRamal = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_ramal")).length;
+  const totalSemComputador = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "sem_computador")).length;
+  const totalDesktopSemMonitor = colaboradores.filter(c => obterPendencias(c).some(p => p.tipo === "desktop_sem_monitor")).length;
 
   const temQualquerPendencia = totalSemEmailProprio > 0 || totalSemGestorDiretoNome > 0 || totalSemGestorDiretoEmail > 0 || totalSemAprovadorCompras > 0 || totalConjugeSemEmail > 0 || totalSemRamal > 0 || totalSemComputador > 0 || totalDesktopSemMonitor > 0;
 
