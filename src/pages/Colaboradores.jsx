@@ -107,15 +107,19 @@ export default function Colaboradores() {
       pendencias.push({ tipo: "conjuge_sem_email", label: "E-mail do cônjuge não informado", critico: false });
     }
 
+    // 0. Foto não enviada
+    if (!colab.foto_url || !colab.foto_url.trim()) {
+      pendencias.push({ tipo: "sem_foto", label: "Foto pendente", critico: false });
+    }
+
     // 5. Sem Ramal (apenas para Interno quando necessita_ramal !== false)
     if (colab.tipo_funcionario === "Interno" && colab.necessita_ramal !== false) {
-      const nomeLower = colab.nome_completo.trim().toLowerCase();
       const colabArea = (colab.area || "").trim().toLowerCase();
 
-      const temRamalPessoal = ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === nomeLower);
-      const temRamalSetor = colabArea ? ramais.some(r => (r.setor || r.area || "").trim().toLowerCase() === colabArea) : false;
+      const temRamalDireto = !!(colab.telefone && colab.telefone.trim());
+      const temRamalSetor = colabArea ? colaboradores.some(c => c.id !== colab.id && (c.area || "").trim().toLowerCase() === colabArea && c.telefone && c.telefone.trim()) : false;
 
-      if (!temRamalPessoal && !temRamalSetor) {
+      if (!temRamalDireto && !temRamalSetor) {
         pendencias.push({ tipo: "sem_ramal", label: "Ramal não associado", critico: false });
       }
     }

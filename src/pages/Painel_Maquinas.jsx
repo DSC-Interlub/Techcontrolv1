@@ -20,6 +20,7 @@ import {
   DialogTitle, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Monitor, 
   Laptop, 
@@ -41,7 +42,10 @@ import {
   Copy,
   LayoutGrid,
   ListFilter,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ClipboardList,
+  CheckSquare,
+  Layers
 } from "lucide-react";
 
 // Função para gerar iniciais do avatar
@@ -109,6 +113,8 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
 };
 
 export default function Painel_Maquinas() {
+  const [activeTab, setActiveTab] = useState("parque"); // "parque" | "demandas"
+  const [subFilterDemandas, setSubFilterDemandas] = useState("em_aberto"); // "em_aberto" | "historico"
   const [searchTerm, setSearchTerm] = useState("");
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "Desktop" | "Notebook"
   const [filterClassificacao, setFilterClassificacao] = useState("todos"); // "todos" | "Manter" | "Upgrade" | "Substituir" | "sem_avaliacao"
@@ -508,6 +514,46 @@ export default function Painel_Maquinas() {
       });
   }, [maquinasConsolidadas, searchTerm, filterTipo, filterClassificacao, criterioOrdenacao]);
 
+  // Consolidação de Demandas por Avaliação Realizada
+  const demandasAvaliacao = useMemo(() => {
+    return avaliacoes.map(evalItem => {
+      const tarefasDaEval = tarefas.filter(t => t.avaliacao_id === evalItem.id);
+      const pendentes = tarefasDaEval.filter(t => t.status === 'Pendente');
+      const concluidas = tarefasDaEval.filter(t => t.status === 'Concluída');
+
+      const eq = maquinasConsolidadas.find(m => m.id === evalItem.equipamento_id);
+      const colabInfo = colaboradores.find(c => c.id === evalItem.colaborador_id || c.nome_completo === evalItem.usuario_equipamento);
+
+      let pontuacao = 0;
+      let classificacao = "Manter";
+      if (evalItem) {
+        const res = calcularPontuacaoEquipamento(evalItem, eq?.data_aquisicao);
+        pontuacao = res.pontuacao_total;
+        classificacao = res.classificacao;
+      }
+
+      // Demanda em aberto se tiver pelo menos 1 tarefa pendente
+      const emAberto = pendentes.length > 0;
+
+      return {
+        evalId: evalItem.id,
+        evalItem,
+        equipamento: eq,
+        colaborador: colabInfo,
+        usuarioNome: evalItem.usuario_equipamento || colabInfo?.nome_completo || "Colaborador",
+        equipamentoNome: evalItem.equipamento_nome || (eq ? `${eq.marca} ${eq.modelo}` : "Equipamento"),
+        area: eq?.area || colabInfo?.area || "Setor não informado",
+        dataAvaliacao: evalItem.data_avaliacao,
+        pontuacao,
+        classificacao,
+        tarefasDaEval,
+        pendentes,
+        concluidas,
+        emAberto
+      };
+    }).filter(d => d.tarefasDaEval.length > 0); // Exibe demandas que geraram checklist
+  }, [avaliacoes, tarefas, maquinasConsolidadas, colaboradores]);
+
   // Função para retornar badge de saúde formatado
   const renderSaudeBadge = (classificacao, pontuacao) => {
     if (classificacao === "Manter") {
@@ -554,23 +600,36 @@ export default function Painel_Maquinas() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* CABEÇALHO */}
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-teal-500 to-indigo-600 bg-clip-text text-transparent">
-          Painel de Máquinas em Uso
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Identifique e substitua preventivamente os equipamentos com pior desempenho técnico no parque.
-        </p>
-      </div>
-
       {isLoading ? (
         <div className="flex flex-col items-center justify-center p-24 space-y-4 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm">
           <RefreshCw className="w-8 h-8 animate-spin text-teal-500" />
           <p className="text-sm text-slate-500 font-medium animate-pulse">Sincronizando painel consolidado...</p>
         </div>
       ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-teal-500 to-indigo-600 bg-clip-text text-transparent">
+                Painel de Máquinas & Manutenções
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Gestão preventiva de saúde do parque técnico e resolução de checklists por demandas de avaliação.
+              </p>
+            </div>
+
+            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl h-auto flex gap-1 border">
+              <TabsTrigger value="parque" className="data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition">
+                <Laptop className="w-4 h-4 text-teal-600" />
+                Parque de Máquinas ({maquinasConsolidadas.filter(m => m.status === 'Em uso').length})
+              </TabsTrigger>
+              <TabsTrigger value="demandas" className="data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition">
+                <ClipboardList className="w-4 h-4 text-indigo-600" />
+                Demandas por Avaliação ({demandasAvaliacao.filter(d => d.emAberto).length} em aberto)
+              </TabsTrigger>
+            </TabsList>
+          </div>
         <>
+          <TabsContent value="parque" className="space-y-6 m-0">
           {/* RESUMO COMPACTO DE SAÚDE (KPIs) */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card
@@ -1040,7 +1099,183 @@ export default function Painel_Maquinas() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* ABA 2: DEMANDAS & CHECKLISTS POR AVALIAÇÃO (POR DEMANDA) */}
+        <TabsContent value="demandas" className="space-y-6 m-0">
+          {/* BARRA DE FILTROS E PESQUISA DE DEMANDAS */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Filtrar Status da Demanda:</span>
+              <div className="flex rounded-lg border p-0.5 bg-slate-50 dark:bg-slate-800 gap-0.5 text-xs">
+                <button
+                  onClick={() => setSubFilterDemandas("em_aberto")}
+                  className={`px-3 py-1.5 rounded-md transition font-semibold flex items-center gap-1.5 ${
+                    subFilterDemandas === "em_aberto" ? "bg-white shadow-sm text-indigo-700 dark:bg-slate-900 dark:text-indigo-400" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  🟢 Checklists Em Aberto ({demandasAvaliacao.filter(d => d.emAberto).length})
+                </button>
+                <button
+                  onClick={() => setSubFilterDemandas("historico")}
+                  className={`px-3 py-1.5 rounded-md transition font-semibold flex items-center gap-1.5 ${
+                    subFilterDemandas === "historico" ? "bg-white shadow-sm text-emerald-700 dark:bg-slate-900 dark:text-emerald-400" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  📜 Histórico de Concluídos ({demandasAvaliacao.filter(d => !d.emAberto).length})
+                </button>
+              </div>
+            </div>
+
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Pesquisar colaborador ou máquina..."
+                className="pl-8 text-xs h-9 rounded-lg"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* LISTA DAS DEMANDAS DE AVALIAÇÃO */}
+          {(() => {
+            const demandasFiltradas = demandasAvaliacao.filter(d => {
+              const matchesSub = subFilterDemandas === "em_aberto" ? d.emAberto : !d.emAberto;
+              const q = searchTerm.toLowerCase();
+              const matchesSearch = !q || d.usuarioNome.toLowerCase().includes(q) || d.equipamentoNome.toLowerCase().includes(q) || d.area.toLowerCase().includes(q);
+              return matchesSub && matchesSearch;
+            });
+
+            if (demandasFiltradas.length === 0) {
+              return (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm">
+                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
+                  <p className="text-sm font-semibold text-slate-700">
+                    {subFilterDemandas === "em_aberto" ? "Nenhuma demanda de checklist em aberto!" : "Nenhum histórico de checklist concluído encontrado."}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">Todas as avaliações deste filtro estão com manutenção em dia.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 gap-5">
+                {demandasFiltradas.map(d => (
+                  <Card key={d.evalId} className="shadow-sm hover:shadow border-slate-200 overflow-hidden rounded-xl">
+                    <CardHeader className="bg-slate-50/80 dark:bg-slate-800/40 border-b py-3 px-5">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div className="flex items-center gap-3">
+                          {d.colaborador?.foto_url ? (
+                            <img src={d.colaborador.foto_url} alt={d.usuarioNome} className="w-10 h-10 rounded-full object-cover border" />
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full border flex items-center justify-center font-bold text-xs ${getAvatarBgColor(d.usuarioNome)}`}>
+                              {getInitials(d.usuarioNome)}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-bold text-slate-800 dark:text-white">{d.usuarioNome}</p>
+                              <Badge variant="outline" className="text-[10px] bg-white border-slate-200 text-slate-600 font-mono">
+                                {d.area}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                              Equipamento: <strong>{d.equipamentoNome}</strong>
+                              {d.dataAvaliacao && ` | Avaliado em ${new Date(d.dataAvaliacao).toLocaleDateString('pt-BR')}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {renderSaudeBadge(d.classificacao, d.pontuacao)}
+                          <Badge className={d.emAberto ? "bg-amber-100 text-amber-800 border-amber-200 text-xs px-2.5 py-0.5" : "bg-emerald-100 text-emerald-800 border-emerald-200 text-xs px-2.5 py-0.5"}>
+                            {d.emAberto ? `🟢 ${d.pendentes.length} Tarefa(s) Pendente(s)` : `✓ Demanda Concluída (${d.concluidas.length} resolvidas)`}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-5 space-y-3">
+                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Wrench className="w-3.5 h-3.5 text-teal-600" />
+                        Checklist de Tarefas da Demanda ({d.tarefasDaEval.length}):
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {d.tarefasDaEval.map(t => {
+                          const infoCmd = COMANDOS_RESOLUCAO_TAREFAS[t.descricao];
+
+                          return (
+                            <div
+                              key={t.id}
+                              className={`flex flex-col justify-between p-3 rounded-xl border text-xs transition ${
+                                t.status === 'Concluída'
+                                  ? 'bg-slate-100/60 dark:bg-slate-900/10 border-slate-200/60 opacity-60 line-through text-slate-400'
+                                  : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={t.status === 'Concluída'}
+                                  onChange={(e) => {
+                                    toggleTarefaMutation.mutate({
+                                      id: t.id,
+                                      status: e.target.checked ? 'Concluída' : 'Pendente',
+                                      tarefa: t,
+                                      maquina: d.equipamento || { id: d.evalItem.equipamento_id, origem: 'interno' }
+                                    });
+                                  }}
+                                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold leading-normal">{t.descricao}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[9px] font-semibold uppercase text-slate-500">
+                                      {t.origem}
+                                    </span>
+                                    {t.created_date && (
+                                      <span className="text-[9px] text-slate-400">
+                                        • gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {infoCmd && t.status !== 'Concluída' && (
+                                <div className="mt-2 pt-2 border-t flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg">
+                                  <p className="text-[10px] text-slate-500 font-medium truncate max-w-[180px]" title={infoCmd.desc}>
+                                    💡 {infoCmd.desc}
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(infoCmd.comando);
+                                      alert(`Comando copiado (${infoCmd.tipo}):\n\n${infoCmd.comando}`);
+                                    }}
+                                    className="h-6 text-[10px] gap-1 font-semibold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+                                  >
+                                    <Copy className="w-3 h-3" /> Copiar ({infoCmd.tipo})
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
+        </TabsContent>
         </>
+      </Tabs>
       )}
 
       {/* MODAL DE CONFIRMAÇÃO DE TROCA */}
