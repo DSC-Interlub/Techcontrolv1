@@ -1345,11 +1345,27 @@ export default function Painel_Maquinas() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tempo de Uso do Ativo</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300 mt-0.5 block">
                             ⏳ {(() => {
-                              if (d.evalItem?.tempo_uso_anos && d.evalItem.tempo_uso_anos > 0) return `${d.evalItem.tempo_uso_anos} ano(s)`;
-                              if (d.equipamento?.tempo_uso) return d.equipamento.tempo_uso;
+                              const anosVal = d.evalItem?.tempo_uso_anos || d.equipamento?.tempo_uso_anos;
+                              if (anosVal && typeof anosVal === 'number' && anosVal > 0) {
+                                if (anosVal < 1) {
+                                  const meses = Math.max(1, Math.round(anosVal * 12));
+                                  return `${meses} mês(es)`;
+                                }
+                                return `${Math.floor(anosVal)} ano(s)`;
+                              }
+                              if (d.equipamento?.tempo_uso && typeof d.equipamento.tempo_uso === 'string' && d.equipamento.tempo_uso.trim()) {
+                                return d.equipamento.tempo_uso.trim();
+                              }
                               if (d.equipamento?.data_aquisicao) {
-                                const anos = Math.floor((new Date() - new Date(d.equipamento.data_aquisicao)) / (1000 * 60 * 60 * 24 * 365));
-                                return `${anos} ano(s)`;
+                                const diffMs = new Date() - new Date(d.equipamento.data_aquisicao);
+                                if (!isNaN(diffMs) && diffMs > 0) {
+                                  const anos = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+                                  if (anos < 1) {
+                                    const meses = Math.max(1, Math.round(anos * 12));
+                                    return `${meses} mês(es)`;
+                                  }
+                                  return `${Math.floor(anos)} ano(s)`;
+                                }
                               }
                               return "Não informado";
                             })()}

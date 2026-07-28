@@ -101,7 +101,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         memoria_ram: dadosAvaliacao.memoria_ram || '',
         tipo_armazenamento: dadosAvaliacao.tipo_armazenamento || '',
         espaco_disco: dadosAvaliacao.espaco_disco || '',
-        versao_windows: dadosAvaliacao.versao_windows || '',
+        versao_windows: anydeskVal ? `${dadosAvaliacao.versao_windows || ''} | AnyDesk: ${anydeskVal}` : (dadosAvaliacao.versao_windows || ''),
         antivirus: dadosAvaliacao.antivirus || '',
         desempenho: dadosAvaliacao.desempenho || '',
         problemas: dadosAvaliacao.problemas || [],

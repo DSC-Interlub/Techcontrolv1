@@ -71,6 +71,7 @@ export default function PortalEquipamentos() {
           } else {
             await base44.entities.PCs_Internos.update(eq.id, { observacoes: obsAtualizada });
           }
+          eq.observacoes = obsAtualizada;
         } catch (errEq) {
           console.warn("Aviso ao atualizar AnyDesk na máquina:", errEq);
         }
@@ -88,7 +89,7 @@ export default function PortalEquipamentos() {
         memoria_ram: dados.memoria_ram || '',
         tipo_armazenamento: dados.tipo_armazenamento || '',
         espaco_disco: dados.espaco_disco || '',
-        versao_windows: dados.versao_windows || '',
+        versao_windows: anydeskVal ? `${dados.versao_windows || ''} | AnyDesk: ${anydeskVal}` : (dados.versao_windows || ''),
         antivirus: dados.antivirus || '',
         desempenho: dados.desempenho || '',
         problemas: dados.problemas || [],

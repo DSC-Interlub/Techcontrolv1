@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Activity, TrendingUp, AlertTriangle, XCircle, Save, Info, ChevronDown, ChevronUp, Copy, CheckCircle, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatarDataSemFuso } from "@/utils/date";
-import { calcularPontuacaoEquipamento } from "@/utils/eval";
+import { calcularPontuacaoEquipamento, extrairAnyDesk } from "@/utils/eval";
 const problemasOpcoes = [
   "Demora para ligar",
   "Programas travam",
@@ -104,6 +104,7 @@ const POWERSHELL_SCRIPT = `$ErrorActionPreference = "SilentlyContinue"; $os = Ge
 
 export default function AvaliacaoEquipamento({ equipamento, entityType, avaliacaoExistente, onSalvar, somenteLeitura = false }) {
   const [avaliacao, setAvaliacao] = useState({
+    anydesk_id: avaliacaoExistente?.anydesk_id || extrairAnyDesk(equipamento) || extrairAnyDesk(avaliacaoExistente) || "",
     memoria_ram: avaliacaoExistente?.memoria_ram || "",
     tipo_armazenamento: avaliacaoExistente?.tipo_armazenamento || "",
     espaco_disco: avaliacaoExistente?.espaco_disco || "",
