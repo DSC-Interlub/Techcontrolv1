@@ -9,6 +9,7 @@ import { Activity, Loader2, Monitor, Laptop, ChevronLeft, History, ClipboardList
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import AvaliacaoEquipamento from "../components/equipamentos/AvaliacaoEquipamento";
+import { gerarTarefasManutencao } from "@/utils/eval";
 
 const getClassColor = (c) => c === "Manter" ? "bg-green-100 text-green-800" : c === "Upgrade" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
 
@@ -68,7 +69,12 @@ export default function PortalEquipamentos() {
         ...dados,
       });
     },
-    onSuccess: () => {
+    onSuccess: async (novaAvaliacao) => {
+      try {
+        await gerarTarefasManutencao(novaAvaliacao);
+      } catch (err) {
+        console.error("Erro ao gerar tarefas de manutenção automática:", err);
+      }
       refetchAvaliacoes();
       setAvaliacaoSalva(true);
       setTimeout(() => {

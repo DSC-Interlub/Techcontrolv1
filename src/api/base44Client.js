@@ -25,6 +25,7 @@ const tableMap = {
   Configuracoes: 'configuracoes',
   EmpresasTerceiras: 'empresas_terceiras',
   Estacoes_Trabalho: 'estacoes_trabalho',
+  TarefasManutencao: 'tarefas_manutencao_equipamento',
   User: 'profiles'
 };
 

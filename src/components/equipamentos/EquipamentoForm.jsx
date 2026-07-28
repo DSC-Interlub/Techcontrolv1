@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
 import { formatarDataSemFuso } from "@/utils/date";
+import { gerarTarefasManutencao } from "@/utils/eval";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType, isLoading = false }) {
@@ -85,7 +86,12 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
 
       return base44.entities.Avaliacoes.create(avaliacaoData);
     },
-    onSuccess: () => {
+    onSuccess: async (novaAvaliacao) => {
+      try {
+        await gerarTarefasManutencao(novaAvaliacao);
+      } catch (err) {
+        console.error("Erro ao gerar tarefas de manutenção automática:", err);
+      }
       queryClient.invalidateQueries(['avaliacoes', equipamento?.id]);
       queryClient.invalidateQueries(['avaliacoes']);
       alert('Avaliação salva com sucesso!');

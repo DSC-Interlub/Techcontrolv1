@@ -35,7 +35,9 @@ import {
   ShieldAlert,
   ArrowDown,
   ArrowUp,
-  Clock
+  Clock,
+  ChevronDown,
+  Wrench
 } from "lucide-react";
 
 // Função para gerar iniciais do avatar
@@ -95,6 +97,26 @@ export default function Painel_Maquinas() {
   const { data: colaboradores = [], isLoading: isLoadingColabs } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+  });
+
+  const { data: tarefas = [], refetch: refetchTarefas } = useQuery({
+    queryKey: ['tarefas_manutencao'],
+    queryFn: () => base44.entities.TarefasManutencao.list(),
+  });
+
+  const [expandedEquipamentos, setExpandedEquipamentos] = useState({});
+
+  const toggleTarefaMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      return base44.entities.TarefasManutencao.update(id, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tarefas_manutencao'] });
+    },
+    onError: (err) => {
+      console.error("Erro ao atualizar status da tarefa:", err);
+      alert("Não foi possível atualizar o status da tarefa. Tente novamente.");
+    }
   });
 
   // Mutação para executar a troca direta
@@ -541,6 +563,10 @@ export default function Painel_Maquinas() {
               <div className="grid grid-cols-1 gap-4">
                 {rankingMaquinas.map((m, index) => {
                   const dispSugerido = obterMelhorDisponivel(m.tipo);
+                  const tarefasDoEq = tarefas.filter(t => t.equipamento_id === m.id);
+                  const tarefasPendentes = tarefasDoEq.filter(t => t.status === 'Pendente');
+                  const totalPendentes = tarefasPendentes.length;
+                  const isExpanded = !!expandedEquipamentos[m.id];
                   
                   return (
                     <Card key={m.id} className="shadow-sm hover:shadow border-slate-200 transition overflow-hidden">
@@ -609,16 +635,109 @@ export default function Painel_Maquinas() {
                               <p className="text-slate-400 italic">Nunca avaliado</p>
                             )}
                           </div>
+                          
+                          {/* Badges de Tarefas Pendentes */}
+                          {totalPendentes > 0 ? (
+                            <Badge className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 text-[10px] px-2 py-0.5 border font-bold flex items-center gap-1 shadow-sm shrink-0">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
+                              {totalPendentes} {totalPendentes === 1 ? 'pendência' : 'pendências'}
+                            </Badge>
+                          ) : tarefasDoEq.length > 0 ? (
+                            <Badge className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5 border font-bold flex items-center gap-0.5 shadow-sm shrink-0">
+                              ✓ Resolvido
+                            </Badge>
+                          ) : null}
+
                           {renderSaudeBadge(m.classificacao, m.pontuacao)}
+
+                          {/* Botão de Toggle da Sanfona */}
+                          {tarefasDoEq.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setExpandedEquipamentos(prev => ({ ...prev, [m.id]: !prev[m.id] }))}
+                              className="h-8 w-8 rounded-lg text-slate-500 hover:text-slate-900 transition flex items-center justify-center shrink-0 border"
+                              title={isExpanded ? "Ocultar checklist" : "Ver checklist de tarefas"}
+                            >
+                              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-teal-600' : ''}`} />
+                            </Button>
+                          )}
                         </div>
                       </div>
+
+                      {/* CHECKLIST DE TAREFAS (SANFONA EXPANSÍVEL) */}
+                      {isExpanded && tarefasDoEq.length > 0 && (
+                        <div className="border-t bg-slate-50/50 dark:bg-slate-900/10 p-4 space-y-3">
+                          <div className="flex items-center justify-between border-b pb-2">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <Wrench className="w-3.5 h-3.5 text-teal-600" />
+                              Checklist de Manutenção Operacional
+                            </p>
+                            <span className="text-[10px] text-slate-400 font-semibold font-mono">
+                              {tarefasDoEq.filter(t => t.status === 'Concluída').length}/{tarefasDoEq.length} CONCLUÍDAS
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {tarefasDoEq.map(t => (
+                              <div
+                                key={t.id}
+                                className={`flex items-start gap-3 p-3 rounded-xl border text-xs transition duration-150 ${
+                                  t.status === 'Concluída'
+                                    ? 'bg-slate-100/50 dark:bg-slate-800/20 border-slate-200/60 opacity-60 line-through text-slate-400'
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={t.status === 'Concluída'}
+                                  onChange={(e) => {
+                                    toggleTarefaMutation.mutate({
+                                      id: t.id,
+                                      status: e.target.checked ? 'Concluída' : 'Pendente'
+                                    });
+                                  }}
+                                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold leading-normal">{t.descricao}</p>
+                                  <div className="flex items-center gap-1.5 mt-1.5 text-[9px] font-semibold tracking-wide uppercase">
+                                    <span className={`px-1.5 py-0.5 rounded ${
+                                      t.origem === 'Regra automática' 
+                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400' 
+                                        : 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400'
+                                    }`}>
+                                      {t.origem}
+                                    </span>
+                                    {t.created_date && (
+                                      <span className="text-slate-400 lowercase">
+                                        gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* INDICADOR INTELIGENTE DE REAVALIAÇÃO PARA MÁQUINAS UPGRADE COM TAREFAS ZERADAS */}
+                      {m.classificacao === "Upgrade" && tarefasDoEq.length > 0 && totalPendentes === 0 && (
+                        <div className="border-t bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-3 flex items-center gap-2.5 border-emerald-100">
+                          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
+                          <p className="text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex-1">
+                            💡 Todas as tarefas de manutenção recomendadas foram resolvidas. Sugerimos reavaliar este equipamento para verificar se a nota técnica foi restaurada a "Manter" antes de decidir pelo upgrade físico definitivo.
+                          </p>
+                        </div>
+                      )}
 
                       {/* SUB-BLOCO DE SUGESTÃO DE TROCA */}
                       {(m.classificacao === "Substituir" || m.classificacao === "Upgrade") && dispSugerido && (
                         <div className="border-t bg-gradient-to-r from-blue-50/50 to-indigo-50/20 dark:from-slate-800/30 dark:to-slate-800/10 px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                           <div className="flex items-center gap-2">
                             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                               <strong>Sugestão de Upgrade:</strong> {dispSugerido.marca} {dispSugerido.modelo}{" "}
                               <span className="text-[10px] bg-white border px-1.5 py-0.5 rounded font-mono font-medium text-slate-600">
                                 {dispSugerido.etiqueta_interna || "Sem etiqueta"}

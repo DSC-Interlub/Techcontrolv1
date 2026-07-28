@@ -177,7 +177,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
       memoria_ram: ramFormatada,
       tipo_armazenamento: jsonPreview.disco_tipo,
       espaco_disco: discoFormatado,
-      versao_windows: jsonPreview.windows_versao,
+      versao_windows: `${jsonPreview.windows_versao} | Uptime: ${jsonPreview.uptime_dias} dias e ${jsonPreview.uptime_horas} horas`,
       antivirus: antivirusFormatado
     }));
 
