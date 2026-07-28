@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Activity, TrendingUp, AlertTriangle, XCircle, Save, Info, ChevronDown, ChevronUp, Copy, CheckCircle } from "lucide-react";
+import { Activity, TrendingUp, AlertTriangle, XCircle, Save, Info, ChevronDown, ChevronUp, Copy, CheckCircle, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatarDataSemFuso } from "@/utils/date";
 import { calcularPontuacaoEquipamento } from "@/utils/eval";

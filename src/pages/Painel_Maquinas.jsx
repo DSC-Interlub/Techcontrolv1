@@ -1315,21 +1315,65 @@ export default function Painel_Maquinas() {
                         </div>
                       </div>
 
-                      {/* RESPOSTAS DO QUESTIONÁRIO DA AVALIAÇÃO */}
+                      {/* TODAS AS RESPOSTAS PREENCHIDAS PELO USUÁRIO NA AVALIAÇÃO */}
                       {d.evalItem && (
-                        <div className="bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/60 rounded-xl p-3.5 space-y-2 text-xs">
-                          <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs">
-                            🔍 Respostas Relatadas pelo Colaborador:
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-700 dark:text-slate-300">
-                            <p><strong>Desempenho:</strong> {d.evalItem.desempenho || "N/I"}</p>
-                            <p><strong>Atende ao trabalho:</strong> {d.evalItem.atende_trabalho || "N/I"}</p>
-                            <p><strong>Recomendação:</strong> {d.evalItem.recomendacao_usuario || "N/I"}</p>
+                        <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 rounded-xl p-4 space-y-3 text-xs shadow-sm">
+                          <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                            <p className="font-bold text-amber-950 dark:text-amber-200 flex items-center gap-1.5 text-xs">
+                              🔍 Diagnóstico & Respostas Completas da Avaliação:
+                            </p>
+                            <span className="text-[10px] text-amber-800 font-mono">
+                              Avaliador: {d.evalItem.avaliador || "Usuário"}
+                            </span>
                           </div>
-                          {d.evalItem.problemas && d.evalItem.problemas.length > 0 && (
-                            <div className="pt-1.5 border-t border-amber-200/40">
-                              <span className="font-bold text-red-700 dark:text-red-400">Problemas relatados: </span>
-                              <span className="text-slate-700 dark:text-slate-300">{d.evalItem.problemas.join(", ")}</span>
+
+                          {/* Grid 1: Dados Técnicos Coletados do Hardware */}
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 text-[11px] bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-amber-200/50">
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Uso de RAM</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.memoria_ram || "N/I"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Armazenamento</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.tipo_armazenamento || "N/I"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Espaço Livre</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.espaco_disco || "N/I"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Sistema Windows</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.versao_windows || "N/I"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase block">Antivírus</span>
+                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.antivirus || "N/I"}</span>
+                            </div>
+                          </div>
+
+                          {/* Grid 2: Opinião Subjetiva do Colaborador */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-[11px] text-slate-700 dark:text-slate-300 pt-1">
+                            <p><strong>Desempenho Percebido:</strong> {d.evalItem.desempenho || "N/I"}</p>
+                            <p><strong>Atende ao Trabalho:</strong> {d.evalItem.atende_trabalho || "N/I"}</p>
+                            <p><strong>Recomendação:</strong> {d.evalItem.recomendacao_usuario || "N/I"}</p>
+                            <p><strong>Grau de Satisfação:</strong> {d.evalItem.satisfacao || "N/I"}</p>
+                          </div>
+
+                          {/* Lista de Problemas Relatados */}
+                          {d.evalItem.problemas && d.evalItem.problemas.length > 0 ? (
+                            <div className="pt-2 border-t border-amber-200/60">
+                              <span className="font-bold text-red-700 dark:text-red-400 block mb-1">⚠️ Problemas Relatados pelo Colaborador:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {d.evalItem.problemas.map((prob, idx) => (
+                                  <Badge key={idx} variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px]">
+                                    • {prob}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="pt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                              ✓ Nenhum problema crítico de hardware/software foi relatado nesta avaliação.
                             </div>
                           )}
                         </div>
