@@ -37,7 +37,11 @@ import {
   ArrowUp,
   Clock,
   ChevronDown,
-  Wrench
+  Wrench,
+  Copy,
+  LayoutGrid,
+  ListFilter,
+  SlidersHorizontal
 } from "lucide-react";
 
 // Função para gerar iniciais do avatar
@@ -106,9 +110,10 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
 
 export default function Painel_Maquinas() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "Desktop" | "Notebook" | "Monitor"
+  const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "Desktop" | "Notebook"
   const [filterClassificacao, setFilterClassificacao] = useState("todos"); // "todos" | "Manter" | "Upgrade" | "Substituir" | "sem_avaliacao"
-  const [ordemPioresPrimeiro, setOrdemPioresPrimeiro] = useState(true); // true = Piores primeiro | false = Melhores primeiro
+  const [criterioOrdenacao, setCriterioOrdenacao] = useState("piores_primeiro");
+  const [viewMode, setViewMode] = useState("grid"); // "grid" | "table"
 
   // Modal de confirmação de troca
   const [showSwapModal, setShowSwapModal] = useState(false);
@@ -437,7 +442,7 @@ export default function Painel_Maquinas() {
     return disponiveisEmEstoque.find(d => d.tipo === tipo) || null;
   };
 
-  // Ranking de Máquinas em Uso com Filtros
+  // Ranking de Máquinas em Uso com Filtros e Ordenação Multi-critério
   const rankingMaquinas = useMemo(() => {
     return maquinasConsolidadas
       .filter(m => {
@@ -465,20 +470,43 @@ export default function Painel_Maquinas() {
         return matchSearch && matchTipo && matchClass;
       })
       .sort((a, b) => {
-        // Ordenação por classificação técnica:
-        // Piores primeiro (Substituir -> Upgrade -> Manter -> Sem Avaliação) ou inverso.
-        const orderWeight = { "Substituir": 4, "Upgrade": 3, "Manter": 2, "Ainda não avaliado": 1 };
-        const weightA = orderWeight[a.classificacao] || 1;
-        const weightB = orderWeight[b.classificacao] || 1;
-
-        if (weightA !== weightB) {
-          return ordemPioresPrimeiro ? weightB - weightA : weightA - weightB;
+        if (criterioOrdenacao === "piores_primeiro") {
+          const orderWeight = { "Substituir": 4, "Upgrade": 3, "Manter": 2, "Ainda não avaliado": 1 };
+          const weightA = orderWeight[a.classificacao] || 1;
+          const weightB = orderWeight[b.classificacao] || 1;
+          if (weightA !== weightB) return weightB - weightA;
+          return b.pontuacao - a.pontuacao;
         }
 
-        // Critério de desempate: Pontuação numérica (maior pontuação = pior saúde)
-        return ordemPioresPrimeiro ? b.pontuacao - a.pontuacao : a.pontuacao - b.pontuacao;
+        if (criterioOrdenacao === "melhores_primeiro") {
+          const orderWeight = { "Manter": 4, "Upgrade": 3, "Substituir": 2, "Ainda não avaliado": 1 };
+          const weightA = orderWeight[a.classificacao] || 1;
+          const weightB = orderWeight[b.classificacao] || 1;
+          if (weightA !== weightB) return weightB - weightA;
+          return a.pontuacao - b.pontuacao;
+        }
+
+        if (criterioOrdenacao === "avaliacao_antiga_primeiro") {
+          if (!a.dataAvaliacao) return 1;
+          if (!b.dataAvaliacao) return -1;
+          return new Date(a.dataAvaliacao) - new Date(b.dataAvaliacao);
+        }
+
+        if (criterioOrdenacao === "avaliacao_recente_primeiro") {
+          if (!a.dataAvaliacao) return 1;
+          if (!b.dataAvaliacao) return -1;
+          return new Date(b.dataAvaliacao) - new Date(a.dataAvaliacao);
+        }
+
+        if (criterioOrdenacao === "idade_antiga_primeiro") {
+          if (!a.data_aquisicao) return 1;
+          if (!b.data_aquisicao) return -1;
+          return new Date(a.data_aquisicao) - new Date(b.data_aquisicao);
+        }
+
+        return 0;
       });
-  }, [maquinasConsolidadas, searchTerm, filterTipo, filterClassificacao, ordemPioresPrimeiro]);
+  }, [maquinasConsolidadas, searchTerm, filterTipo, filterClassificacao, criterioOrdenacao]);
 
   // Função para retornar badge de saúde formatado
   const renderSaudeBadge = (classificacao, pontuacao) => {
@@ -636,27 +664,44 @@ export default function Painel_Maquinas() {
               </div>
             </div>
 
-            {/* TOGGLE PIORES / MELHORES PRIMEIRO */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Classificar:</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOrdemPioresPrimeiro(v => !v)}
-                className="h-9 text-xs rounded-lg gap-1.5 font-semibold"
-              >
-                {ordemPioresPrimeiro ? (
-                  <>
-                    <ArrowDown className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-                    Ver Piores Primeiro
-                  </>
-                ) : (
-                  <>
-                    <ArrowUp className="w-3.5 h-3.5 text-emerald-500" />
-                    Ver Melhores Primeiro
-                  </>
-                )}
-              </Button>
+            {/* ORDENAÇÃO E MODO DE EXIBIÇÃO */}
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 p-1 rounded-lg border text-xs">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500 ml-1.5" />
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Ordenar:</span>
+                <select
+                  value={criterioOrdenacao}
+                  onChange={(e) => setCriterioOrdenacao(e.target.value)}
+                  className="bg-white dark:bg-slate-900 text-xs font-semibold rounded-md border-0 py-1 px-2 focus:ring-1 focus:ring-teal-500 text-slate-800 dark:text-slate-200 cursor-pointer shadow-sm"
+                >
+                  <option value="piores_primeiro">⚠️ Piores Máquinas Primeiro (Saúde)</option>
+                  <option value="melhores_primeiro">✨ Melhores Máquinas Primeiro (Saúde)</option>
+                  <option value="avaliacao_antiga_primeiro">🕒 Avaliação Mais Antiga Primeiro</option>
+                  <option value="avaliacao_recente_primeiro">📅 Avaliação Mais Recente Primeiro</option>
+                  <option value="idade_antiga_primeiro">🖥️ Tempo de Uso (Mais Antigos Primeiro)</option>
+                </select>
+              </div>
+
+              <div className="flex rounded-lg border p-0.5 bg-slate-50 dark:bg-slate-800 gap-0.5 text-xs">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`px-2.5 py-1 rounded-md transition font-semibold flex items-center gap-1.5 ${
+                    viewMode === "grid" ? "bg-white shadow-sm text-teal-700 dark:bg-slate-900 dark:text-teal-400" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Exibir em Grid de Cards Visual"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" /> Cards
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`px-2.5 py-1 rounded-md transition font-semibold flex items-center gap-1.5 ${
+                    viewMode === "table" ? "bg-white shadow-sm text-teal-700 dark:bg-slate-900 dark:text-teal-400" : "text-slate-500 hover:text-slate-800"
+                  }`}
+                  title="Exibir em Tabela Estruturada Densa"
+                >
+                  <ListFilter className="w-3.5 h-3.5" /> Tabela
+                </button>
+              </div>
             </div>
           </div>
 
@@ -669,7 +714,7 @@ export default function Painel_Maquinas() {
                 <p className="text-xs text-slate-400 mt-1">Tente ajustar a busca ou os filtros de tipo de hardware.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" : "grid grid-cols-1 gap-4"}>
                 {rankingMaquinas.map((m, index) => {
                   const dispSugerido = obterMelhorDisponivel(m.tipo);
                   const tarefasDoEq = tarefas.filter(t => t.equipamento_id === m.id);
@@ -678,8 +723,8 @@ export default function Painel_Maquinas() {
                   const isExpanded = !!expandedEquipamentos[m.id];
                   
                   return (
-                    <Card key={m.id} className="shadow-sm hover:shadow border-slate-200 transition overflow-hidden">
-                      <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <Card key={m.id} className="shadow-sm hover:shadow-md border-slate-200 transition-all duration-200 overflow-hidden flex flex-col justify-between">
+                      <div className={viewMode === "grid" ? "p-5 flex flex-col justify-between gap-4 h-full" : "p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"}>
                         {/* Colaborador */}
                         <div className="flex items-center gap-3">
                           {m.colabInfo?.foto_url ? (
@@ -693,18 +738,18 @@ export default function Painel_Maquinas() {
                               {getInitials(m.usuario_atual)}
                             </div>
                           )}
-                          <div>
-                            <p className="text-sm font-bold text-slate-800 dark:text-white">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-800 dark:text-white truncate">
                               {m.usuario_atual || "Compartilhado"}
                             </p>
-                            <p className="text-xs text-slate-500 font-medium">
+                            <p className="text-xs text-slate-500 font-medium truncate">
                               {m.area}
                             </p>
                           </div>
                         </div>
 
                         {/* Ativo */}
-                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 max-w-sm">
+                        <div className={`flex items-center gap-3 bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 ${viewMode === "grid" ? "w-full" : "max-w-sm"}`}>
                           <div className="p-2 bg-white dark:bg-slate-700 rounded-lg shadow-sm border flex-shrink-0">
                             {m.tipo === "Notebook" ? (
                               <Laptop className="w-5 h-5 text-indigo-500" />
@@ -714,20 +759,20 @@ export default function Painel_Maquinas() {
                               <Monitor className="w-5 h-5 text-slate-500" />
                             )}
                           </div>
-                          <div className="min-w-0 text-xs">
+                          <div className="min-w-0 text-xs flex-1">
                             <p className="font-semibold text-slate-700 dark:text-slate-300 truncate">
                               {m.marca} {m.modelo}
                             </p>
                             <p className="text-[10px] text-slate-500 font-medium mt-0.5">
                               Etiqueta: <span className="font-mono">{m.etiqueta_interna || "—"}</span>
-                              {m.tempo_uso_anos ? ` | ${m.tempo_uso_anos.toFixed(1)} anos de uso` : ""}
+                              {m.tempo_uso_anos ? ` | ${m.tempo_uso_anos.toFixed(1)} anos` : ""}
                             </p>
                           </div>
                         </div>
 
                         {/* Avaliação e Saúde */}
-                        <div className="text-right flex items-center gap-5 md:ml-auto">
-                          <div className="text-xs text-slate-500 text-left md:text-right">
+                        <div className={viewMode === "grid" ? "flex items-center justify-between pt-2 border-t mt-1" : "text-right flex items-center gap-5 md:ml-auto"}>
+                          <div className="text-xs text-slate-500 text-left">
                             {m.ultimaEval ? (
                               <>
                                 <p className="font-semibold text-slate-700">

@@ -356,8 +356,8 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   <Input className="mt-1" placeholder="Ex: Analista, Gerente" value={formData.cargo || ""} onChange={e => set('cargo', e.target.value)} />
                 </div>
                 <div>
-                  <Label>Telefone / Ramal</Label>
-                  <Input className="mt-1" placeholder="(00) 00000-0000 ou ramal" value={formData.telefone || ""} onChange={e => set('telefone', e.target.value)} />
+                  <Label>Ramal</Label>
+                  <Input className="mt-1" placeholder="Ex: 1009" value={formData.telefone || ""} onChange={e => set('telefone', e.target.value)} />
                 </div>
                 <div>
                   <Label>Tipo de Funcionário</Label>
