@@ -6,29 +6,81 @@ export function calcularPontuacaoEquipamento(dados, dataAquisicao) {
   let pontos = 0;
 
   // 1. Memória RAM
-  if (dados.memoria_ram === "Menos de 50%") pontos += 0;
-  else if (dados.memoria_ram === "Entre 50% e 70%") pontos += 3;
-  else if (dados.memoria_ram === "Entre 70% e 90%") pontos += 6;
-  else if (dados.memoria_ram === "Acima de 90%") pontos += 10;
+  let ramVal = dados.memoria_ram;
+  let ramPct = null;
+  if (typeof ramVal === 'number') {
+    ramPct = ramVal;
+  } else if (typeof ramVal === 'string') {
+    const match = ramVal.match(/^([\d.,]+)%/);
+    if (match) {
+      ramPct = parseFloat(match[1].replace(',', '.'));
+    }
+  }
+
+  if (ramPct !== null) {
+    if (ramPct < 50) pontos += 0;
+    else if (ramPct < 70) pontos += 3;
+    else if (ramPct < 90) pontos += 6;
+    else pontos += 10;
+  } else {
+    if (dados.memoria_ram === "Menos de 50%") pontos += 0;
+    else if (dados.memoria_ram === "Entre 50% e 70%") pontos += 3;
+    else if (dados.memoria_ram === "Entre 70% e 90%") pontos += 6;
+    else if (dados.memoria_ram === "Acima de 90%") pontos += 10;
+  }
 
   // 2. Tipo de Armazenamento
-  if (dados.tipo_armazenamento === "HD") pontos += 5;
-  else if (dados.tipo_armazenamento === "SSD") pontos += 0;
+  let tipoArm = dados.tipo_armazenamento;
+  if (tipoArm === "HD" || tipoArm === "HDD") pontos += 5;
+  else if (tipoArm === "SSD") pontos += 0;
 
   // 3. Espaço em Disco
-  if (dados.espaco_disco === "Mais de 100 GB livres") pontos += 0;
-  else if (dados.espaco_disco === "Entre 50 e 100 GB livres") pontos += 3;
-  else if (dados.espaco_disco === "Entre 20 e 50 GB livres") pontos += 6;
-  else if (dados.espaco_disco === "Menos de 20 GB livres") pontos += 10;
+  let espacoVal = dados.espaco_disco;
+  let espacoGB = null;
+  if (typeof espacoVal === 'number') {
+    espacoGB = espacoVal;
+  } else if (typeof espacoVal === 'string') {
+    const match = espacoVal.match(/^([\d.,]+)\s*GB/i);
+    if (match) {
+      espacoGB = parseFloat(match[1].replace(',', '.'));
+    } else if (!isNaN(parseFloat(espacoVal))) {
+      espacoGB = parseFloat(espacoVal);
+    }
+  }
+
+  if (espacoGB !== null) {
+    if (espacoGB >= 100) pontos += 0;
+    else if (espacoGB >= 50) pontos += 3;
+    else if (espacoGB >= 20) pontos += 6;
+    else pontos += 10;
+  } else {
+    if (dados.espaco_disco === "Mais de 100 GB livres") pontos += 0;
+    else if (dados.espaco_disco === "Entre 50 e 100 GB livres") pontos += 3;
+    else if (dados.espaco_disco === "Entre 20 e 50 GB livres") pontos += 6;
+    else if (dados.espaco_disco === "Menos de 20 GB livres") pontos += 10;
+  }
 
   // 4. Versão do Windows
-  if (dados.versao_windows === "Windows 10") pontos += 5;
-  else if (dados.versao_windows === "Windows 11") pontos += 0;
+  let winVal = dados.versao_windows;
+  if (typeof winVal === 'string') {
+    if (winVal.toLowerCase().includes("windows 10")) pontos += 5;
+    else if (winVal.toLowerCase().includes("windows 11")) pontos += 0;
+  } else {
+    if (dados.versao_windows === "Windows 10") pontos += 5;
+    else if (dados.versao_windows === "Windows 11") pontos += 0;
+  }
 
   // 5. Antivírus
-  if (dados.antivirus === "Sim, está ativo" || dados.antivirus === "Sim") pontos += 0;
-  else if (dados.antivirus === "Aparece aviso de desativado" || dados.antivirus === "Aviso de desativado") pontos += 5;
-  else if (dados.antivirus === "Não tem antivírus" || dados.antivirus === "Não") pontos += 10;
+  let avVal = dados.antivirus;
+  if (typeof avVal === 'string') {
+    if (avVal.startsWith("Ativo") || avVal === "Sim, está ativo" || avVal === "Sim") pontos += 0;
+    else if (avVal === "Aparece aviso de desativado" || avVal === "Aviso de desativado") pontos += 5;
+    else if (avVal.startsWith("Inativo") || avVal === "Não tem antivírus" || avVal === "Não") pontos += 10;
+  } else {
+    if (dados.antivirus === "Sim, está ativo" || dados.antivirus === "Sim") pontos += 0;
+    else if (dados.antivirus === "Aparece aviso de desativado" || dados.antivirus === "Aviso de desativado") pontos += 5;
+    else if (dados.antivirus === "Não tem antivírus" || dados.antivirus === "Não") pontos += 10;
+  }
 
   // 6. Desempenho
   if (dados.desempenho === "Muito rápido" || dados.desempenho === "Rápido") pontos += 0;
