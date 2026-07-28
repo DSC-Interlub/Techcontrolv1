@@ -75,6 +75,62 @@ function getAvatarBgColor(name) {
 }
 
 const COMANDOS_RESOLUCAO_TAREFAS = {
+  "Diagnosticar processos consumindo alta memória RAM e encerrar tarefas em segundo plano": {
+    tipo: "PowerShell",
+    comando: `Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet64 / 1MB, 1)}}`,
+    desc: "Exibe os 10 processos com maior consumo de memória RAM para encerramento ou análise."
+  },
+  "Liberar espaço em disco (limpeza de %temp%, downloads e lixeira)": {
+    tipo: "PowerShell",
+    comando: `Remove-Item -Path "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
+    desc: "Limpa a pasta TEMP do usuário e esvazia a Lixeira do Windows."
+  },
+  "Executar reparo de arquivos do sistema e integridade do Windows (sfc /scannow & DISM)": {
+    tipo: "CMD (Admin)",
+    comando: `sfc /scannow & DISM /Online /Cleanup-Image /RestoreHealth`,
+    desc: "Varre e repara arquivos corrompidos do sistema operacional Windows."
+  },
+  "Verificar e solicitar instalação/ativação do antivírus corporativo via filial do México": {
+    tipo: "Ação de TI",
+    comando: `SOLICITACAO_ANTIVIRUS_MEXICO`,
+    desc: "Solicitar a chave de ativação ou instalador do antivírus corporativo com a equipe TI México."
+  },
+  "Verificar compatibilidade e agendar atualização para o Windows 11": {
+    tipo: "PowerShell",
+    comando: `usoclient StartInteractiveScan`,
+    desc: "Inicia a varredura do Windows Update para agendar upgrade ao Windows 11."
+  },
+  "Avaliar e agendar upgrade de armazenamento de HDD para SSD": {
+    tipo: "Ação de TI",
+    comando: `SOLICITACAO_UPGRADE_SSD`,
+    desc: "Solicitar requisição de compra/substituição do disco HDD por SSD corporativo."
+  },
+  "Reiniciar o sistema para liberar cache de memória e aplicar atualizações": {
+    tipo: "CMD / PowerShell",
+    comando: `shutdown /r /t 60 /c "Reinicializacao programada de manutencao TI"`,
+    desc: "Programa o reinício da máquina em 60 segundos com aviso visual ao usuário."
+  },
+  "Otimizar programas de inicialização automática no boot do Windows": {
+    tipo: "PowerShell",
+    comando: `Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, User`,
+    desc: "Lista todos os programas que iniciam automaticamente no boot."
+  },
+  "Testar conexão de rede, redefinir pilha TCP/IP e atualizar driver da placa de rede": {
+    tipo: "CMD (Admin)",
+    comando: `ipconfig /flushdns & netsh int ip reset & netsh winsock reset`,
+    desc: "Reseta o cache DNS, pilha TCP/IP e conectores Winsock."
+  },
+  "Verificar cabos de vídeo, conexões e driver de vídeo do monitor": {
+    tipo: "PowerShell",
+    comando: `Get-CimInstance Win32_VideoController | Select-Object Name, DriverVersion, Status`,
+    desc: "Verifica modelo e versão do driver de vídeo instalado."
+  },
+  "Testar ou substituir periféricos com defeito (teclado / mouse)": {
+    tipo: "Ação de TI",
+    comando: `SOLICITACAO_PERIFERICOS_ESTOQUE`,
+    desc: "Solicitar periférico novo no estoque da TI para substituição rápida."
+  },
+  // Chaves legadas para compatibilidade retroativa com tarefas já salvas
   "Liberar espaço em disco (arquivos temporários, downloads antigos)": {
     tipo: "PowerShell",
     comando: `Remove-Item -Path "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
@@ -94,31 +150,6 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
     tipo: "PowerShell",
     comando: `Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet64 / 1MB, 1)}}`,
     desc: "Exibe top 10 processos em consumo de memória para diagnóstico."
-  },
-  "Verificar e solicitar instalação/ativação do antivírus corporativo via filial do México": {
-    tipo: "Ação de TI",
-    comando: `SOLICITACAO_ANTIVIRUS_MEXICO`,
-    desc: "Solicitar instalação / ativação do antivírus corporativo à filial do México."
-  },
-  "Reiniciar a máquina regularmente (uptime muito alto detectado)": {
-    tipo: "CMD / PowerShell",
-    comando: `shutdown /r /t 60 /c "Reinicializacao programada de manutencao TI"`,
-    desc: "Programa o reinício da máquina em 60 segundos com aviso ao usuário."
-  },
-  "Atualizar para Windows 11 (ou avaliar compatibilidade de hardware)": {
-    tipo: "PowerShell",
-    comando: `usoclient StartInteractiveScan`,
-    desc: "Inicia a busca por atualizações pendentes para o Windows 11."
-  },
-  "Investigar causa da lentidão ao ligar (inicialização pesada, muitos programas no boot)": {
-    tipo: "PowerShell",
-    comando: `Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, User`,
-    desc: "Lista todos os aplicativos configurados para iniciar com o Windows."
-  },
-  "Testar placa de rede / atualizar drivers / redefinir pilha TCP/IP e DNS": {
-    tipo: "CMD (Admin)",
-    comando: `ipconfig /flushdns & netsh int ip reset & netsh winsock reset`,
-    desc: "Reseta o cache DNS, protocolo TCP/IP e biblioteca Winsock da rede."
   }
 };
 
@@ -1276,28 +1307,31 @@ export default function Painel_Maquinas() {
 
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AnyDesk (Acesso Remoto)</span>
-                          {extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem) ? (
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                                💻 {extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem)}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const code = extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem);
-                                  navigator.clipboard.writeText(code);
-                                  alert(`AnyDesk ${code} copiado para a área de transferência!`);
-                                }}
-                                className="h-5 px-1 text-[10px] text-indigo-700 hover:bg-indigo-100"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">Não informado</span>
-                          )}
+                          {(() => {
+                            const code = extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem) || extrairAnyDesk(d.evalItem?.observacoes) || extrairAnyDesk(d.equipamento?.observacoes);
+                            if (code) {
+                              return (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                    💻 {code}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(code);
+                                      alert(`AnyDesk ${code} copiado para a área de transferência!`);
+                                    }}
+                                    className="h-5 px-1 text-[10px] text-indigo-700 hover:bg-indigo-100"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              );
+                            }
+                            return <span className="text-slate-400 italic">Não informado</span>;
+                          })()}
                         </div>
 
                         <div>
@@ -1310,7 +1344,15 @@ export default function Painel_Maquinas() {
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tempo de Uso do Ativo</span>
                           <span className="font-medium text-slate-700 dark:text-slate-300 mt-0.5 block">
-                            ⏳ {d.equipamento?.data_aquisicao ? `${Math.floor((new Date() - new Date(d.equipamento.data_aquisicao))/(1000*60*60*24*365))} ano(s)` : "Não informado"}
+                            ⏳ {(() => {
+                              if (d.evalItem?.tempo_uso_anos && d.evalItem.tempo_uso_anos > 0) return `${d.evalItem.tempo_uso_anos} ano(s)`;
+                              if (d.equipamento?.tempo_uso) return d.equipamento.tempo_uso;
+                              if (d.equipamento?.data_aquisicao) {
+                                const anos = Math.floor((new Date() - new Date(d.equipamento.data_aquisicao)) / (1000 * 60 * 60 * 24 * 365));
+                                return `${anos} ano(s)`;
+                              }
+                              return "Não informado";
+                            })()}
                           </span>
                         </div>
                       </div>

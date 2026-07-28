@@ -162,7 +162,7 @@ export async function gerarTarefasManutencao(avaliacao) {
 
   // --- REGRAS AUTOMÁTICAS ---
 
-  // 1. RAM (ram_uso_percentual > 90)
+  // 1. RAM (uso > 90%)
   let ramPct = null;
   const ramVal = avaliacao.memoria_ram;
   if (typeof ramVal === 'number') {
@@ -175,7 +175,7 @@ export async function gerarTarefasManutencao(avaliacao) {
   }
   if (ramPct !== null && ramPct > 90) {
     tarefasASeremCriadas.push({
-      descricao: "Verificar processos consumindo memória RAM em excesso / considerar upgrade de memória",
+      descricao: "Diagnosticar processos consumindo alta memória RAM e encerrar tarefas em segundo plano",
       origem: "Regra automática"
     });
   }
@@ -204,7 +204,7 @@ export async function gerarTarefasManutencao(avaliacao) {
 
   if (espacoGB !== null && (espacoGB < 20 || (discoLivrePct !== null && discoLivrePct < 15))) {
     tarefasASeremCriadas.push({
-      descricao: "Liberar espaço em disco (arquivos temporários, downloads antigos)",
+      descricao: "Liberar espaço em disco (limpeza de %temp%, downloads e lixeira)",
       origem: "Regra automática"
     });
   }
@@ -213,7 +213,7 @@ export async function gerarTarefasManutencao(avaliacao) {
   const tipoArm = avaliacao.tipo_armazenamento;
   if (tipoArm === "HD" || tipoArm === "HDD") {
     tarefasASeremCriadas.push({
-      descricao: "Avaliar upgrade para SSD",
+      descricao: "Avaliar e agendar upgrade de armazenamento de HDD para SSD",
       origem: "Regra automática"
     });
   }
@@ -222,7 +222,7 @@ export async function gerarTarefasManutencao(avaliacao) {
   const winVal = avaliacao.versao_windows;
   if (typeof winVal === 'string' && winVal.toLowerCase().includes("windows 10")) {
     tarefasASeremCriadas.push({
-      descricao: "Atualizar para Windows 11 (ou avaliar compatibilidade de hardware)",
+      descricao: "Verificar compatibilidade e agendar atualização para o Windows 11",
       origem: "Regra automática"
     });
   }
@@ -236,23 +236,23 @@ export async function gerarTarefasManutencao(avaliacao) {
     });
   }
 
-  // 6. Uptime > 15 dias (extraído de versao_windows)
+  // 6. Uptime > 15 dias
   if (typeof winVal === 'string') {
     const matchUptime = winVal.match(/Uptime:\s*(\d+)\s*dias/i);
     if (matchUptime) {
       const dias = parseInt(matchUptime[1]);
       if (dias > 15) {
         tarefasASeremCriadas.push({
-          descricao: "Reiniciar a máquina regularmente (uptime muito alto detectado)",
+          descricao: "Reiniciar o sistema para liberar cache de memória e aplicar atualizações",
           origem: "Regra automática"
         });
       }
     }
   }
 
-  // 7. Manutenção Preventiva de Sistema
+  // 7. Reparo e Integridade de Arquivos do Sistema
   tarefasASeremCriadas.push({
-    descricao: "Limpar arquivos temporários do sistema e verificar integridade de arquivos (%temp% e sfc /scannow)",
+    descricao: "Executar reparo de arquivos do sistema e integridade do Windows (sfc /scannow & DISM)",
     origem: "Regra automática"
   });
 
@@ -262,17 +262,18 @@ export async function gerarTarefasManutencao(avaliacao) {
     problemas.forEach(prob => {
       let descTarefa = null;
       if (prob === "Demora para ligar") {
-        descTarefa = "Investigar causa da lentidão ao ligar (inicialização pesada, muitos programas no boot)";
+        descTarefa = "Otimizar programas de inicialização automática no boot do Windows";
       } else if (prob === "Programas travam") {
-        descTarefa = "Investigar consumo de RAM por processos em segundo plano / executar diagnóstico de integridade";
+        descTarefa = "Diagnosticar processos consumindo alta memória RAM e encerrar tarefas em segundo plano";
       } else if (prob === "Internet lenta (somente neste computador)") {
-        descTarefa = "Testar placa de rede / atualizar drivers / redefinir pilha TCP/IP e DNS";
+        descTarefa = "Testar conexão de rede, redefinir pilha TCP/IP e atualizar driver da placa de rede";
       } else if (prob === "Tela piscando ou apagando") {
-        descTarefa = "Verificar cabo de vídeo / drivers da placa de vídeo / testar com outro monitor";
+        descTarefa = "Verificar cabos de vídeo, conexões e driver de vídeo do monitor";
       } else if (prob === "Teclado ou mouse com defeito") {
-        descTarefa = "Verificar ou trocar periféricos (teclado/mouse)";
+        descTarefa = "Testar ou substituir periféricos com defeito (teclado / mouse)";
       } else if (prob === "Barulho excessivo" || prob === "Aquecimento") {
-        descTarefa = "Verificar desobstrução das saídas de ar, base elevadora e otimizar processos de alto uso de CPU";
+        // Removido a pedido do usuário
+        descTarefa = null;
       } else {
         descTarefa = `Investigar e resolver problema relatado: ${prob}`;
       }
@@ -286,9 +287,19 @@ export async function gerarTarefasManutencao(avaliacao) {
     });
   }
 
-  if (tarefasASeremCriadas.length === 0) return [];
+  // --- DEDUPLICAÇÃO INTERNA DE TAREFAS NA MESMA AVALIAÇÃO ---
+  const tarefasUnicas = [];
+  const descricoesNaAvaliacao = new Set();
+  tarefasASeremCriadas.forEach(t => {
+    if (!descricoesNaAvaliacao.has(t.descricao)) {
+      descricoesNaAvaliacao.add(t.descricao);
+      tarefasUnicas.push(t);
+    }
+  });
 
-  // --- FILTRAR DUPLICADAS AINDA PENDENTES ---
+  if (tarefasUnicas.length === 0) return [];
+
+  // --- FILTRAR TAREFAS QUE JÁ EXISTEM COMO PENDENTES NO BANCO ---
   try {
     const pendentesExistentes = await base44.entities.TarefasManutencao.filter({
       equipamento_id: equipamentoId,
@@ -296,8 +307,7 @@ export async function gerarTarefasManutencao(avaliacao) {
     });
 
     const descricoesPendentes = new Set(pendentesExistentes.map(t => t.descricao));
-
-    const novasTarefas = tarefasASeremCriadas.filter(t => !descricoesPendentes.has(t.descricao));
+    const novasTarefas = tarefasUnicas.filter(t => !descricoesPendentes.has(t.descricao));
 
     if (novasTarefas.length === 0) return [];
 
@@ -323,12 +333,24 @@ export async function gerarTarefasManutencao(avaliacao) {
  */
 export function extrairAnyDesk(item) {
   if (!item) return "";
-  if (item.anydesk_id && typeof item.anydesk_id === 'string' && !item.anydesk_id.includes('undefined')) {
-    return item.anydesk_id;
+  if (typeof item === 'string') {
+    const match = item.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+    return match ? match[1].trim() : "";
+  }
+  if (item.anydesk_id && typeof item.anydesk_id === 'string' && item.anydesk_id.trim() && !item.anydesk_id.includes('undefined')) {
+    return item.anydesk_id.trim();
   }
   const obs = item.observacoes || "";
-  const match = obs.match(/AnyDesk:\s*([^\s|;\n\r]+)/i);
-  return match ? match[1] : "";
+  const match = obs.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+  if (match) return match[1].trim();
+
+  for (const val of Object.values(item)) {
+    if (typeof val === 'string' && val.includes('AnyDesk:')) {
+      const m = val.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+      if (m) return m[1].trim();
+    }
+  }
+  return "";
 }
 
 /**
