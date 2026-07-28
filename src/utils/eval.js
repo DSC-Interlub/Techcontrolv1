@@ -73,9 +73,25 @@ export function calcularPontuacaoEquipamento(dados, dataAquisicao) {
   // 5. Antivírus
   let avVal = dados.antivirus;
   if (typeof avVal === 'string') {
-    if (avVal.startsWith("Ativo") || avVal === "Sim, está ativo" || avVal === "Sim") pontos += 0;
-    else if (avVal === "Aparece aviso de desativado" || avVal === "Aviso de desativado") pontos += 5;
-    else if (avVal.startsWith("Inativo") || avVal === "Não tem antivírus" || avVal === "Não") pontos += 10;
+    const match = avVal.match(/^(Ativo|Inativo)\s*\(([^)]+)\)/i);
+    if (match) {
+      const status = match[1];
+      const nome = match[2];
+      
+      if (status === "Ativo") {
+        pontos += 0;
+      } else if (status === "Inativo") {
+        if (nome !== "Não detectado") {
+          pontos += 5; // Existe antivírus mas está desativado (Aparece aviso de desativado)
+        } else {
+          pontos += 10; // Nenhum antivírus instalado (Não tem antivírus)
+        }
+      }
+    } else {
+      if (avVal === "Sim, está ativo" || avVal === "Sim") pontos += 0;
+      else if (avVal === "Aparece aviso de desativado" || avVal === "Aviso de desativado") pontos += 5;
+      else if (avVal.startsWith("Inativo") || avVal === "Não tem antivírus" || avVal === "Não") pontos += 10;
+    }
   } else {
     if (dados.antivirus === "Sim, está ativo" || dados.antivirus === "Sim") pontos += 0;
     else if (dados.antivirus === "Aparece aviso de desativado" || dados.antivirus === "Aviso de desativado") pontos += 5;
