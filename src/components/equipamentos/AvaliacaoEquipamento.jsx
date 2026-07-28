@@ -274,44 +274,26 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
               <div className="bg-slate-50 dark:bg-slate-900 border rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between border-b pb-2">
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    Dados Técnicos do Hardware
+                    Coleta de Dados Técnicos do Hardware
                   </h3>
-                  {!somenteLeitura && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setColetaModoManual(v => !v)}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      {coletaModoManual ? "Usar Coleta Automática (Recomendado)" : "Desejo preencher manualmente"}
-                    </Button>
-                  )}
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">Coleta Rápida Automática</Badge>
                 </div>
 
-                {!somenteLeitura && !coletaModoManual && (
+                {!somenteLeitura && (
                   <div className="space-y-4">
                     <p className="text-xs text-slate-500">
-                      Recomendamos o uso da coleta automática para maior precisão das métricas e para evitar o preenchimento manual incorreto.
+                      Utilize a coleta automática para maior precisão das métricas. Clique no botão abaixo para copiar o comando, cole no PowerShell e em seguida cole a saída gerada na caixa.
                     </p>
                     <div className="flex flex-col md:flex-row items-center gap-3">
-                      <a
-                        href="/coletor.ps1"
-                        download="coletor.ps1"
-                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg text-xs h-9 transition shrink-0 bg-white shadow-sm"
-                      >
-                        📥 Baixar Coletor (.ps1)
-                      </a>
-
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={() => {
                           navigator.clipboard.writeText(POWERSHELL_SCRIPT);
-                          alert("Comando copiado! Abra o PowerShell, cole (Ctrl+V) e pressione Enter.");
+                          alert("Comando copiado com sucesso! Abra o PowerShell, cole (Ctrl+V) e pressione Enter.");
                         }}
-                        className="gap-1.5 shrink-0 text-xs h-9 font-semibold"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shrink-0 text-xs h-9 font-semibold"
                       >
                         <Copy className="w-3.5 h-3.5" />
                         Copiar Comando Rápido
@@ -319,7 +301,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
                       
                       <div className="flex-1 w-full">
                         <textarea
-                          placeholder="Cole aqui (Ctrl+V) os dados copiados automaticamente..."
+                          placeholder="Cole aqui (Ctrl+V) os dados copiados automaticamente do PowerShell..."
                           value={jsonColado}
                           onChange={(e) => handleJsonPaste(e.target.value)}
                           className="w-full text-xs p-2.5 border rounded-lg h-9 min-h-[36px] max-h-40 focus:ring-1 focus:ring-blue-500 font-mono resize-y"
@@ -359,7 +341,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
                 )}
 
                 {/* Exibição dos dados técnicos salvos/coletados */}
-                {(somenteLeitura || !coletaModoManual) && (avaliacao.memoria_ram || avaliacao.tipo_armazenamento || avaliacao.espaco_disco) && (
+                {(avaliacao.memoria_ram || avaliacao.tipo_armazenamento || avaliacao.espaco_disco) && (
                   <div className="bg-white dark:bg-slate-800 border rounded-lg p-3.5 space-y-2 text-xs">
                     <p className="font-semibold text-slate-700 dark:text-slate-300 border-b pb-1.5 mb-2">Dados Técnicos Carregados:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-slate-600 dark:text-slate-400">
@@ -372,79 +354,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
                   </div>
                 )}
 
-                {/* Questionário Manual Tradicional (Fallback) */}
-                {!somenteLeitura && coletaModoManual && (
-                  <div className="border border-dashed border-amber-300 bg-amber-50/30 rounded-lg p-4 space-y-4">
-                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                      ⚠️ Atenção: Recomendamos usar a coleta automática para maior precisão das métricas e rapidez.
-                    </p>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">1. Análise de Memória (RAM)</Label>
-                      <Select value={avaliacao.memoria_ram} onValueChange={(v) => handleChange("memoria_ram", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Menos de 50%">Menos de 50% (0 pontos)</SelectItem>
-                          <SelectItem value="Entre 50% e 70%">Entre 50% e 70% (3 pontos)</SelectItem>
-                          <SelectItem value="Entre 70% e 90%">Entre 70% e 90% (6 pontos)</SelectItem>
-                          <SelectItem value="Acima de 90%">Acima de 90% (10 pontos)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <InstrucoesBox campo="memoria_ram" />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">2. Tipo de Armazenamento</Label>
-                      <Select value={avaliacao.tipo_armazenamento} onValueChange={(v) => handleChange("tipo_armazenamento", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="HD">HD (5 pontos)</SelectItem>
-                          <SelectItem value="SSD">SSD (0 pontos)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <InstrucoesBox campo="tipo_armazenamento" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">3. Espaço Livre em Disco</Label>
-                      <Select value={avaliacao.espaco_disco} onValueChange={(v) => handleChange("espaco_disco", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Mais de 100 GB livres">Mais de 100 GB livres (0 pontos)</SelectItem>
-                          <SelectItem value="Entre 50 e 100 GB livres">Entre 50 e 100 GB livres (3 pontos)</SelectItem>
-                          <SelectItem value="Entre 20 e 50 GB livres">Entre 20 e 50 GB livres (6 pontos)</SelectItem>
-                          <SelectItem value="Menos de 20 GB livres">Menos de 20 GB livres (10 pontos)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <InstrucoesBox campo="espaco_disco" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">4. Versão do Windows</Label>
-                      <Select value={avaliacao.versao_windows} onValueChange={(v) => handleChange("versao_windows", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Windows 10">Windows 10 (5 pontos)</SelectItem>
-                          <SelectItem value="Windows 11">Windows 11 (0 pontos)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <InstrucoesBox campo="versao_windows" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">5. Antivírus</Label>
-                      <Select value={avaliacao.antivirus} onValueChange={(v) => handleChange("antivirus", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Sim, está ativo">Sim, está ativo (0 pontos)</SelectItem>
-                          <SelectItem value="Aparece aviso de desativado">Aparece aviso de desativado (5 pontos)</SelectItem>
-                          <SelectItem value="Não tem antivírus">Não tem antivírus (10 pontos)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <InstrucoesBox campo="antivirus" />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}

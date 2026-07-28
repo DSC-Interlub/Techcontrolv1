@@ -389,6 +389,29 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="md:col-span-2 border-t pt-4 mt-2 flex flex-col md:flex-row gap-6 bg-slate-50 p-3 rounded-xl border">
+                  <div className="flex items-center gap-2.5">
+                    <Switch
+                      id="necessita_ramal"
+                      checked={formData.necessita_ramal !== false}
+                      onCheckedChange={v => set('necessita_ramal', v)}
+                    />
+                    <label htmlFor="necessita_ramal" className="text-xs font-semibold cursor-pointer text-slate-800">
+                      Requer Ramal de Telefone (Pessoal ou do Setor)
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <Switch
+                      id="necessita_equipamento"
+                      checked={formData.necessita_equipamento !== false}
+                      onCheckedChange={v => set('necessita_equipamento', v)}
+                    />
+                    <label htmlFor="necessita_equipamento" className="text-xs font-semibold cursor-pointer text-slate-800">
+                      Requer Equipamento de Trabalho (PC/Notebook)
+                    </label>
+                  </div>
+                </div>
               </div>
             </TabsContent>
 

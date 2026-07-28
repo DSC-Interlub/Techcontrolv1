@@ -58,6 +58,8 @@ export default function PortalEquipamentos() {
       const avaliacoesDoEq = avaliacoes.filter(a => a.equipamento_id === eq.id && a.avaliador === colaborador.nome_completo);
       const numeroAvaliacao = avaliacoesDoEq.length + 1;
 
+      const { pontosTempoUso, tempo_uso_anos, ...dadosSanitizados } = dados;
+
       return base44.entities.Avaliacoes.create({
         equipamento_id: eq.id,
         equipamento_tipo: eq.entityType,
@@ -66,7 +68,8 @@ export default function PortalEquipamentos() {
         numero_avaliacao: numeroAvaliacao,
         avaliador: colaborador.nome_completo,
         data_avaliacao: new Date().toISOString(),
-        ...dados,
+        ...dadosSanitizados,
+        tempo_uso_anos: tempo_uso_anos || 0,
       });
     },
     onSuccess: async (novaAvaliacao) => {

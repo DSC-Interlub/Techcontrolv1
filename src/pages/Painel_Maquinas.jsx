@@ -66,6 +66,44 @@ function getAvatarBgColor(name) {
   return colors[sum % colors.length];
 }
 
+const COMANDOS_RESOLUCAO_TAREFAS = {
+  "Liberar espaço em disco (arquivos temporários, downloads antigos)": {
+    tipo: "PowerShell",
+    comando: `Remove-Item -Path "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
+    desc: "Limpa pasta TEMP e esvazia Lixeira silenciosamente."
+  },
+  "Verificar processos consumindo memória RAM em excesso / considerar upgrade de memória": {
+    tipo: "PowerShell",
+    comando: `Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 10 -Property Name, @{Name="RAM_MB";Expression={[math]::round($_.WorkingSet / 1MB, 1)}}`,
+    desc: "Lista os 10 processos que mais consomem memória RAM no sistema."
+  },
+  "Reativar ou instalar antivírus": {
+    tipo: "PowerShell",
+    comando: `Set-MpPreference -DisableRealtimeMonitoring $false; Update-MpSignature`,
+    desc: "Ativa a proteção em tempo real e atualiza as assinaturas do Windows Defender."
+  },
+  "Reiniciar a máquina regularmente (uptime muito alto detectado)": {
+    tipo: "CMD / PowerShell",
+    comando: `shutdown /r /t 60 /c "Reinicializacao programada de manutencao TI"`,
+    desc: "Programa o reinício da máquina em 60 segundos com aviso ao usuário."
+  },
+  "Atualizar para Windows 11 (ou avaliar compatibilidade de hardware)": {
+    tipo: "PowerShell",
+    comando: `usoclient StartInteractiveScan`,
+    desc: "Inicia a busca por atualizações pendentes do Windows Update."
+  },
+  "Investigar processos em segundo plano / possível malware / verificar logs de erro": {
+    tipo: "PowerShell",
+    comando: `Start-MpScan -ScanType QuickScan`,
+    desc: "Executa uma varredura rápida de segurança contra malwares com o Windows Defender."
+  },
+  "Testar placa de rede / atualizar drivers / verificar cabo ou sinal Wi-Fi": {
+    tipo: "CMD",
+    comando: `ipconfig /flushdns & netsh int ip reset & netsh winsock reset`,
+    desc: "Reseta o cache DNS, protocolo TCP/IP e biblioteca Winsock da rede."
+  }
+};
+
 export default function Painel_Maquinas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "Desktop" | "Notebook" | "Monitor"
@@ -107,15 +145,71 @@ export default function Painel_Maquinas() {
   const [expandedEquipamentos, setExpandedEquipamentos] = useState({});
 
   const toggleTarefaMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      return base44.entities.TarefasManutencao.update(id, { status });
+    mutationFn: async ({ id, status, tarefa, maquina }) => {
+      await base44.entities.TarefasManutencao.update(id, { status });
+
+      // Sincronização dinâmica no cadastro do ativo
+      if (status === "Concluída" && maquina) {
+        const descLower = (tarefa?.descricao || "").toLowerCase();
+        const payloadUpdate = {};
+
+        if (descLower.includes("antivírus") || descLower.includes("antivirus")) {
+          payloadUpdate.antivirus_status = "Ativo";
+          payloadUpdate.antivirus = "Ativo (Windows Defender)";
+        }
+
+        if (Object.keys(payloadUpdate).length > 0) {
+          if (maquina.origem === "interno") {
+            await base44.entities.PCs_Internos.update(maquina.id, payloadUpdate);
+          } else {
+            await base44.entities.Notebooks_Externos.update(maquina.id, payloadUpdate);
+          }
+        }
+      }
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tarefas_manutencao'] });
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
     },
     onError: (err) => {
       console.error("Erro ao atualizar status da tarefa:", err);
       alert("Não foi possível atualizar o status da tarefa. Tente novamente.");
+    }
+  });
+
+  // Mutação para registrar formatação concluída no histórico do ativo
+  const formatarEquipamentoMutation = useMutation({
+    mutationFn: async ({ maquina, observacoes }) => {
+      const novoHistorico = [...(maquina.historico_formatacoes || [])];
+      novoHistorico.push({
+        data_formatacao: new Date().toISOString().split('T')[0],
+        responsavel: "TI / Administrador",
+        observacoes: observacoes || "Formatação preventiva concluída via Painel de Máquinas"
+      });
+
+      const payload = {
+        data_formatacao: new Date().toISOString().split('T')[0],
+        status: maquina.usuario_atual ? "Em uso" : "Disponível",
+        condicao: "Excelente",
+        antivirus_status: "Ativo",
+        historico_formatacoes: novoHistorico
+      };
+
+      if (maquina.origem === "interno") {
+        await base44.entities.PCs_Internos.update(maquina.id, payload);
+      } else {
+        await base44.entities.Notebooks_Externos.update(maquina.id, payload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      alert("Formatação registrada com sucesso no histórico da máquina!");
+    },
+    onError: (err) => {
+      alert("Erro ao registrar formatação: " + err.message);
     }
   });
 
@@ -132,9 +226,9 @@ export default function Painel_Maquinas() {
         });
       }
 
-      // 2. Liberar máquina ruim (mudar status para Disponível e zerar usuário)
+      // 2. Liberar máquina ruim (mudar status para "Formatando" / Disponível e zerar usuário)
       const dataUpdateRuim = {
-        status: "Disponível",
+        status: "Formatando",
         usuario_atual: "",
         colaborador_id: null,
         usuario_desde: "",
@@ -190,13 +284,13 @@ export default function Painel_Maquinas() {
 
   const isLoading = isLoadingPcs || isLoadingNbs || isLoadingEvals || isLoadingColabs;
 
-  // Consolidação de Máquinas
+  // Consolidação de Máquinas (Somente Desktop e Notebook, excluindo Monitor)
   const maquinasConsolidadas = useMemo(() => {
     const lista = [];
 
     // Processa PCs Internos
     pcsInternos.forEach(p => {
-      if (["Desktop", "Notebook", "Monitor"].includes(p.tipo)) {
+      if (["Desktop", "Notebook"].includes(p.tipo)) {
         const evs = avaliacoes.filter(a => a.equipamento_id === p.id);
         const ultimaEval = evs.length > 0 ? evs[0] : null;
 
@@ -451,7 +545,10 @@ export default function Painel_Maquinas() {
         <>
           {/* RESUMO COMPACTO DE SAÚDE (KPIs) */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Card className="bg-slate-950 text-white shadow-md border-none flex items-center justify-between p-4">
+            <Card
+              onClick={() => setFilterClassificacao("todos")}
+              className={`bg-slate-950 text-white shadow-md border-none flex items-center justify-between p-4 cursor-pointer transition-all hover:scale-[1.02] ${filterClassificacao === "todos" ? "ring-2 ring-indigo-400" : "opacity-90 hover:opacity-100"}`}
+            >
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Máquinas Ativas</p>
                 <p className="text-2xl font-extrabold mt-0.5">{stats.total}</p>
@@ -459,7 +556,10 @@ export default function Painel_Maquinas() {
               <Cpu className="w-7 h-7 text-slate-500 opacity-60" />
             </Card>
 
-            <Card className="shadow-sm border-red-100 bg-red-50/10 p-4 flex items-center justify-between">
+            <Card
+              onClick={() => setFilterClassificacao(v => v === "Substituir" ? "todos" : "Substituir")}
+              className={`shadow-sm border-red-100 bg-red-50/10 p-4 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.02] ${filterClassificacao === "Substituir" ? "ring-2 ring-red-500 bg-red-100/40" : "hover:bg-red-50/30"}`}
+            >
               <div>
                 <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Substituir</p>
                 <p className="text-2xl font-bold text-red-800 mt-0.5">{stats.substituir}</p>
@@ -467,7 +567,10 @@ export default function Painel_Maquinas() {
               <AlertTriangle className="w-7 h-7 text-red-500 opacity-70" />
             </Card>
 
-            <Card className="shadow-sm border-amber-100 bg-amber-50/10 p-4 flex items-center justify-between">
+            <Card
+              onClick={() => setFilterClassificacao(v => v === "Upgrade" ? "todos" : "Upgrade")}
+              className={`shadow-sm border-amber-100 bg-amber-50/10 p-4 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.02] ${filterClassificacao === "Upgrade" ? "ring-2 ring-amber-500 bg-amber-100/40" : "hover:bg-amber-50/30"}`}
+            >
               <div>
                 <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Upgrade</p>
                 <p className="text-2xl font-bold text-amber-800 mt-0.5">{stats.upgrade}</p>
@@ -475,7 +578,10 @@ export default function Painel_Maquinas() {
               <Clock className="w-7 h-7 text-amber-500 opacity-70" />
             </Card>
 
-            <Card className="shadow-sm border-emerald-100 bg-emerald-50/10 p-4 flex items-center justify-between">
+            <Card
+              onClick={() => setFilterClassificacao(v => v === "Manter" ? "todos" : "Manter")}
+              className={`shadow-sm border-emerald-100 bg-emerald-50/10 p-4 flex items-center justify-between cursor-pointer transition-all hover:scale-[1.02] ${filterClassificacao === "Manter" ? "ring-2 ring-emerald-500 bg-emerald-100/40" : "hover:bg-emerald-50/30"}`}
+            >
               <div>
                 <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Manter</p>
                 <p className="text-2xl font-bold text-emerald-800 mt-0.5">{stats.manter}</p>
@@ -483,7 +589,10 @@ export default function Painel_Maquinas() {
               <CheckCircle className="w-7 h-7 text-emerald-500 opacity-70" />
             </Card>
 
-            <Card className="shadow-sm border-slate-200 bg-slate-50/50 p-4 flex items-center justify-between col-span-2 md:col-span-1">
+            <Card
+              onClick={() => setFilterClassificacao(v => v === "sem_avaliacao" ? "todos" : "sem_avaliacao")}
+              className={`shadow-sm border-slate-200 bg-slate-50/50 p-4 flex items-center justify-between col-span-2 md:col-span-1 cursor-pointer transition-all hover:scale-[1.02] ${filterClassificacao === "sem_avaliacao" ? "ring-2 ring-slate-400 bg-slate-200/60" : "hover:bg-slate-100/50"}`}
+            >
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sem Avaliação</p>
                 <p className="text-2xl font-bold text-slate-700 mt-0.5">{stats.semAvaliacao}</p>
@@ -671,54 +780,112 @@ export default function Painel_Maquinas() {
                           <div className="flex items-center justify-between border-b pb-2">
                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                               <Wrench className="w-3.5 h-3.5 text-teal-600" />
-                              Checklist de Manutenção Operacional
+                              Checklist de Manutenção Operacional & Resolução
                             </p>
-                            <span className="text-[10px] text-slate-400 font-semibold font-mono">
-                              {tarefasDoEq.filter(t => t.status === 'Concluída').length}/{tarefasDoEq.length} CONCLUÍDAS
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(`Deseja registrar que o equipamento ${m.marca} ${m.modelo} foi formatado hoje? Isso salvará o evento no histórico e restaurará a condição para Excelente.`)) {
+                                    formatarEquipamentoMutation.mutate({ maquina: m });
+                                  }
+                                }}
+                                className="h-6 text-[10px] bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 font-semibold gap-1"
+                              >
+                                💻 Registrar Formatação Concluída
+                              </Button>
+                              <span className="text-[10px] text-slate-400 font-semibold font-mono">
+                                {tarefasDoEq.filter(t => t.status === 'Concluída').length}/{tarefasDoEq.length} CONCLUÍDAS
+                              </span>
+                            </div>
                           </div>
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {tarefasDoEq.map(t => (
-                              <div
-                                key={t.id}
-                                className={`flex items-start gap-3 p-3 rounded-xl border text-xs transition duration-150 ${
-                                  t.status === 'Concluída'
-                                    ? 'bg-slate-100/50 dark:bg-slate-800/20 border-slate-200/60 opacity-60 line-through text-slate-400'
-                                    : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 hover:border-slate-300 hover:shadow-sm'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={t.status === 'Concluída'}
-                                  onChange={(e) => {
-                                    toggleTarefaMutation.mutate({
-                                      id: t.id,
-                                      status: e.target.checked ? 'Concluída' : 'Pendente'
-                                    });
-                                  }}
-                                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold leading-normal">{t.descricao}</p>
-                                  <div className="flex items-center gap-1.5 mt-1.5 text-[9px] font-semibold tracking-wide uppercase">
-                                    <span className={`px-1.5 py-0.5 rounded ${
-                                      t.origem === 'Regra automática' 
-                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400' 
-                                        : 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400'
-                                    }`}>
-                                      {t.origem}
-                                    </span>
-                                    {t.created_date && (
-                                      <span className="text-slate-400 lowercase">
-                                        gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
-                                      </span>
-                                    )}
+                            {tarefasDoEq.map(t => {
+                              const infoCmd = COMANDOS_RESOLUCAO_TAREFAS[t.descricao];
+
+                              return (
+                                <div
+                                  key={t.id}
+                                  className={`flex flex-col justify-between p-3 rounded-xl border text-xs transition duration-150 ${
+                                    t.status === 'Concluída'
+                                      ? 'bg-slate-100/50 dark:bg-slate-800/20 border-slate-200/60 opacity-60 line-through text-slate-400'
+                                      : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={t.status === 'Concluída'}
+                                      onChange={(e) => {
+                                        toggleTarefaMutation.mutate({
+                                          id: t.id,
+                                          status: e.target.checked ? 'Concluída' : 'Pendente',
+                                          tarefa: t,
+                                          maquina: m
+                                        });
+                                      }}
+                                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold leading-normal">{t.descricao}</p>
+                                      <div className="flex items-center gap-1.5 mt-1.5 text-[9px] font-semibold tracking-wide uppercase">
+                                        <span className={`px-1.5 py-0.5 rounded ${
+                                          t.origem === 'Regra automática' 
+                                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400' 
+                                            : 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400'
+                                        }`}>
+                                          {t.origem}
+                                        </span>
+                                        {t.created_date && (
+                                          <span className="text-slate-400 lowercase">
+                                            gerada em {new Date(t.created_date).toLocaleDateString('pt-BR')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
+
+                                  {/* Botão de Comando Rápido para Resolução Técnica */}
+                                  {infoCmd && t.status !== 'Concluída' && (
+                                    <div className="mt-2 pt-2 border-t flex items-center justify-between bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg">
+                                      <p className="text-[10px] text-slate-500 font-medium truncate max-w-[200px]" title={infoCmd.desc}>
+                                        💡 {infoCmd.desc}
+                                      </p>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(infoCmd.comando);
+                                          alert(`Comando de resolução (${infoCmd.tipo}) copiado:\n\n${infoCmd.comando}\n\nCole no Terminal/PowerShell do computador para executar.`);
+                                        }}
+                                        className="h-6 text-[10px] gap-1 font-semibold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
+                                      >
+                                        <Copy className="w-3 h-3" /> Copiar Comando ({infoCmd.tipo})
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
+
+                          {/* Seção de Histórico de Formatações da Máquina */}
+                          {m.usuarios_anteriores && m.usuarios_anteriores.length > 0 && (
+                            <div className="border-t pt-2 mt-2">
+                              <p className="text-[11px] font-bold text-slate-500 mb-1">📜 Histórico de Usuários Anteriores:</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {m.usuarios_anteriores.map((h, idx) => (
+                                  <span key={idx} className="text-[10px] bg-white border px-2 py-0.5 rounded text-slate-600 font-medium">
+                                    {h.nome} ({h.data_inicio || '—'} a {h.data_fim || 'Atual'})
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

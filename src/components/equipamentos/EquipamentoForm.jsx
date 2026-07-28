@@ -73,13 +73,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       const user = currentAuthUser;
       const numeroAvaliacao = avaliacoes.length + 1;
       
+      const { pontosTempoUso, tempo_uso_anos, ...dadosSanitizados } = dadosAvaliacao;
+      
       const avaliacaoData = {
         equipamento_id: equipamento.id,
         equipamento_tipo: entityType,
         equipamento_nome: `${formData.marca || ''} ${formData.modelo || ''}`.trim(),
         usuario_equipamento: formData.usuario_atual || '',
         numero_avaliacao: numeroAvaliacao,
-        ...dadosAvaliacao,
+        ...dadosSanitizados,
+        tempo_uso_anos: tempo_uso_anos || 0,
         data_avaliacao: new Date().toISOString(),
         avaliador: user.email,
       };

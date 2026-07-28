@@ -107,16 +107,21 @@ export default function Colaboradores() {
       pendencias.push({ tipo: "conjuge_sem_email", label: "E-mail do cônjuge não informado", critico: false });
     }
 
-    // 5. Sem Ramal (apenas para Interno)
-    if (colab.tipo_funcionario === "Interno") {
-      const temRamal = ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === colab.nome_completo.trim().toLowerCase());
-      if (!temRamal) {
+    // 5. Sem Ramal (apenas para Interno quando necessita_ramal !== false)
+    if (colab.tipo_funcionario === "Interno" && colab.necessita_ramal !== false) {
+      const nomeLower = colab.nome_completo.trim().toLowerCase();
+      const colabArea = (colab.area || "").trim().toLowerCase();
+
+      const temRamalPessoal = ramais.some(r => r.usuario_atual && r.usuario_atual.trim().toLowerCase() === nomeLower);
+      const temRamalSetor = colabArea ? ramais.some(r => (r.setor || r.area || "").trim().toLowerCase() === colabArea) : false;
+
+      if (!temRamalPessoal && !temRamalSetor) {
         pendencias.push({ tipo: "sem_ramal", label: "Ramal não associado", critico: false });
       }
     }
 
-    // 6. Alertas de Computador e Monitor (apenas para Interno)
-    if (colab.tipo_funcionario === "Interno") {
+    // 6. Alertas de Computador e Monitor (apenas para Interno quando necessita_equipamento !== false)
+    if (colab.tipo_funcionario === "Interno" && colab.necessita_equipamento !== false) {
       const nomeLower = colab.nome_completo.trim().toLowerCase();
       const colabArea = (colab.area || "").trim().toLowerCase();
 

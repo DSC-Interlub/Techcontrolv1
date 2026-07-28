@@ -14,4 +14,5 @@ CREATE TABLE IF NOT EXISTS public.tarefas_manutencao_equipamento (
 ALTER TABLE public.tarefas_manutencao_equipamento ENABLE ROW LEVEL SECURITY;
 
 -- Criar Policy para service role e anon/authenticated
+DROP POLICY IF EXISTS "service_role_all" ON public.tarefas_manutencao_equipamento;
 CREATE POLICY "service_role_all" ON public.tarefas_manutencao_equipamento FOR ALL USING (true);
