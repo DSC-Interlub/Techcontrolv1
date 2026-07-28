@@ -9,7 +9,7 @@ import { Activity, Loader2, Monitor, Laptop, ChevronLeft, History, ClipboardList
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import AvaliacaoEquipamento from "../components/equipamentos/AvaliacaoEquipamento";
-import { gerarTarefasManutencao } from "@/utils/eval";
+import { gerarTarefasManutencao, formatarObservacoesComAnyDesk } from "@/utils/eval";
 
 const getClassColor = (c) => c === "Manter" ? "bg-green-100 text-green-800" : c === "Upgrade" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
 
@@ -58,21 +58,25 @@ export default function PortalEquipamentos() {
       const avaliacoesDoEq = avaliacoes.filter(a => a.equipamento_id === eq.id && a.avaliador === colaborador.nome_completo);
       const numeroAvaliacao = avaliacoesDoEq.length + 1;
 
-      const { pontosTempoUso, tempo_uso_anos, ...dadosSanitizados } = dados;
+      const { pontosTempoUso, tempo_uso_anos, anydesk_id, ...dadosSanitizados } = dados;
+      const anydeskVal = (anydesk_id || "").trim();
 
-      // Salvar ID do AnyDesk na própria máquina
-      if (dados.anydesk_id && dados.anydesk_id.trim()) {
-        const anydeskVal = dados.anydesk_id.trim();
+      // Salvar ID do AnyDesk na própria máquina na coluna de observações
+      if (anydeskVal) {
         try {
+          const obsAtualizada = formatarObservacoesComAnyDesk(eq.observacoes, anydeskVal);
           if (eq.entityType === 'PCs_Internos') {
-            await base44.entities.PCs_Internos.update(eq.id, { anydesk_id: anydeskVal });
+            await base44.entities.PCs_Internos.update(eq.id, { observacoes: obsAtualizada });
           } else if (eq.entityType === 'Notebooks_Externos') {
-            await base44.entities.Notebooks_Externos.update(eq.id, { anydesk_id: anydeskVal });
+            await base44.entities.Notebooks_Externos.update(eq.id, { observacoes: obsAtualizada });
           }
         } catch (errEq) {
-          console.error("Erro ao atualizar anydesk_id na máquina:", errEq);
+          console.error("Erro ao atualizar anydesk_id no equipamento:", errEq);
         }
       }
+
+      // Anexar AnyDesk ao texto de observações da avaliação
+      const obsAvaliacao = formatarObservacoesComAnyDesk(dadosSanitizados.observacoes, anydeskVal);
 
       return base44.entities.Avaliacoes.create({
         equipamento_id: eq.id,
@@ -83,6 +87,7 @@ export default function PortalEquipamentos() {
         avaliador: colaborador.nome_completo,
         data_avaliacao: new Date().toISOString(),
         ...dadosSanitizados,
+        observacoes: obsAvaliacao,
         tempo_uso_anos: tempo_uso_anos || 0,
       });
     },

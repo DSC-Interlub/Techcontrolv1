@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
 import { formatarDataSemFuso } from "@/utils/date";
-import { gerarTarefasManutencao } from "@/utils/eval";
+import { gerarTarefasManutencao, formatarObservacoesComAnyDesk } from "@/utils/eval";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType, isLoading = false }) {
@@ -73,7 +73,23 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       const user = currentAuthUser;
       const numeroAvaliacao = avaliacoes.length + 1;
       
-      const { pontosTempoUso, tempo_uso_anos, ...dadosSanitizados } = dadosAvaliacao;
+      const { pontosTempoUso, tempo_uso_anos, anydesk_id, ...dadosSanitizados } = dadosAvaliacao;
+      const anydeskVal = (anydesk_id || "").trim();
+
+      if (anydeskVal) {
+        try {
+          const obsAtualizada = formatarObservacoesComAnyDesk(formData.observacoes, anydeskVal);
+          if (tipoEquipamento === 'PCs_Internos') {
+            await base44.entities.PCs_Internos.update(equipamento.id, { observacoes: obsAtualizada });
+          } else if (tipoEquipamento === 'Notebooks_Externos') {
+            await base44.entities.Notebooks_Externos.update(equipamento.id, { observacoes: obsAtualizada });
+          }
+        } catch (errEq) {
+          console.error("Erro ao atualizar AnyDesk no equipamento:", errEq);
+        }
+      }
+
+      const obsAvaliacao = formatarObservacoesComAnyDesk(dadosSanitizados.observacoes, anydeskVal);
       
       const avaliacaoData = {
         equipamento_id: equipamento.id,
@@ -82,23 +98,11 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
         usuario_equipamento: formData.usuario_atual || '',
         numero_avaliacao: numeroAvaliacao,
         ...dadosSanitizados,
+        observacoes: obsAvaliacao,
         tempo_uso_anos: tempo_uso_anos || 0,
         data_avaliacao: new Date().toISOString(),
         avaliador: user.email,
       };
-
-      if (dados.anydesk_id && dados.anydesk_id.trim()) {
-        const anydeskVal = dados.anydesk_id.trim();
-        try {
-          if (tipoEquipamento === 'PCs_Internos') {
-            await base44.entities.PCs_Internos.update(equipamento.id, { anydesk_id: anydeskVal });
-          } else if (tipoEquipamento === 'Notebooks_Externos') {
-            await base44.entities.Notebooks_Externos.update(equipamento.id, { anydesk_id: anydeskVal });
-          }
-        } catch (errEq) {
-          console.error("Erro ao atualizar anydesk_id no equipamento:", errEq);
-        }
-      }
 
       return base44.entities.Avaliacoes.create(avaliacaoData);
     },

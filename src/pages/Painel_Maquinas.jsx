@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { formatarDataSemFuso } from "@/utils/date";
-import { calcularPontuacaoEquipamento } from "@/utils/eval";
+import { calcularPontuacaoEquipamento, extrairAnyDesk } from "@/utils/eval";
 import { 
   Card, 
   CardContent, 
@@ -1276,17 +1276,17 @@ export default function Painel_Maquinas() {
 
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AnyDesk (Acesso Remoto)</span>
-                          {d.equipamento?.anydesk_id || d.evalItem?.anydesk_id ? (
+                          {extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem) ? (
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                                💻 {d.equipamento?.anydesk_id || d.evalItem?.anydesk_id}
+                                💻 {extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem)}
                               </span>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  const code = d.equipamento?.anydesk_id || d.evalItem?.anydesk_id;
+                                  const code = extrairAnyDesk(d.equipamento) || extrairAnyDesk(d.evalItem);
                                   navigator.clipboard.writeText(code);
                                   alert(`AnyDesk ${code} copiado para a área de transferência!`);
                                 }}

@@ -318,3 +318,26 @@ export async function gerarTarefasManutencao(avaliacao) {
   }
 }
 
+/**
+ * Extrai o ID do AnyDesk de um objeto de equipamento ou avaliação (da propriedade ou das observações)
+ */
+export function extrairAnyDesk(item) {
+  if (!item) return "";
+  if (item.anydesk_id && typeof item.anydesk_id === 'string' && !item.anydesk_id.includes('undefined')) {
+    return item.anydesk_id;
+  }
+  const obs = item.observacoes || "";
+  const match = obs.match(/AnyDesk:\s*([^\s|;\n\r]+)/i);
+  return match ? match[1] : "";
+}
+
+/**
+ * Formata ou atualiza o campo de observações anexando/substituindo a tag AnyDesk
+ */
+export function formatarObservacoesComAnyDesk(obsAtual, anydeskId) {
+  const limpo = (obsAtual || "").replace(/AnyDesk:\s*([^\s|;\n\r]+)/gi, "").trim();
+  if (!anydeskId || !anydeskId.trim()) return limpo;
+  const tag = `AnyDesk: ${anydeskId.trim()}`;
+  return limpo ? `${tag} | ${limpo}` : tag;
+}
+
