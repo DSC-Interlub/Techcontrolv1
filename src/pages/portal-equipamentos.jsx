@@ -58,38 +58,49 @@ export default function PortalEquipamentos() {
       const avaliacoesDoEq = avaliacoes.filter(a => a.equipamento_id === eq.id && a.avaliador === colaborador.nome_completo);
       const numeroAvaliacao = avaliacoesDoEq.length + 1;
 
-      const { pontosTempoUso, tempo_uso_anos, anydesk_id, ...dadosSanitizados } = dados;
+      const { tempo_uso_anos, anydesk_id } = dados;
       const anydeskVal = (anydesk_id || "").trim();
 
       // Salvar ID do AnyDesk na própria máquina na coluna de observações
       if (anydeskVal) {
         try {
           const obsAtualizada = formatarObservacoesComAnyDesk(eq.observacoes, anydeskVal);
-          if (eq.entityType === 'PCs_Internos') {
-            await base44.entities.PCs_Internos.update(eq.id, { observacoes: obsAtualizada });
-          } else if (eq.entityType === 'Notebooks_Externos') {
+          const isNotebookExt = eq.entityType === 'Notebooks_Externos' || (eq.tipo === 'Notebook' && !!eq.uf);
+          if (isNotebookExt) {
             await base44.entities.Notebooks_Externos.update(eq.id, { observacoes: obsAtualizada });
+          } else {
+            await base44.entities.PCs_Internos.update(eq.id, { observacoes: obsAtualizada });
           }
         } catch (errEq) {
-          console.error("Erro ao atualizar anydesk_id no equipamento:", errEq);
+          console.warn("Aviso ao atualizar AnyDesk na máquina:", errEq);
         }
       }
 
-      // Anexar AnyDesk ao texto de observações da avaliação
-      const obsAvaliacao = formatarObservacoesComAnyDesk(dadosSanitizados.observacoes, anydeskVal);
-
-      return base44.entities.Avaliacoes.create({
+      // Payload estritamente compatível com o schema SQL de avaliacoes
+      const payloadAvaliacao = {
         equipamento_id: eq.id,
-        equipamento_tipo: eq.entityType,
-        equipamento_nome: `${eq.marca} ${eq.modelo}`,
-        usuario_equipamento: eq.usuario_atual,
+        equipamento_tipo: eq.entityType || 'PCs_Internos',
+        equipamento_nome: `${eq.marca || ''} ${eq.modelo || ''}`.trim(),
+        usuario_equipamento: eq.usuario_atual || colaborador.nome_completo,
         numero_avaliacao: numeroAvaliacao,
         avaliador: colaborador.nome_completo,
         data_avaliacao: new Date().toISOString(),
-        ...dadosSanitizados,
-        observacoes: obsAvaliacao,
+        memoria_ram: dados.memoria_ram || '',
+        tipo_armazenamento: dados.tipo_armazenamento || '',
+        espaco_disco: dados.espaco_disco || '',
+        versao_windows: dados.versao_windows || '',
+        antivirus: dados.antivirus || '',
+        desempenho: dados.desempenho || '',
+        problemas: dados.problemas || [],
+        atende_trabalho: dados.atende_trabalho || '',
+        recomendacao_usuario: dados.recomendacao_usuario || '',
+        satisfacao: dados.satisfacao || '',
         tempo_uso_anos: tempo_uso_anos || 0,
-      });
+        pontuacao_total: dados.pontuacao_total || 0,
+        classificacao: dados.classificacao || 'Manter'
+      };
+
+      return base44.entities.Avaliacoes.create(payloadAvaliacao);
     },
     onSuccess: async (novaAvaliacao) => {
       try {

@@ -73,35 +73,44 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       const user = currentAuthUser;
       const numeroAvaliacao = avaliacoes.length + 1;
       
-      const { pontosTempoUso, tempo_uso_anos, anydesk_id, ...dadosSanitizados } = dadosAvaliacao;
+      const { tempo_uso_anos, anydesk_id } = dadosAvaliacao;
       const anydeskVal = (anydesk_id || "").trim();
 
       if (anydeskVal) {
         try {
           const obsAtualizada = formatarObservacoesComAnyDesk(formData.observacoes, anydeskVal);
-          if (tipoEquipamento === 'PCs_Internos') {
-            await base44.entities.PCs_Internos.update(equipamento.id, { observacoes: obsAtualizada });
-          } else if (tipoEquipamento === 'Notebooks_Externos') {
+          const isNotebookExt = entityType === 'Notebooks_Externos' || (tipoEquipamento === 'Notebook' && !!formData.uf);
+          if (isNotebookExt) {
             await base44.entities.Notebooks_Externos.update(equipamento.id, { observacoes: obsAtualizada });
+          } else {
+            await base44.entities.PCs_Internos.update(equipamento.id, { observacoes: obsAtualizada });
           }
         } catch (errEq) {
-          console.error("Erro ao atualizar AnyDesk no equipamento:", errEq);
+          console.warn("Aviso ao atualizar AnyDesk no equipamento:", errEq);
         }
       }
 
-      const obsAvaliacao = formatarObservacoesComAnyDesk(dadosSanitizados.observacoes, anydeskVal);
-      
       const avaliacaoData = {
         equipamento_id: equipamento.id,
-        equipamento_tipo: entityType,
+        equipamento_tipo: entityType || 'PCs_Internos',
         equipamento_nome: `${formData.marca || ''} ${formData.modelo || ''}`.trim(),
         usuario_equipamento: formData.usuario_atual || '',
         numero_avaliacao: numeroAvaliacao,
-        ...dadosSanitizados,
-        observacoes: obsAvaliacao,
-        tempo_uso_anos: tempo_uso_anos || 0,
+        avaliador: user?.email || 'admin@techcontrol.com',
         data_avaliacao: new Date().toISOString(),
-        avaliador: user.email,
+        memoria_ram: dadosAvaliacao.memoria_ram || '',
+        tipo_armazenamento: dadosAvaliacao.tipo_armazenamento || '',
+        espaco_disco: dadosAvaliacao.espaco_disco || '',
+        versao_windows: dadosAvaliacao.versao_windows || '',
+        antivirus: dadosAvaliacao.antivirus || '',
+        desempenho: dadosAvaliacao.desempenho || '',
+        problemas: dadosAvaliacao.problemas || [],
+        atende_trabalho: dadosAvaliacao.atende_trabalho || '',
+        recomendacao_usuario: dadosAvaliacao.recomendacao_usuario || '',
+        satisfacao: dadosAvaliacao.satisfacao || '',
+        tempo_uso_anos: tempo_uso_anos || 0,
+        pontuacao_total: dadosAvaliacao.pontuacao_total || 0,
+        classificacao: dadosAvaliacao.classificacao || 'Manter'
       };
 
       return base44.entities.Avaliacoes.create(avaliacaoData);
