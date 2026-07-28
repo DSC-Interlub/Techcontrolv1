@@ -99,7 +99,7 @@ function InstrucoesBox({ campo }) {
   );
 }
 
-const POWERSHELL_SCRIPT = `$ErrorActionPreference = "SilentlyContinue"; $os = Get-CimInstance Win32_OperatingSystem; $windowsVersion = $os.Caption + " (" + $os.Version + ")"; $totalRAM = $os.TotalVisibleMemorySize; $freeRAM = $os.FreePhysicalMemory; $usedRAM = $totalRAM - $freeRAM; $totalRAM_GB = [math]::Round($totalRAM / 1MB, 1); $freeRAM_GB = [math]::Round($freeRAM / 1MB, 1); $usedRAM_GB = [math]::Round($usedRAM / 1MB, 1); $ramUsagePct = [math]::Round(($usedRAM / $totalRAM) * 100, 1); $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $totalSpaceGB = [math]::Round($disk.Size / 1GB, 1); $freeSpaceGB = [math]::Round($disk.FreeSpace / 1GB, 1); $freeSpacePct = [math]::Round(($disk.FreeSpace / $disk.Size) * 100, 1); $mediaType = "Não detectado"; try { $physicalDisk = Get-PhysicalDisk | Where-Object { $_.DeviceId -eq 0 -or $_.MediaType -ne $null } | Select-Object -First 1; if ($physicalDisk) { $mediaType = $physicalDisk.MediaType.ToString() } } catch {}; $antivirusList = @(); $antivirusAtivo = $false; try { $avProducts = Get-CimInstance -Namespace root\SecurityCenter2 -ClassName AntiVirusProduct; if ($avProducts) { foreach ($av in $avProducts) { $stateHex = "{0:x}" -f $av.productState; $isActive = $false; if ($stateHex.Length -ge 4) { $isActive = $stateHex -match "1[0-9a-f]{3}$" -or $stateHex -match "1[0-9a-f]{1}$" }; if ($isActive -or $av.productState -eq 397568 -or $av.productState -eq 266240) { $antivirusAtivo = $true }; $antivirusList += $av.displayName } } } catch {}; $avStatus = "Inativo"; if ($antivirusAtivo) { $avStatus = "Ativo" }; $detectedAVs = if ($antivirusList.Count -gt 0) { $antivirusList -join ", " } else { "Não detectado" }; $cpu = Get-CimInstance Win32_Processor; $cpuModel = $cpu.Name.Trim(); $uptimeDays = 0; $uptimeHours = 0; try { $bootTime = $os.LastBootUpTime; $uptimeSpan = (Get-Date) - $bootTime; $uptimeDays = [math]::Floor($uptimeSpan.TotalDays); $uptimeHours = [math]::Floor($uptimeSpan.Hours) } catch {}; $result = @{ data_coleta = (Get-Date -Format "yyyy-MM-dd HH:mm:ss"); windows_versao = $windowsVersion; ram_uso_percentual = $ramUsagePct; ram_total_gb = $totalRAM_GB; ram_utilizada_gb = $usedRAM_GB; ram_livre_gb = $freeRAM_GB; disco_capacidade_gb = $totalSpaceGB; disco_livre_gb = $freeSpaceGB; disco_livre_percentual = $freeSpacePct; disco_tipo = $mediaType; antivirus_nome = $detectedAVs; antivirus_ativo = $avStatus; processador_modelo = $cpuModel; uptime_dias = $uptimeDays; uptime_horas = $uptimeHours }; $jsonResult = $result | ConvertTo-Json -Compress; Write-Host ":::START_JSON:::"; Write-Host $jsonResult; Write-Host ":::END_JSON:::"`;
+const POWERSHELL_SCRIPT = `$ErrorActionPreference = "SilentlyContinue"; $os = Get-CimInstance Win32_OperatingSystem; $windowsVersion = $os.Caption + " (" + $os.Version + ")"; $totalRAM = $os.TotalVisibleMemorySize; $freeRAM = $os.FreePhysicalMemory; $usedRAM = $totalRAM - $freeRAM; $totalRAM_GB = [math]::Round($totalRAM / 1MB, 1); $freeRAM_GB = [math]::Round($freeRAM / 1MB, 1); $usedRAM_GB = [math]::Round($usedRAM / 1MB, 1); $ramUsagePct = [math]::Round(($usedRAM / $totalRAM) * 100, 1); $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"; $totalSpaceGB = [math]::Round($disk.Size / 1GB, 1); $freeSpaceGB = [math]::Round($disk.FreeSpace / 1GB, 1); $freeSpacePct = [math]::Round(($disk.FreeSpace / $disk.Size) * 100, 1); $mediaType = "Não detectado"; try { $physicalDisk = Get-PhysicalDisk | Where-Object { $_.DeviceId -eq 0 -or $_.MediaType -ne $null } | Select-Object -First 1; if ($physicalDisk) { $mediaType = $physicalDisk.MediaType.ToString() } } catch {}; $antivirusList = @(); $antivirusAtivo = $false; try { $avProducts = Get-CimInstance -Namespace root\SecurityCenter2 -ClassName AntiVirusProduct; if ($avProducts) { foreach ($av in $avProducts) { $stateHex = "{0:x}" -f $av.productState; $isActive = $false; if ($stateHex.Length -ge 4) { $isActive = $stateHex -match "1[0-9a-f]{3}$" -or $stateHex -match "1[0-9a-f]{1}$" }; if ($isActive -or $av.productState -eq 397568 -or $av.productState -eq 266240) { $antivirusAtivo = $true }; $antivirusList += $av.displayName } } } catch {}; $avStatus = "Inativo"; if ($antivirusAtivo) { $avStatus = "Ativo" }; $detectedAVs = if ($antivirusList.Count -gt 0) { $antivirusList -join ", " } else { "Não detectado" }; $cpu = Get-CimInstance Win32_Processor; $cpuModel = $cpu.Name.Trim(); $uptimeDays = 0; $uptimeHours = 0; $uptimeStatus = "ok"; try { $bootTime = $os.LastBootUpTime; if ($bootTime -eq $null) { $uptimeStatus = "boot_time_nulo" } else { $uptimeSpan = (Get-Date) - $bootTime; $uptimeDays = [math]::Floor($uptimeSpan.TotalDays); $uptimeHours = [math]::Floor($uptimeSpan.Hours) } } catch { $uptimeStatus = "erro: " + $_.Exception.Message }; $result = @{ data_coleta = (Get-Date -Format "yyyy-MM-dd HH:mm:ss"); windows_versao = $windowsVersion; ram_uso_percentual = $ramUsagePct; ram_total_gb = $totalRAM_GB; ram_utilizada_gb = $usedRAM_GB; ram_livre_gb = $freeRAM_GB; disco_capacidade_gb = $totalSpaceGB; disco_livre_gb = $freeSpaceGB; disco_livre_percentual = $freeSpacePct; disco_tipo = $mediaType; antivirus_nome = $detectedAVs; antivirus_ativo = $avStatus; processador_modelo = $cpuModel; uptime_dias = $uptimeDays; uptime_horas = $uptimeHours; uptime_status = $uptimeStatus }; $jsonResult = $result | ConvertTo-Json -Compress; $clipboardText = ":::START_JSON:::\`r\`n" + $jsonResult + "\`r\`n:::END_JSON:::"; Set-Clipboard -Value $clipboardText; Write-Host "=========================================================="; Write-Host " COLETOR DE DADOS TÉCNICOS - TECHCONTROL"; Write-Host "=========================================================="; Write-Host ""; Write-Host " Dados copiados! Volte ao sistema e cole no campo indicado (Ctrl+V)."; Write-Host ""; Write-Host "==========================================================";`;
 
 export default function AvaliacaoEquipamento({ equipamento, entityType, avaliacaoExistente, onSalvar, somenteLeitura = false }) {
   const [avaliacao, setAvaliacao] = useState({
@@ -294,24 +294,32 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
                     <p className="text-xs text-slate-500">
                       Recomendamos o uso da coleta automática para maior precisão das métricas e para evitar o preenchimento manual incorreto.
                     </p>
-                    <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex flex-col md:flex-row items-center gap-3">
+                      <a
+                        href="/coletor.ps1"
+                        download="coletor.ps1"
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg text-xs h-9 transition shrink-0 bg-white shadow-sm"
+                      >
+                        📥 Baixar Coletor (.ps1)
+                      </a>
+
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           navigator.clipboard.writeText(POWERSHELL_SCRIPT);
-                          alert("Script copiado! Abra o PowerShell, cole (Ctrl+V) e pressione Enter.");
+                          alert("Comando copiado! Abra o PowerShell, cole (Ctrl+V) e pressione Enter.");
                         }}
-                        className="gap-2 shrink-0 text-xs h-9"
+                        className="gap-1.5 shrink-0 text-xs h-9 font-semibold"
                       >
                         <Copy className="w-3.5 h-3.5" />
-                        1. Copiar Script PowerShell
+                        Copiar Comando Rápido
                       </Button>
                       
-                      <div className="flex-1">
+                      <div className="flex-1 w-full">
                         <textarea
-                          placeholder="2. Cole aqui todo o resultado gerado no PowerShell..."
+                          placeholder="Cole aqui (Ctrl+V) os dados copiados automaticamente..."
                           value={jsonColado}
                           onChange={(e) => handleJsonPaste(e.target.value)}
                           className="w-full text-xs p-2.5 border rounded-lg h-9 min-h-[36px] max-h-40 focus:ring-1 focus:ring-blue-500 font-mono resize-y"
@@ -335,7 +343,7 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
                           <p>🧠 <strong>RAM:</strong> {jsonPreview.ram_uso_percentual}% em uso (Total: {jsonPreview.ram_total_gb} GB | Utilizada: {jsonPreview.ram_utilizada_gb} GB | Livre: {jsonPreview.ram_livre_gb} GB)</p>
                           <p>💾 <strong>Disco C:</strong> {jsonPreview.disco_tipo} ({jsonPreview.disco_livre_gb} GB livres de {jsonPreview.disco_capacidade_gb} GB)</p>
                           <p>🛡️ <strong>Antivírus:</strong> {jsonPreview.antivirus_ativo} ({jsonPreview.antivirus_nome})</p>
-                          <p>🕒 <strong>Uptime:</strong> {jsonPreview.uptime_dias}d {jsonPreview.uptime_horas}h</p>
+                          <p>🕒 <strong>Uptime:</strong> {jsonPreview.uptime_status === "ok" ? `${jsonPreview.uptime_dias}d ${jsonPreview.uptime_horas}h` : "Não detectado (" + jsonPreview.uptime_status + ")"}</p>
                         </div>
                         <Button
                           type="button"
