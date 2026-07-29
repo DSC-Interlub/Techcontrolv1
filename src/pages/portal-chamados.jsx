@@ -71,7 +71,7 @@ function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
     );
   }
 
-  if (chamado.status !== "Aguardando Avaliação") return null;
+  if (chamado.status !== "Aguardando Avaliação" && chamado.status !== "Resolvido") return null;
 
   return (
     <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-4">
@@ -291,8 +291,8 @@ export default function PortalChamados() {
   // 4 categorias conforme solicitado
   const naoIniciados = meusChamados.filter(c => c.status === "Aberto" || c.status === "Em Análise");
   const emAndamento = meusChamados.filter(c => c.status === "Em Andamento" || c.status === "Aguardando Peça");
-  const aguardandoAvaliacao = meusChamados.filter(c => c.status === "Aguardando Avaliação");
-  const fechados = meusChamados.filter(c => c.status === "Resolvido" || c.status === "Cancelado");
+  const aguardandoAvaliacao = meusChamados.filter(c => c.status === "Aguardando Avaliação" || (c.status === "Resolvido" && !c.avaliacao_data));
+  const fechados = meusChamados.filter(c => (c.status === "Resolvido" && c.avaliacao_data) || c.status === "Cancelado");
 
   const handleTipoChange = (v) => setFormData(prev => ({ ...prev, tipo_solicitacao: v, sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "", equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "", servidor_subtipo: "" }));
 
@@ -534,32 +534,35 @@ export default function PortalChamados() {
   }
 
   // Lista principal com 4 categorias
-  const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => (
-    <div
-      className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
-      onClick={() => setSelectedChamado(chamado)}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-mono text-xs text-muted-foreground">{chamado.numero_chamado}</span>
-          <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"} >{chamado.status}</Badge>
-          <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
+  const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => {
+    const precisaAvaliar = !chamado.avaliacao_data && (chamado.status === "Aguardando Avaliação" || chamado.status === "Resolvido");
+    return (
+      <div
+        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
+        onClick={() => setSelectedChamado(chamado)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-mono text-xs text-muted-foreground">{chamado.numero_chamado}</span>
+            <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"}>{chamado.status}</Badge>
+            <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
+          </div>
+          <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
+          <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
         </div>
-        <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
-        <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
+        {(showAvaliarBtn || precisaAvaliar) && (
+          <Button
+            size="sm"
+            className="ml-3 bg-purple-600 hover:bg-purple-700 shrink-0"
+            onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); }}
+          >
+            <Star className="w-3 h-3 mr-1" />
+            Avaliar
+          </Button>
+        )}
       </div>
-      {showAvaliarBtn && (
-        <Button
-          size="sm"
-          className="ml-3 bg-purple-600 hover:bg-purple-700 shrink-0"
-          onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); }}
-        >
-          <Star className="w-3 h-3 mr-1" />
-          Avaliar
-        </Button>
-      )}
-    </div>
-  );
+    );
+  };
 
   const TabContent = ({ lista, empty, showAvaliarBtn = false }) => (
     <div className="space-y-2">

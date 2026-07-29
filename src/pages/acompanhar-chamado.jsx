@@ -403,7 +403,7 @@ export default function AcompanharChamado() {
                   </AlertDescription>
                 </Alert>
 
-                {chamado.status === "Aguardando Avaliação" && !chamado.avaliacao_data && (
+                {(chamado.status === "Aguardando Avaliação" || chamado.status === "Resolvido") && !chamado.avaliacao_data && (
                   <Card className="border-2 border-yellow-300 bg-yellow-50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg text-yellow-900 flex items-center gap-2">
