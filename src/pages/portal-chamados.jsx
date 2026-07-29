@@ -299,13 +299,37 @@ export default function PortalChamados() {
   }
 
   const nomeNorm = normalizeUserName(colaborador.nome_completo);
-  const meusChamados = chamados.filter(c => normalizeUserName(c.solicitante_nome) === nomeNorm);
+  const emailNorm = (colaborador.email || "").toLowerCase().trim();
+
+  const meusChamados = chamados.filter(c => {
+    if (!c) return false;
+    const matchEmail = emailNorm && c.solicitante_email && (c.solicitante_email.toLowerCase().trim() === emailNorm);
+    const solicitanteNorm = normalizeUserName(c.solicitante_nome);
+    const matchNomeExact = solicitanteNorm === nomeNorm;
+    const matchNomePartial = (
+      solicitanteNorm.length > 3 && nomeNorm.length > 3 && (
+        solicitanteNorm.includes(nomeNorm) || nomeNorm.includes(solicitanteNorm)
+      )
+    );
+    return matchEmail || matchNomeExact || matchNomePartial;
+  });
+
+  const ehChamadoSemNota = (c) => {
+    if (!c) return false;
+    const semNota = !c.avaliacao_data && (c.avaliacao_nota_geral === null || c.avaliacao_nota_geral === undefined || c.avaliacao_nota_geral === 0);
+    const statusValido = !c.status ||
+      c.status === "Aguardando Avaliação" ||
+      c.status === "Resolvido" ||
+      c.status.toLowerCase().includes("aguard") ||
+      c.status.toLowerCase().includes("resolv");
+    return semNota && statusValido;
+  };
 
   // 4 categorias conforme solicitado
   const naoIniciados = meusChamados.filter(c => c.status === "Aberto" || c.status === "Em Análise");
   const emAndamento = meusChamados.filter(c => c.status === "Em Andamento" || c.status === "Aguardando Peça");
-  const aguardandoAvaliacao = meusChamados.filter(c => c.status === "Aguardando Avaliação" || (c.status === "Resolvido" && !c.avaliacao_data));
-  const fechados = meusChamados.filter(c => (c.status === "Resolvido" && c.avaliacao_data) || c.status === "Cancelado");
+  const aguardandoAvaliacao = meusChamados.filter(c => ehChamadoSemNota(c) || c.status === "Aguardando Avaliação");
+  const fechados = meusChamados.filter(c => (!ehChamadoSemNota(c) && (c.status === "Resolvido" || c.status === "Cancelado")));
 
   const handleTipoChange = (v) => setFormData(prev => ({ ...prev, tipo_solicitacao: v, sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "", equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "", servidor_subtipo: "" }));
 
@@ -553,10 +577,10 @@ export default function PortalChamados() {
 
   // Lista principal com 4 categorias
   const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => {
-    const precisaAvaliar = !chamado.avaliacao_data && (chamado.status === "Aguardando Avaliação" || chamado.status === "Resolvido");
+    const precisaAvaliar = ehChamadoSemNota(chamado);
     return (
       <div
-        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
+        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all gap-3"
         onClick={() => {
           if (precisaAvaliar) {
             abrirAvaliacaoDireta(chamado);
@@ -566,26 +590,29 @@ export default function PortalChamados() {
         }}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-xs text-muted-foreground">{chamado.numero_chamado}</span>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="font-mono text-xs text-muted-foreground font-semibold">{chamado.numero_chamado}</span>
             <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"}>{chamado.status}</Badge>
-            <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
+            {chamado.urgencia && (
+              <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
+            )}
           </div>
           <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
           <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
         </div>
         {(showAvaliarBtn || precisaAvaliar) && (
-          <Button
-            size="sm"
-            className="ml-3 bg-yellow-600 hover:bg-yellow-700 text-white shrink-0 font-bold shadow-sm"
+          <button
+            type="button"
+            className="bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shrink-0 shadow cursor-pointer transition-transform hover:scale-105"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               abrirAvaliacaoDireta(chamado);
             }}
           >
-            <Star className="w-3.5 h-3.5 mr-1 fill-yellow-300 text-yellow-300" />
+            <Star className="w-4 h-4 fill-yellow-200 text-yellow-200" />
             Avaliar
-          </Button>
+          </button>
         )}
       </div>
     );
@@ -663,6 +690,28 @@ export default function PortalChamados() {
           </DialogHeader>
           {selectedChamado && (
             <div className="space-y-4 text-sm">
+              {ehChamadoSemNota(selectedChamado) && (
+                <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-950 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow">
+                  <div>
+                    <p className="font-bold text-sm flex items-center gap-1.5">
+                      <Star className="w-4 h-4 fill-yellow-600 text-yellow-600" />
+                      Avaliação Pendente
+                    </p>
+                    <p className="text-xs text-yellow-900 mt-0.5">Sua avaliação é muito importante para a qualidade do nosso suporte.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold text-xs px-4 py-2 rounded-lg shadow shrink-0 w-full sm:w-auto text-center cursor-pointer transition-transform hover:scale-105"
+                    onClick={() => {
+                      const temp = selectedChamado;
+                      setSelectedChamado(null);
+                      abrirAvaliacaoDireta(temp);
+                    }}
+                  >
+                    Avaliar Agora ⭐
+                  </button>
+                </div>
+              )}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <Badge className={statusColors[selectedChamado.status]}>{selectedChamado.status}</Badge>
                 <Badge className={selectedChamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>{selectedChamado.urgencia}</Badge>
