@@ -459,6 +459,7 @@ export default function Chamados() {
     tempoMedioTerceiros,
     resolvidosSemAvaliacao: resolvidosSemAvaliacao.length,
     totalTerceiros: chamadosTerceiros.length,
+    totalInternos: chamadosInternos.length,
   };
 
   // Top Solicitantes
@@ -596,7 +597,7 @@ export default function Chamados() {
                   <span title="Calculado apenas em horas úteis (seg–sex, 07:42–17:30). Exclui chamados de terceiros." className="cursor-help"><Info className="w-3 h-3 text-gray-400" /></span>
                 </div>
                 <p className="text-xl font-bold text-purple-600 mt-1">{formatMinutos(Math.round(stats.tempoMedioUtil))}</p>
-                <p className="text-xs text-gray-400">{chamadosResolvidos.length} chamado(s)</p>
+                <p className="text-xs text-gray-400">{stats.totalInternos} chamado(s)</p>
               </div>
             </CardContent>
           </Card>
