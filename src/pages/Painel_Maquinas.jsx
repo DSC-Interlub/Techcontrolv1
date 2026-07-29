@@ -724,16 +724,17 @@ export default function Painel_Maquinas() {
     });
 
     const resultado = [];
+    const idsDisponiveisAlocados = new Set();
 
     maquinasParaAnalisar.forEach(mRuim => {
       const scoreAtual = calcularScoreHardware(mRuim);
 
-      // Encontrar a MELHOR máquina disponível em estoque com maior ganho de performance
       let melhorDisponivel = null;
-      let maiorGanho = 0;
+      let maiorGanho = -999;
 
+      // 1. Buscar a melhor máquina disponível do mesmo tipo ainda não alocada
       disponiveis.forEach(mDisp => {
-        if (mDisp.tipo === mRuim.tipo) {
+        if (!idsDisponiveisAlocados.has(mDisp.id) && mDisp.tipo === mRuim.tipo) {
           const scoreDisp = calcularScoreHardware(mDisp);
           const diff = scoreDisp - scoreAtual;
           if (diff > maiorGanho) {
@@ -743,15 +744,22 @@ export default function Painel_Maquinas() {
         }
       });
 
+      // 2. Se não houver do mesmo tipo, buscar de qualquer tipo disponível ainda não alocado
       if (!melhorDisponivel) {
         disponiveis.forEach(mDisp => {
-          const scoreDisp = calcularScoreHardware(mDisp);
-          const diff = scoreDisp - scoreAtual;
-          if (diff > maiorGanho) {
-            maiorGanho = diff;
-            melhorDisponivel = mDisp;
+          if (!idsDisponiveisAlocados.has(mDisp.id)) {
+            const scoreDisp = calcularScoreHardware(mDisp);
+            const diff = scoreDisp - scoreAtual;
+            if (diff > maiorGanho) {
+              maiorGanho = diff;
+              melhorDisponivel = mDisp;
+            }
           }
         });
+      }
+
+      if (melhorDisponivel) {
+        idsDisponiveisAlocados.add(melhorDisponivel.id);
       }
 
       // Gerar destaques das melhorias técnicas (Processador, RAM, Ano e SO)

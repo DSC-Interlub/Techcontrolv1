@@ -354,12 +354,23 @@ export function extrairAnyDesk(item) {
 }
 
 /**
- * Formata ou atualiza o campo de observações anexando/substituindo a tag AnyDesk
+ * Formata ou atualiza o campo de observações anexando/substituindo as tags de AnyDesk, RAM e SO mais recentes da avaliação
  */
-export function formatarObservacoesComAnyDesk(obsAtual, anydeskId) {
-  const limpo = (obsAtual || "").replace(/AnyDesk:\s*([^\s|;\n\r]+)/gi, "").trim();
-  if (!anydeskId || !anydeskId.trim()) return limpo;
-  const tag = `AnyDesk: ${anydeskId.trim()}`;
-  return limpo ? `${tag} | ${limpo}` : tag;
+export function formatarObservacoesComAnyDesk(obsAtual, anydeskId, memoriaRam, versaoWindows) {
+  let limpo = (obsAtual || "").replace(/AnyDesk:\s*[^|;\n\r]+/gi, "")
+                           .replace(/RAM:\s*[^|;\n\r]+/gi, "")
+                           .replace(/SO:\s*[^|;\n\r]+/gi, "")
+                           .replace(/\|{2,}/g, "|")
+                           .trim();
+  if (limpo.startsWith("|")) limpo = limpo.substring(1).trim();
+  if (limpo.endsWith("|")) limpo = limpo.substring(0, limpo.length - 1).trim();
+
+  const partes = [];
+  if (anydeskId && anydeskId.trim()) partes.push(`AnyDesk: ${anydeskId.trim()}`);
+  if (memoriaRam && memoriaRam.trim()) partes.push(`RAM: ${memoriaRam.trim()}`);
+  if (versaoWindows && versaoWindows.trim()) partes.push(`SO: ${versaoWindows.trim().split('|')[0].trim()}`);
+  if (limpo) partes.push(limpo);
+
+  return partes.join(" | ");
 }
 

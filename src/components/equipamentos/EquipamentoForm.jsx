@@ -79,9 +79,12 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       // Atualizar o CADASTRO do Equipamento com os Dados Técnicos da Avaliação (AnyDesk, RAM, SO, Antivírus, Condição)
       const updateDataEquipamento = {};
 
-      if (anydeskVal) {
-        updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(formData.observacoes, anydeskVal);
-      }
+      updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(
+        formData.observacoes,
+        anydeskVal,
+        dadosAvaliacao.memoria_ram,
+        dadosAvaliacao.versao_windows
+      );
       if (dadosAvaliacao.memoria_ram) {
         updateDataEquipamento.memoria_ram = dadosAvaliacao.memoria_ram;
       }

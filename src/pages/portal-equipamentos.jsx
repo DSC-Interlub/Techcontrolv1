@@ -64,9 +64,12 @@ export default function PortalEquipamentos() {
       // Atualizar o CADASTRO do Equipamento com os Dados Técnicos da Avaliação (AnyDesk, RAM, SO, Antivírus, Condição)
       const updateDataEquipamento = {};
 
-      if (anydeskVal) {
-        updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(eq.observacoes, anydeskVal);
-      }
+      updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(
+        eq.observacoes,
+        anydeskVal,
+        dados.memoria_ram,
+        dados.versao_windows
+      );
       if (dados.memoria_ram) {
         updateDataEquipamento.memoria_ram = dados.memoria_ram;
       }
