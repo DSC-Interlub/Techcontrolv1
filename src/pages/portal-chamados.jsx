@@ -265,6 +265,9 @@ export default function PortalChamados() {
     },
   });
 
+  const [evalModalChamado, setEvalModalChamado] = useState(null);
+  const [evalForm, setEvalForm] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
+
   const avaliacaoMutation = useMutation({
     mutationFn: async ({ id, av }) => {
       const nota = (av.tempo_resolucao + av.qualidade_atendimento + av.qualidade_solucao + av.comunicacao) / 4;
@@ -281,8 +284,14 @@ export default function PortalChamados() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
+      setEvalModalChamado(null);
       setSelectedChamado(null);
+      alert("🎉 Avaliação enviada com sucesso! Muito obrigado pelo seu feedback.");
     },
+    onError: (err) => {
+      console.error("Erro ao enviar avaliação:", err);
+      alert("Não foi possível salvar a avaliação. Tente novamente.");
+    }
   });
 
   if (loading || !colaborador) {
@@ -537,9 +546,9 @@ export default function PortalChamados() {
     );
   }
 
-  const abrirChamado = (chamado, forcarAvaliacao = false) => {
-    setSelectedChamado(chamado);
-    setAutoShowAvaliacao(forcarAvaliacao);
+  const abrirAvaliacaoDireta = (chamado) => {
+    setEvalForm({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
+    setEvalModalChamado(chamado);
   };
 
   // Lista principal com 4 categorias
@@ -548,7 +557,13 @@ export default function PortalChamados() {
     return (
       <div
         className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
-        onClick={() => abrirChamado(chamado, precisaAvaliar)}
+        onClick={() => {
+          if (precisaAvaliar) {
+            abrirAvaliacaoDireta(chamado);
+          } else {
+            setSelectedChamado(chamado);
+          }
+        }}
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -562,10 +577,13 @@ export default function PortalChamados() {
         {(showAvaliarBtn || precisaAvaliar) && (
           <Button
             size="sm"
-            className="ml-3 bg-purple-600 hover:bg-purple-700 text-white shrink-0 font-medium"
-            onClick={(e) => { e.stopPropagation(); abrirChamado(chamado, true); }}
+            className="ml-3 bg-yellow-600 hover:bg-yellow-700 text-white shrink-0 font-bold shadow-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              abrirAvaliacaoDireta(chamado);
+            }}
           >
-            <Star className="w-3.5 h-3.5 mr-1 fill-yellow-400 text-yellow-400" />
+            <Star className="w-3.5 h-3.5 mr-1 fill-yellow-300 text-yellow-300" />
             Avaliar
           </Button>
         )}
@@ -720,6 +738,90 @@ export default function PortalChamados() {
                 loading={avaliacaoMutation.isPending}
                 onAvaliar={(av) => avaliacaoMutation.mutate({ id: selectedChamado.id, av })}
               />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Exclusivo e Dedicado de Avaliação */}
+      <Dialog open={!!evalModalChamado} onOpenChange={() => setEvalModalChamado(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-yellow-900 font-bold">
+              <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
+              Avaliar Atendimento — {evalModalChamado?.numero_chamado}
+            </DialogTitle>
+          </DialogHeader>
+
+          {evalModalChamado && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-xs text-yellow-900 space-y-1">
+                <p className="font-bold text-sm text-yellow-950">{evalModalChamado.titulo_chamado || evalModalChamado.descricao_problema?.slice(0, 70)}</p>
+                <p className="text-gray-600">Aberto em: {evalModalChamado.data_abertura} · Responsável: {evalModalChamado.responsavel || "TI"}</p>
+                {evalModalChamado.solucao && (
+                  <div className="mt-2 bg-green-50 p-2.5 rounded border border-green-200 text-green-900">
+                    <strong className="block text-xs text-green-700">Solução da TI:</strong>
+                    <p className="text-xs mt-0.5">{evalModalChamado.solucao}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  ["tempo_resolucao", "Tempo de Resolução", "O prazo de atendimento atendeu suas expectativas?"],
+                  ["qualidade_atendimento", "Qualidade do Atendimento", "O técnico foi prestativo e cordial?"],
+                  ["qualidade_solucao", "Qualidade da Solução", "O problema foi resolvido satisfatoriamente?"],
+                  ["comunicacao", "Comunicação", "Você foi mantido informado sobre o chamado?"]
+                ].map(([campo, titulo, desc]) => (
+                  <div key={campo} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-gray-900 font-semibold text-xs">{titulo}</Label>
+                      <span className="text-xs font-bold text-yellow-700">{evalForm[campo]} ⭐</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mb-2">{desc}</p>
+                    <div className="flex gap-2 justify-start">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setEvalForm(p => ({ ...p, [campo]: n }))}
+                          className="transition-all hover:scale-125 focus:outline-none"
+                        >
+                          <Star className={`w-6 h-6 ${n <= evalForm[campo] ? 'fill-yellow-500 text-yellow-500' : 'fill-none text-gray-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <div>
+                  <Label className="text-gray-800 font-semibold text-xs">Comentário / Sugestão (opcional)</Label>
+                  <Textarea
+                    placeholder="Deixe uma mensagem para a equipe de TI..."
+                    rows={2}
+                    value={evalForm.comentario}
+                    onChange={(e) => setEvalForm(p => ({ ...p, comentario: e.target.value }))}
+                    className="mt-1 text-xs bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEvalModalChamado(null)} className="flex-1 text-xs">
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white flex-1 font-bold text-xs shadow-md"
+                  onClick={() => avaliacaoMutation.mutate({ id: evalModalChamado.id, av: evalForm })}
+                  disabled={avaliacaoMutation.isPending}
+                >
+                  {avaliacaoMutation.isPending ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Enviando...</>
+                  ) : (
+                    "Enviar Avaliação ⭐"
+                  )}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
