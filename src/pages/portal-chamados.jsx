@@ -574,7 +574,7 @@ export default function PortalChamados() {
     );
   }
 
-function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
+function ModalAvaliacaoChamado({ chamado, onClose, onSuccess }) {
   const [form, setForm] = useState({
     tempo_resolucao: 5,
     qualidade_atendimento: 5,
@@ -582,156 +582,151 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
     comunicacao: 5,
     comentario: ""
   });
-  const [enviando, setEnviando] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  if (!chamado) return null;
 
   const handleSetStar = (campo, val) => {
     setForm(prev => ({ ...prev, [campo]: val }));
   };
 
-  const handleEnviar = async (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    setEnviando(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSalvando(true);
     try {
-      await onAvaliar(form);
-      setSucesso(true);
+      const t = Number(form.tempo_resolucao) || 5;
+      const q = Number(form.qualidade_atendimento) || 5;
+      const s = Number(form.qualidade_solucao) || 5;
+      const c = Number(form.comunicacao) || 5;
+      const nota = Math.round(((t + q + s + c) / 4) * 10) / 10;
+
+      await base44.entities.Chamados.update(chamado.id, {
+        avaliacao_tempo_resolucao: t,
+        avaliacao_qualidade_atendimento: q,
+        avaliacao_qualidade_solucao: s,
+        avaliacao_comunicacao: c,
+        avaliacao_nota_geral: nota,
+        avaliacao_comentario: form.comentario || "",
+        avaliacao_data: new Date().toISOString(),
+        status: "Resolvido",
+      });
+
+      alert("🎉 Avaliação enviada com sucesso! Muito obrigado pelo seu feedback.");
+      onSuccess();
+      onClose();
     } catch (err) {
-      console.error("Erro no envio:", err);
-      alert("Ocorreu um erro ao salvar a avaliação: " + (err.message || "Erro desconhecido"));
+      console.error("Erro ao salvar avaliação:", err);
+      alert("Não foi possível salvar a avaliação: " + (err.message || "Erro desconhecido"));
     } finally {
-      setEnviando(false);
+      setSalvando(false);
     }
   };
-
-  if (sucesso) {
-    return (
-      <Card className="border-2 border-green-500 bg-green-50 p-6 text-center my-2 shadow-sm">
-        <div className="flex flex-col items-center justify-center gap-2">
-          <CheckCircle className="w-10 h-10 text-green-600 animate-bounce" />
-          <p className="text-lg font-bold text-green-900">Avaliação enviada com sucesso!</p>
-          <p className="text-sm text-green-700">Muito obrigado pelo seu feedback. O chamado {chamado.numero_chamado} foi concluído.</p>
-        </div>
-      </Card>
-    );
-  }
 
   return (
-    <Card 
-      className="border-2 border-yellow-400 bg-gradient-to-br from-yellow-50/90 to-amber-50/60 shadow-md transition-all my-2 text-left"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <CardHeader className="pb-3 border-b border-yellow-200/80 bg-yellow-100/70">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+    <Dialog open={true} onOpenChange={(open) => { if (!open && !salvando) onClose(); }}>
+      <DialogContent className="sm:max-w-lg bg-white p-6 rounded-xl border shadow-2xl text-left">
+        <DialogHeader className="pb-3 border-b">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-bold text-yellow-950">{chamado.numero_chamado}</span>
-            <Badge className="bg-purple-100 text-purple-900 border-purple-200 font-semibold">{chamado.status}</Badge>
-            {chamado.urgencia && <Badge variant="outline" className="text-xs bg-white">{chamado.urgencia}</Badge>}
+            <span className="font-mono text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{chamado.numero_chamado}</span>
+            <Badge className="bg-purple-100 text-purple-900 border-purple-200">{chamado.status}</Badge>
           </div>
-          <p className="text-xs text-yellow-800 font-medium">{chamado.tipo_solicitacao} · Aberto em {chamado.data_abertura}</p>
-        </div>
-        <CardTitle className="text-base font-bold text-yellow-950 mt-2">
-          {chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 80)}
-        </CardTitle>
-        {chamado.solucao && (
-          <div className="mt-2 bg-green-50/90 border border-green-200 rounded-lg p-2.5 text-xs text-green-900">
-            <strong className="text-green-800 font-bold block mb-0.5">Solução Aplicada pela TI:</strong>
-            <p className="text-green-950">{chamado.solucao}</p>
-          </div>
-        )}
-      </CardHeader>
+          <DialogTitle className="text-lg font-bold text-gray-900 mt-2">
+            Avaliar Atendimento da TI
+          </DialogTitle>
+          <DialogDescription className="text-xs text-gray-500">
+            {chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 80)}
+          </DialogDescription>
+        </DialogHeader>
 
-      <CardContent className="pt-4 space-y-4">
-        <p className="font-bold text-yellow-900 text-sm flex items-center gap-1.5">
-          <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-          Avalie como foi o atendimento deste chamado:
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            ["tempo_resolucao", "⏱️ Tempo de Resolução", "O prazo atendeu suas expectativas?"],
-            ["qualidade_atendimento", "🤝 Qualidade do Atendimento", "O técnico foi cordial e atencioso?"],
-            ["qualidade_solucao", "💡 Qualidade da Solução", "O problema foi 100% resolvido?"],
-            ["comunicacao", "💬 Comunicação", "Você foi informado do andamento?"]
-          ].map(([campo, labelText, desc]) => (
-            <div key={campo} className="bg-white border border-yellow-200 rounded-xl p-3 shadow-sm">
-              <div className="flex items-center justify-between mb-1">
-                <Label htmlFor={`label-${campo}-${chamado.id}`} className="font-semibold text-gray-900 text-xs">{labelText}</Label>
-                <span className="text-xs font-extrabold text-yellow-700">{form[campo]} ⭐</span>
-              </div>
-              <p className="text-[11px] text-gray-500 mb-2">{desc}</p>
-              <div className="flex gap-1.5 justify-start">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button
-                    key={n}
-                    id={`star-${campo}-${chamado.id}-${n}`}
-                    name={`star-${campo}-${chamado.id}`}
-                    type="button"
-                    aria-label={`Nota ${n} de 5 para ${labelText}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleSetStar(campo, n);
-                    }}
-                    className="p-1 hover:scale-125 transition-transform focus:outline-none cursor-pointer"
-                  >
-                    <Star className={`w-6 h-6 ${n <= form[campo] ? 'fill-yellow-400 text-yellow-500' : 'fill-none text-gray-300'}`} />
-                  </button>
-                ))}
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+          {chamado.solucao && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-xs text-green-900">
+              <strong className="text-green-800 font-bold block mb-0.5">Solução Aplicada pela TI:</strong>
+              <p className="text-green-950">{chamado.solucao}</p>
             </div>
-          ))}
-        </div>
-
-        <div>
-          <Label htmlFor={`comentario-${chamado.id}`} className="text-gray-800 font-semibold text-xs">Comentários ou Elogios (opcional)</Label>
-          <Textarea
-            id={`comentario-${chamado.id}`}
-            name={`comentario-${chamado.id}`}
-            placeholder="Deixe um recado para o técnico ou sugestão de melhoria..."
-            rows={2}
-            value={form.comentario}
-            onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
-            onClick={e => e.stopPropagation()}
-            className="mt-1 text-xs bg-white border-yellow-200 focus:border-yellow-500"
-          />
-        </div>
-
-        <button
-          type="button"
-          id={`btn-enviar-eval-${chamado.id}`}
-          name={`btn-enviar-eval-${chamado.id}`}
-          onClick={handleEnviar}
-          disabled={loading || enviando}
-          className="w-full bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 disabled:opacity-50 text-white font-bold py-3.5 px-4 text-sm shadow-md transition-all rounded-lg cursor-pointer flex items-center justify-center gap-2"
-        >
-          {loading || enviando ? (
-            <><Loader2 className="w-4 h-4 animate-spin text-white" />Enviando Avaliação...</>
-          ) : (
-            <><Star className="w-4 h-4 fill-yellow-200 text-yellow-200" />Enviar Avaliação Agora ⭐</>
           )}
-        </button>
-      </CardContent>
-    </Card>
+
+          <p className="font-bold text-yellow-900 text-xs flex items-center gap-1.5">
+            <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+            Por favor, avalie os seguintes aspectos do atendimento:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              ["tempo_resolucao", "⏱️ Tempo de Resolução", "O prazo atendeu suas expectativas?"],
+              ["qualidade_atendimento", "🤝 Atendimento", "O técnico foi cordial e atencioso?"],
+              ["qualidade_solucao", "💡 Qualidade da Solução", "O problema foi 100% resolvido?"],
+              ["comunicacao", "💬 Comunicação", "Foi informado sobre o andamento?"]
+            ].map(([campo, labelText, desc]) => (
+              <div key={campo} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor={`eval-label-${campo}`} className="font-semibold text-gray-900 text-xs">{labelText}</Label>
+                  <span className="text-xs font-extrabold text-yellow-600">{form[campo]} ⭐</span>
+                </div>
+                <p className="text-[10px] text-gray-500 mb-2">{desc}</p>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button
+                      key={n}
+                      id={`star-${campo}-${n}`}
+                      name={`star-${campo}`}
+                      type="button"
+                      aria-label={`Nota ${n} de 5 para ${labelText}`}
+                      onClick={() => handleSetStar(campo, n)}
+                      className="p-1 hover:scale-125 transition-transform focus:outline-none cursor-pointer"
+                    >
+                      <Star className={`w-5 h-5 ${n <= form[campo] ? 'fill-yellow-400 text-yellow-500' : 'fill-none text-gray-300'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <Label htmlFor="eval-comentario" className="text-gray-800 font-semibold text-xs mb-1 block">Comentários ou Elogios (opcional)</Label>
+            <Textarea
+              id="eval-comentario"
+              name="eval-comentario"
+              placeholder="Escreva aqui sugestões ou elogios para o técnico..."
+              rows={2}
+              value={form.comentario}
+              onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
+              className="text-xs bg-white border-gray-300 focus:border-yellow-500"
+            />
+          </div>
+
+          <DialogFooter className="pt-3 flex gap-2 sm:justify-end border-t">
+            <Button type="button" variant="outline" onClick={onClose} disabled={salvando} className="text-xs">
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={salvando}
+              className="bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold text-xs gap-1.5 shadow"
+            >
+              {salvando ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+              ) : (
+                <><Star className="w-4 h-4 fill-yellow-200 text-yellow-200" /> Confirmar e Enviar Avaliação</>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
-
-  const abrirAvaliacaoDireta = (chamado) => {
-    setEvalForm({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
-    setEvalModalChamado(chamado);
-  };
 
   // Lista principal com 4 categorias
   const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => {
     const precisaAvaliar = ehChamadoSemNota(chamado);
     return (
       <div
-        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all gap-3"
+        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-md cursor-pointer transition-all gap-3"
         onClick={() => {
           if (precisaAvaliar) {
-            abrirAvaliacaoDireta(chamado);
+            setEvalModalChamado(chamado);
           } else {
             setSelectedChamado(chamado);
           }
@@ -746,16 +741,16 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
             )}
           </div>
           <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
-          <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
+          <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · Aberto em {chamado.data_abertura}</p>
         </div>
         {(showAvaliarBtn || precisaAvaliar) && (
           <button
             type="button"
-            className="bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs flex items-center gap-1.5 shrink-0 shadow cursor-pointer transition-transform hover:scale-105"
+            className="bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shrink-0 shadow cursor-pointer transition-transform hover:scale-105"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              abrirAvaliacaoDireta(chamado);
+              setEvalModalChamado(chamado);
             }}
           >
             <Star className="w-4 h-4 fill-yellow-200 text-yellow-200" />
@@ -767,20 +762,11 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
   };
 
   const TabContent = ({ lista, empty, isAvaliacaoTab = false }) => (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {isLoading ? <p className="text-center py-8 text-gray-500">Carregando...</p>
       : lista.length === 0 ? <p className="text-center py-8 text-gray-500">{empty}</p>
       : lista.map(c => (
-        isAvaliacaoTab || ehChamadoSemNota(c) ? (
-          <ChamadoAvaliacaoInlineCard
-            key={c.id}
-            chamado={c}
-            loading={avaliacaoMutation.isPending}
-            onAvaliar={(av) => avaliacaoMutation.mutate({ id: c.id, av })}
-          />
-        ) : (
-          <ChamadoCard key={c.id} chamado={c} />
-        )
+        <ChamadoCard key={c.id} chamado={c} showAvaliarBtn={isAvaliacaoTab} />
       ))}
     </div>
   );
@@ -864,7 +850,7 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
                     onClick={() => {
                       const temp = selectedChamado;
                       setSelectedChamado(null);
-                      abrirAvaliacaoDireta(temp);
+                      setEvalModalChamado(temp);
                     }}
                   >
                     Avaliar Agora ⭐
@@ -951,89 +937,14 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Exclusivo e Dedicado de Avaliação */}
-      <Dialog open={!!evalModalChamado} onOpenChange={() => setEvalModalChamado(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-yellow-900 font-bold">
-              <Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-              Avaliar Atendimento — {evalModalChamado?.numero_chamado}
-            </DialogTitle>
-          </DialogHeader>
-
-          {evalModalChamado && (
-            <div className="space-y-4 pt-2">
-              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 text-xs text-yellow-900 space-y-1">
-                <p className="font-bold text-sm text-yellow-950">{evalModalChamado.titulo_chamado || evalModalChamado.descricao_problema?.slice(0, 70)}</p>
-                <p className="text-gray-600">Aberto em: {evalModalChamado.data_abertura} · Responsável: {evalModalChamado.responsavel || "TI"}</p>
-                {evalModalChamado.solucao && (
-                  <div className="mt-2 bg-green-50 p-2.5 rounded border border-green-200 text-green-900">
-                    <strong className="block text-xs text-green-700">Solução da TI:</strong>
-                    <p className="text-xs mt-0.5">{evalModalChamado.solucao}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  ["tempo_resolucao", "Tempo de Resolução", "O prazo de atendimento atendeu suas expectativas?"],
-                  ["qualidade_atendimento", "Qualidade do Atendimento", "O técnico foi prestativo e cordial?"],
-                  ["qualidade_solucao", "Qualidade da Solução", "O problema foi resolvido satisfatoriamente?"],
-                  ["comunicacao", "Comunicação", "Você foi mantido informado sobre o chamado?"]
-                ].map(([campo, titulo, desc]) => (
-                  <div key={campo} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <Label className="text-gray-900 font-semibold text-xs">{titulo}</Label>
-                      <span className="text-xs font-bold text-yellow-700">{evalForm[campo]} ⭐</span>
-                    </div>
-                    <p className="text-[11px] text-gray-500 mb-2">{desc}</p>
-                    <div className="flex gap-2 justify-start">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => setEvalForm(p => ({ ...p, [campo]: n }))}
-                          className="transition-all hover:scale-125 focus:outline-none"
-                        >
-                          <Star className={`w-6 h-6 ${n <= evalForm[campo] ? 'fill-yellow-500 text-yellow-500' : 'fill-none text-gray-300'}`} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                <div>
-                  <Label className="text-gray-800 font-semibold text-xs">Comentário / Sugestão (opcional)</Label>
-                  <Textarea
-                    placeholder="Deixe uma mensagem para a equipe de TI..."
-                    rows={2}
-                    value={evalForm.comentario}
-                    onChange={(e) => setEvalForm(p => ({ ...p, comentario: e.target.value }))}
-                    className="mt-1 text-xs bg-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setEvalModalChamado(null)} className="flex-1 text-xs">
-                  Cancelar
-                </Button>
-                <Button
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white flex-1 font-bold text-xs shadow-md"
-                  onClick={() => avaliacaoMutation.mutate({ id: evalModalChamado.id, av: evalForm })}
-                  disabled={avaliacaoMutation.isPending}
-                >
-                  {avaliacaoMutation.isPending ? (
-                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Enviando...</>
-                  ) : (
-                    "Enviar Avaliação ⭐"
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Modal de Avaliação Dedicado */}
+      {evalModalChamado && (
+        <ModalAvaliacaoChamado
+          chamado={evalModalChamado}
+          onClose={() => setEvalModalChamado(null)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] })}
+        />
+      )}
     </PortalLayout>
   );
 }
