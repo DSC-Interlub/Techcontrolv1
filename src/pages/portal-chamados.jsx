@@ -37,16 +37,23 @@ const normalizeUserName = (name) => {
     .trim();
 };
 
-function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
-  const [show, setShow] = useState(false);
-  const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 0, qualidade_atendimento: 0, qualidade_solucao: 0, comunicacao: 0, comentario: "" });
+function AvaliacaoChamado({ chamado, onAvaliar, loading, autoShow = false }) {
+  const [show, setShow] = useState(autoShow);
+  const [avaliacao, setAvaliacao] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
+
+  useEffect(() => {
+    if (autoShow) setShow(true);
+  }, [autoShow]);
 
   const StarRow = ({ label, campo }) => (
     <div>
-      <Label className="text-yellow-900 font-semibold text-sm">{label}</Label>
+      <div className="flex items-center justify-between">
+        <Label className="text-yellow-900 font-semibold text-sm">{label}</Label>
+        <span className="text-xs font-bold text-yellow-700">{avaliacao[campo]} ⭐</span>
+      </div>
       <div className="flex gap-2 mt-1">
         {[1, 2, 3, 4, 5].map(n => (
-          <button key={n} type="button" onClick={() => setAvaliacao(prev => ({ ...prev, [campo]: n }))} className="transition-all hover:scale-125">
+          <button key={n} type="button" onClick={() => setAvaliacao(prev => ({ ...prev, [campo]: n }))} className="transition-all hover:scale-125 focus:outline-none">
             <Star className={`w-7 h-7 ${n <= avaliacao[campo] ? 'fill-yellow-500 text-yellow-500' : 'fill-none text-gray-300'}`} />
           </button>
         ))}
@@ -55,10 +62,6 @@ function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
   );
 
   const handleEnviar = () => {
-    if (!avaliacao.tempo_resolucao || !avaliacao.qualidade_atendimento || !avaliacao.qualidade_solucao || !avaliacao.comunicacao) {
-      alert("Avalie todos os critérios antes de enviar.");
-      return;
-    }
     onAvaliar(avaliacao);
   };
 
@@ -74,10 +77,10 @@ function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
   if (chamado.status !== "Aguardando Avaliação" && chamado.status !== "Resolvido") return null;
 
   return (
-    <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-4">
-      <p className="font-semibold text-yellow-900 mb-3 flex items-center gap-2"><Star className="w-4 h-4" />Avalie nosso atendimento</p>
+    <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mt-4 shadow-sm" id="bloco-avaliacao">
+      <p className="font-bold text-yellow-900 mb-3 flex items-center gap-2 text-base"><Star className="w-5 h-5 fill-yellow-500 text-yellow-500" />Avalie nosso atendimento</p>
       {!show ? (
-        <Button onClick={() => setShow(true)} className="bg-yellow-600 hover:bg-yellow-700 w-full">Avaliar Atendimento</Button>
+        <Button onClick={() => setShow(true)} className="bg-yellow-600 hover:bg-yellow-700 w-full text-white font-semibold">Avaliar Atendimento Agora</Button>
       ) : (
         <div className="space-y-4">
           <StarRow label="Tempo de Resolução" campo="tempo_resolucao" />
@@ -85,13 +88,13 @@ function AvaliacaoChamado({ chamado, onAvaliar, loading }) {
           <StarRow label="Qualidade da Solução" campo="qualidade_solucao" />
           <StarRow label="Comunicação" campo="comunicacao" />
           <div>
-            <Label className="text-yellow-900">Comentários (opcional)</Label>
-            <Textarea placeholder="Sua experiência..." rows={2} value={avaliacao.comentario} onChange={e => setAvaliacao(prev => ({ ...prev, comentario: e.target.value }))} className="mt-1" />
+            <Label className="text-yellow-900 font-semibold">Comentários (opcional)</Label>
+            <Textarea placeholder="Escreva aqui seu comentário sobre o atendimento..." rows={2} value={avaliacao.comentario} onChange={e => setAvaliacao(prev => ({ ...prev, comentario: e.target.value }))} className="mt-1 bg-white" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-2">
             <Button variant="outline" onClick={() => setShow(false)}>Cancelar</Button>
-            <Button className="bg-yellow-600 hover:bg-yellow-700 flex-1" onClick={handleEnviar} disabled={loading}>
-              {loading ? "Enviando..." : "Enviar Avaliação"}
+            <Button className="bg-yellow-600 hover:bg-yellow-700 text-white flex-1 font-semibold" onClick={handleEnviar} disabled={loading}>
+              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : "Enviar Avaliação"}
             </Button>
           </div>
         </div>
@@ -105,6 +108,7 @@ export default function PortalChamados() {
   const queryClient = useQueryClient();
   const [view, setView] = useState("lista"); // "lista" | "novo"
   const [selectedChamado, setSelectedChamado] = useState(null);
+  const [autoShowAvaliacao, setAutoShowAvaliacao] = useState(false);
   const [formData, setFormData] = useState({
     tipo_solicitacao: "", sistema_tipo: "", sistema_subtipo: "", impressora_subtipo: "",
     equipamento_subtipo: "", equipamento_selecionado: "", equipamento_outros_detalhes: "",
@@ -533,13 +537,18 @@ export default function PortalChamados() {
     );
   }
 
+  const abrirChamado = (chamado, forcarAvaliacao = false) => {
+    setSelectedChamado(chamado);
+    setAutoShowAvaliacao(forcarAvaliacao);
+  };
+
   // Lista principal com 4 categorias
   const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => {
     const precisaAvaliar = !chamado.avaliacao_data && (chamado.status === "Aguardando Avaliação" || chamado.status === "Resolvido");
     return (
       <div
         className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
-        onClick={() => setSelectedChamado(chamado)}
+        onClick={() => abrirChamado(chamado, precisaAvaliar)}
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -553,10 +562,10 @@ export default function PortalChamados() {
         {(showAvaliarBtn || precisaAvaliar) && (
           <Button
             size="sm"
-            className="ml-3 bg-purple-600 hover:bg-purple-700 shrink-0"
-            onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); }}
+            className="ml-3 bg-purple-600 hover:bg-purple-700 text-white shrink-0 font-medium"
+            onClick={(e) => { e.stopPropagation(); abrirChamado(chamado, true); }}
           >
-            <Star className="w-3 h-3 mr-1" />
+            <Star className="w-3.5 h-3.5 mr-1 fill-yellow-400 text-yellow-400" />
             Avaliar
           </Button>
         )}
@@ -707,6 +716,7 @@ export default function PortalChamados() {
 
               <AvaliacaoChamado
                 chamado={selectedChamado}
+                autoShow={autoShowAvaliacao}
                 loading={avaliacaoMutation.isPending}
                 onAvaliar={(av) => avaliacaoMutation.mutate({ id: selectedChamado.id, av })}
               />

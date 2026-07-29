@@ -711,7 +711,7 @@ export default function Chamados() {
                   )}
                 </div>
 
-                {selectedChamado.status === "Aguardando Avaliação" && !selectedChamado.avaliacao_data && (
+                {(selectedChamado.status === "Aguardando Avaliação" || selectedChamado.status === "Resolvido") && !selectedChamado.avaliacao_data && (
                   <div className="space-y-2">
                     <Alert className="bg-orange-50 border-orange-200"><AlertDescription className="text-orange-800 text-sm"><strong>Aguardando avaliação</strong> do solicitante.</AlertDescription></Alert>
                     <Button onClick={() => setShowAvaliacao(true)} className="w-full bg-yellow-600 hover:bg-yellow-700"><Star className="w-4 h-4 mr-2" />Avaliar Atendimento (Admin)</Button>
