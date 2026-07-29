@@ -338,6 +338,27 @@ export default function Chamados() {
     e.target.value = "";
   };
 
+  // ── Ordenação Inteligente por Status e Data Recente ──
+  const ordenarChamadosInteligente = (lista) => {
+    const pesoStatus = (status) => {
+      if (status === "Em Andamento") return 1;
+      if (status === "Aguardando Avaliação") return 2;
+      if (status === "Aberto" || status === "Em Análise") return 3;
+      if (status === "Resolvido") return 4;
+      return 5;
+    };
+
+    return [...lista].sort((a, b) => {
+      const pA = pesoStatus(a.status);
+      const pB = pesoStatus(b.status);
+      if (pA !== pB) return pA - pB;
+
+      const dateA = a.data_abertura ? new Date(a.data_abertura).getTime() : (a.created_at ? new Date(a.created_at).getTime() : 0);
+      const dateB = b.data_abertura ? new Date(b.data_abertura).getTime() : (b.created_at ? new Date(b.created_at).getTime() : 0);
+      return dateB - dateA; // Mais recentes primeiro
+    });
+  };
+
   // ── Filtros de período ──
   const getChamadosFiltradosPeriodo = (lista) => {
     if (filterPeriodo === "todos") return lista;
@@ -355,8 +376,28 @@ export default function Chamados() {
 
   const chamadosAbertos = chamados.filter(c => c.status === "Aberto" || c.status === "Em Análise" || !c.responsavel);
   const chamadosGeral = chamados.filter(c => c.status === "Resolvido");
-  const responsaveis = [...new Set(chamados.filter(c => c.responsavel && c.status !== "Aberto").map(c => c.responsavel))].sort();
-  const getChamadosPorResponsavel = (r) => chamados.filter(c => c.responsavel === r);
+
+  // Mapear administradores conhecidos + responsáveis do banco
+  const responsaveisBanco = [...new Set(chamados.filter(c => c.responsavel && c.status !== "Aberto").map(c => c.responsavel))];
+  const adminsDoSistema = usuarios.map(u => u.nome_exibicao || u.full_name || u.email).filter(Boolean);
+
+  const responsaveisFormatados = [...new Set([
+    "Kauan Kubia",
+    "Jorge",
+    ...responsaveisBanco,
+    ...adminsDoSistema
+  ])].filter(r => r !== 'adm.sp1' && r !== 'adm.sp.1').sort();
+
+  const getChamadosPorResponsavel = (r) => {
+    if (r === "Kauan Kubia") {
+      return chamados.filter(c => c.responsavel === "Kauan Kubia" || c.responsavel === "adm.sp1" || c.responsavel === "Kauan");
+    }
+    if (r === "Jorge") {
+      return chamados.filter(c => c.responsavel === "Jorge" || (c.responsavel && c.responsavel.toLowerCase().includes("jorge")));
+    }
+    return chamados.filter(c => c.responsavel === r);
+  };
+
   const getChamadosAbaAtiva = () => {
     if (activeTab === "abertos") return chamadosAbertos;
     if (activeTab === "geral") return chamadosGeral;
@@ -364,25 +405,45 @@ export default function Chamados() {
   };
 
   const chamadosAbaAtiva = getChamadosFiltradosPeriodo(getChamadosAbaAtiva());
-  const chamadosAvaliadosAba = chamadosAbaAtiva.filter(c => c.avaliacao_data);
+  const chamadosAvaliadosAba = chamadosAbaAtiva.filter(c => c.avaliacao_data || c.avaliacao_nota_geral);
 
   const mediaAvaliacoes = {
     geral: chamadosAvaliadosAba.length > 0 ? chamadosAvaliadosAba.reduce((a, c) => a + (c.avaliacao_nota_geral || 0), 0) / chamadosAvaliadosAba.length : 0,
   };
 
-  // Tempo Médio calculado de TODOS os chamados do período (independente da aba ativa)
+  // Tempo Médio calculado de TODOS os chamados do período
   const todosChamadosPeriodo = getChamadosFiltradosPeriodo(chamados);
 
-  // Tempo Médio INTERNO — qualquer chamado que já tenha o tempo registrado (finalizado pelo admin)
-  const chamadosResolvidos = todosChamadosPeriodo.filter(c => (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao !== "Terceiro");
-  const tempoMedioUtil = chamadosResolvidos.length > 0
-    ? chamadosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosResolvidos.length
+  const calcularTempoUtilChamado = (c) => {
+    if (c.tempo_util_minutos && c.tempo_util_minutos > 0) return c.tempo_util_minutos;
+    if (c.tempo_resolucao_minutos && c.tempo_resolucao_minutos > 0) return c.tempo_resolucao_minutos;
+    if (c.tempo_total_minutos && c.tempo_total_minutos > 0) return c.tempo_total_minutos;
+
+    const inicio = c.data_inicio_atendimento || c.terceiro_data_abertura || c.data_abertura;
+    const fim = c.data_conclusao || c.terceiro_data_resolucao;
+    if (inicio && fim) {
+      const t = calcularMinutosUteis(new Date(inicio), new Date(fim));
+      return t > 0 ? t : null;
+    }
+    return null;
+  };
+
+  // Chamados de Terceiros
+  const chamadosTerceiros = todosChamadosPeriodo.filter(c =>
+    c.terceiro_envolvido || c.tipo_resolucao === "Terceiro" || (c.terceiro_empresa && c.terceiro_empresa.trim() !== "")
+  );
+  const temposTerceiros = chamadosTerceiros.map(calcularTempoUtilChamado).filter(t => t !== null && t > 0);
+  const tempoMedioTerceiros = temposTerceiros.length > 0
+    ? temposTerceiros.reduce((a, b) => a + b, 0) / temposTerceiros.length
     : 0;
 
-  // Tempo Médio TERCEIROS
-  const chamadosTerceirosResolvidos = todosChamadosPeriodo.filter(c => (c.tempo_util_minutos || c.tempo_resolucao_minutos) && c.tipo_resolucao === "Terceiro");
-  const tempoMedioTerceiros = chamadosTerceirosResolvidos.length > 0
-    ? chamadosTerceirosResolvidos.reduce((a, c) => a + (c.tempo_util_minutos || c.tempo_resolucao_minutos || 0), 0) / chamadosTerceirosResolvidos.length
+  // Chamados Internos
+  const chamadosInternos = todosChamadosPeriodo.filter(c =>
+    !c.terceiro_envolvido && c.tipo_resolucao !== "Terceiro" && (!c.terceiro_empresa || c.terceiro_empresa.trim() === "")
+  );
+  const temposInternos = chamadosInternos.map(calcularTempoUtilChamado).filter(t => t !== null && t > 0);
+  const tempoMedioUtil = temposInternos.length > 0
+    ? temposInternos.reduce((a, b) => a + b, 0) / temposInternos.length
     : 0;
 
   const resolvidosSemAvaliacao = chamadosAbaAtiva.filter(c => c.status === "Resolvido" && !c.avaliacao_data);
@@ -397,7 +458,7 @@ export default function Chamados() {
     tempoMedioUtil,
     tempoMedioTerceiros,
     resolvidosSemAvaliacao: resolvidosSemAvaliacao.length,
-    totalTerceiros: chamadosTerceirosResolvidos.length,
+    totalTerceiros: chamadosTerceiros.length,
   };
 
   // Top Solicitantes
@@ -406,13 +467,6 @@ export default function Chamados() {
   const topSetores = Object.entries(countBy(chamadosAbaAtiva, "solicitante_area")).sort((a,b) => b[1]-a[1]).slice(0,5);
   const maxColaborador = topColaboradores[0]?.[1] || 1;
   const maxSetor = topSetores[0]?.[1] || 1;
-
-  // Lista unificada de administradores/atendentes para as abas dinâmicas
-  const adminsDoSistema = usuarios.map(u => u.nome_exibicao || u.full_name || u.email).filter(Boolean);
-  const responsaveisFormatados = [...new Set([
-    ...responsaveis,
-    ...adminsDoSistema
-  ])].sort();
 
   const getTipoCompleto = (chamado) => {
     let d = chamado.tipo_solicitacao || "";
@@ -613,10 +667,10 @@ export default function Chamados() {
                     <TabsTrigger key={r} value={r} className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent px-6 py-3">{r} ({getChamadosPorResponsavel(r).length})</TabsTrigger>
                   ))}
                 </TabsList>
-                <TabsContent value="abertos" className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(chamadosAbertos))}</TabsContent>
-                <TabsContent value="geral" className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(chamadosGeral))}</TabsContent>
+                <TabsContent value="abertos" className="mt-0">{renderChamadosTable(ordenarChamadosInteligente(getChamadosFiltradosPeriodo(chamadosAbertos)))}</TabsContent>
+                <TabsContent value="geral" className="mt-0">{renderChamadosTable(ordenarChamadosInteligente(getChamadosFiltradosPeriodo(chamadosGeral)))}</TabsContent>
                 {responsaveisFormatados.map(r => (
-                  <TabsContent key={r} value={r} className="mt-0">{renderChamadosTable(getChamadosFiltradosPeriodo(getChamadosPorResponsavel(r)))}</TabsContent>
+                  <TabsContent key={r} value={r} className="mt-0">{renderChamadosTable(ordenarChamadosInteligente(getChamadosFiltradosPeriodo(getChamadosPorResponsavel(r))))}</TabsContent>
                 ))}
               </Tabs>
             )}
