@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
@@ -265,8 +265,7 @@ export default function PortalChamados() {
     },
   });
 
-  const [evalModalChamado, setEvalModalChamado] = useState(null);
-  const [evalForm, setEvalForm] = useState({ tempo_resolucao: 5, qualidade_atendimento: 5, qualidade_solucao: 5, comunicacao: 5, comentario: "" });
+
 
   const avaliacaoMutation = useMutation({
     mutationFn: async ({ id, av }) => {
@@ -289,7 +288,6 @@ export default function PortalChamados() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
-      setEvalModalChamado(null);
       setSelectedChamado(null);
     },
     onError: (err) => {
@@ -574,200 +572,42 @@ export default function PortalChamados() {
     );
   }
 
-function ModalAvaliacaoChamado({ chamado, onClose, onSuccess }) {
-  const [form, setForm] = useState({
-    tempo_resolucao: 5,
-    qualidade_atendimento: 5,
-    qualidade_solucao: 5,
-    comunicacao: 5,
-    comentario: ""
-  });
-  const [salvando, setSalvando] = useState(false);
-
-  if (!chamado) return null;
-
-  const handleSetStar = (campo, val) => {
-    setForm(prev => ({ ...prev, [campo]: val }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSalvando(true);
-    try {
-      const t = Number(form.tempo_resolucao) || 5;
-      const q = Number(form.qualidade_atendimento) || 5;
-      const s = Number(form.qualidade_solucao) || 5;
-      const c = Number(form.comunicacao) || 5;
-      const nota = Math.round(((t + q + s + c) / 4) * 10) / 10;
-
-      await base44.entities.Chamados.update(chamado.id, {
-        avaliacao_tempo_resolucao: t,
-        avaliacao_qualidade_atendimento: q,
-        avaliacao_qualidade_solucao: s,
-        avaliacao_comunicacao: c,
-        avaliacao_nota_geral: nota,
-        avaliacao_comentario: form.comentario || "",
-        avaliacao_data: new Date().toISOString(),
-        status: "Resolvido",
-      });
-
-      alert("🎉 Avaliação enviada com sucesso! Muito obrigado pelo seu feedback.");
-      onSuccess();
-      onClose();
-    } catch (err) {
-      console.error("Erro ao salvar avaliação:", err);
-      alert("Não foi possível salvar a avaliação: " + (err.message || "Erro desconhecido"));
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={(open) => { if (!open && !salvando) onClose(); }}>
-      <DialogContent className="sm:max-w-lg bg-white p-6 rounded-xl border shadow-2xl text-left">
-        <DialogHeader className="pb-3 border-b">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{chamado.numero_chamado}</span>
-            <Badge className="bg-purple-100 text-purple-900 border-purple-200">{chamado.status}</Badge>
-          </div>
-          <DialogTitle className="text-lg font-bold text-gray-900 mt-2">
-            Avaliar Atendimento da TI
-          </DialogTitle>
-          <DialogDescription className="text-xs text-gray-500">
-            {chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 80)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4 pt-3">
-          {chamado.solucao && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-xs text-green-900">
-              <strong className="text-green-800 font-bold block mb-0.5">Solução Aplicada pela TI:</strong>
-              <p className="text-green-950">{chamado.solucao}</p>
-            </div>
-          )}
-
-          <p className="font-bold text-yellow-900 text-xs flex items-center gap-1.5">
-            <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-            Por favor, avalie os seguintes aspectos do atendimento:
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              ["tempo_resolucao", "⏱️ Tempo de Resolução", "O prazo atendeu suas expectativas?"],
-              ["qualidade_atendimento", "🤝 Atendimento", "O técnico foi cordial e atencioso?"],
-              ["qualidade_solucao", "💡 Qualidade da Solução", "O problema foi 100% resolvido?"],
-              ["comunicacao", "💬 Comunicação", "Foi informado sobre o andamento?"]
-            ].map(([campo, labelText, desc]) => (
-              <div key={campo} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <Label htmlFor={`eval-label-${campo}`} className="font-semibold text-gray-900 text-xs">{labelText}</Label>
-                  <span className="text-xs font-extrabold text-yellow-600">{form[campo]} ⭐</span>
-                </div>
-                <p className="text-[10px] text-gray-500 mb-2">{desc}</p>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      id={`star-${campo}-${n}`}
-                      name={`star-${campo}`}
-                      type="button"
-                      aria-label={`Nota ${n} de 5 para ${labelText}`}
-                      onClick={() => handleSetStar(campo, n)}
-                      className="p-1 hover:scale-125 transition-transform focus:outline-none cursor-pointer"
-                    >
-                      <Star className={`w-5 h-5 ${n <= form[campo] ? 'fill-yellow-400 text-yellow-500' : 'fill-none text-gray-300'}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <Label htmlFor="eval-comentario" className="text-gray-800 font-semibold text-xs mb-1 block">Comentários ou Elogios (opcional)</Label>
-            <Textarea
-              id="eval-comentario"
-              name="eval-comentario"
-              placeholder="Escreva aqui sugestões ou elogios para o técnico..."
-              rows={2}
-              value={form.comentario}
-              onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
-              className="text-xs bg-white border-gray-300 focus:border-yellow-500"
-            />
-          </div>
-
-          <DialogFooter className="pt-3 flex gap-2 sm:justify-end border-t">
-            <Button type="button" variant="outline" onClick={onClose} disabled={salvando} className="text-xs">
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={salvando}
-              className="bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold text-xs gap-1.5 shadow"
-            >
-              {salvando ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
-              ) : (
-                <><Star className="w-4 h-4 fill-yellow-200 text-yellow-200" /> Confirmar e Enviar Avaliação</>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
   // Lista principal com 4 categorias
-  const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => {
-    const precisaAvaliar = ehChamadoSemNota(chamado);
-    return (
-      <div
-        className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-md cursor-pointer transition-all gap-3"
-        onClick={() => {
-          if (precisaAvaliar) {
-            setEvalModalChamado(chamado);
-          } else {
-            setSelectedChamado(chamado);
-          }
-        }}
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="font-mono text-xs text-muted-foreground font-semibold">{chamado.numero_chamado}</span>
-            <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"}>{chamado.status}</Badge>
-            {chamado.urgencia && (
-              <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
-            )}
-          </div>
-          <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
-          <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · Aberto em {chamado.data_abertura}</p>
+  const ChamadoCard = ({ chamado, showAvaliarBtn = false }) => (
+    <div
+      className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all"
+      onClick={() => setSelectedChamado(chamado)}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="font-mono text-xs text-muted-foreground font-semibold">{chamado.numero_chamado}</span>
+          <Badge className={statusColors[chamado.status] || "bg-gray-100 text-gray-800"}>{chamado.status}</Badge>
+          {chamado.urgencia && (
+            <Badge className={chamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : chamado.urgencia === "Alta" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700"}>{chamado.urgencia}</Badge>
+          )}
         </div>
-        {(showAvaliarBtn || precisaAvaliar) && (
-          <button
-            type="button"
-            className="bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 shrink-0 shadow cursor-pointer transition-transform hover:scale-105"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setEvalModalChamado(chamado);
-            }}
-          >
-            <Star className="w-4 h-4 fill-yellow-200 text-yellow-200" />
-            Avaliar
-          </button>
-        )}
+        <p className="font-medium text-foreground truncate">{chamado.titulo_chamado || chamado.descricao_problema?.slice(0, 60)}</p>
+        <p className="text-xs text-muted-foreground">{chamado.tipo_solicitacao} · {chamado.data_abertura}</p>
       </div>
-    );
-  };
+      {showAvaliarBtn && (
+        <Button
+          size="sm"
+          className="ml-3 bg-purple-600 hover:bg-purple-700 shrink-0"
+          onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); }}
+        >
+          <Star className="w-3 h-3 mr-1" />
+          Avaliar
+        </Button>
+      )}
+    </div>
+  );
 
-  const TabContent = ({ lista, empty, isAvaliacaoTab = false }) => (
+  const TabContent = ({ lista, empty, showAvaliarBtn = false }) => (
     <div className="space-y-2">
       {isLoading ? <p className="text-center py-8 text-gray-500">Carregando...</p>
       : lista.length === 0 ? <p className="text-center py-8 text-gray-500">{empty}</p>
-      : lista.map(c => (
-        <ChamadoCard key={c.id} chamado={c} showAvaliarBtn={isAvaliacaoTab} />
-      ))}
+      : lista.map(c => <ChamadoCard key={c.id} chamado={c} showAvaliarBtn={showAvaliarBtn} />)}
     </div>
   );
 
@@ -818,7 +658,7 @@ function ModalAvaliacaoChamado({ chamado, onClose, onSuccess }) {
                   <AlertDescription className="text-purple-800">Você tem chamados aguardando sua avaliação. Clique em "Avaliar" para finalizar.</AlertDescription>
                 </Alert>
               )}
-              <TabContent lista={aguardandoAvaliacao} empty="Nenhum chamado aguardando avaliação" isAvaliacaoTab={true} />
+              <TabContent lista={aguardandoAvaliacao} empty="Nenhum chamado aguardando avaliação" showAvaliarBtn />
             </TabsContent>
             <TabsContent value="fechados">
               <TabContent lista={fechados} empty="Nenhum chamado fechado" />
@@ -835,28 +675,7 @@ function ModalAvaliacaoChamado({ chamado, onClose, onSuccess }) {
           </DialogHeader>
           {selectedChamado && (
             <div className="space-y-4 text-sm">
-              {ehChamadoSemNota(selectedChamado) && (
-                <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-950 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow">
-                  <div>
-                    <p className="font-bold text-sm flex items-center gap-1.5">
-                      <Star className="w-4 h-4 fill-yellow-600 text-yellow-600" />
-                      Avaliação Pendente
-                    </p>
-                    <p className="text-xs text-yellow-900 mt-0.5">Sua avaliação é muito importante para a qualidade do nosso suporte.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold text-xs px-4 py-2 rounded-lg shadow shrink-0 w-full sm:w-auto text-center cursor-pointer transition-transform hover:scale-105"
-                    onClick={() => {
-                      const temp = selectedChamado;
-                      setSelectedChamado(null);
-                      setEvalModalChamado(temp);
-                    }}
-                  >
-                    Avaliar Agora ⭐
-                  </button>
-                </div>
-              )}
+
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <Badge className={statusColors[selectedChamado.status]}>{selectedChamado.status}</Badge>
                 <Badge className={selectedChamado.urgencia === "Urgente" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>{selectedChamado.urgencia}</Badge>
@@ -937,14 +756,7 @@ function ModalAvaliacaoChamado({ chamado, onClose, onSuccess }) {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Avaliação Dedicado */}
-      {evalModalChamado && (
-        <ModalAvaliacaoChamado
-          chamado={evalModalChamado}
-          onClose={() => setEvalModalChamado(null)}
-          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] })}
-        />
-      )}
+
     </PortalLayout>
   );
 }
