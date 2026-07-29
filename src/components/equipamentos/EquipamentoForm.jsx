@@ -76,17 +76,35 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
       const { tempo_uso_anos, anydesk_id } = dadosAvaliacao;
       const anydeskVal = (anydesk_id || "").trim();
 
+      // Atualizar o CADASTRO do Equipamento com os Dados Técnicos da Avaliação (AnyDesk, RAM, SO, Antivírus, Condição)
+      const updateDataEquipamento = {};
+
       if (anydeskVal) {
+        updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(formData.observacoes, anydeskVal);
+      }
+      if (dadosAvaliacao.memoria_ram) {
+        updateDataEquipamento.memoria_ram = dadosAvaliacao.memoria_ram;
+      }
+      if (dadosAvaliacao.versao_windows) {
+        updateDataEquipamento.versao_windows = dadosAvaliacao.versao_windows;
+      }
+      if (dadosAvaliacao.antivirus) {
+        updateDataEquipamento.antivirus = dadosAvaliacao.antivirus;
+      }
+      if (dadosAvaliacao.desempenho) {
+        updateDataEquipamento.condicao = dadosAvaliacao.desempenho;
+      }
+
+      if (Object.keys(updateDataEquipamento).length > 0) {
         try {
-          const obsAtualizada = formatarObservacoesComAnyDesk(formData.observacoes, anydeskVal);
           const isNotebookExt = entityType === 'Notebooks_Externos' || (tipoEquipamento === 'Notebook' && !!formData.uf);
           if (isNotebookExt) {
-            await base44.entities.Notebooks_Externos.update(equipamento.id, { observacoes: obsAtualizada });
+            await base44.entities.Notebooks_Externos.update(equipamento.id, updateDataEquipamento);
           } else {
-            await base44.entities.PCs_Internos.update(equipamento.id, { observacoes: obsAtualizada });
+            await base44.entities.PCs_Internos.update(equipamento.id, updateDataEquipamento);
           }
         } catch (errEq) {
-          console.warn("Aviso ao atualizar AnyDesk no equipamento:", errEq);
+          console.warn("Aviso ao atualizar dados cadastrais do equipamento:", errEq);
         }
       }
 

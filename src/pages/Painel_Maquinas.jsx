@@ -428,6 +428,11 @@ export default function Painel_Maquinas() {
 
         const colabInfo = colaboradores.find(c => c.id === p.colaborador_id);
 
+        const anydeskId = extrairAnyDesk(p) || extrairAnyDesk(ultimaEval);
+        const memoriaRam = p.memoria_ram || ultimaEval?.memoria_ram || "";
+        const versaoWindows = p.versao_windows || ultimaEval?.versao_windows || "";
+        const antivirusVal = p.antivirus || ultimaEval?.antivirus || "";
+
         lista.push({
           id: p.id,
           tipo: p.tipo,
@@ -444,6 +449,12 @@ export default function Painel_Maquinas() {
           usuarios_anteriores: p.usuarios_anteriores || [],
           usuario_desde: p.usuario_desde,
           origem: "interno",
+          anydesk_id: anydeskId,
+          memoria_ram: memoriaRam,
+          versao_windows: versaoWindows,
+          antivirus: antivirusVal,
+          processador: p.processador || "",
+          observacoes: p.observacoes || "",
           ultimaEval,
           pontuacao,
           classificacao,
@@ -484,6 +495,10 @@ export default function Painel_Maquinas() {
       }
 
       const colabInfo = colaboradores.find(c => c.id === n.colaborador_id);
+      const anydeskId = extrairAnyDesk(n) || extrairAnyDesk(ultimaEval);
+      const memoriaRam = n.memoria_ram || ultimaEval?.memoria_ram || "";
+      const versaoWindows = n.versao_windows || ultimaEval?.versao_windows || "";
+      const antivirusVal = n.antivirus || ultimaEval?.antivirus || "";
 
       lista.push({
         id: n.id,
@@ -501,6 +516,12 @@ export default function Painel_Maquinas() {
         usuarios_anteriores: n.usuarios_anteriores || [],
         usuario_desde: n.usuario_desde,
         origem: "externo",
+        anydesk_id: anydeskId,
+        memoria_ram: memoriaRam,
+        versao_windows: versaoWindows,
+        antivirus: antivirusVal,
+        processador: n.processador || "",
+        observacoes: n.observacoes || "",
         ultimaEval,
         pontuacao,
         classificacao,
@@ -1047,14 +1068,28 @@ export default function Painel_Maquinas() {
                               <Monitor className="w-5 h-5 text-slate-500" />
                             )}
                           </div>
-                          <div className="min-w-0 text-xs flex-1">
-                            <p className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                              {m.marca} {m.modelo}
-                            </p>
-                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                              Etiqueta: <span className="font-mono">{m.etiqueta_interna || "—"}</span>
+                          <div className="min-w-0 text-xs flex-1 space-y-0.5">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                {m.marca} {m.modelo}
+                              </p>
+                              {m.anydesk_id && (
+                                <span className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded border border-indigo-200 shrink-0">
+                                  AnyDesk: {m.anydesk_id}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                              Etiqueta: <span className="font-mono font-bold text-slate-700">{m.etiqueta_interna || "—"}</span>
                               {m.tempo_uso_anos ? ` | ${m.tempo_uso_anos.toFixed(1)} anos` : ""}
                             </p>
+                            {(m.memoria_ram || m.versao_windows || m.antivirus) && (
+                              <p className="text-[9px] text-slate-500 font-medium pt-1 border-t border-slate-200/60 flex flex-wrap gap-x-2">
+                                {m.memoria_ram && <span>🧠 RAM: <strong className="text-slate-700">{m.memoria_ram}</strong></span>}
+                                {m.versao_windows && <span>💿 SO: <strong className="text-slate-700">{m.versao_windows.split('|')[0].trim()}</strong></span>}
+                                {m.antivirus && <span>🛡️ Antivírus: <strong className="text-slate-700">{m.antivirus}</strong></span>}
+                              </p>
+                            )}
                           </div>
                         </div>
 
