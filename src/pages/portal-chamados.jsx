@@ -289,6 +289,7 @@ export default function PortalChamados() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
       setSelectedChamado(null);
+      setAutoShowAvaliacao(false);
     },
     onError: (err) => {
       console.error("Erro ao enviar avaliação:", err);
@@ -594,7 +595,7 @@ export default function PortalChamados() {
         <Button
           size="sm"
           className="ml-3 bg-purple-600 hover:bg-purple-700 shrink-0"
-          onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); }}
+          onClick={(e) => { e.stopPropagation(); setSelectedChamado(chamado); setAutoShowAvaliacao(true); }}
         >
           <Star className="w-3 h-3 mr-1" />
           Avaliar
