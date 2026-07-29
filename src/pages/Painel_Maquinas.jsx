@@ -154,8 +154,9 @@ const COMANDOS_RESOLUCAO_TAREFAS = {
 };
 
 export default function Painel_Maquinas() {
-  const [activeTab, setActiveTab] = useState("parque"); // "parque" | "demandas"
+  const [activeTab, setActiveTab] = useState("parque"); // "parque" | "demandas" | "sugestoes"
   const [subFilterDemandas, setSubFilterDemandas] = useState("em_aberto"); // "em_aberto" | "historico"
+  const [subFilterSugestoes, setSubFilterSugestoes] = useState("troca"); // "troca" | "antivirus" | "manutencao" | "ok" | "relatorio"
   const [searchTerm, setSearchTerm] = useState("");
   const [filterTipo, setFilterTipo] = useState("todos"); // "todos" | "Desktop" | "Notebook"
   const [filterClassificacao, setFilterClassificacao] = useState("todos"); // "todos" | "Manter" | "Upgrade" | "Substituir" | "sem_avaliacao"
@@ -327,10 +328,59 @@ export default function Painel_Maquinas() {
       queryClient.invalidateQueries({ queryKey: ['portal_avaliacoes'] });
       setShowSwapModal(false);
       setSwapTarget(null);
+      alert("Substituição de equipamento realizada com sucesso! O histórico de movimentações foi atualizado.");
     },
     onError: (error) => {
       console.error("Erro ao realizar a troca:", error);
       alert("Erro ao realizar a troca: " + (error.message || "Erro desconhecido"));
+    }
+  });
+
+  // Mutation para Ativação do Antivírus corporativo em 1 clique
+  const ativarAntivirusMutation = useMutation({
+    mutationFn: async ({ equipamento, tarefasIds }) => {
+      if (!equipamento) return;
+      const isNotebookExt = equipamento.origem === 'externo' || equipamento.entityType === 'Notebooks_Externos' || equipamento.tipo === 'Notebook';
+      if (isNotebookExt) {
+        await base44.entities.Notebooks_Externos.update(equipamento.id, { antivirus: 'Sim' });
+      } else {
+        await base44.entities.PCs_Internos.update(equipamento.id, { antivirus: 'Sim' });
+      }
+
+      if (Array.isArray(tarefasIds)) {
+        for (const tId of tarefasIds) {
+          await base44.entities.TarefasManutencao.update(tId, { status: 'Concluída' });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      queryClient.invalidateQueries({ queryKey: ['tarefas_manutencao'] });
+      alert("Antivírus corporativo marcado como Ativo e tarefas concluídas com sucesso!");
+    },
+    onError: (err) => {
+      console.error("Erro ao ativar antivírus:", err);
+      alert("Erro ao atualizar status do antivírus.");
+    }
+  });
+
+  // Mutation para Concluir Demanda sem Apontamentos / Concluir tarefas em 1 clique
+  const concluirDemandaMutation = useMutation({
+    mutationFn: async (tarefasIds) => {
+      if (Array.isArray(tarefasIds)) {
+        for (const tId of tarefasIds) {
+          await base44.entities.TarefasManutencao.update(tId, { status: 'Concluída' });
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tarefas_manutencao'] });
+      alert("Demanda finalizada com sucesso!");
+    },
+    onError: (err) => {
+      console.error("Erro ao concluir demanda:", err);
+      alert("Erro ao finalizar a demanda.");
     }
   });
 
@@ -595,58 +645,74 @@ export default function Painel_Maquinas() {
     }).filter(d => d.tarefasDaEval.length > 0); // Exibe demandas que geraram checklist
   }, [avaliacoes, tarefas, maquinasConsolidadas, colaboradores]);
 
-  // Sugestões Inteligentes de Movimentação do Sistema
-  const sugestoesMovimentacao = useMemo(() => {
-    const sugestoes = [];
-
-    // 1. Sugestões de Troca de Máquinas (Máquinas com Windows 10 descontinuado ou saúde ruim)
-    const maquinasParaTrocar = rankingMaquinas.filter(m => m.classificacao === "Substituir" || (m.versao_windows && m.versao_windows.toLowerCase().includes("windows 10")));
-
-    const maquinasLivresEmEstoque = maquinasConsolidadas.filter(m => m.status === 'Disponível');
-
-    maquinasParaTrocar.forEach(mRuim => {
-      // Encontrar máquina disponível do mesmo tipo ou notebook com melhor pontuação técnica
-      const melhorEmEstoque = [...maquinasLivresEmEstoque].sort((a, b) => {
-        const scoreA = a.pontuacao || 0;
-        const scoreB = b.pontuacao || 0;
-        return scoreA - scoreB;
-      })[0];
-
-      sugestoes.push({
-        id: `troca-${mRuim.id}`,
-        tipo: 'Troca Recomendada',
-        nivel: mRuim.classificacao === "Substituir" ? 'Crítico' : 'Recomendado',
-        titulo: `Substituir equipamento de ${mRuim.usuario_atual}`,
-        motivo: mRuim.classificacao === "Substituir" 
-          ? `Pontuação de saúde técnica baixa (Nota ${mRuim.pontuacao}).`
-          : `Equipamento rodando Windows 10 descontinuado.`,
-        colaborador: mRuim.usuario_atual,
-        area: mRuim.area,
-        maquinaAtual: mRuim,
-        maquinaSugerida: melhorEmEstoque || null
-      });
-    });
-
-    // 2. Sugestões de Formatação (Máquinas com queixas de lentidão na avaliação)
-    const demandasComLentidao = demandasAvaliacao.filter(d => 
-      d.emAberto && d.evalItem?.desempenho && (d.evalItem.desempenho.includes("lento") || d.evalItem.desempenho.includes("Com Problema"))
+  // Categorização Inteligente de Ações Pós-Avaliação & Movimentações
+  const categorizacaoInteligente = useMemo(() => {
+    // A. Estoque estritamente disponível
+    const maquinasLivresEmEstoque = maquinasConsolidadas.filter(m => 
+      m.status === 'Disponível' && (!m.usuario_atual || m.usuario_atual.trim() === '')
     );
 
-    demandasComLentidao.forEach(d => {
-      sugestoes.push({
-        id: `formatar-${d.evalId}`,
-        tipo: 'Formatação Recomendada',
-        nivel: 'Atenção',
-        titulo: `Agendar formatação técnica para ${d.usuarioNome}`,
-        motivo: `Usuário relatou desempenho '${d.evalItem.desempenho}' na avaliação. Limpeza de arquivos temporários e reinstalação do SO recomendada.`,
-        colaborador: d.usuarioNome,
-        area: d.area,
-        maquinaAtual: d.equipamento,
-        dataAvaliacao: d.dataAvaliacao
+    // 1. Troca de Equipamento Necessária (Saúde "Substituir" ou Windows 10 descontinuado)
+    const trocas = rankingMaquinas
+      .filter(m => m.classificacao === "Substituir" || (m.versao_windows && m.versao_windows.toLowerCase().includes("windows 10")))
+      .map(mRuim => {
+        const disponivelCompativel = maquinasLivresEmEstoque.find(d => d.tipo === mRuim.tipo) || maquinasLivresEmEstoque[0] || null;
+        return {
+          id: `troca-${mRuim.id}`,
+          maquinaRuim: mRuim,
+          maquinaSugerida: disponivelCompativel,
+          motivo: mRuim.classificacao === "Substituir"
+            ? `Pontuação de saúde baixa (Nota ${mRuim.pontuacao}).`
+            : `Sistema operacional Windows 10 descontinuado.`
+        };
       });
+
+    // 2. Antivírus Corporativo Pendente (Inativo / Faltante / México)
+    const antivirus = demandasAvaliacao.filter(d => {
+      const av = d.evalItem?.antivirus || "";
+      const temTarefaAv = d.pendentes.some(t => t.descricao.includes("antivírus") || t.descricao.includes("México"));
+      return d.emAberto && (av.toLowerCase().includes("inativo") || av.toLowerCase().includes("não") || temTarefaAv);
     });
 
-    return sugestoes;
+    // 3. Manutenção, Limpeza & Reparo de Sistema (Arquivos TEMP, RAM, SFC/DISM, Boot)
+    const manutencao = demandasAvaliacao.filter(d => {
+      const temTarefasManutencao = d.pendentes.some(t => 
+        t.descricao.includes("disco") || t.descricao.includes("RAM") || t.descricao.includes("reparo") || t.descricao.includes("inicialização") || t.descricao.includes("pilha")
+      );
+      return d.emAberto && temTarefasManutencao;
+    });
+
+    // 4. Sem Apontamentos / Manter (Avaliações 100% OK sem pendências)
+    const semApontamentos = demandasAvaliacao.filter(d => {
+      const semQueixas = d.classificacao === "Manter" && (!d.evalItem?.problemas || d.evalItem.problemas.length === 0);
+      return d.emAberto && semQueixas;
+    });
+
+    // 5. Histórico & Relatório de Mudanças e Movimentações Efetuadas
+    const historicoMudancas = [];
+    maquinasConsolidadas.forEach(m => {
+      if (Array.isArray(m.usuarios_anteriores) && m.usuarios_anteriores.length > 0) {
+        m.usuarios_anteriores.forEach(u => {
+          historicoMudancas.push({
+            maquina: `${m.marca || ''} ${m.modelo || ''}`.trim() + ` (${m.etiqueta_interna || 'Sem Etiqueta'})`,
+            usuarioAnterior: u.nome,
+            dataSaida: u.data_fim,
+            statusAtual: m.status,
+            usuarioAtual: m.usuario_atual || "Disponível no Estoque"
+          });
+        });
+      }
+    });
+
+    return {
+      trocas,
+      antivirus,
+      manutencao,
+      semApontamentos,
+      historicoMudancas,
+      maquinasLivresEmEstoque,
+      totalRecomendacoes: trocas.length + antivirus.length + manutencao.length + semApontamentos.length
+    };
   }, [rankingMaquinas, maquinasConsolidadas, demandasAvaliacao]);
 
   // Função para retornar badge de saúde formatado
@@ -723,7 +789,7 @@ export default function Painel_Maquinas() {
               </TabsTrigger>
               <TabsTrigger value="sugestoes" className="data-[state=active]:bg-white data-[state=active]:text-amber-700 data-[state=active]:shadow font-bold text-xs py-2 px-4 rounded-lg flex items-center gap-2 transition">
                 <SlidersHorizontal className="w-4 h-4 text-amber-600" />
-                💡 Sugestões Inteligentes ({sugestoesMovimentacao.length})
+                💡 Sugestões Inteligentes ({categorizacaoInteligente.totalRecomendacoes})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1524,78 +1590,355 @@ export default function Painel_Maquinas() {
           })()}
         </TabsContent>
 
-        {/* ABA 3: 💡 SUGESTÕES INTELIGENTES DE MOVIMENTAÇÃO */}
+        {/* ABA 3: 💡 SUGESTÕES INTELIGENTES DE MOVIMENTAÇÃO & AÇÕES */}
         <TabsContent value="sugestoes" className="space-y-6 m-0">
-          <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-teal-500/10 border border-amber-200/80 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500 text-white rounded-lg">
+              <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md">
                 <SlidersHorizontal className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
-                  Sugestões Inteligentes de Movimentação & Manutenção
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  💡 Central de Sugestões & Ações Inteligentes
                 </h3>
-                <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
-                  Análises automáticas baseadas em tempo de uso, pontuação técnica de saúde e queixas relatadas.
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  Gerenciamento de trocas de ativos, ativações de antivírus, manutenções técnicas e conclusões em 1-clique pós-avaliação.
                 </p>
               </div>
             </div>
-            <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-bold text-xs">
-              {sugestoesMovimentacao.length} Recomendações
-            </Badge>
+
+            {/* BARRA DE NAVEGAÇÃO INTERNA (SUB-ABAS) */}
+            <div className="flex flex-wrap gap-1 bg-white/80 dark:bg-slate-900/80 p-1.5 rounded-xl border shadow-xs text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setSubFilterSugestoes("troca")}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${subFilterSugestoes === 'troca' ? 'bg-red-500 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                🔁 Troca ({categorizacaoInteligente.trocas.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilterSugestoes("antivirus")}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${subFilterSugestoes === 'antivirus' ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                🛡️ Antivírus ({categorizacaoInteligente.antivirus.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilterSugestoes("manutencao")}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${subFilterSugestoes === 'manutencao' ? 'bg-amber-500 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <Wrench className="w-3.5 h-3.5" />
+                🧹 Manutenção ({categorizacaoInteligente.manutencao.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilterSugestoes("ok")}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${subFilterSugestoes === 'ok' ? 'bg-emerald-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                ✅ Sem Apontamentos ({categorizacaoInteligente.semApontamentos.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilterSugestoes("relatorio")}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${subFilterSugestoes === 'relatorio' ? 'bg-slate-800 text-white shadow-xs font-bold' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                📊 Relatório de Mudanças ({categorizacaoInteligente.historicoMudancas.length})
+              </button>
+            </div>
           </div>
 
-          {sugestoesMovimentacao.length === 0 ? (
-            <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm">
-              <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
-              <p className="text-sm font-semibold text-slate-700">Parque técnico em perfeito estado!</p>
-              <p className="text-xs text-slate-400 mt-1">Nenhuma necessidade urgente de troca ou formatação identificada no momento.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sugestoesMovimentacao.map(s => (
-                <Card key={s.id} className="shadow-sm hover:shadow border-slate-200 overflow-hidden">
-                  <CardHeader className="bg-slate-50 dark:bg-slate-800/40 py-3 px-4 border-b">
-                    <div className="flex items-center justify-between">
-                      <Badge className={s.nivel === 'Crítico' ? "bg-red-100 text-red-800 border-red-200" : "bg-amber-100 text-amber-800 border-amber-200"}>
-                        {s.tipo} • {s.nivel}
-                      </Badge>
-                      <span className="text-[10px] text-slate-400 font-mono font-medium">{s.area}</span>
-                    </div>
-                    <CardTitle className="text-sm font-bold mt-2 text-slate-800 dark:text-white">
-                      {s.titulo}
-                    </CardTitle>
-                  </CardHeader>
+          {/* SUB-ABA 1: RECOMENDAÇÕES DE TROCA DE MÁQUINA */}
+          {subFilterSugestoes === "troca" && (
+            <div className="space-y-4">
+              <div className="bg-red-50/40 border border-red-200 rounded-xl p-3 flex items-center justify-between text-xs text-red-900">
+                <span>
+                  <strong>Regra de Estoque:</strong> As substituições aceitam estritamente equipamentos com status <strong>"Disponível"</strong> no estoque (Total disponível: {categorizacaoInteligente.maquinasLivresEmEstoque.length} máquina(s)).
+                </span>
+              </div>
 
-                  <CardContent className="p-4 space-y-3 text-xs">
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                      💡 <strong>Motivo da Análise:</strong> {s.motivo}
-                    </p>
-
-                    {s.tipo === 'Troca Recomendada' && s.maquinaSugerida && (
-                      <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 rounded-lg p-3 space-y-1.5">
-                        <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
-                          <span>📦 Ativo em Estoque Recomendado para Atribuir:</span>
-                          <Badge className="bg-emerald-600 text-white text-[10px]">
-                            Disponível
+              {categorizacaoInteligente.trocas.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm space-y-2">
+                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto opacity-80" />
+                  <p className="text-sm font-semibold text-slate-700">Nenhuma troca necessária!</p>
+                  <p className="text-xs text-slate-400">Todas as máquinas em uso possuem boa saúde técnica ou não necessitam de substituição.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categorizacaoInteligente.trocas.map(s => (
+                    <Card key={s.id} className="shadow-sm border-slate-200 overflow-hidden">
+                      <CardHeader className="bg-red-50/30 dark:bg-red-950/20 py-3 px-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-red-100 text-red-800 border-red-200">
+                            Substituição de Equipamento
                           </Badge>
+                          <span className="text-[10px] text-slate-400 font-mono font-medium">{s.maquinaRuim.area}</span>
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300">
-                          <strong>Modelo:</strong> {s.maquinaSugerida.marca} {s.maquinaSugerida.modelo} (Etiqueta: {s.maquinaSugerida.etiqueta_interna || "—"})
+                        <CardTitle className="text-sm font-bold mt-2 text-slate-800 dark:text-white">
+                          Substituir máquina de {s.maquinaRuim.usuario_atual || "Colaborador"}
+                        </CardTitle>
+                      </CardHeader>
+
+                      <CardContent className="p-4 space-y-3 text-xs">
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                          💡 <strong>Motivo da Troca:</strong> {s.motivo}
+                        </p>
+
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-lg border text-slate-700 text-[11px] space-y-1">
+                          <p><strong>Máquina Atual:</strong> {s.maquinaRuim.marca} {s.maquinaRuim.modelo} (Etiqueta: {s.maquinaRuim.etiqueta_interna || 'Sem Etiqueta'})</p>
+                          <p><strong>Saúde Técnica:</strong> Nota {s.maquinaRuim.pontuacao} ({s.maquinaRuim.classificacao})</p>
+                        </div>
+
+                        {s.maquinaSugerida ? (
+                          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 font-bold">
+                              <span>📦 Ativo no Estoque Sugerido para Substituir:</span>
+                              <Badge className="bg-emerald-600 text-white text-[10px]">
+                                Disponível
+                              </Badge>
+                            </div>
+                            <p className="text-slate-700 dark:text-slate-300">
+                              <strong>Modelo:</strong> {s.maquinaSugerida.marca} {s.maquinaSugerida.modelo} (Etiqueta: {s.maquinaSugerida.etiqueta_interna || "—"})
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSugestaoTroca(s.maquinaRuim, s.maquinaSugerida)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
+                            >
+                              <ArrowRightLeft className="w-3.5 h-3.5" /> Executar Troca com {s.maquinaRuim.usuario_atual?.split(" ")[0]}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-amber-900 text-[11px] font-semibold text-center">
+                            ⚠️ Sem máquinas com status "Disponível" no estoque no momento.
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUB-ABA 2: SOLICITAÇÕES DE ANTIVÍRUS (MÉXICO) */}
+          {subFilterSugestoes === "antivirus" && (
+            <div className="space-y-4">
+              {categorizacaoInteligente.antivirus.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm space-y-2">
+                  <ShieldCheck className="w-10 h-10 text-indigo-500 mx-auto opacity-80" />
+                  <p className="text-sm font-semibold text-slate-700">Todas as máquinas possuem Antivírus Ativo!</p>
+                  <p className="text-xs text-slate-400">Nenhum equipamento pendente de instalação ou ativação de licença corporativa.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categorizacaoInteligente.antivirus.map(d => (
+                    <Card key={d.evalId} className="shadow-sm border-slate-200">
+                      <CardHeader className="bg-indigo-50/40 py-3 px-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">
+                            🛡️ Antivírus Corporativo
+                          </Badge>
+                          <span className="text-[10px] text-slate-400 font-mono">{d.area}</span>
+                        </div>
+                        <CardTitle className="text-sm font-bold mt-2">
+                          Ativação de Antivírus: {d.usuarioNome}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-3 text-xs">
+                        <p className="text-slate-600">
+                          <strong>Equipamento:</strong> {d.equipamentoNome} (Etiqueta: {d.equipamento?.etiqueta_interna || "N/I"})
+                        </p>
+                        <p className="text-slate-600">
+                          <strong>Status Detectado:</strong> <span className="font-bold text-red-600">{d.evalItem?.antivirus || "Inativo / Pendente"}</span>
                         </p>
                         <Button
                           size="sm"
-                          onClick={() => handleSugestaoTroca(s.maquinaAtual, s.maquinaSugerida)}
-                          className="w-full mt-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
+                          disabled={ativarAntivirusMutation.isPending}
+                          onClick={() => ativarAntivirusMutation.mutate({
+                            equipamento: d.equipamento,
+                            tarefasIds: d.pendentes.map(t => t.id)
+                          })}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
                         >
-                          <ArrowRightLeft className="w-3.5 h-3.5" /> Efetuar Troca Direta com {s.colaborador?.split(" ")[0]}
+                          <Check className="w-3.5 h-3.5" /> Confirmar Ativação do Antivírus (Filial México)
                         </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
+
+          {/* SUB-ABA 3: MANUTENÇÃO, LIMPEZA & REPARO DE SISTEMA */}
+          {subFilterSugestoes === "manutencao" && (
+            <div className="space-y-4">
+              {categorizacaoInteligente.manutencao.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm space-y-2">
+                  <Wrench className="w-10 h-10 text-amber-500 mx-auto opacity-80" />
+                  <p className="text-sm font-semibold text-slate-700">Nenhuma manutenção de sistema pendente!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categorizacaoInteligente.manutencao.map(d => (
+                    <Card key={d.evalId} className="shadow-sm border-slate-200">
+                      <CardHeader className="bg-amber-50/40 py-3 px-4 border-b">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                            🧹 Manutenção & Reparo
+                          </Badge>
+                          <span className="text-[10px] text-slate-400 font-mono">{d.area}</span>
+                        </div>
+                        <CardTitle className="text-sm font-bold mt-2">
+                          Manutenção Preventiva: {d.usuarioNome}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-3 text-xs">
+                        <p className="text-slate-600">
+                          <strong>Equipamento:</strong> {d.equipamentoNome} | <strong>Pendências:</strong> {d.pendentes.length} tarefa(s)
+                        </p>
+                        <div className="space-y-1 bg-slate-50 p-2.5 rounded-lg border text-[11px]">
+                          {d.pendentes.map(t => (
+                            <p key={t.id} className="text-slate-700 font-medium">
+                              • {t.descricao}
+                            </p>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={concluirDemandaMutation.isPending}
+                          onClick={() => concluirDemandaMutation.mutate(d.pendentes.map(t => t.id))}
+                          className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Concluir Manutenção da Máquina
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUB-ABA 4: MÁQUINAS SEM APONTAMENTOS (100% OK) */}
+          {subFilterSugestoes === "ok" && (
+            <div className="space-y-4">
+              {categorizacaoInteligente.semApontamentos.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-slate-900 border rounded-2xl shadow-sm space-y-2">
+                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto opacity-80" />
+                  <p className="text-sm font-semibold text-slate-700">Todas as avaliações sem problemas foram finalizadas!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {categorizacaoInteligente.semApontamentos.map(d => (
+                    <Card key={d.evalId} className="shadow-sm border-emerald-200 bg-emerald-50/10">
+                      <CardHeader className="bg-emerald-50/50 py-3 px-4 border-b border-emerald-100">
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold">
+                            ✅ 100% OK / Sem Defeitos
+                          </Badge>
+                          <span className="text-[10px] text-slate-400 font-mono">{d.area}</span>
+                        </div>
+                        <CardTitle className="text-sm font-bold mt-2 text-slate-800">
+                          {d.usuarioNome} ({d.equipamentoNome})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-3 text-xs">
+                        <p className="text-slate-600">
+                          A avaliação técnica não apresentou falhas de hardware ou queixas do usuário (Nota de Saúde: {d.pontuacao}).
+                        </p>
+                        <Button
+                          size="sm"
+                          disabled={concluirDemandaMutation.isPending}
+                          onClick={() => concluirDemandaMutation.mutate(d.pendentes.map(t => t.id))}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-lg gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Finalizar e Marcar como Concluída
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUB-ABA 5: RELATÓRIO DE MUDANÇAS & MOVIMENTAÇÕES DE TI */}
+          {subFilterSugestoes === "relatorio" && (
+            <Card className="shadow-sm border-slate-200 overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b py-3.5 px-4 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-slate-600" />
+                    Relatório de Histórico & Movimentações de Equipamentos
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-500">
+                    Registro consolidado de trocas de usuários, manutenções e transferências no parque técnico.
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const csvLines = [
+                      ["Equipamento", "Usuario Anterior", "Data de Saida", "Status Atual", "Usuario Atual"].join(";"),
+                      ...categorizacaoInteligente.historicoMudancas.map(h => [
+                        `"${h.maquina}"`, `"${h.usuarioAnterior}"`, `"${h.dataSaida || ''}"`, `"${h.statusAtual}"`, `"${h.usuarioAtual}"`
+                      ].join(";"))
+                    ];
+                    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `relatorio_movimentacoes_ti_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.click();
+                  }}
+                  className="h-8 text-xs font-semibold gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" /> Exportar Relatório CSV
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {categorizacaoInteligente.historicoMudancas.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-xs">
+                    Nenhum histórico de movimentação registrado até o momento.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-100 text-slate-600 font-bold border-b text-[11px] uppercase tracking-wider">
+                        <tr>
+                          <th className="py-2.5 px-4">Equipamento</th>
+                          <th className="py-2.5 px-4">Usuário Anterior</th>
+                          <th className="py-2.5 px-4">Data da Troca</th>
+                          <th className="py-2.5 px-4">Status Atual</th>
+                          <th className="py-2.5 px-4">Usuário Atual</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-700">
+                        {categorizacaoInteligente.historicoMudancas.map((h, i) => (
+                          <tr key={i} className="hover:bg-slate-50/80">
+                            <td className="py-3 px-4 font-semibold text-slate-900">{h.maquina}</td>
+                            <td className="py-3 px-4 text-slate-600">{h.usuarioAnterior}</td>
+                            <td className="py-3 px-4 text-slate-500">{h.dataSaida ? new Date(h.dataSaida).toLocaleDateString('pt-BR') : "—"}</td>
+                            <td className="py-3 px-4">
+                              <Badge className="bg-slate-100 text-slate-800 border-slate-300 font-mono text-[10px]">
+                                {h.statusAtual}
+                              </Badge>
+                            </td>
+                            <td className="py-3 px-4 font-bold text-teal-700">{h.usuarioAtual}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
         </>
