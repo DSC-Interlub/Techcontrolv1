@@ -578,27 +578,53 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
     comunicacao: 5,
     comentario: ""
   });
-  const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
 
   const handleSetStar = (campo, val) => {
     setForm(prev => ({ ...prev, [campo]: val }));
   };
 
-  const handleEnviar = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onAvaliar(form);
-    setEnviado(true);
+  const handleEnviar = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setEnviando(true);
+    try {
+      await onAvaliar(form);
+      setSucesso(true);
+    } catch (err) {
+      console.error("Erro no envio:", err);
+      alert("Ocorreu um erro ao salvar a avaliação. Tente novamente.");
+    } finally {
+      setEnviando(false);
+    }
   };
 
+  if (sucesso) {
+    return (
+      <Card className="border-2 border-green-500 bg-green-50 p-6 text-center my-2 shadow-sm">
+        <div className="flex flex-col items-center justify-center gap-2">
+          <CheckCircle className="w-10 h-10 text-green-600 animate-bounce" />
+          <p className="text-lg font-bold text-green-900">Avaliação enviada com sucesso!</p>
+          <p className="text-sm text-green-700">Muito obrigado pelo seu feedback. O chamado {chamado.numero_chamado} foi concluído.</p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="border-2 border-yellow-400 bg-gradient-to-br from-yellow-50/80 to-amber-50/50 shadow-md transition-all my-2">
-      <CardHeader className="pb-3 border-b border-yellow-200/80 bg-yellow-100/60">
+    <Card 
+      className="border-2 border-yellow-400 bg-gradient-to-br from-yellow-50/90 to-amber-50/60 shadow-md transition-all my-2 text-left"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <CardHeader className="pb-3 border-b border-yellow-200/80 bg-yellow-100/70">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm font-bold text-yellow-950">{chamado.numero_chamado}</span>
             <Badge className="bg-purple-100 text-purple-900 border-purple-200 font-semibold">{chamado.status}</Badge>
-            {chamado.urgencia && <Badge variant="outline" className="text-xs">{chamado.urgencia}</Badge>}
+            {chamado.urgencia && <Badge variant="outline" className="text-xs bg-white">{chamado.urgencia}</Badge>}
           </div>
           <p className="text-xs text-yellow-800 font-medium">{chamado.tipo_solicitacao} · Aberto em {chamado.data_abertura}</p>
         </div>
@@ -626,7 +652,7 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
             ["qualidade_solucao", "💡 Qualidade da Solução", "O problema foi 100% resolvido?"],
             ["comunicacao", "💬 Comunicação", "Você foi informado do andamento?"]
           ].map(([campo, label, desc]) => (
-            <div key={campo} className="bg-white/90 border border-yellow-200 rounded-xl p-3 shadow-sm">
+            <div key={campo} className="bg-white border border-yellow-200 rounded-xl p-3 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-semibold text-gray-900 text-xs">{label}</span>
                 <span className="text-xs font-extrabold text-yellow-700">{form[campo]} ⭐</span>
@@ -637,7 +663,11 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
                   <button
                     key={n}
                     type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSetStar(campo, n); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSetStar(campo, n);
+                    }}
                     className="p-1 hover:scale-125 transition-transform focus:outline-none cursor-pointer"
                   >
                     <Star className={`w-6 h-6 ${n <= form[campo] ? 'fill-yellow-400 text-yellow-500' : 'fill-none text-gray-300'}`} />
@@ -655,24 +685,23 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
             rows={2}
             value={form.comentario}
             onChange={e => setForm(prev => ({ ...prev, comentario: e.target.value }))}
+            onClick={e => e.stopPropagation()}
             className="mt-1 text-xs bg-white border-yellow-200 focus:border-yellow-500"
           />
         </div>
 
-        <Button
+        <button
           type="button"
           onClick={handleEnviar}
-          disabled={loading || enviado}
-          className="w-full bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white font-bold py-3 text-sm shadow-md transition-all rounded-lg cursor-pointer"
+          disabled={loading || enviando}
+          className="w-full bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 disabled:opacity-50 text-white font-bold py-3.5 px-4 text-sm shadow-md transition-all rounded-lg cursor-pointer flex items-center justify-center gap-2"
         >
-          {loading ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando Avaliação...</>
-          ) : enviado ? (
-            <><CheckCircle className="w-4 h-4 mr-2 text-green-300" />Avaliação Enviada!</>
+          {loading || enviando ? (
+            <><Loader2 className="w-4 h-4 animate-spin text-white" />Enviando Avaliação...</>
           ) : (
-            "Enviar Avaliação Agora ⭐"
+            <><Star className="w-4 h-4 fill-yellow-200 text-yellow-200" />Enviar Avaliação Agora ⭐</>
           )}
-        </Button>
+        </button>
       </CardContent>
     </Card>
   );
