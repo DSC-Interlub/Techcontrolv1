@@ -582,6 +582,7 @@ export default function PCs_Internos() {
                             <TableHead className="w-10">Tipo</TableHead>
                             <TableHead>Marca / Modelo</TableHead>
                             <TableHead>Etiqueta / Serial</TableHead>
+                            <TableHead>AnyDesk (Remoto)</TableHead>
                             <TableHead>Alertas de Atenção</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -590,6 +591,9 @@ export default function PCs_Internos() {
                         <TableBody>
                           {group.items.map((eq) => {
                             const alerts = getAttentionAlerts(eq);
+                            const anydeskMatch = eq.observacoes ? eq.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i) : null;
+                            const anydeskVal = anydeskMatch ? anydeskMatch[1] : "";
+
                             return (
                               <TableRow
                                 key={eq.id}
@@ -607,6 +611,15 @@ export default function PCs_Internos() {
                                 </TableCell>
                                 <TableCell className="font-mono text-slate-600">
                                   {eq.etiqueta_interna || eq.numero_serie || "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {anydeskVal ? (
+                                    <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                      {anydeskVal}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">—</span>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {alerts.length > 0 ? (
@@ -685,6 +698,7 @@ export default function PCs_Internos() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Marca / Modelo</TableHead>
                       <TableHead>Etiqueta / Serial</TableHead>
+                      <TableHead>AnyDesk (Remoto)</TableHead>
                       <TableHead>Usuário & Área</TableHead>
                       <TableHead>Indicadores de Atenção</TableHead>
                       <TableHead>Status</TableHead>
@@ -694,6 +708,9 @@ export default function PCs_Internos() {
                   <TableBody>
                     {filteredEquipamentos.map((eq) => {
                       const alerts = getAttentionAlerts(eq);
+                      const anydeskMatch = eq.observacoes ? eq.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i) : null;
+                      const anydeskVal = anydeskMatch ? anydeskMatch[1] : "";
+
                       return (
                         <TableRow
                           key={eq.id}
@@ -711,6 +728,15 @@ export default function PCs_Internos() {
                           </TableCell>
                           <TableCell className="font-mono text-slate-600">
                             {eq.etiqueta_interna || eq.numero_serie || "—"}
+                          </TableCell>
+                          <TableCell>
+                            {anydeskVal ? (
+                              <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                {anydeskVal}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px]">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div>

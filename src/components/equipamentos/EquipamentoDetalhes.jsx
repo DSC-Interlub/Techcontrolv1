@@ -180,45 +180,50 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           )}
 
-          {equipamento.observacoes && (
-            <div>
-              <p className="text-sm text-gray-500">Observações</p>
-              <p className="font-medium">{equipamento.observacoes}</p>
-            </div>
-          )}
+          {/* BLOCO DE DADOS TÉCNICOS & AVALIAÇÃO DA MÁQUINA */}
+          <div className="pt-4 border-t space-y-3">
+            <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-indigo-600" />
+              Dados da Avaliação Técnica & Acesso Remoto
+            </p>
 
-          {equipamento.avaliacao_score !== undefined && equipamento.avaliacao_score !== null && (
-            <div className="pt-4 border-t">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Avaliação de Saúde do Equipamento</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Score de Saúde</p>
-                  <p className={`text-2xl font-bold ${
-                    equipamento.avaliacao_score >= 70 ? "text-red-600" :
-                    equipamento.avaliacao_score >= 40 ? "text-yellow-600" :
-                    "text-green-600"
-                  }`}>
-                    {equipamento.avaliacao_score.toFixed(1)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Recomendação</p>
-                  <Badge className={
-                    equipamento.avaliacao_recomendacao_sistema === "Manter" ? "bg-green-100 text-green-800" :
-                    equipamento.avaliacao_recomendacao_sistema === "Upgrade" ? "bg-yellow-100 text-yellow-800" :
-                    "bg-red-100 text-red-800"
-                  }>
-                    {equipamento.avaliacao_recomendacao_sistema || "Não avaliado"}
-                  </Badge>
-                </div>
-              </div>
-              {equipamento.avaliacao_data && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Avaliado em: {formatarDataHoraSemFuso(equipamento.avaliacao_data)}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+              <div>
+                <p className="text-slate-500 font-semibold">AnyDesk (Remoto)</p>
+                <p className="font-mono font-bold text-indigo-700 mt-0.5">
+                  {(equipamento.observacoes && (equipamento.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i)?.[1])) ||
+                   (ultimaAvaliacao && (ultimaAvaliacao.versao_windows?.match(/AnyDesk:\s*([^\s|;\n\r]+)/i)?.[1])) ||
+                   "Não informado"}
                 </p>
-              )}
+              </div>
+              <div>
+                <p className="text-slate-500 font-semibold">Memória RAM</p>
+                <p className="font-bold text-slate-800 mt-0.5">
+                  {equipamento.memoria_ram || ultimaAvaliacao?.memoria_ram || "Não avaliada"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-semibold">Sistema Operacional</p>
+                <p className="font-bold text-slate-800 mt-0.5">
+                  {equipamento.versao_windows ? equipamento.versao_windows.split('|')[0].trim() : (ultimaAvaliacao?.versao_windows?.split('|')[0].trim() || "Não informado")}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500 font-semibold">Antivírus Corporativo</p>
+                <div className="mt-0.5">{getAntivirus()}</div>
+              </div>
+              <div>
+                <p className="text-slate-500 font-semibold">Condição Avaliada</p>
+                <div className="mt-0.5">{getCondicao()}</div>
+              </div>
+              <div>
+                <p className="text-slate-500 font-semibold">Pontuação / Classificação</p>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {ultimaAvaliacao ? `${ultimaAvaliacao.pontuacao_total || 0} pts (${ultimaAvaliacao.classificacao || 'Manter'})` : "Ainda não avaliado"}
+                </p>
+              </div>
             </div>
-          )}
+          </div>
 
           {equipamento.usuarios_anteriores && equipamento.usuarios_anteriores.length > 0 && (
             <div className="pt-4 border-t">
