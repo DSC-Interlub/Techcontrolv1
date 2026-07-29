@@ -270,14 +270,19 @@ export default function PortalChamados() {
 
   const avaliacaoMutation = useMutation({
     mutationFn: async ({ id, av }) => {
-      const nota = (av.tempo_resolucao + av.qualidade_atendimento + av.qualidade_solucao + av.comunicacao) / 4;
-      return base44.entities.Chamados.update(id, {
-        avaliacao_tempo_resolucao: av.tempo_resolucao,
-        avaliacao_qualidade_atendimento: av.qualidade_atendimento,
-        avaliacao_qualidade_solucao: av.qualidade_solucao,
-        avaliacao_comunicacao: av.comunicacao,
+      const t = Number(av.tempo_resolucao) || 5;
+      const q = Number(av.qualidade_atendimento) || 5;
+      const s = Number(av.qualidade_solucao) || 5;
+      const c = Number(av.comunicacao) || 5;
+      const nota = (t + q + s + c) / 4;
+
+      return await base44.entities.Chamados.update(id, {
+        avaliacao_tempo_resolucao: t,
+        avaliacao_qualidade_atendimento: q,
+        avaliacao_qualidade_solucao: s,
+        avaliacao_comunicacao: c,
         avaliacao_nota_geral: Math.round(nota * 10) / 10,
-        avaliacao_comentario: av.comentario,
+        avaliacao_comentario: av.comentario || "",
         avaliacao_data: new Date().toISOString(),
         status: "Resolvido",
       });
@@ -286,7 +291,6 @@ export default function PortalChamados() {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
       setEvalModalChamado(null);
       setSelectedChamado(null);
-      alert("🎉 Avaliação enviada com sucesso! Muito obrigado pelo seu feedback.");
     },
     onError: (err) => {
       console.error("Erro ao enviar avaliação:", err);
@@ -596,7 +600,7 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
       setSucesso(true);
     } catch (err) {
       console.error("Erro no envio:", err);
-      alert("Ocorreu um erro ao salvar a avaliação. Tente novamente.");
+      alert("Ocorreu um erro ao salvar a avaliação: " + (err.message || "Erro desconhecido"));
     } finally {
       setEnviando(false);
     }
@@ -651,10 +655,10 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
             ["qualidade_atendimento", "🤝 Qualidade do Atendimento", "O técnico foi cordial e atencioso?"],
             ["qualidade_solucao", "💡 Qualidade da Solução", "O problema foi 100% resolvido?"],
             ["comunicacao", "💬 Comunicação", "Você foi informado do andamento?"]
-          ].map(([campo, label, desc]) => (
+          ].map(([campo, labelText, desc]) => (
             <div key={campo} className="bg-white border border-yellow-200 rounded-xl p-3 shadow-sm">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-gray-900 text-xs">{label}</span>
+                <Label htmlFor={`label-${campo}-${chamado.id}`} className="font-semibold text-gray-900 text-xs">{labelText}</Label>
                 <span className="text-xs font-extrabold text-yellow-700">{form[campo]} ⭐</span>
               </div>
               <p className="text-[11px] text-gray-500 mb-2">{desc}</p>
@@ -662,7 +666,10 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
                 {[1, 2, 3, 4, 5].map(n => (
                   <button
                     key={n}
+                    id={`star-${campo}-${chamado.id}-${n}`}
+                    name={`star-${campo}-${chamado.id}`}
                     type="button"
+                    aria-label={`Nota ${n} de 5 para ${labelText}`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -679,8 +686,10 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
         </div>
 
         <div>
-          <Label className="text-gray-800 font-semibold text-xs">Comentários ou Elogios (opcional)</Label>
+          <Label htmlFor={`comentario-${chamado.id}`} className="text-gray-800 font-semibold text-xs">Comentários ou Elogios (opcional)</Label>
           <Textarea
+            id={`comentario-${chamado.id}`}
+            name={`comentario-${chamado.id}`}
             placeholder="Deixe um recado para o técnico ou sugestão de melhoria..."
             rows={2}
             value={form.comentario}
@@ -692,6 +701,8 @@ function ChamadoAvaliacaoInlineCard({ chamado, onAvaliar, loading }) {
 
         <button
           type="button"
+          id={`btn-enviar-eval-${chamado.id}`}
+          name={`btn-enviar-eval-${chamado.id}`}
           onClick={handleEnviar}
           disabled={loading || enviando}
           className="w-full bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 disabled:opacity-50 text-white font-bold py-3.5 px-4 text-sm shadow-md transition-all rounded-lg cursor-pointer flex items-center justify-center gap-2"
