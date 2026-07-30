@@ -31,6 +31,30 @@ const tableMap = {
   ProjetosChat: 'projetos_chat'
 };
 
+const sanitizeData = (obj) => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' && value.trim() === '') {
+      const isUuidField = key === 'colaborador_id' || key === 'solicitante_id' || key === 'responsavel_id' || key.endsWith('_id');
+      const isDateField = key.startsWith('data_') || 
+                          key.endsWith('_desde') || 
+                          key.endsWith('_ate') || 
+                          key.endsWith('_nascimento') || 
+                          key.endsWith('_admissao') || 
+                          key.endsWith('_desligamento') || 
+                          key.endsWith('_date') || 
+                          key === 'data';
+      if (isUuidField || isDateField) {
+        cleaned[key] = null;
+        continue;
+      }
+    }
+    cleaned[key] = value;
+  }
+  return cleaned;
+};
+
 const createEntityHandler = (entityName) => {
   const tableName = tableMap[entityName] || entityName.toLowerCase();
 
@@ -117,7 +141,8 @@ const createEntityHandler = (entityName) => {
 
     create: async (data) => {
       const isArray = Array.isArray(data);
-      let query = supabase.from(tableName).insert(data).select();
+      const sanitized = isArray ? data.map(sanitizeData) : sanitizeData(data);
+      let query = supabase.from(tableName).insert(sanitized).select();
       if (!isArray) {
         const { data: inserted, error } = await query.single();
         if (error) throw error;
@@ -131,9 +156,10 @@ const createEntityHandler = (entityName) => {
 
     update: async (id, data) => {
       const { id: _, created_date: __, ...updateData } = data;
+      const sanitized = sanitizeData(updateData);
       const { data: updated, error } = await supabase
         .from(tableName)
-        .update(updateData)
+        .update(sanitized)
         .eq('id', id)
         .select()
         .maybeSingle();

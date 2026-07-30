@@ -180,7 +180,7 @@ export default function PCs_Internos() {
     if (equipmentToTransfer.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipmentToTransfer.usuario_atual,
-        data_inicio: equipmentToTransfer.usuario_desde || equipmentToTransfer.data_aquisicao || "", 
+        data_inicio: (equipmentToTransfer.usuario_desde && String(equipmentToTransfer.usuario_desde).trim()) || (equipmentToTransfer.data_aquisicao && String(equipmentToTransfer.data_aquisicao).trim()) || null, 
         data_fim: new Date().toISOString().split('T')[0]
       });
     }
@@ -191,7 +191,7 @@ export default function PCs_Internos() {
     const dadosAtualizados = isDisponivel ? {
       usuario_atual: "",
       colaborador_id: null,
-      usuario_desde: "",
+      usuario_desde: null,
       area: "",
       status: "Disponível",
       usuarios_anteriores: usuariosAnteriores
@@ -220,7 +220,7 @@ export default function PCs_Internos() {
     if (equipment.usuario_atual) {
       usuariosAnteriores.push({
         nome: equipment.usuario_atual,
-        data_inicio: equipment.usuario_desde || equipment.data_aquisicao || "",
+        data_inicio: (equipment.usuario_desde && String(equipment.usuario_desde).trim()) || (equipment.data_aquisicao && String(equipment.data_aquisicao).trim()) || null,
         data_fim: new Date().toISOString().split('T')[0]
       });
     }

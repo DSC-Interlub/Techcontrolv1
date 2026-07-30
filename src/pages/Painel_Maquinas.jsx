@@ -289,7 +289,7 @@ export default function Painel_Maquinas() {
         status: "Formatando",
         usuario_atual: "",
         colaborador_id: null,
-        usuario_desde: "",
+        usuario_desde: null,
         area: "",
         usuarios_anteriores: histRuim
       };

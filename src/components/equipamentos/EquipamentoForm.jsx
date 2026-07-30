@@ -509,7 +509,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                         if (value && !formData.usuario_desde) {
                           handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
                         } else if (!value) {
-                          handleChange("usuario_desde", "");
+                          handleChange("usuario_desde", null);
                         }
                       }}
                       options={[
@@ -787,7 +787,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                         if (value && !formData.usuario_desde) {
                           handleChange("usuario_desde", new Date().toISOString().split('T')[0]);
                         } else if (!value) {
-                          handleChange("usuario_desde", "");
+                          handleChange("usuario_desde", null);
                         }
                       }}
                       options={[
