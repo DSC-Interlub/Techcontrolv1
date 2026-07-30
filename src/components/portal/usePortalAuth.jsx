@@ -35,5 +35,5 @@ export function usePortalAuth() {
     return true;
   };
 
-  return { colaborador: getColaborador() || colaborador, getColaborador, loading, logout, requireAuth };
+  return { colaborador, getColaborador, loading, logout, requireAuth };
 }
