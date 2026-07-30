@@ -23,7 +23,8 @@ import {
   Moon,
   Building2,
   Megaphone,
-  ShoppingCart
+  ShoppingCart,
+  FolderKanban
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -150,6 +151,11 @@ const gestaoItems = [
     title: "Projetos / Terceiros",
     url: createPageUrl("ProjetosTerceiros"),
     icon: Building2,
+  },
+  {
+    title: "Projetos Internos TI",
+    url: createPageUrl("ProjetosInternos"),
+    icon: FolderKanban,
   },
 ];
 

@@ -20,6 +20,7 @@ const Coletores = lazy(() => import('./pages/Coletores'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Home = lazy(() => import('./pages/Home'));
 const projetosTerceiros = lazy(() => import('./pages/ProjetosTerceiros'));
+const projetosInternos = lazy(() => import('./pages/ProjetosInternos'));
 const notebooksExternos = lazy(() => import('./pages/Notebooks_Externos'));
 const pcsInternos = lazy(() => import('./pages/PCs_Internos'));
 const Ramais = lazy(() => import('./pages/Ramais'));
@@ -60,6 +61,7 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "Home": Home,
     "ProjetosTerceiros": projetosTerceiros,
+    "ProjetosInternos": projetosInternos,
     "Notebooks_Externos": notebooksExternos,
     "PCs_Internos": pcsInternos,
     "Ramais": Ramais,

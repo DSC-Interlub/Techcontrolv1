@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X } from "lucide-react";
+import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X, FolderKanban, Calendar, DollarSign, Users, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
@@ -128,6 +129,50 @@ export default function PortalChamados() {
     queryKey: ['portal_chamados_list'],
     queryFn: () => base44.entities.Chamados.list('-created_date'),
     enabled: !!colaborador,
+  });
+
+  const [selectedProjetoPortal, setSelectedProjetoPortal] = useState(null);
+  const [novaMsgChatPortal, setNovaMsgChatPortal] = useState("");
+  const [tabDetalhesProjeto, setTabDetalhesProjeto] = useState("geral");
+
+  const { data: todosProjetos = [], isLoading: loadingProjetos } = useQuery({
+    queryKey: ['portal_projetos_internos_list'],
+    queryFn: () => base44.entities.ProjetosInternos.list('-created_at'),
+    enabled: !!colaborador,
+  });
+
+  const { data: chatMessagesProjeto = [] } = useQuery({
+    queryKey: ['portal_projetos_chat', selectedProjetoPortal?.id],
+    queryFn: () => base44.entities.ProjetosChat.filter({ projeto_id: selectedProjetoPortal?.id }, 'data_hora'),
+    enabled: !!selectedProjetoPortal?.id,
+  });
+
+  useEffect(() => {
+    if (!selectedProjetoPortal?.id) return;
+    const unsubscribe = base44.entities.ProjetosChat.subscribe((newRecord) => {
+      if (newRecord?.projeto_id === selectedProjetoPortal.id) {
+        queryClient.invalidateQueries({ queryKey: ['portal_projetos_chat', selectedProjetoPortal.id] });
+      }
+    });
+    return () => unsubscribe();
+  }, [selectedProjetoPortal?.id, queryClient]);
+
+  const enviarChatPortalMutation = useMutation({
+    mutationFn: async (texto) => {
+      return await base44.entities.ProjetosChat.create({
+        projeto_id: selectedProjetoPortal.id,
+        remetente_id: String(colaborador.id || ""),
+        remetente_nome: colaborador.nome_completo,
+        remetente_email: colaborador.email || "",
+        tipo_remetente: "colaborador",
+        mensagem: texto,
+        data_hora: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_projetos_chat', selectedProjetoPortal?.id] });
+      setNovaMsgChatPortal("");
+    }
   });
 
   // Buscar equipamentos SEMPRE (não só quando view === "novo")
@@ -315,6 +360,17 @@ export default function PortalChamados() {
       )
     );
     return matchEmail || matchNomeExact || matchNomePartial;
+  });
+
+  const colabIdStr = colaborador?.id ? String(colaborador.id) : "";
+  const meusProjetos = todosProjetos.filter(p => {
+    if (!p) return false;
+    const isSolicitante = (p.solicitante_id && String(p.solicitante_id) === colabIdStr) ||
+      (p.solicitante_nome && normalizeUserName(p.solicitante_nome) === nomeNorm);
+    const isResponsavel = (p.responsavel_id && String(p.responsavel_id) === colabIdStr) ||
+      (p.responsavel_nome && normalizeUserName(p.responsavel_nome) === nomeNorm);
+    const isParticipante = Array.isArray(p.participantes_ids) && p.participantes_ids.some(id => String(id) === colabIdStr);
+    return isSolicitante || isResponsavel || isParticipante;
   });
 
   const ehChamadoSemNota = (c) => {
@@ -640,11 +696,14 @@ export default function PortalChamados() {
           </div>
 
           <Tabs defaultValue="abertos">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsList className="grid w-full grid-cols-5 mb-4">
               <TabsTrigger value="abertos" className="text-xs">Em Aberto ({naoIniciados.length})</TabsTrigger>
               <TabsTrigger value="andamento" className="text-xs">Em Andamento ({emAndamento.length})</TabsTrigger>
               <TabsTrigger value="avaliacao" className="text-xs">Aguard. Avaliação ({aguardandoAvaliacao.length})</TabsTrigger>
               <TabsTrigger value="fechados" className="text-xs">Fechados ({fechados.length})</TabsTrigger>
+              <TabsTrigger value="projetos" className="text-xs font-semibold text-indigo-700 bg-indigo-50/50">
+                Meus Projetos ({meusProjetos.length})
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="abertos">
               <TabContent lista={naoIniciados} empty="Nenhum chamado em aberto" />
@@ -663,6 +722,84 @@ export default function PortalChamados() {
             </TabsContent>
             <TabsContent value="fechados">
               <TabContent lista={fechados} empty="Nenhum chamado fechado" />
+            </TabsContent>
+            <TabsContent value="projetos">
+              {loadingProjetos ? (
+                <p className="text-center py-8 text-slate-500">Carregando seus projetos...</p>
+              ) : meusProjetos.length === 0 ? (
+                <p className="text-center py-8 text-slate-500">Você não está vinculado a nenhum projeto interno no momento.</p>
+              ) : (
+                <div className="space-y-3">
+                  {meusProjetos.map(proj => {
+                    const listMarcos = Array.isArray(proj.marcos) ? proj.marcos : [];
+                    const totalM = listMarcos.length;
+                    const concM = listMarcos.filter(m => m.status === "Concluído").length;
+                    const pctM = totalM > 0 ? Math.round((concM / totalM) * 100) : 0;
+                    const hoje = startOfDay(new Date());
+                    
+                    let possuiAtraso = false;
+                    listMarcos.forEach(m => {
+                      if (m.status === "Pendente" && m.data_prevista) {
+                        const d = startOfDay(parseISO(m.data_prevista));
+                        if (isBefore(d, hoje)) possuiAtraso = true;
+                      }
+                    });
+
+                    const temAprovacao = Array.isArray(proj.aprovacao_diretoria) && proj.aprovacao_diretoria.some(a => a.aprovado);
+
+                    return (
+                      <Card
+                        key={proj.id}
+                        className="border-slate-200 bg-card hover:shadow-md cursor-pointer transition-all"
+                        onClick={() => {
+                          setSelectedProjetoPortal(proj);
+                          setTabDetalhesProjeto("geral");
+                        }}
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-mono text-xs text-slate-500 font-semibold">{proj.codigo_projeto}</span>
+                                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">{proj.status}</Badge>
+                                <Badge variant="outline" className="text-xs">{proj.prioridade}</Badge>
+                              </div>
+                              <h4 className="font-bold text-slate-900 text-base">{proj.titulo}</h4>
+                              <p className="text-xs text-slate-500">{proj.programa_nome}</p>
+                            </div>
+
+                            {possuiAtraso && (
+                              <Badge variant="destructive" className="bg-rose-600 text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shrink-0 animate-pulse">
+                                <AlertTriangle className="w-3 h-3" /> Marco Atrasado
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Barra de Progresso de Marcos */}
+                          <div>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-slate-500 font-medium">Entregáveis Concluídos</span>
+                              <span className="font-bold text-indigo-700">{concM}/{totalM} ({pctM}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                              <div className="bg-indigo-600 h-full transition-all" style={{ width: `${pctM}%` }} />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                            <span>Responsável TI: <strong className="text-slate-700">{proj.responsavel_nome || "—"}</strong></span>
+                            {temAprovacao && (
+                              <span className="text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
+                                <ShieldCheck className="w-3 h-3" /> Homologado
+                              </span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -757,6 +894,140 @@ export default function PortalChamados() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal detalhes do projeto no portal */}
+      <Dialog open={!!selectedProjetoPortal} onOpenChange={() => setSelectedProjetoPortal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                {selectedProjetoPortal?.codigo_projeto}
+              </span>
+              <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">{selectedProjetoPortal?.status}</Badge>
+            </div>
+            <DialogTitle className="text-xl font-bold text-slate-900">{selectedProjetoPortal?.titulo}</DialogTitle>
+          </DialogHeader>
+
+          {selectedProjetoPortal && (
+            <Tabs value={tabDetalhesProjeto} onValueChange={setTabDetalhesProjeto} className="mt-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="geral" className="text-xs">Visão Geral & Marcos</TabsTrigger>
+                <TabsTrigger value="chat" className="text-xs">Ideias & Comentários ({chatMessagesProjeto.length})</TabsTrigger>
+                <TabsTrigger value="homologacao" className="text-xs">Homologações</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="geral" className="space-y-4 pt-3 text-sm">
+                <div className="bg-slate-50 p-3 rounded-lg border text-slate-700">
+                  <p className="font-semibold text-slate-900 mb-1">Descrição</p>
+                  <p className="whitespace-pre-wrap text-xs">{selectedProjetoPortal.descricao || "Sem descrição."}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white p-2.5 rounded border">
+                    <span className="text-slate-400">Responsável Técnico</span>
+                    <p className="font-semibold text-slate-800 mt-0.5">{selectedProjetoPortal.responsavel_nome || "—"}</p>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border">
+                    <span className="text-slate-400">Previsão de Término</span>
+                    <p className="font-semibold text-slate-800 mt-0.5">{selectedProjetoPortal.data_fim_prevista || "—"}</p>
+                  </div>
+                </div>
+
+                {/* Marcos (Somente Leitura no Portal) */}
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm mb-2 flex items-center gap-1.5">
+                    <FolderKanban className="w-4 h-4 text-indigo-600" /> Cronograma de Marcos ({selectedProjetoPortal.marcos?.length || 0})
+                  </h4>
+                  <div className="space-y-1.5">
+                    {(selectedProjetoPortal.marcos || []).length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">Nenhum marco cadastrado.</p>
+                    ) : (
+                      (selectedProjetoPortal.marcos || []).map((m, i) => {
+                        const isAtrasado = m.status === "Pendente" && m.data_prevista && isBefore(startOfDay(parseISO(m.data_prevista)), startOfDay(new Date()));
+                        return (
+                          <div key={i} className={`p-2.5 rounded border flex items-center justify-between text-xs ${m.status === 'Concluído' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : isAtrasado ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className={`w-4 h-4 ${m.status === 'Concluído' ? 'text-emerald-600' : 'text-slate-300'}`} />
+                              <span className={m.status === 'Concluído' ? 'line-through opacity-75 font-medium' : 'font-semibold'}>{m.titulo}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isAtrasado && (
+                                <Badge variant="destructive" className="bg-rose-600 text-white text-[9px] uppercase font-bold">
+                                  Atrasado
+                                </Badge>
+                              )}
+                              <span className="text-slate-500">{m.data_prevista ? format(parseISO(m.data_prevista), 'dd/MM/yyyy') : '—'}</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat" className="space-y-3 pt-3 text-sm">
+                <div className="bg-slate-50 border rounded-lg p-3 h-64 overflow-y-auto space-y-2">
+                  {chatMessagesProjeto.length === 0 ? (
+                    <p className="text-center text-slate-400 text-xs py-10">Nenhum comentário enviado ainda. Seja o primeiro a opinar!</p>
+                  ) : (
+                    chatMessagesProjeto.map((msg, i) => {
+                      const eMinha = msg.remetente_id === String(colaborador.id) || msg.remetente_email === colaborador.email;
+                      return (
+                        <div key={i} className={`flex ${eMinha ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] p-2.5 rounded-lg text-xs break-words ${eMinha ? 'bg-indigo-600 text-white' : 'bg-white border text-slate-800'}`}>
+                            <p className="font-bold mb-0.5 opacity-90">{msg.remetente_nome}</p>
+                            <p className="whitespace-pre-wrap">{msg.mensagem}</p>
+                            <p className="text-[10px] opacity-75 mt-1 text-right">{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Escreva sua ideia ou dúvida para este projeto..."
+                    rows={2}
+                    value={novaMsgChatPortal}
+                    onChange={e => setNovaMsgChatPortal(e.target.value)}
+                  />
+                  <Button
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-auto"
+                    disabled={!novaMsgChatPortal.trim() || enviarChatPortalMutation.isPending}
+                    onClick={() => enviarChatPortalMutation.mutate(novaMsgChatPortal)}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="homologacao" className="space-y-3 pt-3 text-sm">
+                <div className="bg-slate-50 p-3 rounded-lg border">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2">Histórico de Validação da Diretoria</h4>
+                  {Array.isArray(selectedProjetoPortal.aprovacao_diretoria) && selectedProjetoPortal.aprovacao_diretoria.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedProjetoPortal.aprovacao_diretoria.map((ap, i) => (
+                        <div key={i} className="p-2.5 bg-white rounded border text-xs flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-slate-800">
+                              {ap.aprovado ? <span className="text-emerald-700 font-bold">✓ Homologado</span> : <span className="text-rose-700 font-bold">✗ Em Ajustes</span>} por {ap.aprovador_nome}
+                            </p>
+                            {ap.observacoes && <p className="text-slate-600 mt-0.5">"{ap.observacoes}"</p>}
+                          </div>
+                          <span className="text-slate-400 text-[10px]">{new Date(ap.data).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">Nenhum registro de homologação formal cadastrado.</p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
 
     </PortalLayout>
   );

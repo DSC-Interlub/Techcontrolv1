@@ -26,7 +26,9 @@ const tableMap = {
   EmpresasTerceiras: 'empresas_terceiras',
   Estacoes_Trabalho: 'estacoes_trabalho',
   TarefasManutencao: 'tarefas_manutencao_equipamento',
-  User: 'profiles'
+  User: 'profiles',
+  ProjetosInternos: 'projetos_internos',
+  ProjetosChat: 'projetos_chat'
 };
 
 const createEntityHandler = (entityName) => {
