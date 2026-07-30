@@ -130,19 +130,6 @@ export default function PortalChamados() {
     enabled: !!colaborador,
   });
 
-  useEffect(() => {
-    if (!chamados) return;
-    const pendentes = chamados.filter(c => c && !c.avaliacao_data && (c.status === "Aguardando Avaliação" || c.status === "Resolvido"));
-    console.log("🔍 [DIAGNÓSTICO A - BUSCA] Total de chamados retornados:", chamados.length);
-    console.log("🔍 [DIAGNÓSTICO A - BUSCA] Chamados em 'Aguardando Avaliação' ou 'Resolvido' sem avaliacao_data:", pendentes.map(c => ({
-      id: c.id,
-      numero_chamado: c.numero_chamado,
-      status: c.status,
-      solicitante_nome: c.solicitante_nome,
-      solicitante_email: c.solicitante_email,
-    })));
-  }, [chamados]);
-
   // Buscar equipamentos SEMPRE (não só quando view === "novo")
   const { data: pcsInternos = [] } = useQuery({
     queryKey: ['portal_pcs_cham'],
@@ -288,7 +275,7 @@ export default function PortalChamados() {
       const c = Number(av.comunicacao) || 5;
       const nota = (t + q + s + c) / 4;
 
-      const payload = {
+      return await base44.entities.Chamados.update(id, {
         avaliacao_tempo_resolucao: t,
         avaliacao_qualidade_atendimento: q,
         avaliacao_qualidade_solucao: s,
@@ -297,11 +284,7 @@ export default function PortalChamados() {
         avaliacao_comentario: av.comentario || "",
         avaliacao_data: new Date().toISOString(),
         status: "Resolvido",
-      };
-
-      console.log(`🔍 [DIAGNÓSTICO A - MUTATION PAYLOAD] Enviando atualização para chamado ID: ${id}`, payload);
-
-      return await base44.entities.Chamados.update(id, payload);
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_chamados_list'] });
@@ -309,13 +292,7 @@ export default function PortalChamados() {
       setAutoShowAvaliacao(false);
     },
     onError: (err) => {
-      console.error("❌ [DIAGNÓSTICO A - MUTATION ERRO] Erro detalhado ao enviar avaliação:", {
-        message: err?.message,
-        details: err?.details,
-        hint: err?.hint,
-        code: err?.code,
-        objetoErroCompleto: err
-      });
+      console.error("Erro ao enviar avaliação:", err);
       alert("Não foi possível salvar a avaliação. Tente novamente.");
     }
   });
@@ -337,21 +314,6 @@ export default function PortalChamados() {
         solicitanteNorm.includes(nomeNorm) || nomeNorm.includes(solicitanteNorm)
       )
     );
-
-    // Instrumentação temporária para chamados elegíveis a avaliação
-    if (!c.avaliacao_data && (c.status === "Aguardando Avaliação" || c.status === "Resolvido")) {
-      console.log(`🔍 [DIAGNÓSTICO A - MATCH] Chamado #${c.numero_chamado} (${c.id}):`, {
-        chamado_solicitante_nome: c.solicitante_nome,
-        chamado_solicitante_email: c.solicitante_email,
-        colaborador_logado_nome: colaborador?.nome_completo,
-        colaborador_logado_email: colaborador?.email,
-        matchEmail,
-        matchNomeExact,
-        matchNomePartial,
-        resultadoMatch: matchEmail || matchNomeExact || matchNomePartial
-      });
-    }
-
     return matchEmail || matchNomeExact || matchNomePartial;
   });
 
