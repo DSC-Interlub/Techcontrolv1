@@ -33,7 +33,8 @@ import {
   ShieldCheck,
   Loader2,
   Pencil,
-  Trash2
+  Trash2,
+  Search
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,6 +47,7 @@ const STATUS_PROJETO = [
   "Em Planejamento",
   "Aguardando Aprovação",
   "Em Execução",
+  "Congelado",
   "Em Homologação",
   "Concluído",
   "Cancelado"
@@ -62,6 +64,7 @@ const statusColors = {
   "Em Planejamento": "bg-slate-100 text-slate-800 border-slate-300",
   "Aguardando Aprovação": "bg-amber-100 text-amber-900 border-amber-300",
   "Em Execução": "bg-blue-100 text-blue-900 border-blue-300",
+  "Congelado": "bg-slate-200 text-slate-700 border-slate-300",
   "Em Homologação": "bg-purple-100 text-purple-900 border-purple-300",
   "Concluído": "bg-emerald-100 text-emerald-900 border-emerald-300",
   "Cancelado": "bg-rose-100 text-rose-800 border-rose-300",
@@ -100,6 +103,9 @@ export default function ProjetosInternos() {
     marcos: [],
   });
 
+  // Aux Busca Participante
+  const [searchParticipante, setSearchParticipante] = useState("");
+
   // Aux Marcos
   const [novoMarco, setNovoMarco] = useState({ titulo: "", data_prevista: "", responsavel: "" });
 
@@ -125,6 +131,20 @@ export default function ProjetosInternos() {
     queryFn: () => base44.entities.Colaboradores.list('nome_completo'),
   });
 
+  const { data: usuariosSistema = [] } = useQuery({
+    queryKey: ['usuarios_sistema_proj'],
+    queryFn: async () => {
+      try {
+        const res = await base44.functions.invoke('listarUsuarios', {});
+        const list = res.data?.usuarios || res.data || [];
+        if (list && list.length > 0) return list;
+      } catch (e) {
+        console.warn("Fallback para User.list()", e);
+      }
+      return await base44.entities.User.list();
+    }
+  });
+
   const { data: chatMessages = [] } = useQuery({
     queryKey: ['projetos_chat', selectedProjeto?.id],
     queryFn: () => base44.entities.ProjetosChat.filter({ projeto_id: selectedProjeto?.id }, 'data_hora'),
@@ -145,15 +165,17 @@ export default function ProjetosInternos() {
   // Mutations
   const createOrUpdateMutation = useMutation({
     mutationFn: async (data) => {
-      const respColab = colaboradores.find(c => String(c.id) === String(data.responsavel_id));
+      const respUser = usuariosSistema.find(u => String(u.id) === String(data.responsavel_id));
       const solColab = colaboradores.find(c => String(c.id) === String(data.solicitante_id));
 
       const payload = {
         ...data,
-        responsavel_nome: respColab ? respColab.nome_completo : "",
+        responsavel_nome: respUser ? (respUser.nome_exibicao || respUser.full_name || respUser.email) : "",
         solicitante_nome: solColab ? solColab.nome_completo : "",
         custo_estimado: Number(data.custo_estimado) || 0,
         custo_real: Number(data.custo_real) || 0,
+        data_inicio_prevista: data.data_inicio_prevista ? data.data_inicio_prevista : null,
+        data_fim_prevista: data.data_fim_prevista ? data.data_fim_prevista : null,
       };
 
       if (!editingId) {
@@ -235,6 +257,7 @@ export default function ProjetosInternos() {
 
   const resetForm = () => {
     setEditingId(null);
+    setSearchParticipante("");
     setFormData({
       titulo: "",
       descricao: "",
@@ -632,11 +655,15 @@ export default function ProjetosInternos() {
               </div>
 
               <div>
-                <Label>Responsável Técnico TI *</Label>
+                <Label>Responsável Técnico TI (Usuário do Sistema) *</Label>
                 <Select value={formData.responsavel_id} onValueChange={v => setFormData(p => ({ ...p, responsavel_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o responsável" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um usuário do sistema" /></SelectTrigger>
                   <SelectContent>
-                    {colaboradores.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.nome_completo} ({c.area})</SelectItem>)}
+                    {usuariosSistema.map(u => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {u.nome_exibicao || u.full_name || u.email} ({u.role || 'Usuário'})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -658,29 +685,49 @@ export default function ProjetosInternos() {
                 <span>Participantes Envolvidos (Colaboradores Reais)</span>
                 <span className="text-xs text-slate-500 font-normal">Estes colaboradores enxergarão o projeto no Portal</span>
               </Label>
+              
+              <div className="relative mb-2">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                <Input
+                  placeholder="Filtrar participante por nome ou área..."
+                  className="pl-8 text-xs h-8 bg-white border-slate-300"
+                  value={searchParticipante}
+                  onChange={e => setSearchParticipante(e.target.value)}
+                />
+              </div>
+
               <div className="border rounded-lg p-3 max-h-36 overflow-y-auto space-y-1.5 bg-slate-50">
-                {colaboradores.map(colab => {
-                  const idStr = String(colab.id);
-                  const isChecked = (formData.participantes_ids || []).includes(idStr);
-                  return (
-                    <label key={colab.id} className="flex items-center gap-2 text-xs hover:bg-slate-100 p-1 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData(p => ({ ...p, participantes_ids: [...(p.participantes_ids || []), idStr] }));
-                          } else {
-                            setFormData(p => ({ ...p, participantes_ids: (p.participantes_ids || []).filter(i => i !== idStr) }));
-                          }
-                        }}
-                        className="rounded text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="font-medium text-slate-800">{colab.nome_completo}</span>
-                      <span className="text-slate-400">({colab.area})</span>
-                    </label>
-                  );
-                })}
+                {colaboradores
+                  .filter(colab => 
+                    !searchParticipante || 
+                    (colab.nome_completo && colab.nome_completo.toLowerCase().includes(searchParticipante.toLowerCase())) ||
+                    (colab.area && colab.area.toLowerCase().includes(searchParticipante.toLowerCase()))
+                  )
+                  .map(colab => {
+                    const idStr = String(colab.id);
+                    const isChecked = (formData.participantes_ids || []).includes(idStr);
+                    return (
+                      <label key={colab.id} className="flex items-center gap-2 text-xs hover:bg-slate-100 p-1 rounded cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData(p => ({ ...p, participantes_ids: [...(p.participantes_ids || []), idStr] }));
+                            } else {
+                              setFormData(p => ({ ...p, participantes_ids: (p.participantes_ids || []).filter(i => i !== idStr) }));
+                            }
+                          }}
+                          className="rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="font-medium text-slate-800">{colab.nome_completo}</span>
+                        <span className="text-slate-400">({colab.area})</span>
+                      </label>
+                    );
+                  })}
+                {colaboradores.filter(colab => !searchParticipante || (colab.nome_completo && colab.nome_completo.toLowerCase().includes(searchParticipante.toLowerCase())) || (colab.area && colab.area.toLowerCase().includes(searchParticipante.toLowerCase()))).length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-2">Nenhum colaborador encontrado com este nome.</p>
+                )}
               </div>
             </div>
 
@@ -711,7 +758,7 @@ export default function ProjetosInternos() {
             {/* Prazos */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Data de Início Prevista</Label>
+                <Label>Data de Início Prevista <span className="text-slate-400 font-normal">(Opcional)</span></Label>
                 <Input
                   type="date"
                   value={formData.data_inicio_prevista}
@@ -719,7 +766,7 @@ export default function ProjetosInternos() {
                 />
               </div>
               <div>
-                <Label>Data de Conclusão Prevista</Label>
+                <Label>Data de Conclusão Prevista <span className="text-slate-400 font-normal">(Opcional)</span></Label>
                 <Input
                   type="date"
                   value={formData.data_fim_prevista}

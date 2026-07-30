@@ -27,6 +27,16 @@ const statusColors = {
   "Cancelado": "bg-gray-100 text-gray-800",
 };
 
+const statusColorsProjetoPortal = {
+  "Em Planejamento": "bg-slate-100 text-slate-800 border-slate-300",
+  "Aprovado": "bg-emerald-100 text-emerald-800 border-emerald-200",
+  "Em Execução": "bg-blue-100 text-blue-900 border-blue-300",
+  "Congelado": "bg-slate-200 text-slate-700 border-slate-300 shadow-sm font-medium",
+  "Em Homologação": "bg-purple-100 text-purple-900 border-purple-300",
+  "Concluído": "bg-emerald-600 text-white border-emerald-700",
+  "Cancelado": "bg-rose-100 text-rose-800 border-rose-200",
+};
+
 const normalizeUserName = (name) => {
   if (!name || typeof name !== 'string') return '';
   return name
@@ -761,7 +771,7 @@ export default function PortalChamados() {
                             <div>
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="font-mono text-xs text-slate-500 font-semibold">{proj.codigo_projeto}</span>
-                                <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">{proj.status}</Badge>
+                                <Badge className={`${statusColorsProjetoPortal[proj.status] || 'bg-indigo-100 text-indigo-800'} border`}>{proj.status}</Badge>
                                 <Badge variant="outline" className="text-xs">{proj.prioridade}</Badge>
                               </div>
                               <h4 className="font-bold text-slate-900 text-base">{proj.titulo}</h4>
@@ -902,7 +912,7 @@ export default function PortalChamados() {
               <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                 {selectedProjetoPortal?.codigo_projeto}
               </span>
-              <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200">{selectedProjetoPortal?.status}</Badge>
+              <Badge className={`${statusColorsProjetoPortal[selectedProjetoPortal?.status] || 'bg-indigo-100 text-indigo-800'} border`}>{selectedProjetoPortal?.status}</Badge>
             </div>
             <DialogTitle className="text-xl font-bold text-slate-900">{selectedProjetoPortal?.titulo}</DialogTitle>
           </DialogHeader>
