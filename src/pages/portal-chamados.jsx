@@ -776,6 +776,9 @@ export default function PortalChamados() {
                               </div>
                               <h4 className="font-bold text-slate-900 text-base">{proj.titulo}</h4>
                               <p className="text-xs text-slate-500">{proj.programa_nome}</p>
+                              <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> Aberto em {proj.created_at ? format(parseISO(proj.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}
+                              </p>
                             </div>
 
                             {possuiAtraso && (
@@ -919,10 +922,11 @@ export default function PortalChamados() {
 
           {selectedProjetoPortal && (
             <Tabs value={tabDetalhesProjeto} onValueChange={setTabDetalhesProjeto} className="mt-2">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="geral" className="text-xs">Visão Geral & Marcos</TabsTrigger>
-                <TabsTrigger value="chat" className="text-xs">Ideias & Comentários ({chatMessagesProjeto.length})</TabsTrigger>
-                <TabsTrigger value="homologacao" className="text-xs">Homologações</TabsTrigger>
+                <TabsTrigger value="documentos" className="text-xs">Documentos ({selectedProjetoPortal.documentos_projeto?.length || 0})</TabsTrigger>
+                <TabsTrigger value="chat" className="text-xs">Ideias ({chatMessagesProjeto.length})</TabsTrigger>
+                <TabsTrigger value="homologacao" className="text-xs">Homologação</TabsTrigger>
               </TabsList>
 
               <TabsContent value="geral" className="space-y-4 pt-3 text-sm">
@@ -931,14 +935,24 @@ export default function PortalChamados() {
                   <p className="whitespace-pre-wrap text-xs">{selectedProjetoPortal.descricao || "Sem descrição."}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-3 gap-3 text-xs">
+                  <div className="bg-indigo-50/60 p-2.5 rounded border border-indigo-100">
+                    <span className="text-indigo-700 font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Data de Abertura
+                    </span>
+                    <p className="font-bold text-indigo-950 mt-0.5">
+                      {selectedProjetoPortal.created_at ? format(parseISO(selectedProjetoPortal.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}
+                    </p>
+                  </div>
                   <div className="bg-white p-2.5 rounded border">
                     <span className="text-slate-400">Responsável Técnico</span>
                     <p className="font-semibold text-slate-800 mt-0.5">{selectedProjetoPortal.responsavel_nome || "—"}</p>
                   </div>
                   <div className="bg-white p-2.5 rounded border">
-                    <span className="text-slate-400">Previsão de Término</span>
-                    <p className="font-semibold text-slate-800 mt-0.5">{selectedProjetoPortal.data_fim_prevista || "—"}</p>
+                    <span className="text-slate-400">Previsão / Término</span>
+                    <p className="font-semibold text-slate-800 mt-0.5">
+                      {selectedProjetoPortal.data_conclusao ? `Concluído em ${selectedProjetoPortal.data_conclusao}` : (selectedProjetoPortal.data_fim_prevista || "—")}
+                    </p>
                   </div>
                 </div>
 
@@ -972,6 +986,39 @@ export default function PortalChamados() {
                       })
                     )}
                   </div>
+                </div>
+              </TabsContent>
+
+              {/* ABA DOCUMENTOS DO PROJETO NO PORTAL */}
+              <TabsContent value="documentos" className="space-y-3 pt-3 text-sm">
+                <div className="bg-slate-50 p-3 rounded-lg border">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Paperclip className="w-4 h-4 text-indigo-600" /> Documentação Geral do Projeto
+                  </h4>
+                  {Array.isArray(selectedProjetoPortal.documentos_projeto) && selectedProjetoPortal.documentos_projeto.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedProjetoPortal.documentos_projeto.map((doc, i) => (
+                        <div key={i} className="p-2.5 bg-white rounded border text-xs flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">📄</span>
+                            <div>
+                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-800 hover:text-indigo-600 underline">
+                                {doc.file_name}
+                              </a>
+                              <p className="text-[10px] text-slate-400">
+                                Enviado em {new Date(doc.data_upload).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} por {doc.enviado_por || 'TI'}
+                              </p>
+                            </div>
+                          </div>
+                          <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline font-semibold">
+                            Baixar
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">Nenhum documento geral disponível no momento.</p>
+                  )}
                 </div>
               </TabsContent>
 

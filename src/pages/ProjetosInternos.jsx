@@ -34,7 +34,11 @@ import {
   Loader2,
   Pencil,
   Trash2,
-  Search
+  Search,
+  XCircle,
+  Ban,
+  FileText,
+  Upload
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -116,6 +120,17 @@ export default function ProjetosInternos() {
   const [novaMsgChat, setNovaMsgChat] = useState("");
   const [anexoChat, setAnexoChat] = useState(null);
   const [uploadingChatAnexo, setUploadingChatAnexo] = useState(false);
+
+  // Status Filter State
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Aux Documentos Gerais
+  const [uploadingDocGeral, setUploadingDocGeral] = useState(false);
+
+  // Aux Modais de Ciclo de Vida (Concluir / Cancelar)
+  const [confirmConcluirModal, setConfirmConcluirModal] = useState(false);
+  const [confirmCancelarModal, setConfirmCancelarModal] = useState(false);
+  const [dataConclusaoInput, setDataConclusaoInput] = useState("");
 
   // Aux Documentos
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -271,6 +286,7 @@ export default function ProjetosInternos() {
       custo_real: 0,
       data_inicio_prevista: "",
       data_fim_prevista: "",
+      data_conclusao: "",
       marcos: [],
     });
   };
@@ -295,6 +311,7 @@ export default function ProjetosInternos() {
       custo_real: proj.custo_real || 0,
       data_inicio_prevista: proj.data_inicio_prevista || "",
       data_fim_prevista: proj.data_fim_prevista || "",
+      data_conclusao: proj.data_conclusao || "",
       marcos: proj.marcos || [],
     });
     setModalOpen(true);
@@ -305,6 +322,30 @@ export default function ProjetosInternos() {
   const totalCustoEstimado = projetosDoPrograma.reduce((acc, p) => acc + (Number(p.custo_estimado) || 0), 0);
   const totalCustoReal = projetosDoPrograma.reduce((acc, p) => acc + (Number(p.custo_real) || 0), 0);
   const desvioOrcamentario = totalCustoReal - totalCustoEstimado;
+
+  // Filtros de Status
+  const statusCounts = {
+    all: projetosDoPrograma.length,
+    execucao: projetosDoPrograma.filter(p => p.status === "Em Execução").length,
+    planejamento: projetosDoPrograma.filter(p => p.status === "Em Planejamento").length,
+    aprovacao: projetosDoPrograma.filter(p => p.status === "Aguardando Aprovação").length,
+    homologacao: projetosDoPrograma.filter(p => p.status === "Em Homologação").length,
+    congelado: projetosDoPrograma.filter(p => p.status === "Congelado").length,
+    concluido: projetosDoPrograma.filter(p => p.status === "Concluído").length,
+    cancelado: projetosDoPrograma.filter(p => p.status === "Cancelado").length,
+  };
+
+  const projetosExibidos = projetosDoPrograma.filter(p => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "execucao") return p.status === "Em Execução";
+    if (statusFilter === "planejamento") return p.status === "Em Planejamento";
+    if (statusFilter === "aprovacao") return p.status === "Aguardando Aprovação";
+    if (statusFilter === "homologacao") return p.status === "Em Homologação";
+    if (statusFilter === "congelado") return p.status === "Congelado";
+    if (statusFilter === "concluido") return p.status === "Concluído";
+    if (statusFilter === "cancelado") return p.status === "Cancelado";
+    return true;
+  });
 
   // % de marcos concluídos no programa
   let totalMarcosPrograma = 0;
@@ -479,21 +520,53 @@ export default function ProjetosInternos() {
           </CardContent>
         </Card>
 
-        {/* Lista de Projetos do Programa */}
+        {/* Lista de Projetos do Programa com Abas de Status */}
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            Iniciativas em Andamento ({projetosDoPrograma.length})
-          </h3>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              Iniciativas ({projetosExibidos.length} de {projetosDoPrograma.length})
+            </h3>
 
-          {projetosDoPrograma.length === 0 ? (
+            {/* Abas / Filtro por Status */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+              {[
+                { id: "all", label: "Todos", count: statusCounts.all },
+                { id: "execucao", label: "Em Execução", count: statusCounts.execucao },
+                { id: "planejamento", label: "Em Planejamento", count: statusCounts.planejamento },
+                { id: "aprovacao", label: "Aguard. Aprovação", count: statusCounts.aprovacao },
+                { id: "homologacao", label: "Em Homologação", count: statusCounts.homologacao },
+                { id: "congelado", label: "Congelados", count: statusCounts.congelado },
+                { id: "concluido", label: "Concluídos", count: statusCounts.concluido },
+                { id: "cancelado", label: "Cancelados", count: statusCounts.cancelado },
+              ].map(st => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setStatusFilter(st.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
+                    statusFilter === st.id
+                      ? "bg-indigo-600 text-white shadow-sm border-transparent"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <span>{st.label}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                    {st.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {projetosExibidos.length === 0 ? (
             <Card className="border-dashed border-slate-300 py-12 text-center text-slate-400">
               <FolderKanban className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="font-semibold text-slate-600">Nenhum projeto interno cadastrado para este programa.</p>
-              <p className="text-xs text-slate-400 mt-1">Clique em "Novo Projeto Interno" para adicionar.</p>
+              <p className="font-semibold text-slate-600">Nenhum projeto interno encontrado nesta categoria.</p>
+              <p className="text-xs text-slate-400 mt-1">Alterne a aba de status ou clique em "Novo Projeto Interno" para adicionar.</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projetosDoPrograma.map(proj => {
+              {projetosExibidos.map(proj => {
                 const stats = getProjetoStats(proj);
                 const listParticipantes = colaboradores.filter(c => (proj.participantes_ids || []).includes(String(c.id)));
                 const temAprovacaoDiretoria = Array.isArray(proj.aprovacao_diretoria) && proj.aprovacao_diretoria.some(a => a.aprovado);
@@ -535,6 +608,14 @@ export default function ProjetosInternos() {
                       {proj.descricao && (
                         <p className="text-slate-500 text-xs line-clamp-2 mt-1">{proj.descricao}</p>
                       )}
+
+                      {/* TAREFA 1: Exibir data/hora de abertura no card */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>
+                          Aberto em {proj.created_at ? format(parseISO(proj.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}
+                        </span>
+                      </div>
                     </CardHeader>
 
                     <CardContent className="space-y-4 pt-0">
@@ -801,7 +882,33 @@ export default function ProjetosInternos() {
                       {selectedProjeto.status}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {/* Ações de Ciclo de Vida: Concluir / Cancelar */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedProjeto.status !== "Concluído" && (
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                        onClick={() => {
+                          setDataConclusaoInput(selectedProjeto.data_conclusao || new Date().toISOString().split('T')[0]);
+                          setConfirmConcluirModal(true);
+                        }}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Concluir Projeto
+                      </Button>
+                    )}
+
+                    {selectedProjeto.status !== "Cancelado" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-rose-600 border-rose-200 hover:bg-rose-50 gap-1"
+                        onClick={() => setConfirmCancelarModal(true)}
+                      >
+                        <Ban className="w-3.5 h-3.5" /> Cancelar Projeto
+                      </Button>
+                    )}
+
                     <Button size="sm" variant="outline" onClick={() => handleOpenEdit(selectedProjeto)} className="gap-1">
                       <Pencil className="w-3.5 h-3.5" /> Editar
                     </Button>
@@ -825,7 +932,9 @@ export default function ProjetosInternos() {
                   <TabsTrigger value="geral" className="text-xs">Visão Geral & Custos</TabsTrigger>
                   <TabsTrigger value="marcos" className="text-xs">Marcos & Etapas ({selectedProjeto.marcos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="chat" className="text-xs">Ideias & Chat ({chatMessages.length})</TabsTrigger>
-                  <TabsTrigger value="aprovacoes" className="text-xs">Homologação & Documentos</TabsTrigger>
+                  <TabsTrigger value="aprovacoes" className="text-xs">
+                    Documentos ({selectedProjeto.documentos_projeto?.length || 0}) & Homologação
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* ABA 1: GERAL & CUSTOS */}
@@ -835,7 +944,16 @@ export default function ProjetosInternos() {
                     <p className="text-slate-600 whitespace-pre-wrap">{selectedProjeto.descricao || "Sem descrição cadastrada."}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* TAREFA 1: Data de Abertura created_at em destaque */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="p-3 bg-indigo-50/60 border border-indigo-100 rounded-lg">
+                      <span className="text-xs text-indigo-700 font-semibold flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> Data de Abertura
+                      </span>
+                      <p className="font-bold text-indigo-950 text-xs mt-0.5">
+                        {selectedProjeto.created_at ? format(parseISO(selectedProjeto.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}
+                      </p>
+                    </div>
                     <div className="p-3 bg-white border rounded-lg">
                       <span className="text-xs text-slate-400">Responsável TI</span>
                       <p className="font-semibold text-slate-800">{selectedProjeto.responsavel_nome || "—"}</p>
@@ -849,8 +967,10 @@ export default function ProjetosInternos() {
                       <p className="font-semibold text-slate-800">{selectedProjeto.data_inicio_prevista || "—"}</p>
                     </div>
                     <div className="p-3 bg-white border rounded-lg">
-                      <span className="text-xs text-slate-400">Fim Previsto</span>
-                      <p className="font-semibold text-slate-800">{selectedProjeto.data_fim_prevista || "—"}</p>
+                      <span className="text-xs text-slate-400">Fim / Conclusão</span>
+                      <p className="font-semibold text-slate-800">
+                        {selectedProjeto.data_conclusao ? `Concluído em ${selectedProjeto.data_conclusao}` : (selectedProjeto.data_fim_prevista || "—")}
+                      </p>
                     </div>
                   </div>
 
@@ -1058,12 +1178,111 @@ export default function ProjetosInternos() {
                   </div>
                 </TabsContent>
 
-                {/* ABA 4: HOMOLOGAÇÃO & DOCUMENTOS */}
+                {/* ABA 4: DOCUMENTOS GERAIS & HOMOLOGAÇÃO */}
                 <TabsContent value="aprovacoes" className="space-y-6 pt-4 text-sm">
-                  {/* Histórico de Aprovações da Diretoria */}
+                  {/* SEÇÃO A: DOCUMENTOS GERAIS DO PROJETO */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                      <div>
+                        <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-indigo-600" /> Documentação Geral do Projeto
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Arquivos de apoio geral: cotações, planilhas, manuais técnicos, plantas, fotos do ambiente e especificações.
+                        </p>
+                      </div>
+
+                      <label className="cursor-pointer shrink-0">
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          disabled={uploadingDocGeral}
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files);
+                            if (!files.length) return;
+                            setUploadingDocGeral(true);
+                            try {
+                              const docsAtuais = Array.isArray(selectedProjeto.documentos_projeto) ? selectedProjeto.documentos_projeto : [];
+                              const novosDocs = [...docsAtuais];
+                              for (const file of files) {
+                                const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                                novosDocs.push({
+                                  file_url,
+                                  file_name: file.name,
+                                  data_upload: new Date().toISOString(),
+                                  enviado_por: "Equipe de TI"
+                                });
+                              }
+                              const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                                documentos_projeto: novosDocs
+                              });
+                              setSelectedProjeto(updated);
+                              queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
+                            } catch (err) {
+                              console.error("Erro no upload do documento:", err);
+                              alert("Erro ao enviar documento. Tente novamente.");
+                            } finally {
+                              setUploadingDocGeral(false);
+                              e.target.value = "";
+                            }
+                          }}
+                        />
+                        <Button type="button" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 pointer-events-none" disabled={uploadingDocGeral}>
+                          {uploadingDocGeral ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                          Anexar Documento
+                        </Button>
+                      </label>
+                    </div>
+
+                    {/* Lista de Documentos Anexados */}
+                    {Array.isArray(selectedProjeto.documentos_projeto) && selectedProjeto.documentos_projeto.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedProjeto.documentos_projeto.map((doc, idx) => (
+                          <div key={idx} className="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 shrink-0">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-800 hover:text-indigo-600 underline">
+                                  {doc.file_name}
+                                </a>
+                                <p className="text-[11px] text-slate-400">
+                                  Enviado em {new Date(doc.data_upload).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} por {doc.enviado_por || 'TI'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-slate-400 hover:text-rose-600"
+                              onClick={async () => {
+                                if (confirm(`Deseja remover o documento "${doc.file_name}"?`)) {
+                                  const filtrados = selectedProjeto.documentos_projeto.filter((_, i) => i !== idx);
+                                  const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                                    documentos_projeto: filtrados
+                                  });
+                                  setSelectedProjeto(updated);
+                                  queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic py-2">Nenhum documento geral anexado ainda a este projeto.</p>
+                    )}
+                  </div>
+
+                  {/* SEÇÃO B: HOMOLOGAÇÃO E APROVAÇÃO DA DIRETORIA */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                     <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-indigo-600" /> Registro de Homologação da Diretoria / Reuniões
+                      <ShieldCheck className="w-5 h-5 text-indigo-600" /> Registro de Homologação da Diretoria / Reuniões Formais
                     </h4>
 
                     {Array.isArray(selectedProjeto.aprovacao_diretoria) && selectedProjeto.aprovacao_diretoria.length > 0 ? (
@@ -1131,6 +1350,80 @@ export default function ProjetosInternos() {
               </Tabs>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMAÇÃO: CONCLUIR PROJETO */}
+      <Dialog open={confirmConcluirModal} onOpenChange={setConfirmConcluirModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-700">
+              <CheckCircle2 className="w-5 h-5" /> Concluir Projeto Interno
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm">
+            <p className="text-slate-700">
+              Tem certeza que deseja marcar o projeto <strong>"{selectedProjeto?.titulo}"</strong> como <strong>Concluído</strong>?
+            </p>
+            <div>
+              <Label>Data de Conclusão Efetiva</Label>
+              <Input
+                type="date"
+                value={dataConclusaoInput}
+                onChange={e => setDataConclusaoInput(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmConcluirModal(false)}>Cancelar</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={async () => {
+                const dConc = dataConclusaoInput || new Date().toISOString().split('T')[0];
+                const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                  status: "Concluído",
+                  data_conclusao: dConc
+                });
+                setSelectedProjeto(updated);
+                queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
+                setConfirmConcluirModal(false);
+              }}
+            >
+              Sim, Concluir Projeto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMAÇÃO: CANCELAR PROJETO */}
+      <Dialog open={confirmCancelarModal} onOpenChange={setConfirmCancelarModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-700">
+              <Ban className="w-5 h-5" /> Cancelar Projeto Interno
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm">
+            <p className="text-slate-700">
+              Tem certeza que deseja marcar o projeto <strong>"{selectedProjeto?.titulo}"</strong> como <strong>Cancelado</strong>?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmCancelarModal(false)}>Voltar</Button>
+            <Button
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={async () => {
+                const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                  status: "Cancelado"
+                });
+                setSelectedProjeto(updated);
+                queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
+                setConfirmCancelarModal(false);
+              }}
+            >
+              Sim, Cancelar Projeto
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

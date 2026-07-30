@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.projetos_internos (
   marcos JSONB DEFAULT '[]'::jsonb,
   aprovacao_diretoria JSONB DEFAULT '[]'::jsonb,
   aprovacoes_documentos JSONB DEFAULT '[]'::jsonb,
+  documentos_projeto JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
