@@ -38,7 +38,8 @@ import {
   XCircle,
   Ban,
   FileText,
-  Upload
+  Upload,
+  PauseCircle
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -189,8 +190,9 @@ export default function ProjetosInternos() {
         solicitante_nome: solColab ? solColab.nome_completo : "",
         custo_estimado: Number(data.custo_estimado) || 0,
         custo_real: Number(data.custo_real) || 0,
-        data_inicio_prevista: data.data_inicio_prevista ? data.data_inicio_prevista : null,
-        data_fim_prevista: data.data_fim_prevista ? data.data_fim_prevista : null,
+        data_inicio_prevista: (data.data_inicio_prevista && String(data.data_inicio_prevista).trim() !== "") ? String(data.data_inicio_prevista).trim() : null,
+        data_fim_prevista: (data.data_fim_prevista && String(data.data_fim_prevista).trim() !== "") ? String(data.data_fim_prevista).trim() : null,
+        data_conclusao: (data.data_conclusao && String(data.data_conclusao).trim() !== "") ? String(data.data_conclusao).trim() : null,
       };
 
       if (!editingId) {
@@ -906,6 +908,25 @@ export default function ProjetosInternos() {
                         onClick={() => setConfirmCancelarModal(true)}
                       >
                         <Ban className="w-3.5 h-3.5" /> Cancelar Projeto
+                      </Button>
+                    )}
+
+                    {selectedProjeto.status !== "Congelado" && selectedProjeto.status !== "Concluído" && selectedProjeto.status !== "Cancelado" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-slate-700 border-slate-300 hover:bg-slate-100 gap-1"
+                        onClick={async () => {
+                          if (confirm(`Deseja congelar o projeto "${selectedProjeto.titulo}"?`)) {
+                            const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                              status: "Congelado"
+                            });
+                            setSelectedProjeto(updated);
+                            queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
+                          }
+                        }}
+                      >
+                        <PauseCircle className="w-3.5 h-3.5 text-slate-500" /> Congelar Projeto
                       </Button>
                     )}
 
