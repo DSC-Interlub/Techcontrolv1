@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatarDataSemFuso } from "@/utils/date";
 
 const PROGRAMAS_DISPONIVEIS = [
   "Plano Estratégico de TI 2026"
@@ -994,12 +995,12 @@ export default function ProjetosInternos() {
                     </div>
                     <div className="p-3 bg-white border rounded-lg">
                       <span className="text-xs text-slate-400">Início Previsto</span>
-                      <p className="font-semibold text-slate-800">{selectedProjeto.data_inicio_prevista || "—"}</p>
+                      <p className="font-semibold text-slate-800">{formatarDataSemFuso(selectedProjeto.data_inicio_prevista)}</p>
                     </div>
                     <div className="p-3 bg-white border rounded-lg">
                       <span className="text-xs text-slate-400">Fim / Conclusão</span>
                       <p className="font-semibold text-slate-800">
-                        {selectedProjeto.data_conclusao ? `Concluído em ${selectedProjeto.data_conclusao}` : (selectedProjeto.data_fim_prevista || "—")}
+                        {selectedProjeto.data_conclusao ? `Concluído em ${formatarDataSemFuso(selectedProjeto.data_conclusao)}` : formatarDataSemFuso(selectedProjeto.data_fim_prevista)}
                       </p>
                     </div>
                   </div>
@@ -1131,7 +1132,7 @@ export default function ProjetosInternos() {
                                 </p>
                                 {m.data_prevista && (
                                   <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                    <Calendar className="w-3 h-3 text-slate-400" /> Previsto para {format(parseISO(m.data_prevista), 'dd/MM/yyyy')}
+                                    <Calendar className="w-3 h-3 text-slate-400" /> Previsto para {formatarDataSemFuso(m.data_prevista)}
                                   </p>
                                 )}
                               </div>
@@ -1327,7 +1328,7 @@ export default function ProjetosInternos() {
                               <tr style="border-bottom:1px solid #e2e8f0">
                                 <td style="padding:8px 12px;">${i+1}</td>
                                 <td style="padding:8px 12px;font-weight:600">${m.titulo}</td>
-                                <td style="padding:8px 12px;">${m.data_prevista ? new Date(m.data_prevista).toLocaleDateString('pt-BR') : '—'}</td>
+                                <td style="padding:8px 12px;">${m.data_prevista ? formatarDataSemFuso(m.data_prevista) : '—'}</td>
                                 <td style="padding:8px 12px;">
                                   <span style="background:${m.status === 'Concluído' ? '#d1fae5' : '#fee2e2'};color:${m.status === 'Concluído' ? '#065f46' : '#991b1b'};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold">${m.status}</span>
                                 </td>
@@ -1337,7 +1338,7 @@ export default function ProjetosInternos() {
                             const custoReal = (Number(proj.custo_real)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
                             const desv = (Number(proj.custo_real)||0) - (Number(proj.custo_estimado)||0);
                             const dAberto = proj.created_at ? new Date(proj.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—';
-                            const dConc = proj.data_conclusao ? new Date(proj.data_conclusao).toLocaleDateString('pt-BR') : (proj.concluido_em ? new Date(proj.concluido_em).toLocaleString('pt-BR') : '—');
+                            const dConc = proj.data_conclusao ? formatarDataSemFuso(proj.data_conclusao) : (proj.concluido_em ? formatarDataSemFuso(proj.concluido_em) : '—');
                             printWindow.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Termo de Encerramento — ${proj.titulo}</title><style>body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1e293b;font-size:13px}h1{font-size:20px;color:#312e81;margin-bottom:4px}h2{font-size:14px;color:#4338ca;border-bottom:2px solid #c7d2fe;padding-bottom:4px;margin-top:24px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f5f9;text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.05em}td{vertical-align:top}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold}.header-block{background:#1e1b4b;color:white;padding:24px 32px;margin:-32px -32px 24px -32px}.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}.meta-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px}.meta-label{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:600;margin-bottom:4px}.meta-value{font-weight:700;color:#1e293b;font-size:14px}.parecer-box{background:#f0fdf4;border:2px solid #86efac;border-radius:8px;padding:16px;white-space:pre-wrap;line-height:1.6}@media print{body{margin:0;padding:24px}}</style></head><body>
                               <div class="header-block">
                                 <div style="font-size:10px;color:#a5b4fc;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">TERMO DE ENCERRAMENTO — ${proj.programa_nome}</div>
@@ -1382,7 +1383,7 @@ export default function ProjetosInternos() {
                         <div className="text-indigo-200 text-xs mt-1">
                           {selectedProjeto.codigo_projeto} &nbsp;•&nbsp; {selectedProjeto.programa_nome} &nbsp;•&nbsp;
                           Concluído por: <strong className="text-white">{selectedProjeto.concluido_por || selectedProjeto.responsavel_nome || "—"}</strong>
-                          {selectedProjeto.concluido_em && <> &nbsp;em&nbsp; <strong className="text-white">{new Date(selectedProjeto.concluido_em).toLocaleDateString('pt-BR')}</strong></>}
+                          {(selectedProjeto.data_conclusao || selectedProjeto.concluido_em) && <> &nbsp;em&nbsp; <strong className="text-white">{formatarDataSemFuso(selectedProjeto.data_conclusao || selectedProjeto.concluido_em)}</strong></>}
                         </div>
                       </div>
 
@@ -1390,7 +1391,7 @@ export default function ProjetosInternos() {
                       <div className="grid grid-cols-3 gap-3 mb-4">
                         {[
                           { label: "Abertura", value: selectedProjeto.created_at ? new Date(selectedProjeto.created_at).toLocaleString('pt-BR', {dateStyle:'short',timeStyle:'short'}) : '—' },
-                          { label: "Conclusão Efetiva", value: selectedProjeto.data_conclusao || (selectedProjeto.concluido_em ? new Date(selectedProjeto.concluido_em).toLocaleDateString('pt-BR') : '—') },
+                          { label: "Conclusão Efetiva", value: formatarDataSemFuso(selectedProjeto.data_conclusao || selectedProjeto.concluido_em) },
                           { label: "Responsável TI", value: selectedProjeto.responsavel_nome || '—' },
                           { label: "Solicitante", value: selectedProjeto.solicitante_nome || '—' },
                           { label: "Prioridade", value: selectedProjeto.prioridade },
@@ -1475,7 +1476,7 @@ export default function ProjetosInternos() {
                                   <span className={`font-semibold ${m.status === 'Concluído' ? 'line-through text-slate-500' : 'text-slate-800'}`}>{m.titulo}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  {m.data_prevista && <span className="text-slate-400">{new Date(m.data_prevista + 'T12:00').toLocaleDateString('pt-BR')}</span>}
+                                  {m.data_prevista && <span className="text-slate-400">{formatarDataSemFuso(m.data_prevista)}</span>}
                                   <Badge className={`text-[10px] ${m.status === 'Concluído' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'} border`}>
                                     {m.status}
                                   </Badge>

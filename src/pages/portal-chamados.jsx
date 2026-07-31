@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X, FolderKanban, Calendar, DollarSign, Users, CheckCircle2, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatarDataSemFuso } from "@/utils/date";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
@@ -949,7 +950,7 @@ export default function PortalChamados() {
                   <div className="bg-white p-2.5 rounded border">
                     <span className="text-slate-400">Previsão / Término</span>
                     <p className="font-semibold text-slate-800 mt-0.5">
-                      {selectedProjetoPortal.data_conclusao ? `Concluído em ${selectedProjetoPortal.data_conclusao}` : (selectedProjetoPortal.data_fim_prevista || "—")}
+                      {selectedProjetoPortal.data_conclusao ? `Concluído em ${formatarDataSemFuso(selectedProjetoPortal.data_conclusao)}` : formatarDataSemFuso(selectedProjetoPortal.data_fim_prevista)}
                     </p>
                   </div>
                 </div>
@@ -977,7 +978,7 @@ export default function PortalChamados() {
                                   Atrasado
                                 </Badge>
                               )}
-                              <span className="text-slate-500">{m.data_prevista ? format(parseISO(m.data_prevista), 'dd/MM/yyyy') : '—'}</span>
+                              <span className="text-slate-500">{m.data_prevista ? formatarDataSemFuso(m.data_prevista) : '—'}</span>
                             </div>
                           </div>
                         );
@@ -1070,7 +1071,7 @@ export default function PortalChamados() {
                       <div className="text-indigo-200 text-xs mt-1">
                         {selectedProjetoPortal.codigo_projeto} &nbsp;•&nbsp;
                         Encerrado por: <strong className="text-white">{selectedProjetoPortal.concluido_por || selectedProjetoPortal.responsavel_nome || '—'}</strong>
-                        {selectedProjetoPortal.data_conclusao && <> &nbsp;em&nbsp; <strong className="text-white">{new Date(selectedProjetoPortal.data_conclusao + 'T12:00').toLocaleDateString('pt-BR')}</strong></>}
+                        {(selectedProjetoPortal.data_conclusao || selectedProjetoPortal.concluido_em) && <> &nbsp;em&nbsp; <strong className="text-white">{formatarDataSemFuso(selectedProjetoPortal.data_conclusao || selectedProjetoPortal.concluido_em)}</strong></>}
                       </div>
                     </div>
 
@@ -1106,7 +1107,7 @@ export default function PortalChamados() {
                         <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-emerald-200">
                           <span className="text-xs text-emerald-700 font-semibold">Responsável: {selectedProjetoPortal.concluido_por}</span>
                           {selectedProjetoPortal.concluido_em && (
-                            <span className="text-xs text-emerald-600">— {new Date(selectedProjetoPortal.concluido_em).toLocaleDateString('pt-BR')}</span>
+                            <span className="text-xs text-emerald-600">— {formatarDataSemFuso(selectedProjetoPortal.data_conclusao || selectedProjetoPortal.concluido_em)}</span>
                           )}
                         </div>
                       )}
