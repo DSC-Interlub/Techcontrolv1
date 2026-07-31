@@ -578,7 +578,7 @@ export default function ProjetosInternos() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {projetosExibidos.map(proj => {
                 const stats = getProjetoStats(proj);
-                const listParticipantes = colaboradores.filter(c => (proj.participantes_ids || []).includes(String(c.id)));
+                const listParticipantes = Array.isArray(proj.participantes_ids) ? proj.participantes_ids : [];
                 const temAprovacaoDiretoria = Array.isArray(proj.aprovacao_diretoria) && proj.aprovacao_diretoria.some(a => a.aprovado);
 
                 return (
@@ -654,20 +654,13 @@ export default function ProjetosInternos() {
                         </div>
                       </div>
 
-                      {/* Envolvidos e Homologação */}
+                      {/* Envolvidos */}
                       <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                         <div className="flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5 text-slate-400" />
                           <span>{listParticipantes.length + (proj.responsavel_nome ? 1 : 0)} Envolvidos</span>
                         </div>
-
-                        {temAprovacaoDiretoria ? (
-                          <span className="text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            <ShieldCheck className="w-3.5 h-3.5" /> Homologado
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">Pendente Homologação</span>
-                        )}
+                        <span className="text-slate-400 text-[11px]">Resp: {proj.responsavel_nome || '—'}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -962,7 +955,7 @@ export default function ProjetosInternos() {
                   <TabsTrigger value="marcos" className="text-xs">Marcos & Etapas ({selectedProjeto.marcos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="chat" className="text-xs">Ideias & Chat ({chatMessages.length})</TabsTrigger>
                   <TabsTrigger value="aprovacoes" className="text-xs">
-                    Documentos ({selectedProjeto.documentos_projeto?.length || 0}) & Homologação
+                    Documentos ({selectedProjeto.documentos_projeto?.length || 0})
                   </TabsTrigger>
                   <TabsTrigger value="encerramento" className="text-xs flex items-center gap-1">
                     {selectedProjeto.parecer_conclusao ? (
@@ -1315,74 +1308,6 @@ export default function ProjetosInternos() {
                       <p className="text-xs text-slate-400 italic py-2">Nenhum documento geral anexado ainda a este projeto.</p>
                     )}
                   </div>
-
-                  {/* SEÇÃO B: HOMOLOGAÇÃO E APROVAÇÃO DA DIRETORIA */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                    <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-indigo-600" /> Registro de Homologação da Diretoria / Reuniões Formais
-                    </h4>
-
-                    {Array.isArray(selectedProjeto.aprovacao_diretoria) && selectedProjeto.aprovacao_diretoria.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedProjeto.aprovacao_diretoria.map((ap, i) => (
-                          <div key={i} className="p-3 bg-white rounded-lg border border-slate-200 flex items-start justify-between">
-                            <div>
-                              <p className="font-semibold text-slate-800 flex items-center gap-2">
-                                {ap.aprovado ? (
-                                  <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs">Aprovado</span>
-                                ) : (
-                                  <span className="text-rose-700 bg-rose-100 px-2 py-0.5 rounded text-xs">Reprovado / Rejeitado</span>
-                                )}
-                                <span>Por: {ap.aprovador_nome}</span>
-                              </p>
-                              {ap.observacoes && <p className="text-xs text-slate-600 mt-1 font-medium">"{ap.observacoes}"</p>}
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              {new Date(ap.data).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic">Nenhum registro formal de aprovação da diretoria até o momento.</p>
-                    )}
-
-                    {/* Formulário para Registrar Aprovação */}
-                    <div className="border-t border-slate-200 pt-3 space-y-2">
-                      <p className="font-semibold text-xs text-slate-700 uppercase">Registrar Nova Aprovação / Homologação</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <Input
-                          placeholder="Nome do Aprovador (ex: Diretoria de Operações)"
-                          value={novaAprovacao.aprovador_nome}
-                          onChange={e => setNovaAprovacao(p => ({ ...p, aprovador_nome: e.target.value }))}
-                        />
-                        <Select
-                          value={novaAprovacao.aprovado ? "sim" : "nao"}
-                          onValueChange={v => setNovaAprovacao(p => ({ ...p, aprovado: v === "sim" }))}
-                        >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="sim">Aprovado / Homologado</SelectItem>
-                            <SelectItem value="nao">Reprovado / Em Revisão</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Textarea
-                        placeholder="Observações ou deliberações da reunião..."
-                        rows={2}
-                        value={novaAprovacao.observacoes}
-                        onChange={e => setNovaAprovacao(p => ({ ...p, observacoes: e.target.value }))}
-                      />
-                      <Button
-                        type="button"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
-                        disabled={salvarAprovacaoMutation.isPending}
-                        onClick={() => salvarAprovacaoMutation.mutate(novaAprovacao)}
-                      >
-                        Salvar Registro de Aprovação
-                      </Button>
-                    </div>
-                  </div>
                 </TabsContent>
 
                 {/* ABA 5: ENCERRAMENTO & DOCUMENTAÇÃO CONSOLIDADA */}
@@ -1406,13 +1331,6 @@ export default function ProjetosInternos() {
                                 <td style="padding:8px 12px;">
                                   <span style="background:${m.status === 'Concluído' ? '#d1fae5' : '#fee2e2'};color:${m.status === 'Concluído' ? '#065f46' : '#991b1b'};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold">${m.status}</span>
                                 </td>
-                              </tr>`).join('');
-                            const aprovacoesHtml = (proj.aprovacao_diretoria || []).map((a) => `
-                              <tr style="border-bottom:1px solid #e2e8f0">
-                                <td style="padding:8px 12px;">${new Date(a.data).toLocaleDateString('pt-BR')}</td>
-                                <td style="padding:8px 12px;font-weight:600">${a.aprovador_nome}</td>
-                                <td style="padding:8px 12px;"><span style="background:${a.aprovado?'#d1fae5':'#fee2e2'};color:${a.aprovado?'#065f46':'#991b1b'};padding:2px 8px;border-radius:999px;font-size:11px">${a.aprovado?'Aprovado':'Reprovado'}</span></td>
-                                <td style="padding:8px 12px;font-style:italic;color:#64748b">${a.observacoes || '—'}</td>
                               </tr>`).join('');
                             const docHtml = (proj.documentos_projeto || []).map(d => `<li style="margin-bottom:4px"><a href="${d.file_url}" style="color:#4f46e5">${d.file_name}</a> — ${d.enviado_por || 'TI'} (${new Date(d.data_upload).toLocaleDateString('pt-BR')})</li>`).join('');
                             const custoEst = (Number(proj.custo_estimado)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
@@ -1444,7 +1362,6 @@ export default function ProjetosInternos() {
                               <h2>Parecer Técnico de Conclusão</h2>
                               <div class="parecer-box">${proj.parecer_conclusao}</div>
                               ${marcosHtml ? `<h2>Cronograma de Marcos & Etapas</h2><table><thead><tr><th>#</th><th>Marco / Entregável</th><th>Data Prevista</th><th>Status</th></tr></thead><tbody>${marcosHtml}</tbody></table>` : ''}
-                              ${aprovacoesHtml ? `<h2>Registro de Homologações da Diretoria</h2><table><thead><tr><th>Data</th><th>Aprovador</th><th>Resultado</th><th>Observações</th></tr></thead><tbody>${aprovacoesHtml}</tbody></table>` : ''}
                               ${docHtml ? `<h2>Documentos do Projeto</h2><ul>${docHtml}</ul>` : ''}
                               <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">Gerado automaticamente pelo TechControl — ${new Date().toLocaleString('pt-BR')} — Interlub</div>
                             </body></html>`);
@@ -1569,27 +1486,7 @@ export default function ProjetosInternos() {
                         </div>
                       )}
 
-                      {/* Homologações */}
-                      {(selectedProjeto.aprovacao_diretoria || []).length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
-                            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                            Registro de Homologações da Diretoria
-                          </h4>
-                          <div className="space-y-1.5">
-                            {(selectedProjeto.aprovacao_diretoria||[]).map((ap, i) => (
-                              <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${ap.aprovado ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
-                                <div>
-                                  <span className={`font-bold ${ap.aprovado ? 'text-emerald-800' : 'text-rose-800'}`}>{ap.aprovado ? '✓ Aprovado' : '✗ Reprovado'}</span>
-                                  <span className="text-slate-600 ml-2">por {ap.aprovador_nome}</span>
-                                  {ap.observacoes && <span className="text-slate-500 italic ml-1">— "{ap.observacoes}"</span>}
-                                </div>
-                                <span className="text-slate-400">{new Date(ap.data).toLocaleDateString('pt-BR')}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+
 
                       {/* Documentos */}
                       {(selectedProjeto.documentos_projeto || []).length > 0 && (
@@ -1689,12 +1586,40 @@ export default function ProjetosInternos() {
             </div>
 
             <div>
-              <Label className="font-semibold">Responsável pelo Encerramento (Nome)</Label>
-              <Input
-                placeholder="Ex: Kauan Pereira — TI"
+              <Label className="font-semibold">Responsável pelo Encerramento (Colaborador / ADM) *</Label>
+              <Select
                 value={concluidoPorInput}
-                onChange={e => setConcluidoPorInput(e.target.value)}
-              />
+                onValueChange={v => setConcluidoPorInput(v)}
+              >
+                <SelectTrigger className="bg-white">
+                  <SelectValue placeholder="Selecione o responsável pelo encerramento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usuariosSistema.length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-[10px] font-bold text-indigo-600 uppercase tracking-wider bg-indigo-50">Usuários ADM / TI</div>
+                      {usuariosSistema.map(u => {
+                        const val = u.nome_exibicao || u.full_name || u.email;
+                        return (
+                          <SelectItem key={'usr-' + u.id} value={val}>
+                            {val} ({u.role || 'ADM'})
+                          </SelectItem>
+                        );
+                      })}
+                    </>
+                  )}
+                  {colaboradores.length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100">Colaboradores</div>
+                      {colaboradores.map(c => (
+                        <SelectItem key={'colab-' + c.id} value={c.nome_completo}>
+                          {c.nome_completo} ({c.area || 'Colaborador'})
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

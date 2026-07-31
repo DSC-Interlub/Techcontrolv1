@@ -802,11 +802,6 @@ export default function PortalChamados() {
 
                           <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
                             <span>Responsável TI: <strong className="text-slate-700">{proj.responsavel_nome || "—"}</strong></span>
-                            {temAprovacao && (
-                              <span className="text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
-                                <ShieldCheck className="w-3 h-3" /> Homologado
-                              </span>
-                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -923,11 +918,10 @@ export default function PortalChamados() {
 
           {selectedProjetoPortal && (
             <Tabs value={tabDetalhesProjeto} onValueChange={setTabDetalhesProjeto} className="mt-2">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="geral" className="text-xs">Visão Geral & Marcos</TabsTrigger>
                 <TabsTrigger value="documentos" className="text-xs">Documentos ({selectedProjetoPortal.documentos_projeto?.length || 0})</TabsTrigger>
                 <TabsTrigger value="chat" className="text-xs">Ideias ({chatMessagesProjeto.length})</TabsTrigger>
-                <TabsTrigger value="homologacao" className="text-xs">Homologação</TabsTrigger>
                 <TabsTrigger value="encerramento" className="text-xs flex items-center gap-1">
                   {selectedProjetoPortal.parecer_conclusao ? '✓' : ''} Encerramento
                 </TabsTrigger>
@@ -1063,28 +1057,7 @@ export default function PortalChamados() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="homologacao" className="space-y-3 pt-3 text-sm">
-                <div className="bg-slate-50 p-3 rounded-lg border">
-                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2">Histórico de Validação da Diretoria</h4>
-                  {Array.isArray(selectedProjetoPortal.aprovacao_diretoria) && selectedProjetoPortal.aprovacao_diretoria.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedProjetoPortal.aprovacao_diretoria.map((ap, i) => (
-                        <div key={i} className="p-2.5 bg-white rounded border text-xs flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold text-slate-800">
-                              {ap.aprovado ? <span className="text-emerald-700 font-bold">✓ Homologado</span> : <span className="text-rose-700 font-bold">✗ Em Ajustes</span>} por {ap.aprovador_nome}
-                            </p>
-                            {ap.observacoes && <p className="text-slate-600 mt-0.5">"{ap.observacoes}"</p>}
-                          </div>
-                          <span className="text-slate-400 text-[10px]">{new Date(ap.data).toLocaleDateString('pt-BR')}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400">Nenhum registro de homologação formal cadastrado.</p>
-                  )}
-                </div>
-              </TabsContent>
+
 
               {/* ABA ENCERRAMENTO — Portal Colaborador (somente leitura) */}
               <TabsContent value="encerramento" className="space-y-3 pt-3 text-sm">
