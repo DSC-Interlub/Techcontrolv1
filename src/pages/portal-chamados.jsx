@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X, FolderKanban, Calendar, DollarSign, Users, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X, FolderKanban, Calendar, DollarSign, Users, CheckCircle2, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
