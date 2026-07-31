@@ -334,19 +334,19 @@ export async function gerarTarefasManutencao(avaliacao) {
 export function extrairAnyDesk(item) {
   if (!item) return "";
   if (typeof item === 'string') {
-    const match = item.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+    const match = item.match(/AnyDesk:\s*([^|;\n\r]+)/i);
     return match ? match[1].trim() : "";
   }
   if (item.anydesk_id && typeof item.anydesk_id === 'string' && item.anydesk_id.trim() && !item.anydesk_id.includes('undefined')) {
     return item.anydesk_id.trim();
   }
   const obs = item.observacoes || "";
-  const match = obs.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+  const match = obs.match(/AnyDesk:\s*([^|;\n\r]+)/i);
   if (match) return match[1].trim();
 
   for (const val of Object.values(item)) {
     if (typeof val === 'string' && val.includes('AnyDesk:')) {
-      const m = val.match(/AnyDesk:\s*([^\s|;\n\r]+(?:\s+[^\s|;\n\r]+)*)/i);
+      const m = val.match(/AnyDesk:\s*([^|;\n\r]+)/i);
       if (m) return m[1].trim();
     }
   }

@@ -6,6 +6,7 @@ import { formatarDataSemFuso, formatarDataHoraSemFuso } from "@/utils/date";
 import { Shield, ShieldOff } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { extrairAnyDesk } from "@/utils/eval";
 
 export default function EquipamentoDetalhes({ equipamento, onClose }) {
   const { data: avaliacoes = [] } = useQuery({
@@ -171,11 +172,11 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           </div>
 
-          {equipamento.tipo !== "Monitor" && equipamento.data_formatacao && (
+          {equipamento.tipo !== "Monitor" && (
             <div>
               <p className="text-sm text-gray-500">Última Formatação</p>
-              <p className="font-medium">
-                {formatarDataSemFuso(equipamento.data_formatacao)}
+              <p className="font-medium text-slate-800">
+                {formatarDataSemFuso(equipamento.data_formatacao || (Array.isArray(equipamento.historico_formatacoes) && equipamento.historico_formatacoes[0]?.data_formatacao)) || "Não registrada"}
               </p>
             </div>
           )}
@@ -191,9 +192,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
               <div>
                 <p className="text-slate-500 font-semibold">AnyDesk (Remoto)</p>
                 <p className="font-mono font-bold text-indigo-700 mt-0.5">
-                  {(equipamento.observacoes && (equipamento.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i)?.[1])) ||
-                   (ultimaAvaliacao && (ultimaAvaliacao.versao_windows?.match(/AnyDesk:\s*([^\s|;\n\r]+)/i)?.[1])) ||
-                   "Não informado"}
+                  {extrairAnyDesk(equipamento) || extrairAnyDesk(ultimaAvaliacao) || "Não informado"}
                 </p>
               </div>
               <div>

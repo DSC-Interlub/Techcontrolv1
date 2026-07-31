@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
 import { useAuth } from "@/lib/AuthContext";
+import { extrairAnyDesk } from "@/utils/eval";
+import { formatarDataSemFuso } from "@/utils/date";
 
 function getInitials(name) {
   if (!name) return "??";
@@ -583,6 +585,7 @@ export default function PCs_Internos() {
                             <TableHead>Marca / Modelo</TableHead>
                             <TableHead>Etiqueta / Serial</TableHead>
                             <TableHead>AnyDesk (Remoto)</TableHead>
+                            <TableHead>Última Formatação</TableHead>
                             <TableHead>Alertas de Atenção</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -591,8 +594,8 @@ export default function PCs_Internos() {
                         <TableBody>
                           {group.items.map((eq) => {
                             const alerts = getAttentionAlerts(eq);
-                            const anydeskMatch = eq.observacoes ? eq.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i) : null;
-                            const anydeskVal = anydeskMatch ? anydeskMatch[1] : "";
+                            const anydeskVal = extrairAnyDesk(eq);
+                            const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
 
                             return (
                               <TableRow
@@ -620,6 +623,11 @@ export default function PCs_Internos() {
                                   ) : (
                                     <span className="text-slate-400 italic text-[11px]">—</span>
                                   )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-slate-600 font-medium text-[11px]">
+                                    {formatarDataSemFuso(dataFormat)}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   {alerts.length > 0 ? (
@@ -699,6 +707,7 @@ export default function PCs_Internos() {
                       <TableHead>Marca / Modelo</TableHead>
                       <TableHead>Etiqueta / Serial</TableHead>
                       <TableHead>AnyDesk (Remoto)</TableHead>
+                      <TableHead>Última Formatação</TableHead>
                       <TableHead>Usuário & Área</TableHead>
                       <TableHead>Indicadores de Atenção</TableHead>
                       <TableHead>Status</TableHead>
@@ -708,8 +717,8 @@ export default function PCs_Internos() {
                   <TableBody>
                     {filteredEquipamentos.map((eq) => {
                       const alerts = getAttentionAlerts(eq);
-                      const anydeskMatch = eq.observacoes ? eq.observacoes.match(/AnyDesk:\s*([^\s|;\n\r]+)/i) : null;
-                      const anydeskVal = anydeskMatch ? anydeskMatch[1] : "";
+                      const anydeskVal = extrairAnyDesk(eq);
+                      const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
 
                       return (
                         <TableRow
@@ -737,6 +746,11 @@ export default function PCs_Internos() {
                             ) : (
                               <span className="text-slate-400 italic text-[11px]">—</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-slate-600 font-medium text-[11px]">
+                              {formatarDataSemFuso(dataFormat)}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div>
@@ -844,10 +858,29 @@ export default function PCs_Internos() {
                           </p>
                         </div>
 
-                        <div className="pt-2 border-t border-slate-100 text-xs">
-                          <p className="text-slate-500 text-[11px]">Usuário Atual:</p>
-                          <p className="font-bold text-slate-800 truncate">{eq.usuario_atual || "Disponível no Estoque"}</p>
-                          {eq.area && <p className="text-[10px] text-slate-500">{eq.area}</p>}
+                        <div className="pt-2 border-t border-slate-100 text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-500">Usuário:</span>
+                            <span className="font-bold text-slate-800 truncate max-w-[120px]">{eq.usuario_atual || "Estoque"}</span>
+                          </div>
+                          {(() => {
+                            const anydeskVal = extrairAnyDesk(eq);
+                            const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
+                            return (
+                              <>
+                                {anydeskVal && (
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="text-slate-400">AnyDesk:</span>
+                                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-1 rounded">{anydeskVal}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-slate-400">Formatação:</span>
+                                  <span className="text-slate-600 font-medium">{formatarDataSemFuso(dataFormat)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
 
                         {alerts.length > 0 && (

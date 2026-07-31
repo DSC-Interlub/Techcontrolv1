@@ -439,6 +439,27 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             )}
           </div>
 
+          {formData.tipo !== "Monitor" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Data de Aquisição</Label>
+                <Input
+                  type="date"
+                  value={formData.data_aquisicao || ""}
+                  onChange={(e) => handleChange("data_aquisicao", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Última Formatação (Data)</Label>
+                <Input
+                  type="date"
+                  value={formData.data_formatacao || ""}
+                  onChange={(e) => handleChange("data_formatacao", e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="bg-slate-50/50 p-4 border rounded-xl mb-4 space-y-4">
             <div>
               <Label className="text-xs font-bold text-slate-700">Modo de Atribuição</Label>
