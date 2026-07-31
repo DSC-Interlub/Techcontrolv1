@@ -922,11 +922,14 @@ export default function PortalChamados() {
 
           {selectedProjetoPortal && (
             <Tabs value={tabDetalhesProjeto} onValueChange={setTabDetalhesProjeto} className="mt-2">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="geral" className="text-xs">Visão Geral & Marcos</TabsTrigger>
                 <TabsTrigger value="documentos" className="text-xs">Documentos ({selectedProjetoPortal.documentos_projeto?.length || 0})</TabsTrigger>
                 <TabsTrigger value="chat" className="text-xs">Ideias ({chatMessagesProjeto.length})</TabsTrigger>
                 <TabsTrigger value="homologacao" className="text-xs">Homologação</TabsTrigger>
+                <TabsTrigger value="encerramento" className="text-xs flex items-center gap-1">
+                  {selectedProjetoPortal.parecer_conclusao ? '✓' : ''} Encerramento
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="geral" className="space-y-4 pt-3 text-sm">
@@ -1080,6 +1083,86 @@ export default function PortalChamados() {
                     <p className="text-xs text-slate-400">Nenhum registro de homologação formal cadastrado.</p>
                   )}
                 </div>
+              </TabsContent>
+
+              {/* ABA ENCERRAMENTO — Portal Colaborador (somente leitura) */}
+              <TabsContent value="encerramento" className="space-y-3 pt-3 text-sm">
+                {selectedProjetoPortal.status === "Concluído" && selectedProjetoPortal.parecer_conclusao ? (
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-indigo-900 to-slate-800 rounded-xl p-4 text-white">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mb-1">Termo de Encerramento de Projeto</div>
+                      <div className="text-lg font-bold">{selectedProjetoPortal.titulo}</div>
+                      <div className="text-indigo-200 text-xs mt-1">
+                        {selectedProjetoPortal.codigo_projeto} &nbsp;•&nbsp;
+                        Encerrado por: <strong className="text-white">{selectedProjetoPortal.concluido_por || selectedProjetoPortal.responsavel_nome || '—'}</strong>
+                        {selectedProjetoPortal.data_conclusao && <> &nbsp;em&nbsp; <strong className="text-white">{new Date(selectedProjetoPortal.data_conclusao + 'T12:00').toLocaleDateString('pt-BR')}</strong></>}
+                      </div>
+                    </div>
+
+                    {/* Financeiro */}
+                    <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+                      <p className="font-bold text-indigo-900 text-xs uppercase tracking-wider mb-2">Sumário Financeiro</p>
+                      <div className="grid grid-cols-3 gap-3 text-xs">
+                        <div>
+                          <span className="text-slate-500">Custo Estimado</span>
+                          <p className="font-bold text-slate-800">R$ {(Number(selectedProjetoPortal.custo_estimado)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Custo Real</span>
+                          <p className="font-bold text-slate-900">R$ {(Number(selectedProjetoPortal.custo_real)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Desvio</span>
+                          {(() => {
+                            const d = (Number(selectedProjetoPortal.custo_real)||0) - (Number(selectedProjetoPortal.custo_estimado)||0);
+                            return <p className={`font-bold ${d > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{d > 0 ? '+' : ''}R$ {Math.abs(d).toLocaleString('pt-BR',{minimumFractionDigits:2})}</p>;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Parecer Técnico */}
+                    <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4">
+                      <h4 className="font-bold text-emerald-900 text-xs uppercase tracking-wider mb-2">Parecer Técnico de Conclusão</h4>
+                      <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-xs">
+                        {selectedProjetoPortal.parecer_conclusao}
+                      </p>
+                      {selectedProjetoPortal.concluido_por && (
+                        <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-emerald-200">
+                          <span className="text-xs text-emerald-700 font-semibold">Responsável: {selectedProjetoPortal.concluido_por}</span>
+                          {selectedProjetoPortal.concluido_em && (
+                            <span className="text-xs text-emerald-600">— {new Date(selectedProjetoPortal.concluido_em).toLocaleDateString('pt-BR')}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Marcos */}
+                    {(selectedProjetoPortal.marcos || []).length > 0 && (
+                      <div>
+                        <p className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2">Cronograma de Marcos</p>
+                        <div className="space-y-1">
+                          {(selectedProjetoPortal.marcos||[]).map((m, i) => (
+                            <div key={i} className={`flex items-center justify-between px-3 py-2 rounded border text-xs ${m.status === 'Concluído' ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                              <span className={`font-semibold ${m.status === 'Concluído' ? 'line-through text-slate-500' : 'text-slate-800'}`}>{m.titulo}</span>
+                              <span className={`font-bold ${m.status === 'Concluído' ? 'text-emerald-700' : 'text-slate-500'}`}>{m.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : selectedProjetoPortal.status === "Concluído" ? (
+                  <div className="text-center py-8">
+                    <p className="text-slate-500 text-sm">Projeto concluído — documentação de encerramento não disponível.</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-slate-500 text-sm">A documentação de encerramento ficará disponível após a conclusão do projeto.</p>
+                    <p className="text-xs text-slate-400 mt-1">Status atual: <strong>{selectedProjetoPortal.status}</strong></p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           )}

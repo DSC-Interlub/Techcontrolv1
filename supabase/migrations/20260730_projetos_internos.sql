@@ -21,8 +21,15 @@ CREATE TABLE IF NOT EXISTS public.projetos_internos (
   aprovacao_diretoria JSONB DEFAULT '[]'::jsonb,
   aprovacoes_documentos JSONB DEFAULT '[]'::jsonb,
   documentos_projeto JSONB DEFAULT '[]'::jsonb,
+  parecer_conclusao TEXT,
+  concluido_por TEXT,
+  concluido_em TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.projetos_internos ADD COLUMN IF NOT EXISTS parecer_conclusao TEXT;
+ALTER TABLE public.projetos_internos ADD COLUMN IF NOT EXISTS concluido_por TEXT;
+ALTER TABLE public.projetos_internos ADD COLUMN IF NOT EXISTS concluido_em TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS public.projetos_chat (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

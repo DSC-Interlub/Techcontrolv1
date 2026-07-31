@@ -39,7 +39,12 @@ import {
   Ban,
   FileText,
   Upload,
-  PauseCircle
+  PauseCircle,
+  Printer,
+  ClipboardCheck,
+  BookOpen,
+  UserCheck,
+  BadgeCheck
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -132,6 +137,9 @@ export default function ProjetosInternos() {
   const [confirmConcluirModal, setConfirmConcluirModal] = useState(false);
   const [confirmCancelarModal, setConfirmCancelarModal] = useState(false);
   const [dataConclusaoInput, setDataConclusaoInput] = useState("");
+  const [parecerInput, setParecerInput] = useState("");
+  const [custoRealFinalInput, setCustoRealFinalInput] = useState("");
+  const [concluidoPorInput, setConcluidoPorInput] = useState("");
 
   // Aux Documentos
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -949,12 +957,20 @@ export default function ProjetosInternos() {
               </DialogHeader>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="geral" className="text-xs">Visão Geral & Custos</TabsTrigger>
                   <TabsTrigger value="marcos" className="text-xs">Marcos & Etapas ({selectedProjeto.marcos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="chat" className="text-xs">Ideias & Chat ({chatMessages.length})</TabsTrigger>
                   <TabsTrigger value="aprovacoes" className="text-xs">
                     Documentos ({selectedProjeto.documentos_projeto?.length || 0}) & Homologação
+                  </TabsTrigger>
+                  <TabsTrigger value="encerramento" className="text-xs flex items-center gap-1">
+                    {selectedProjeto.parecer_conclusao ? (
+                      <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <BookOpen className="w-3.5 h-3.5" />
+                    )}
+                    Encerramento
                   </TabsTrigger>
                 </TabsList>
 
@@ -1368,49 +1384,367 @@ export default function ProjetosInternos() {
                     </div>
                   </div>
                 </TabsContent>
+
+                {/* ABA 5: ENCERRAMENTO & DOCUMENTAÇÃO CONSOLIDADA */}
+                <TabsContent value="encerramento" className="space-y-0 pt-4 text-sm">
+                  {selectedProjeto.status === "Concluído" && selectedProjeto.parecer_conclusao ? (
+                    <div className="space-y-0">
+                      {/* Botão Imprimir */}
+                      <div className="flex justify-end mb-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          onClick={() => {
+                            const printWindow = window.open('', '_blank');
+                            const proj = selectedProjeto;
+                            const marcosHtml = (proj.marcos || []).map((m, i) => `
+                              <tr style="border-bottom:1px solid #e2e8f0">
+                                <td style="padding:8px 12px;">${i+1}</td>
+                                <td style="padding:8px 12px;font-weight:600">${m.titulo}</td>
+                                <td style="padding:8px 12px;">${m.data_prevista ? new Date(m.data_prevista).toLocaleDateString('pt-BR') : '—'}</td>
+                                <td style="padding:8px 12px;">
+                                  <span style="background:${m.status === 'Concluído' ? '#d1fae5' : '#fee2e2'};color:${m.status === 'Concluído' ? '#065f46' : '#991b1b'};padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold">${m.status}</span>
+                                </td>
+                              </tr>`).join('');
+                            const aprovacoesHtml = (proj.aprovacao_diretoria || []).map((a) => `
+                              <tr style="border-bottom:1px solid #e2e8f0">
+                                <td style="padding:8px 12px;">${new Date(a.data).toLocaleDateString('pt-BR')}</td>
+                                <td style="padding:8px 12px;font-weight:600">${a.aprovador_nome}</td>
+                                <td style="padding:8px 12px;"><span style="background:${a.aprovado?'#d1fae5':'#fee2e2'};color:${a.aprovado?'#065f46':'#991b1b'};padding:2px 8px;border-radius:999px;font-size:11px">${a.aprovado?'Aprovado':'Reprovado'}</span></td>
+                                <td style="padding:8px 12px;font-style:italic;color:#64748b">${a.observacoes || '—'}</td>
+                              </tr>`).join('');
+                            const docHtml = (proj.documentos_projeto || []).map(d => `<li style="margin-bottom:4px"><a href="${d.file_url}" style="color:#4f46e5">${d.file_name}</a> — ${d.enviado_por || 'TI'} (${new Date(d.data_upload).toLocaleDateString('pt-BR')})</li>`).join('');
+                            const custoEst = (Number(proj.custo_estimado)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+                            const custoReal = (Number(proj.custo_real)||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+                            const desv = (Number(proj.custo_real)||0) - (Number(proj.custo_estimado)||0);
+                            const dAberto = proj.created_at ? new Date(proj.created_at).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—';
+                            const dConc = proj.data_conclusao ? new Date(proj.data_conclusao).toLocaleDateString('pt-BR') : (proj.concluido_em ? new Date(proj.concluido_em).toLocaleString('pt-BR') : '—');
+                            printWindow.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Termo de Encerramento — ${proj.titulo}</title><style>body{font-family:Arial,sans-serif;margin:0;padding:32px;color:#1e293b;font-size:13px}h1{font-size:20px;color:#312e81;margin-bottom:4px}h2{font-size:14px;color:#4338ca;border-bottom:2px solid #c7d2fe;padding-bottom:4px;margin-top:24px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#f1f5f9;text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.05em}td{vertical-align:top}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold}.header-block{background:#1e1b4b;color:white;padding:24px 32px;margin:-32px -32px 24px -32px}.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}.meta-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px}.meta-label{font-size:10px;text-transform:uppercase;color:#94a3b8;font-weight:600;margin-bottom:4px}.meta-value{font-weight:700;color:#1e293b;font-size:14px}.parecer-box{background:#f0fdf4;border:2px solid #86efac;border-radius:8px;padding:16px;white-space:pre-wrap;line-height:1.6}@media print{body{margin:0;padding:24px}}</style></head><body>
+                              <div class="header-block">
+                                <div style="font-size:10px;color:#a5b4fc;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">TERMO DE ENCERRAMENTO — ${proj.programa_nome}</div>
+                                <h1 style="color:white;margin:0 0 4px">${proj.titulo}</h1>
+                                <div style="color:#c7d2fe;font-size:12px">${proj.codigo_projeto} &nbsp;•&nbsp; Encerrado por: ${proj.concluido_por || proj.responsavel_nome || '—'} &nbsp;•&nbsp; ${dConc}</div>
+                              </div>
+                              <h2>Informações Gerais</h2>
+                              <div class="meta-grid">
+                                <div class="meta-item"><div class="meta-label">Data de Abertura</div><div class="meta-value">${dAberto}</div></div>
+                                <div class="meta-item"><div class="meta-label">Data de Conclusão</div><div class="meta-value">${dConc}</div></div>
+                                <div class="meta-item"><div class="meta-label">Responsável TI</div><div class="meta-value">${proj.responsavel_nome || '—'}</div></div>
+                                <div class="meta-item"><div class="meta-label">Solicitante</div><div class="meta-value">${proj.solicitante_nome || '—'}</div></div>
+                                <div class="meta-item"><div class="meta-label">Prioridade</div><div class="meta-value">${proj.prioridade}</div></div>
+                                <div class="meta-item"><div class="meta-label">Status Final</div><div class="meta-value" style="color:#065f46">Concluído</div></div>
+                              </div>
+                              <h2>Sumário Financeiro (CAPEX / OPEX)</h2>
+                              <div class="meta-grid">
+                                <div class="meta-item"><div class="meta-label">Custo Estimado (Orçado)</div><div class="meta-value">R$ ${custoEst}</div></div>
+                                <div class="meta-item"><div class="meta-label">Custo Real (Executado)</div><div class="meta-value">R$ ${custoReal}</div></div>
+                                <div class="meta-item"><div class="meta-label">Desvio Orçamentário</div><div class="meta-value" style="color:${desv>0?'#dc2626':'#16a34a'}">${desv>0?'+':''}R$ ${Math.abs(desv).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div></div>
+                              </div>
+                              <h2>Parecer Técnico de Conclusão</h2>
+                              <div class="parecer-box">${proj.parecer_conclusao}</div>
+                              ${marcosHtml ? `<h2>Cronograma de Marcos & Etapas</h2><table><thead><tr><th>#</th><th>Marco / Entregável</th><th>Data Prevista</th><th>Status</th></tr></thead><tbody>${marcosHtml}</tbody></table>` : ''}
+                              ${aprovacoesHtml ? `<h2>Registro de Homologações da Diretoria</h2><table><thead><tr><th>Data</th><th>Aprovador</th><th>Resultado</th><th>Observações</th></tr></thead><tbody>${aprovacoesHtml}</tbody></table>` : ''}
+                              ${docHtml ? `<h2>Documentos do Projeto</h2><ul>${docHtml}</ul>` : ''}
+                              <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">Gerado automaticamente pelo TechControl — ${new Date().toLocaleString('pt-BR')} — Interlub</div>
+                            </body></html>`);
+                            printWindow.document.close();
+                            printWindow.focus();
+                            setTimeout(() => printWindow.print(), 400);
+                          }}
+                        >
+                          <Printer className="w-4 h-4" />
+                          Imprimir / Exportar PDF
+                        </Button>
+                      </div>
+
+                      {/* Cabeçalho do Termo */}
+                      <div className="bg-gradient-to-r from-indigo-900 to-slate-800 rounded-xl p-5 text-white mb-4">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-300 mb-1">Termo de Encerramento de Projeto</div>
+                        <div className="text-xl font-bold">{selectedProjeto.titulo}</div>
+                        <div className="text-indigo-200 text-xs mt-1">
+                          {selectedProjeto.codigo_projeto} &nbsp;•&nbsp; {selectedProjeto.programa_nome} &nbsp;•&nbsp;
+                          Concluído por: <strong className="text-white">{selectedProjeto.concluido_por || selectedProjeto.responsavel_nome || "—"}</strong>
+                          {selectedProjeto.concluido_em && <> &nbsp;em&nbsp; <strong className="text-white">{new Date(selectedProjeto.concluido_em).toLocaleDateString('pt-BR')}</strong></>}
+                        </div>
+                      </div>
+
+                      {/* Grid de Informações Gerais */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Abertura", value: selectedProjeto.created_at ? new Date(selectedProjeto.created_at).toLocaleString('pt-BR', {dateStyle:'short',timeStyle:'short'}) : '—' },
+                          { label: "Conclusão Efetiva", value: selectedProjeto.data_conclusao || (selectedProjeto.concluido_em ? new Date(selectedProjeto.concluido_em).toLocaleDateString('pt-BR') : '—') },
+                          { label: "Responsável TI", value: selectedProjeto.responsavel_nome || '—' },
+                          { label: "Solicitante", value: selectedProjeto.solicitante_nome || '—' },
+                          { label: "Prioridade", value: selectedProjeto.prioridade },
+                          { label: "Status Final", value: "Concluído ✓", highlight: true },
+                        ].map((item, i) => (
+                          <div key={i} className={`p-3 rounded-lg border text-xs ${item.highlight ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                            <span className={`font-semibold uppercase text-[10px] tracking-wider ${item.highlight ? 'text-emerald-700' : 'text-slate-500'}`}>{item.label}</span>
+                            <p className={`font-bold mt-0.5 ${item.highlight ? 'text-emerald-800' : 'text-slate-800'}`}>{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Sumário Financeiro */}
+                      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-4">
+                        <h4 className="font-bold text-indigo-900 flex items-center gap-2 mb-3 text-sm">
+                          <DollarSign className="w-4 h-4 text-indigo-600" /> Sumário Financeiro (CAPEX / OPEX)
+                        </h4>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <span className="text-xs text-slate-500">Custo Estimado (Orçado)</span>
+                            <p className="font-bold text-slate-800 text-base">
+                              R$ {(Number(selectedProjeto.custo_estimado)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500">Custo Real (Executado)</span>
+                            <p className="font-bold text-slate-900 text-base">
+                              R$ {(Number(selectedProjeto.custo_real)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500">Desvio Orçamentário</span>
+                            {(() => {
+                              const desv = (Number(selectedProjeto.custo_real)||0) - (Number(selectedProjeto.custo_estimado)||0);
+                              return (
+                                <p className={`font-bold text-base ${desv > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                                  {desv > 0 ? '+' : ''}R$ {Math.abs(desv).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                                </p>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Parecer Técnico */}
+                      <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 mb-4">
+                        <h4 className="font-bold text-emerald-900 flex items-center gap-2 mb-3 text-sm">
+                          <ClipboardCheck className="w-4 h-4 text-emerald-700" /> Parecer Técnico de Conclusão
+                        </h4>
+                        <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm">
+                          {selectedProjeto.parecer_conclusao}
+                        </p>
+                        {selectedProjeto.concluido_por && (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-emerald-200">
+                            <UserCheck className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs text-emerald-700 font-semibold">Responsável pelo encerramento: {selectedProjeto.concluido_por}</span>
+                            {selectedProjeto.concluido_em && (
+                              <span className="text-xs text-emerald-600">
+                                — {new Date(selectedProjeto.concluido_em).toLocaleString('pt-BR', {dateStyle:'short',timeStyle:'short'})}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Marcos / Etapas */}
+                      {(selectedProjeto.marcos || []).length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-indigo-600" />
+                            Cronograma de Marcos & Etapas ({(selectedProjeto.marcos||[]).length})
+                          </h4>
+                          <div className="space-y-1.5">
+                            {(selectedProjeto.marcos||[]).map((m, i) => (
+                              <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${m.status === 'Concluído' ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                                <div className="flex items-center gap-2">
+                                  {m.status === 'Concluído' ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <div className="w-4 h-4 rounded-full border-2 border-slate-300 shrink-0" />
+                                  )}
+                                  <span className={`font-semibold ${m.status === 'Concluído' ? 'line-through text-slate-500' : 'text-slate-800'}`}>{m.titulo}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {m.data_prevista && <span className="text-slate-400">{new Date(m.data_prevista + 'T12:00').toLocaleDateString('pt-BR')}</span>}
+                                  <Badge className={`text-[10px] ${m.status === 'Concluído' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-700 border-slate-200'} border`}>
+                                    {m.status}
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Homologações */}
+                      {(selectedProjeto.aprovacao_diretoria || []).length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                            Registro de Homologações da Diretoria
+                          </h4>
+                          <div className="space-y-1.5">
+                            {(selectedProjeto.aprovacao_diretoria||[]).map((ap, i) => (
+                              <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${ap.aprovado ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
+                                <div>
+                                  <span className={`font-bold ${ap.aprovado ? 'text-emerald-800' : 'text-rose-800'}`}>{ap.aprovado ? '✓ Aprovado' : '✗ Reprovado'}</span>
+                                  <span className="text-slate-600 ml-2">por {ap.aprovador_nome}</span>
+                                  {ap.observacoes && <span className="text-slate-500 italic ml-1">— "{ap.observacoes}"</span>}
+                                </div>
+                                <span className="text-slate-400">{new Date(ap.data).toLocaleDateString('pt-BR')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Documentos */}
+                      {(selectedProjeto.documentos_projeto || []).length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-indigo-600" /> Documentos Anexados ({selectedProjeto.documentos_projeto.length})
+                          </h4>
+                          <div className="space-y-1.5">
+                            {selectedProjeto.documentos_projeto.map((doc, i) => (
+                              <a key={i} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 transition-colors text-xs">
+                                <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                                <span className="font-semibold text-slate-800 underline">{doc.file_name}</span>
+                                <span className="text-slate-400 ml-auto">{doc.enviado_por || 'TI'} — {new Date(doc.data_upload).toLocaleDateString('pt-BR')}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : selectedProjeto.status === "Concluído" ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <ClipboardCheck className="w-12 h-12 text-slate-300 mb-3" />
+                      <p className="font-semibold text-slate-600">Projeto concluído sem parecer técnico registrado.</p>
+                      <p className="text-xs text-slate-400 mt-1">Edite o projeto ou reabra-o para inserir o parecer de encerramento.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <BookOpen className="w-12 h-12 text-slate-300 mb-3" />
+                      <p className="font-semibold text-slate-600">Documentação de encerramento ainda não disponível.</p>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                        Esta aba exibirá o <strong>Termo de Encerramento completo</strong> com parecer técnico, marcos, homologações e documentos — assim que o projeto for <strong>Concluído</strong>.
+                      </p>
+                      {selectedProjeto.status !== "Cancelado" && (
+                        <Button
+                          size="sm"
+                          className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                          onClick={() => {
+                            setDataConclusaoInput(selectedProjeto.data_conclusao || new Date().toISOString().split('T')[0]);
+                            setParecerInput("");
+                            setCustoRealFinalInput(String(selectedProjeto.custo_real || ""));
+                            setConcluidoPorInput(selectedProjeto.responsavel_nome || "");
+                            setConfirmConcluirModal(true);
+                          }}
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Concluir e Gerar Documentação
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* MODAL DE CONFIRMAÇÃO: CONCLUIR PROJETO */}
+      {/* MODAL DE CONFIRMAÇÃO: CONCLUIR PROJETO — COM PARECER TÉCNICO */}
       <Dialog open={confirmConcluirModal} onOpenChange={setConfirmConcluirModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle2 className="w-5 h-5" /> Concluir Projeto Interno
+              <CheckCircle2 className="w-5 h-5" /> Concluir Projeto — Parecer Técnico de Encerramento
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2 text-sm">
-            <p className="text-slate-700">
-              Tem certeza que deseja marcar o projeto <strong>"{selectedProjeto?.titulo}"</strong> como <strong>Concluído</strong>?
-            </p>
+
+          <div className="space-y-4 py-2 text-sm">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <p className="text-emerald-800 font-semibold text-sm">
+                📋 Projeto: <span className="text-emerald-900">"{selectedProjeto?.titulo}"</span>
+              </p>
+              <p className="text-emerald-700 text-xs mt-0.5">
+                Preencha o parecer técnico completo antes de finalizar. Ele ficará registrado permanentemente como documentação de encerramento.
+              </p>
+            </div>
+
+            {/* Campos de Encerramento */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="font-semibold">Data de Conclusão Efetiva *</Label>
+                <Input
+                  type="date"
+                  value={dataConclusaoInput}
+                  onChange={e => setDataConclusaoInput(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="font-semibold">Custo Real Final (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={custoRealFinalInput}
+                  onChange={e => setCustoRealFinalInput(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div>
-              <Label>Data de Conclusão Efetiva</Label>
+              <Label className="font-semibold">Responsável pelo Encerramento (Nome)</Label>
               <Input
-                type="date"
-                value={dataConclusaoInput}
-                onChange={e => setDataConclusaoInput(e.target.value)}
+                placeholder="Ex: Kauan Pereira — TI"
+                value={concluidoPorInput}
+                onChange={e => setConcluidoPorInput(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label className="font-semibold flex items-center gap-1.5">
+                <ClipboardCheck className="w-4 h-4 text-emerald-600" />
+                Parecer Técnico de Conclusão *
+              </Label>
+              <p className="text-xs text-slate-500 mb-1.5">
+                Descreva tudo o que foi analisado, verificado, corrigido, aprovado e entregue. Este parecer será parte da documentação permanente do projeto.
+              </p>
+              <Textarea
+                required
+                rows={10}
+                placeholder={`Exemplo de estrutura:\n\n1. ANÁLISE REALIZADA:\n   - Levantamento do ambiente existente\n   - Identificação de pontos críticos\n\n2. VERIFICAÇÕES EXECUTADAS:\n   - Testes de conectividade e segurança\n   - Validação de licenças\n\n3. CORREÇÕES / IMPLEMENTAÇÕES:\n   - Substituição de equipamentos\n   - Configuração de políticas de acesso\n\n4. APROVAÇÕES OBTIDAS:\n   - Diretoria de Operações (data)\n   - Homologado em ambiente de produção\n\n5. CONSIDERAÇÕES FINAIS:\n   - Objetivos atingidos conforme escopo\n   - Recomendações para manutenção`}
+                value={parecerInput}
+                onChange={e => setParecerInput(e.target.value)}
+                className="font-mono text-xs"
               />
             </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="pt-2 border-t gap-2">
             <Button variant="outline" onClick={() => setConfirmConcluirModal(false)}>Cancelar</Button>
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              disabled={!parecerInput.trim()}
               onClick={async () => {
                 const dConc = dataConclusaoInput || new Date().toISOString().split('T')[0];
-                const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, {
+                const payload = {
                   status: "Concluído",
-                  data_conclusao: dConc
-                });
+                  data_conclusao: dConc,
+                  parecer_conclusao: parecerInput.trim(),
+                  concluido_por: concluidoPorInput.trim() || selectedProjeto?.responsavel_nome || "",
+                  concluido_em: new Date().toISOString(),
+                };
+                if (custoRealFinalInput && custoRealFinalInput.trim() !== "") {
+                  payload.custo_real = Number(custoRealFinalInput);
+                }
+                const updated = await base44.entities.ProjetosInternos.update(selectedProjeto.id, payload);
                 setSelectedProjeto(updated);
                 queryClient.invalidateQueries({ queryKey: ['projetos_internos_list'] });
                 setConfirmConcluirModal(false);
+                setParecerInput("");
+                setCustoRealFinalInput("");
+                setConcluidoPorInput("");
+                setActiveTab("encerramento");
               }}
             >
-              Sim, Concluir Projeto
+              <BadgeCheck className="w-4 h-4" />
+              Concluir e Gerar Documentação
             </Button>
           </DialogFooter>
         </DialogContent>
