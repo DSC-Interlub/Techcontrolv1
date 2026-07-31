@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Headset, Plus, Loader2, CheckCircle, Star, ChevronLeft, Laptop, Send, Paperclip, X, FolderKanban, Calendar, DollarSign, Users, CheckCircle2, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 
