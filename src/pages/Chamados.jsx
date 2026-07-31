@@ -113,6 +113,13 @@ export default function Chamados() {
     enabled: !!user,
   });
 
+  const { data: empresasTerceiras = [] } = useQuery({
+    queryKey: ['empresas_terceiras'],
+    queryFn: () => base44.entities.EmpresasTerceiras.list('-created_date'),
+    enabled: !!user,
+    staleTime: 30000,
+  });
+
   // Assim que usuarios carregar, pega o nome_exibicao do usuário atual
   // O SDK pode retornar nome_exibicao no topo OU dentro de .data (ambos são verificados)
   useEffect(() => {
@@ -855,7 +862,47 @@ export default function Chamados() {
                     <TabsContent value="projeto" className="space-y-5 mt-4">
                       {/* Resumo financeiro */}
                       <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-indigo-900 mb-3">Resumo Financeiro</h4>
+                        <h4 className="font-semibold text-indigo-900 mb-3">Empresa Terceira & Financeiro</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 pb-3 border-b border-indigo-200/70">
+                          <div>
+                            <Label className="text-indigo-950 font-semibold">Empresa Terceira Responsável</Label>
+                            {empresasTerceiras.length > 0 ? (
+                              <Select
+                                value={selectedChamado.terceiro_empresa || ""}
+                                onValueChange={v => setSelectedChamado({...selectedChamado, terceiro_empresa: v})}
+                              >
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue placeholder="Selecione a empresa..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {empresasTerceiras.filter(e => e.status !== "Inativa").map(emp => (
+                                    <SelectItem key={emp.id} value={emp.nome_empresa}>
+                                      {emp.nome_empresa} {emp.nome_contato ? `— ${emp.nome_contato}` : ''}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                value={selectedChamado.terceiro_empresa || ""}
+                                onChange={e => setSelectedChamado({...selectedChamado, terceiro_empresa: e.target.value})}
+                                placeholder="Nome da empresa terceira"
+                                className="bg-white"
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-indigo-950 font-semibold">Número do Chamado Terceiro</Label>
+                            <Input
+                              value={selectedChamado.terceiro_numero_chamado || ""}
+                              onChange={e => setSelectedChamado({...selectedChamado, terceiro_numero_chamado: e.target.value})}
+                              placeholder="Ex: INC-00123"
+                              className="bg-white"
+                            />
+                          </div>
+                        </div>
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           <div><Label>Horas Contratadas</Label><Input type="number" value={selectedChamado.projeto_horas_contratadas || ""} onChange={e => setSelectedChamado({...selectedChamado, projeto_horas_contratadas: +e.target.value})} placeholder="0" /></div>
                           <div><Label>Horas Realizadas</Label><Input type="number" value={selectedChamado.projeto_horas_realizadas || ""} onChange={e => setSelectedChamado({...selectedChamado, projeto_horas_realizadas: +e.target.value})} placeholder="0" /></div>
@@ -964,8 +1011,52 @@ export default function Chamados() {
 
               {terceiroDados.terceiro_envolvido === true && (
                 <div className="space-y-3 bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div><Label>Empresa Terceira</Label><Input value={terceiroDados.terceiro_empresa} onChange={e => setTerceiroDados({...terceiroDados, terceiro_empresa: e.target.value})} placeholder="Nome da empresa" /></div>
-                  <div><Label>Número do Chamado Externo</Label><Input value={terceiroDados.terceiro_numero_chamado} onChange={e => setTerceiroDados({...terceiroDados, terceiro_numero_chamado: e.target.value})} placeholder="Ex: INC-00123" /></div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-orange-950 font-bold">Empresa Terceira *</Label>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmpresasTerceiras(true)}
+                        className="text-xs text-indigo-700 hover:underline font-semibold flex items-center gap-1"
+                      >
+                        <Building2 className="w-3.5 h-3.5" /> + Gerenciar Cadastro
+                      </button>
+                    </div>
+
+                    {empresasTerceiras.filter(e => e.status !== "Inativa").length > 0 ? (
+                      <Select
+                        value={terceiroDados.terceiro_empresa}
+                        onValueChange={val => setTerceiroDados({ ...terceiroDados, terceiro_empresa: val })}
+                      >
+                        <SelectTrigger className="bg-white border-orange-300">
+                          <SelectValue placeholder="Selecione a empresa cadastrada..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empresasTerceiras.filter(e => e.status !== "Inativa").map(emp => (
+                            <SelectItem key={emp.id} value={emp.nome_empresa}>
+                              {emp.nome_empresa} {emp.nome_contato ? `— ${emp.nome_contato}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={terceiroDados.terceiro_empresa}
+                        onChange={e => setTerceiroDados({ ...terceiroDados, terceiro_empresa: e.target.value })}
+                        placeholder="Ex: Dell, Totvs, Vivo..."
+                        className="bg-white border-orange-300"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-orange-950 font-semibold">Número do Chamado Externo (Opcional)</Label>
+                    <Input
+                      value={terceiroDados.terceiro_numero_chamado}
+                      onChange={e => setTerceiroDados({ ...terceiroDados, terceiro_numero_chamado: e.target.value })}
+                      placeholder="Ex: INC-00123 / Protocolo 98765"
+                      className="bg-white border-orange-300"
+                    />
+                  </div>
                   <p className="text-xs text-orange-700">A data/hora de abertura com o terceiro será registrada automaticamente. Você pode ajustar depois no modal de detalhes.</p>
                 </div>
               )}

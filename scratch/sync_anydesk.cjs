@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://oskuejukhcnuhvcivcsr.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9za3VlanVraGNudWh2Y2l2Y3NyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU0ODM1OSwiZXhwIjoyMTAwMTI0MzU5fQ.bXGcU5D4OVOqK-bmYWOGK14xlzu0c_MY52Noyf1rvr8';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -57,7 +57,7 @@ async function main() {
 
         const { error: errUp } = await supabase
           .from('pcs_internos')
-          .update({ observacoes: obsNova })
+          .update({ observacoes: obsNova, anydesk_id: anydeskNaAv })
           .eq('id', pc.id);
 
         if (errUp) console.error(`Erro ao atualizar PC ${pc.id}:`, errUp);
@@ -80,7 +80,7 @@ async function main() {
 
         const { error: errUp } = await supabase
           .from('notebooks_externos')
-          .update({ observacoes: obsNova })
+          .update({ observacoes: obsNova, anydesk_id: anydeskNaAv })
           .eq('id', nb.id);
 
         if (errUp) console.error(`Erro ao atualizar Notebook ${nb.id}:`, errUp);
