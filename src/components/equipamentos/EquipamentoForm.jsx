@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UsuariosAnteriores from "./UsuariosAnteriores";
 import AvaliacaoEquipamento from "./AvaliacaoEquipamento";
 import { formatarDataSemFuso } from "@/utils/date";
-import { gerarTarefasManutencao, formatarObservacoesComAnyDesk } from "@/utils/eval";
+import { gerarTarefasManutencao, formatarObservacoesComAnyDesk, extrairAnyDesk } from "@/utils/eval";
 
 
 export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entityType, isLoading = false }) {
@@ -29,6 +29,23 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     }
     return "colaborador";
   });
+
+  const [anydeskInput, setAnydeskInput] = useState(() => extrairAnyDesk(equipamento));
+
+  const handleAnydeskChange = (val) => {
+    setAnydeskInput(val);
+    const obsFormatadas = formatarObservacoesComAnyDesk(
+      formData.observacoes,
+      val,
+      formData.memoria_ram,
+      formData.versao_windows
+    );
+    setFormData(prev => ({
+      ...prev,
+      anydesk_id: val.trim(),
+      observacoes: obsFormatadas
+    }));
+  };
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
@@ -201,6 +218,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
     }
 
     let dataToSubmit = { ...formData };
+
+    if (anydeskInput !== undefined) {
+      dataToSubmit.anydesk_id = anydeskInput.trim();
+      dataToSubmit.observacoes = formatarObservacoesComAnyDesk(
+        dataToSubmit.observacoes,
+        anydeskInput.trim(),
+        dataToSubmit.memoria_ram,
+        dataToSubmit.versao_windows
+      );
+    }
 
     // Sincronização automática de status com base em Usuário Atual / Colaborador
     const temColaborador = dataToSubmit.colaborador_id || (dataToSubmit.usuario_atual && dataToSubmit.usuario_atual.trim() !== "");
@@ -427,7 +454,21 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                 onChange={(e) => handleChange("service_tag", e.target.value)}
               />
             </div>
-            {formData.tipo !== "Monitor" && (
+          </div>
+
+          {formData.tipo !== "Monitor" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-indigo-950 font-bold flex items-center gap-1.5">
+                  AnyDesk (ID de Acesso Remoto)
+                </Label>
+                <Input
+                  placeholder="Ex: 1 521 860 027"
+                  value={anydeskInput}
+                  onChange={(e) => handleAnydeskChange(e.target.value)}
+                  className="font-mono text-indigo-700 font-bold bg-indigo-50/40 border-indigo-200 focus:border-indigo-500"
+                />
+              </div>
               <div>
                 <Label>Office</Label>
                 <Input
@@ -436,8 +477,8 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   onChange={(e) => handleChange("office", e.target.value)}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {formData.tipo !== "Monitor" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

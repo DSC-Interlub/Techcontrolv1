@@ -70,6 +70,9 @@ export default function PortalEquipamentos() {
         dados.memoria_ram,
         dados.versao_windows
       );
+      if (anydeskVal) {
+        updateDataEquipamento.anydesk_id = anydeskVal;
+      }
       if (dados.memoria_ram) {
         updateDataEquipamento.memoria_ram = dados.memoria_ram;
       }
