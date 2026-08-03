@@ -14,8 +14,9 @@ import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, Externa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/AuthContext";
 import { formatarDataSemFuso } from "@/utils/date";
+import * as XLSX from "xlsx";
 import AvaliacaoEquipamento from "@/components/equipamentos/AvaliacaoEquipamento";
-import { formatarObservacoesComAnyDesk } from "@/utils/eval";
+import { formatarObservacoesComAnyDesk, extrairAnyDesk } from "@/utils/eval";
 
 export default function AvaliacoesEquipamentos() {
   const { user } = useAuth();
@@ -229,22 +230,113 @@ export default function AvaliacoesEquipamentos() {
     return alerts;
   };
 
-  const exportarCSV = () => {
-    const headers = ["Usuário Equipamento", "Equipamento", "Tipo", "Pontuação", "Classificação", "Avaliador", "Data"];
-    const rows = avaliacoesFiltradas.map(av => [
-      av.usuario_equipamento || "",
-      av.equipamento_nome || "",
-      av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo",
-      av.pontuacao_total || "",
-      av.classificacao || "",
-      av.avaliador || "",
-      av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR') : ""
-    ]);
+  const exportarExcel = () => {
+    const dadosRealizadas = avaliacoesFiltradas.map(av => {
+      const eqData = equipamentoMap[av.equipamento_id];
+      const alerts = hasAlerts(av);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.join(","))
-    ].join("\n");
+      return {
+        "Nº Avaliação": av.numero_avaliacao ? `${av.numero_avaliacao}ª` : "1ª",
+        "Data / Hora": av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleString('pt-BR') : "—",
+        "Usuário": av.usuario_equipamento || "—",
+        "Etiqueta / Patrimônio": eqData?.etiqueta_interna || "—",
+        "Equipamento": av.equipamento_nome || eqData?.modelo || "—",
+        "Tipo": av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo",
+        "Área / Setor / UF": eqData?.area || eqData?.uf || "—",
+        "Pontuação Total": av.pontuacao_total ?? 0,
+        "Classificação": av.classificacao || "Manter",
+        "AnyDesk ID": av.anydesk_id || extrairAnyDesk(av) || eqData?.anydesk_id || "—",
+        "Memória RAM": av.memoria_ram || "Não informado",
+        "Tipo de Disco": av.tipo_armazenamento || "Não informado",
+        "Espaço em Disco": av.espaco_disco || "Não informado",
+        "Sistema Windows": av.versao_windows || "Não informado",
+        "Antivírus": av.antivirus || "Não informado",
+        "Desempenho Geral": av.desempenho || "Não informado",
+        "Problemas Reportados": Array.isArray(av.problemas) && av.problemas.length > 0 ? av.problemas.join("; ") : "Nenhum",
+        "Atende Trabalho?": av.atende_trabalho || "—",
+        "Recomendação": av.recomendacao_usuario || "—",
+        "Satisfação": av.satisfacao || "—",
+        "Tempo de Uso (Anos)": av.tempo_uso_anos ? `${Math.floor(av.tempo_uso_anos)} ano(s)` : "—",
+        "Alertas": alerts.length > 0 ? alerts.join("; ") : "Nenhum",
+        "Avaliador": av.avaliador || "—"
+      };
+    });
+
+    const dadosNaoAvaliados = equipamentosNaoAvaliados.map(eq => ({
+      "Usuário Atual": eq.usuario_atual || "Disponível",
+      "Etiqueta": eq.etiqueta_interna || "—",
+      "Equipamento": `${eq.marca || ''} ${eq.modelo || ''}`.trim() || "—",
+      "Tipo": eq.tipo || (eq.entityType === "PCs_Internos" ? "PC Interno" : "Notebook Externo"),
+      "Marca": eq.marca || "—",
+      "Área / Setor": eq.area || eq.uf || "—",
+      "Data de Aquisição": eq.data_aquisicao ? formatarDataSemFuso(eq.data_aquisicao) : "—",
+      "Status": "Não Avaliado"
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const wsRealizadas = XLSX.utils.json_to_sheet(dadosRealizadas);
+    const wsNaoAvaliados = XLSX.utils.json_to_sheet(dadosNaoAvaliados);
+
+    const autoWidth = (ws, data) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => ({
+        wch: Math.max(k.length + 4, ...data.map(row => (row[k] ? String(row[k]).length : 0)))
+      }));
+    };
+
+    autoWidth(wsRealizadas, dadosRealizadas);
+    autoWidth(wsNaoAvaliados, dadosNaoAvaliados);
+
+    XLSX.utils.book_append_sheet(wb, wsRealizadas, "Avaliações Realizadas");
+    XLSX.utils.book_append_sheet(wb, wsNaoAvaliados, "Não Avaliados");
+
+    const fileName = `relatorio_avaliacoes_equipamentos_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const exportarCSV = () => {
+    const headers = [
+      "Nº Avaliação", "Data/Hora", "Usuário", "Etiqueta", "Equipamento", "Tipo", "Área/UF",
+      "Pontuação", "Classificação", "AnyDesk ID", "Memória RAM", "Tipo Disco", "Espaço Disco",
+      "Windows", "Antivírus", "Desempenho", "Problemas", "Atende Trabalho", "Recomendação",
+      "Satisfação", "Alertas", "Avaliador"
+    ];
+
+    const rows = avaliacoesFiltradas.map(av => {
+      const eqData = equipamentoMap[av.equipamento_id];
+      const alerts = hasAlerts(av);
+      return [
+        av.numero_avaliacao ? `${av.numero_avaliacao}ª` : "1ª",
+        av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleString('pt-BR') : "",
+        av.usuario_equipamento || "",
+        eqData?.etiqueta_interna || "",
+        av.equipamento_nome || "",
+        av.equipamento_tipo === "PCs_Internos" ? "PC Interno" : "Notebook Externo",
+        eqData?.area || eqData?.uf || "",
+        av.pontuacao_total ?? "",
+        av.classificacao || "",
+        av.anydesk_id || extrairAnyDesk(av) || eqData?.anydesk_id || "",
+        av.memoria_ram || "",
+        av.tipo_armazenamento || "",
+        av.espaco_disco || "",
+        av.versao_windows || "",
+        av.antivirus || "",
+        av.desempenho || "",
+        Array.isArray(av.problemas) ? av.problemas.join("; ") : (av.problemas || ""),
+        av.atende_trabalho || "",
+        av.recomendacao_usuario || "",
+        av.satisfacao || "",
+        alerts.join("; "),
+        av.avaliador || ""
+      ];
+    });
+
+    const esc = val => `"${String(val ?? '').replace(/"/g, '""')}"`;
+    const csvContent = "\uFEFF" + [
+      headers.map(esc).join(";"),
+      ...rows.map(r => r.map(esc).join(";"))
+    ].join("\r\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -263,10 +355,16 @@ export default function AvaliacoesEquipamentos() {
           </h1>
           <p className="text-gray-600 mt-1">Relatório completo de avaliações realizadas</p>
         </div>
-        <Button onClick={exportarCSV} variant="outline" className="gap-2">
-          <FileDown className="w-4 h-4" />
-          Exportar CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={exportarExcel} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 font-semibold shadow-sm">
+            <FileDown className="w-4 h-4" />
+            Exportar para Excel (.xlsx)
+          </Button>
+          <Button onClick={exportarCSV} variant="outline" className="gap-2 text-gray-700">
+            <FileDown className="w-4 h-4" />
+            Exportar CSV
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
