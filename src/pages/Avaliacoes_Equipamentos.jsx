@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Activity, Search, TrendingUp, AlertTriangle, XCircle, FileDown, ExternalLink, AlertOctagon, ArrowUpDown, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/AuthContext";
 import { formatarDataSemFuso } from "@/utils/date";
+import AvaliacaoEquipamento from "@/components/equipamentos/AvaliacaoEquipamento";
+import { formatarObservacoesComAnyDesk } from "@/utils/eval";
 
 export default function AvaliacoesEquipamentos() {
   const { user } = useAuth();
@@ -21,6 +24,69 @@ export default function AvaliacoesEquipamentos() {
   const [activeTab, setActiveTab] = useState("realizadas");
   const [sortByPontuacao, setSortByPontuacao] = useState(false);
   const [expandedAlerts, setExpandedAlerts] = useState({});
+  const [editingAvaliacao, setEditingAvaliacao] = useState(null);
+  const queryClient = useQueryClient();
+
+  const salvarEdicaoMutation = useMutation({
+    mutationFn: async (dados) => {
+      const av = editingAvaliacao;
+      if (!av) return;
+
+      const anydeskVal = (dados.anydesk_id || "").trim();
+      const versaoWindowsLimpa = (dados.versao_windows || "").replace(/\|\s*AnyDesk:\s*[^|;\n\r]+/gi, "").trim();
+
+      const payloadUpdate = {
+        memoria_ram: dados.memoria_ram || '',
+        tipo_armazenamento: dados.tipo_armazenamento || '',
+        espaco_disco: dados.espaco_disco || '',
+        versao_windows: anydeskVal ? `${versaoWindowsLimpa} | AnyDesk: ${anydeskVal}` : versaoWindowsLimpa,
+        antivirus: dados.antivirus || '',
+        desempenho: dados.desempenho || '',
+        problemas: dados.problemas || [],
+        atende_trabalho: dados.atende_trabalho || '',
+        recomendacao_usuario: dados.recomendacao_usuario || '',
+        satisfacao: dados.satisfacao || '',
+        pontuacao_total: dados.pontuacao_total || 0,
+        classificacao: dados.classificacao || 'Manter'
+      };
+
+      await base44.entities.Avaliacoes.update(av.id, payloadUpdate);
+
+      // Atualiza também o cadastro do equipamento correspondente
+      const eqData = equipamentoMap[av.equipamento_id];
+      const updateDataEquipamento = {};
+
+      updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(
+        eqData?.observacoes || "",
+        anydeskVal,
+        dados.memoria_ram,
+        versaoWindowsLimpa
+      );
+      if (anydeskVal) updateDataEquipamento.anydesk_id = anydeskVal;
+      if (dados.memoria_ram) updateDataEquipamento.memoria_ram = dados.memoria_ram;
+      if (dados.versao_windows) updateDataEquipamento.versao_windows = versaoWindowsLimpa;
+      if (dados.antivirus) updateDataEquipamento.antivirus = dados.antivirus;
+      if (dados.desempenho) updateDataEquipamento.condicao = dados.desempenho;
+
+      if (eqData && Object.keys(updateDataEquipamento).length > 0) {
+        if (av.equipamento_tipo === 'Notebooks_Externos') {
+          await base44.entities.Notebooks_Externos.update(av.equipamento_id, updateDataEquipamento);
+        } else {
+          await base44.entities.PCs_Internos.update(av.equipamento_id, updateDataEquipamento);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['avaliacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      setEditingAvaliacao(null);
+      alert("Avaliação e dados cadastrais do equipamento atualizados com sucesso!");
+    },
+    onError: (err) => {
+      alert("Erro ao atualizar avaliação: " + err.message);
+    }
+  });
 
   const { data: todasAvaliacoes = [], isLoading } = useQuery({
     queryKey: ['avaliacoes'],
@@ -405,13 +471,25 @@ export default function AvaliacoesEquipamentos() {
                               : "—"}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Link 
-                              to={`${createPageUrl(av.equipamento_tipo)}?id=${av.equipamento_id}`}
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                              Ver
-                            </Link>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingAvaliacao(av)}
+                                className="h-8 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1 font-semibold"
+                                title="Editar respostas e dados do PowerShell desta avaliação"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                Editar
+                              </Button>
+                              <Link 
+                                to={`${createPageUrl(av.equipamento_tipo)}?id=${av.equipamento_id}`}
+                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Ver
+                              </Link>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -513,6 +591,31 @@ export default function AvaliacoesEquipamentos() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Edição de Avaliação */}
+      <Dialog open={!!editingAvaliacao} onOpenChange={() => setEditingAvaliacao(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+              <Pencil className="w-5 h-5 text-indigo-600" />
+              Editar Avaliação de {editingAvaliacao?.usuario_equipamento || "Equipamento"}
+            </DialogTitle>
+            <DialogDescription>
+              Cole os dados coletados do PowerShell ou ajuste manualmente as respostas para recalcular e atualizar a avaliação.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingAvaliacao && (
+            <AvaliacaoEquipamento
+              equipamento={equipamentoMap[editingAvaliacao.equipamento_id] || { id: editingAvaliacao.equipamento_id, tipo: editingAvaliacao.equipamento_tipo === "PCs_Internos" ? "Desktop" : "Notebook" }}
+              entityType={editingAvaliacao.equipamento_tipo}
+              avaliacaoExistente={editingAvaliacao}
+              onSalvar={(dados) => salvarEdicaoMutation.mutate(dados)}
+              somenteLeitura={false}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -118,6 +118,25 @@ export default function AvaliacaoEquipamento({ equipamento, entityType, avaliaca
   });
 
   const [coletaModoManual, setColetaModoManual] = useState(false);
+
+  React.useEffect(() => {
+    if (avaliacaoExistente) {
+      setAvaliacao({
+        anydesk_id: avaliacaoExistente?.anydesk_id || extrairAnyDesk(equipamento) || extrairAnyDesk(avaliacaoExistente) || "",
+        memoria_ram: avaliacaoExistente?.memoria_ram || "",
+        tipo_armazenamento: avaliacaoExistente?.tipo_armazenamento || "",
+        espaco_disco: avaliacaoExistente?.espaco_disco || "",
+        versao_windows: avaliacaoExistente?.versao_windows || "",
+        antivirus: avaliacaoExistente?.antivirus || "",
+        desempenho: avaliacaoExistente?.desempenho || "",
+        problemas: avaliacaoExistente?.problemas || [],
+        atende_trabalho: avaliacaoExistente?.atende_trabalho || "",
+        recomendacao_usuario: avaliacaoExistente?.recomendacao_usuario || "",
+        satisfacao: avaliacaoExistente?.satisfacao || "",
+      });
+      setProblemas(avaliacaoExistente?.problemas || []);
+    }
+  }, [avaliacaoExistente]);
   const [jsonColado, setJsonColado] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [jsonPreview, setJsonPreview] = useState(null);

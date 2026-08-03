@@ -1,18 +1,82 @@
-import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { formatarDataSemFuso, formatarDataHoraSemFuso } from "@/utils/date";
-import { Shield, ShieldOff } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Shield, ShieldOff, Pencil } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { extrairAnyDesk } from "@/utils/eval";
+import { extrairAnyDesk, formatarObservacoesComAnyDesk } from "@/utils/eval";
+import AvaliacaoEquipamento from "@/components/equipamentos/AvaliacaoEquipamento";
 
 export default function EquipamentoDetalhes({ equipamento, onClose }) {
+  const [editingAvaliacao, setEditingAvaliacao] = useState(null);
+  const queryClient = useQueryClient();
+
   const { data: avaliacoes = [] } = useQuery({
     queryKey: ['portal_avaliacoes'],
     queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
     enabled: !!equipamento,
+  });
+
+  const salvarEdicaoMutation = useMutation({
+    mutationFn: async (dados) => {
+      const av = editingAvaliacao;
+      if (!av) return;
+
+      const anydeskVal = (dados.anydesk_id || "").trim();
+      const versaoWindowsLimpa = (dados.versao_windows || "").replace(/\|\s*AnyDesk:\s*[^|;\n\r]+/gi, "").trim();
+
+      const payloadUpdate = {
+        memoria_ram: dados.memoria_ram || '',
+        tipo_armazenamento: dados.tipo_armazenamento || '',
+        espaco_disco: dados.espaco_disco || '',
+        versao_windows: anydeskVal ? `${versaoWindowsLimpa} | AnyDesk: ${anydeskVal}` : versaoWindowsLimpa,
+        antivirus: dados.antivirus || '',
+        desempenho: dados.desempenho || '',
+        problemas: dados.problemas || [],
+        atende_trabalho: dados.atende_trabalho || '',
+        recomendacao_usuario: dados.recomendacao_usuario || '',
+        satisfacao: dados.satisfacao || '',
+        pontuacao_total: dados.pontuacao_total || 0,
+        classificacao: dados.classificacao || 'Manter'
+      };
+
+      await base44.entities.Avaliacoes.update(av.id, payloadUpdate);
+
+      const updateDataEquipamento = {};
+      updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(
+        equipamento?.observacoes || "",
+        anydeskVal,
+        dados.memoria_ram,
+        versaoWindowsLimpa
+      );
+      if (anydeskVal) updateDataEquipamento.anydesk_id = anydeskVal;
+      if (dados.memoria_ram) updateDataEquipamento.memoria_ram = dados.memoria_ram;
+      if (dados.versao_windows) updateDataEquipamento.versao_windows = versaoWindowsLimpa;
+      if (dados.antivirus) updateDataEquipamento.antivirus = dados.antivirus;
+      if (dados.desempenho) updateDataEquipamento.condicao = dados.desempenho;
+
+      if (equipamento && Object.keys(updateDataEquipamento).length > 0) {
+        if (av.equipamento_tipo === 'Notebooks_Externos' || equipamento.entityType === 'Notebooks_Externos') {
+          await base44.entities.Notebooks_Externos.update(equipamento.id, updateDataEquipamento);
+        } else {
+          await base44.entities.PCs_Internos.update(equipamento.id, updateDataEquipamento);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_avaliacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['avaliacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      setEditingAvaliacao(null);
+      alert("Avaliação e equipamento atualizados com sucesso!");
+    },
+    onError: (err) => {
+      alert("Erro ao atualizar avaliação: " + err.message);
+    }
   });
 
   const ultimaAvaliacao = avaliacoes.find(a => a.equipamento_id === equipamento?.id);
@@ -81,6 +145,7 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
   };
 
   return (
+    <>
     <Dialog open={!!equipamento} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -183,10 +248,22 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
 
           {/* BLOCO DE DADOS TÉCNICOS & AVALIAÇÃO DA MÁQUINA */}
           <div className="pt-4 border-t space-y-3">
-            <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-600" />
-              Dados da Avaliação Técnica & Acesso Remoto
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-indigo-600" />
+                Dados da Avaliação Técnica & Acesso Remoto
+              </p>
+              {ultimaAvaliacao && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingAvaliacao(ultimaAvaliacao)}
+                  className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1 font-semibold"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Editar Avaliação
+                </Button>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
               <div>
@@ -252,5 +329,31 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Modal para Editar Avaliação */}
+    <Dialog open={!!editingAvaliacao} onOpenChange={() => setEditingAvaliacao(null)}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[100]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+            <Pencil className="w-5 h-5 text-indigo-600" />
+            Editar Avaliação Técnica
+          </DialogTitle>
+          <DialogDescription>
+            Cole o JSON retornado pelo script do PowerShell ou atualize manualmente os dados do hardware.
+          </DialogDescription>
+        </DialogHeader>
+
+        {editingAvaliacao && (
+          <AvaliacaoEquipamento
+            equipamento={equipamento}
+            entityType={editingAvaliacao.equipamento_tipo || equipamento.entityType}
+            avaliacaoExistente={editingAvaliacao}
+            onSalvar={(dados) => salvarEdicaoMutation.mutate(dados)}
+            somenteLeitura={false}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

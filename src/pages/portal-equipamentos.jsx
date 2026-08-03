@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Loader2, Monitor, Laptop, ChevronLeft, History, ClipboardList } from "lucide-react";
+import { Activity, Loader2, Monitor, Laptop, ChevronLeft, History, ClipboardList, Pencil } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import AvaliacaoEquipamento from "../components/equipamentos/AvaliacaoEquipamento";
@@ -141,6 +141,66 @@ export default function PortalEquipamentos() {
     },
   });
 
+  const [editandoAvaliacaoId, setEditandoAvaliacaoId] = useState(null);
+
+  const salvarAvaliacaoEditadaMutation = useMutation({
+    mutationFn: async ({ avId, dados }) => {
+      const eq = equipamentoSelecionado;
+      const anydeskVal = (dados.anydesk_id || "").trim();
+      const versaoWindowsLimpa = (dados.versao_windows || "").replace(/\|\s*AnyDesk:\s*[^|;\n\r]+/gi, "").trim();
+
+      const payloadUpdate = {
+        memoria_ram: dados.memoria_ram || '',
+        tipo_armazenamento: dados.tipo_armazenamento || '',
+        espaco_disco: dados.espaco_disco || '',
+        versao_windows: anydeskVal ? `${versaoWindowsLimpa} | AnyDesk: ${anydeskVal}` : versaoWindowsLimpa,
+        antivirus: dados.antivirus || '',
+        desempenho: dados.desempenho || '',
+        problemas: dados.problemas || [],
+        atende_trabalho: dados.atende_trabalho || '',
+        recomendacao_usuario: dados.recomendacao_usuario || '',
+        satisfacao: dados.satisfacao || '',
+        pontuacao_total: dados.pontuacao_total || 0,
+        classificacao: dados.classificacao || 'Manter'
+      };
+
+      await base44.entities.Avaliacoes.update(avId, payloadUpdate);
+
+      if (eq) {
+        const updateDataEquipamento = {};
+        updateDataEquipamento.observacoes = formatarObservacoesComAnyDesk(
+          eq.observacoes || "",
+          anydeskVal,
+          dados.memoria_ram,
+          versaoWindowsLimpa
+        );
+        if (anydeskVal) updateDataEquipamento.anydesk_id = anydeskVal;
+        if (dados.memoria_ram) updateDataEquipamento.memoria_ram = dados.memoria_ram;
+        if (dados.versao_windows) updateDataEquipamento.versao_windows = versaoWindowsLimpa;
+        if (dados.antivirus) updateDataEquipamento.antivirus = dados.antivirus;
+        if (dados.desempenho) updateDataEquipamento.condicao = dados.desempenho;
+
+        if (Object.keys(updateDataEquipamento).length > 0) {
+          const isNotebookExt = eq.entityType === 'Notebooks_Externos' || (eq.tipo === 'Notebook' && !!eq.uf);
+          if (isNotebookExt) {
+            await base44.entities.Notebooks_Externos.update(eq.id, updateDataEquipamento);
+          } else {
+            await base44.entities.PCs_Internos.update(eq.id, updateDataEquipamento);
+          }
+          Object.assign(eq, updateDataEquipamento);
+        }
+      }
+    },
+    onSuccess: () => {
+      refetchAvaliacoes();
+      setEditandoAvaliacaoId(null);
+      alert("Avaliação corrigida e salva com sucesso!");
+    },
+    onError: (err) => {
+      alert("Erro ao atualizar avaliação: " + err.message);
+    }
+  });
+
   if (loading || !colaborador) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
@@ -243,17 +303,28 @@ export default function PortalEquipamentos() {
                     <div className="space-y-6">
                       {historicoEq.map((av, idx) => (
                         <div key={av.id}>
-                          <div className="flex items-center gap-2 mb-3">
-                            <Badge variant="outline" className="font-mono">{av.numero_avaliacao || (historicoEq.length - idx)}ª Avaliação</Badge>
-                            {idx === 0 && <Badge className="bg-blue-100 text-blue-800">Mais recente</Badge>}
-                            <span className="text-xs text-gray-500">{new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}</span>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-mono">{av.numero_avaliacao || (historicoEq.length - idx)}ª Avaliação</Badge>
+                              {idx === 0 && <Badge className="bg-blue-100 text-blue-800">Mais recente</Badge>}
+                              <span className="text-xs text-gray-500">{new Date(av.data_avaliacao).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditandoAvaliacaoId(editandoAvaliacaoId === av.id ? null : av.id)}
+                              className="h-7 text-xs gap-1 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              {editandoAvaliacaoId === av.id ? "Cancelar Edição" : "Editar / Corrigir"}
+                            </Button>
                           </div>
                           <AvaliacaoEquipamento
                             equipamento={equipamentoSelecionado}
                             entityType={equipamentoSelecionado.entityType}
                             avaliacaoExistente={av}
-                            onSalvar={() => {}}
-                            somenteLeitura={true}
+                            onSalvar={(dados) => salvarAvaliacaoEditadaMutation.mutate({ avId: av.id, dados })}
+                            somenteLeitura={editandoAvaliacaoId !== av.id}
                           />
                         </div>
                       ))}
