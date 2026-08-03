@@ -230,6 +230,13 @@ export default function AvaliacoesEquipamentos() {
     return alerts;
   };
 
+  const getDataFormatacao = (eqData) => {
+    if (!eqData) return "—";
+    const rawDate = eqData.data_formatacao || (Array.isArray(eqData.historico_formatacoes) && eqData.historico_formatacoes[0]?.data_formatacao);
+    if (!rawDate) return "Não registrada";
+    return formatarDataSemFuso(rawDate) || "Não registrada";
+  };
+
   const exportarExcel = () => {
     const dadosRealizadas = avaliacoesFiltradas.map(av => {
       const eqData = equipamentoMap[av.equipamento_id];
@@ -257,6 +264,7 @@ export default function AvaliacoesEquipamentos() {
         "Recomendação": av.recomendacao_usuario || "—",
         "Satisfação": av.satisfacao || "—",
         "Tempo de Uso (Anos)": av.tempo_uso_anos ? `${Math.floor(av.tempo_uso_anos)} ano(s)` : "—",
+        "Última Formatação": getDataFormatacao(eqData),
         "Alertas": alerts.length > 0 ? alerts.join("; ") : "Nenhum",
         "Avaliador": av.avaliador || "—"
       };
@@ -270,6 +278,7 @@ export default function AvaliacoesEquipamentos() {
       "Marca": eq.marca || "—",
       "Área / Setor": eq.area || eq.uf || "—",
       "Data de Aquisição": eq.data_aquisicao ? formatarDataSemFuso(eq.data_aquisicao) : "—",
+      "Última Formatação": getDataFormatacao(eq),
       "Status": "Não Avaliado"
     }));
 
@@ -300,7 +309,7 @@ export default function AvaliacoesEquipamentos() {
       "Nº Avaliação", "Data/Hora", "Usuário", "Etiqueta", "Equipamento", "Tipo", "Área/UF",
       "Pontuação", "Classificação", "AnyDesk ID", "Memória RAM", "Tipo Disco", "Espaço Disco",
       "Windows", "Antivírus", "Desempenho", "Problemas", "Atende Trabalho", "Recomendação",
-      "Satisfação", "Alertas", "Avaliador"
+      "Satisfação", "Tempo de Uso", "Última Formatação", "Alertas", "Avaliador"
     ];
 
     const rows = avaliacoesFiltradas.map(av => {
@@ -327,6 +336,8 @@ export default function AvaliacoesEquipamentos() {
         av.atende_trabalho || "",
         av.recomendacao_usuario || "",
         av.satisfacao || "",
+        av.tempo_uso_anos ? `${Math.floor(av.tempo_uso_anos)} ano(s)` : "",
+        getDataFormatacao(eqData),
         alerts.join("; "),
         av.avaliador || ""
       ];
@@ -491,7 +502,8 @@ export default function AvaliacoesEquipamentos() {
                     </TableHead>
                     <TableHead>Classificação</TableHead>
                     <TableHead>Avaliador</TableHead>
-                    <TableHead>Data</TableHead>
+                    <TableHead>Data Avaliação</TableHead>
+                    <TableHead>Última Formatação</TableHead>
                     <TableHead className="text-center">Ações</TableHead>
                     </TableRow>
                     </TableHeader>
@@ -568,6 +580,9 @@ export default function AvaliacoesEquipamentos() {
                               ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
                               : "—"}
                           </TableCell>
+                          <TableCell className="text-xs text-gray-600 font-medium">
+                            {getDataFormatacao(eqData)}
+                          </TableCell>
                           <TableCell className="text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -625,6 +640,7 @@ export default function AvaliacoesEquipamentos() {
                         <TableHead>Tipo</TableHead>
                         <TableHead>Marca</TableHead>
                         <TableHead>Data Aquisição</TableHead>
+                        <TableHead>Última Formatação</TableHead>
                         <TableHead className="text-center">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -668,6 +684,9 @@ export default function AvaliacoesEquipamentos() {
                               <TableCell>{eq.marca || "—"}</TableCell>
                               <TableCell className="text-sm text-gray-600">
                                 {formatarDataSemFuso(eq.data_aquisicao)}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-600 font-medium">
+                                {getDataFormatacao(eq)}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Link 
