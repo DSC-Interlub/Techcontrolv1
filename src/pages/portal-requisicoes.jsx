@@ -79,14 +79,6 @@ export default function PortalRequisicoes() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
-  const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
-  const reqsAprovador = isAprovador ? requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id) : [];
-
-  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador
-  const todasRelacionadas = Array.from(
-    new Map([...minhasRequisicoes, ...reqsAprovador].map(r => [r.id, r])).values()
-  );
-
   // É aprovador se é gestor de alguém, se tem requisições onde é aprovador_id ou se possui cargo/flag de aprovador/gestão
   const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
   const temReqsComoAprovador = requisicoes.some(r => r.aprovador_id === colaboradorFull?.id);
@@ -98,6 +90,14 @@ export default function PortalRequisicoes() {
     colaboradorFull?.cargo?.toLowerCase().includes('coordenador') ||
     colaboradorFull?.cargo?.toLowerCase().includes('diretor') ||
     colaboradorFull?.cargo?.toLowerCase().includes('supervisor')
+  );
+
+  const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
+  const reqsAprovador = isAprovador ? requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id) : [];
+
+  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador
+  const todasRelacionadas = Array.from(
+    new Map([...minhasRequisicoes, ...reqsAprovador].map(r => [r.id, r])).values()
   );
 
   // isComprador: lê do campo eh_comprador do colaborador ou área/cargo de compras
