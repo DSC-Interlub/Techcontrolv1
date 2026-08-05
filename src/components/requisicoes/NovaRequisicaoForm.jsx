@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabase";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,8 @@ import { ShoppingCart, Loader2, Paperclip, X, CheckCircle } from "lucide-react";
 export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     item: "",
+    material: "",
+    cor: "",
     quantidade: 1,
     centro_custo_codigo: "",
     centro_custo_nome: "",
@@ -45,7 +48,19 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      const numeroRequisicao = `REQ${Date.now().toString().slice(-8)}`;
+      let numeroRequisicao = '';
+      try {
+        const { data: rpcNum, error: rpcErr } = await supabase.rpc('proximo_numero_requisicao');
+        if (!rpcErr && rpcNum) {
+          numeroRequisicao = rpcNum;
+        }
+      } catch (err) {
+        console.warn('Falha ao obter número via RPC, usando fallback:', err);
+      }
+
+      if (!numeroRequisicao) {
+        numeroRequisicao = `REQ-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+      }
 
       if (!colaborador?.responsavel_id) {
         throw new Error('Você não possui um responsável/aprovador vinculado. Solicite ao administrador que configure seu cadastro.');
@@ -160,6 +175,27 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                 value={formData.item}
                 onChange={e => set('item', e.target.value)}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Material (opcional)</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ex: Aço, Plástico, Alumínio, Madeira, Tecido"
+                  value={formData.material}
+                  onChange={e => set('material', e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Cor (opcional)</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ex: Preto, Branco, Cinza, Amarelo"
+                  value={formData.cor}
+                  onChange={e => set('cor', e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

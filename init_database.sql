@@ -98,7 +98,8 @@ CREATE TABLE colaboradores (
   senha_login_maquina TEXT,
   senhas_sistemas JSONB DEFAULT '[]',
   foto_url TEXT,
-  observacoes TEXT
+  observacoes TEXT,
+  eh_comprador BOOLEAN DEFAULT FALSE
 );
 
 -- Adiciona a FK autorreferenciável de colaboradores
@@ -619,6 +620,8 @@ CREATE TABLE requisicao_compras (
   aprovador_email TEXT,
   
   item TEXT NOT NULL,
+  material TEXT,
+  cor TEXT,
   quantidade NUMERIC NOT NULL,
   centro_custo_codigo TEXT REFERENCES centros_custo(codigo) ON UPDATE CASCADE,
   centro_custo_nome TEXT,
@@ -631,13 +634,22 @@ CREATE TABLE requisicao_compras (
   urgencia TEXT DEFAULT 'Média' CHECK (urgencia IN ('Baixa','Média','Alta','Urgente')),
   fornecedor_sugerido TEXT,
   anexos JSONB DEFAULT '[]',
-  status TEXT DEFAULT 'Aguardando Aprovador' CHECK (status IN ('Aguardando Aprovador','Aguardando Diretor','Aprovada','Reprovada pelo Aprovador','Reprovada pelo Diretor')),
+  status TEXT DEFAULT 'Aguardando Aprovador' CHECK (status IN ('Aguardando Aprovador','Aguardando Diretor','Aguardando Cotação','Aguardando Aprovação Final','Aprovada','Reprovada pelo Aprovador','Reprovada pelo Diretor')),
   token_aprovacao TEXT,
   
   aprovador_comentario TEXT,
   aprovador_data TIMESTAMPTZ,
   diretor_comentario TEXT,
   diretor_data TIMESTAMPTZ,
+
+  cotacao_valor NUMERIC,
+  cotacao_fornecedor TEXT,
+  cotacao_anexos JSONB DEFAULT '[]',
+  cotacao_comentario TEXT,
+  cotacao_data TIMESTAMPTZ,
+  cotacao_comprador_id UUID REFERENCES colaboradores(id) ON DELETE SET NULL,
+  cotacao_comprador_nome TEXT,
+
   historico JSONB DEFAULT '[]'
 );
 

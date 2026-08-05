@@ -12,6 +12,8 @@ import { Pencil, Loader2, Paperclip, X, CheckCircle } from "lucide-react";
 export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }) {
   const [formData, setFormData] = useState({
     item: requisicao.item || "",
+    material: requisicao.material || "",
+    cor: requisicao.cor || "",
     quantidade: requisicao.quantidade || 1,
     centro_custo_codigo: requisicao.centro_custo_codigo || "",
     centro_custo_nome: requisicao.centro_custo_nome || "",
@@ -86,6 +88,17 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
             <div>
               <Label>Item / Produto <span className="text-red-500">*</span></Label>
               <Input required className="mt-1" placeholder="Ex: Notebook Dell Inspiron 15" value={formData.item} onChange={e => set('item', e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Material (opcional)</Label>
+                <Input className="mt-1" placeholder="Ex: Aço, Plástico, Alumínio, Madeira" value={formData.material} onChange={e => set('material', e.target.value)} />
+              </div>
+              <div>
+                <Label>Cor (opcional)</Label>
+                <Input className="mt-1" placeholder="Ex: Preto, Branco, Cinza" value={formData.cor} onChange={e => set('cor', e.target.value)} />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

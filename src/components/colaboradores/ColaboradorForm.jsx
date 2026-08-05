@@ -575,6 +575,27 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                   <p className="text-xs text-gray-500 italic">Nenhum aprovador vinculado. As compras deste colaborador requererão aprovação de admin.</p>
                 )}
               </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Switch
+                      id="eh_comprador"
+                      checked={formData.eh_comprador === true}
+                      onCheckedChange={v => set('eh_comprador', v)}
+                    />
+                    <label htmlFor="eh_comprador" className="text-sm font-bold cursor-pointer text-slate-900">
+                      Este colaborador é Comprador
+                    </label>
+                  </div>
+                  {formData.eh_comprador && (
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs">Comprador Habilitado</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600">
+                  Compradores têm acesso à aba de cotações pendentes no portal para cadastrar orçamentos, valores e fornecedores nas requisições liberadas pelo Diretor.
+                </p>
+              </div>
             </TabsContent>
 
             {/* ── 5. COMUNICADOS INTERNOS ── */}

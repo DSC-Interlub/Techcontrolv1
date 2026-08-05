@@ -1,5 +1,4 @@
 import { createSupabaseAdmin } from './_supabase.js';
-
 import { sendEmail as sendEmailUnified } from './_email.js';
 
 async function sendEmail(to, subject, html) {
@@ -12,10 +11,14 @@ export default async function handler(req, res) {
   try {
     const supabase = createSupabaseAdmin();
     const body = req.body || {};
-    const { action, requisicao_id, comentario, token, aprovador_email } = body;
+    const {
+      action, requisicao_id, comentario, token, aprovador_email,
+      cotacao_valor, cotacao_fornecedor, cotacao_anexos, cotacao_comentario,
+      comprador_id, comprador_nome
+    } = body;
     const origin = req.headers.referer || req.headers.origin || 'https://techcontrol.site';
 
-    // ── AÇÃO DO APROVADOR GESTOR ──────────────────────────────────────────────────
+    // ── AÇÃO DO APROVADOR GESTOR (1º nível) ──────────────────────────────────────
     if (action === 'aprovador_aprovar' || action === 'aprovador_reprovar') {
       if (!requisicao_id) return res.status(400).json({ error: 'requisicao_id obrigatório' });
 
@@ -65,7 +68,7 @@ export default async function handler(req, res) {
                 <h2 style="margin:0;">❌ Requisição Reprovada</h2>
               </div>
               <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
-              <p>Sua requisição de compra foi <strong>reprovada pelo responsável</strong>.</p>
+              <p>Sua requisição de compra foi <strong>reprovada pelo seu responsável</strong>.</p>
               <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
                 <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
                 <p><strong>Item:</strong> ${req_data.item}</p>
@@ -79,7 +82,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, action: 'reprovado' });
       }
 
-      // Aprovar: enviar para o diretor
+      // Aprovar: enviar para a 1ª aprovação do diretor (liberação para cotação)
       const { data: configs } = await supabase
         .from('configuracoes')
         .select('value')
@@ -89,7 +92,7 @@ export default async function handler(req, res) {
       const diretorEmail = configs?.[0]?.value || configs?.[0]?.valor || 'diretor.geral@interlub.com';
       if (!diretorEmail) return res.status(500).json({ error: 'E-mail do diretor não configurado' });
 
-      // Gera UUID para token de aprovação
+      // Gera UUID para token de aprovação do diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
 
       const { error: updError2 } = await supabase
@@ -102,7 +105,7 @@ export default async function handler(req, res) {
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'aprovacao_aprovador',
-            descricao: 'Aprovado pelo responsável. Aguardando aprovação do diretor.',
+            descricao: 'Aprovado pelo responsável. Aguardando 1ª aprovação do diretor (liberação para cotação).',
             usuario: req_data.aprovador_nome,
           }],
         })
@@ -117,41 +120,35 @@ export default async function handler(req, res) {
         ? `R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_maximo).toLocaleString('pt-BR')}`
         : req_data.valor_minimo ? `A partir de R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
 
-      const valorRangeUnit = req_data.valor_unitario_minimo && req_data.valor_unitario_maximo
-        ? `R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_unitario_maximo).toLocaleString('pt-BR')}`
-        : req_data.valor_unitario_minimo ? `A partir de R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
-
       await sendEmail(
         diretorEmail,
-        `🛒 Aprovação Necessária — Requisição ${req_data.numero_requisicao}`,
+        `🛒 Liberação para Cotação — Requisição ${req_data.numero_requisicao}`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
           <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-            <h2 style="margin:0;">🛒 Requisição de Compra — Aprovação do Diretor</h2>
+            <h2 style="margin:0;">🛒 Requisição de Compra — 1ª Aprovação do Diretor</h2>
           </div>
-          <p>Uma requisição de compra foi aprovada pelo responsável e precisa da sua aprovação.</p>
+          <p>Uma requisição foi aprovada pelo responsável e necessita da sua aprovação inicial para <strong>liberar a cotação pelo comprador</strong>.</p>
           <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
             <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
             <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
             <p><strong>Aprovador:</strong> ${req_data.aprovador_nome}</p>
             <p><strong>Item:</strong> ${req_data.item}</p>
+            ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
+            ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
             <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
             ${req_data.centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
-            ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
-            <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
+            <p><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
             <p><strong>Urgência:</strong> ${req_data.urgencia}</p>
             <p><strong>Justificativa:</strong> ${req_data.justificativa}</p>
-            ${req_data.fornecedor_sugerido ? `<p><strong>Fornecedor Sugerido:</strong> ${req_data.fornecedor_sugerido}</p>` : ''}
             ${comentario ? `<p><strong>Comentário do Aprovador:</strong> ${comentario}</p>` : ''}
-            ${req_data.anexos?.length > 0 ? `<p><strong>Anexos:</strong> ${req_data.anexos.map(a => `<a href="${a.file_url}">${a.file_name}</a>`).join(', ')}</p>` : ''}
           </div>
           <div style="margin:24px 0;text-align:center;">
-            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;margin-right:16px;">✅ APROVAR</a>
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;margin-right:16px;">✅ LIBERAR COTAÇÃO</a>
             <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">❌ REPROVAR</a>
           </div>
         </div>`
       );
 
-      // Notifica o requisitante
       if (req_data.colaborador_email) {
         await sendEmail(
           req_data.colaborador_email,
@@ -161,17 +158,115 @@ export default async function handler(req, res) {
               <h2 style="margin:0;">⏳ Requisição em Análise pelo Diretor</h2>
             </div>
             <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
-            <p>Sua requisição foi <strong>aprovada pelo seu responsável</strong> e agora aguarda a aprovação do diretor.</p>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-              <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
-              <p><strong>Item:</strong> ${req_data.item}</p>
-              ${comentario ? `<p><strong>Comentário do Aprovador:</strong> ${comentario}</p>` : ''}
-            </div>
+            <p>Sua requisição foi <strong>aprovada pelo seu responsável</strong> e aguarda autorização do diretor para cotação.</p>
           </div>`
         );
       }
 
-      return res.status(200).json({ success: true, action: 'enviado_diretor' });
+      return res.status(200).json({ success: true, action: 'enviado_diretor_1' });
+    }
+
+    // ── COTAÇÃO ENVIADA PELO COMPRADOR ───────────────────────────────────────────
+    if (action === 'comprador_enviar_cotacao') {
+      if (!requisicao_id) return res.status(400).json({ error: 'requisicao_id obrigatório' });
+      if (!cotacao_valor || !cotacao_fornecedor) {
+        return res.status(400).json({ error: 'Valor da cotação e fornecedor são obrigatórios' });
+      }
+
+      const { data: req_data, error: getError } = await supabase
+        .from('requisicao_compras')
+        .select('*')
+        .eq('id', requisicao_id)
+        .maybeSingle();
+
+      if (getError || !req_data) return res.status(404).json({ error: 'Requisição não encontrada' });
+      if (req_data.status !== 'Aguardando Cotação') {
+        return res.status(400).json({ error: 'Esta requisição não está aguardando cotação' });
+      }
+
+      const { data: configs } = await supabase
+        .from('configuracoes')
+        .select('value')
+        .eq('key', 'diretor_email')
+        .limit(1);
+
+      const diretorEmail = configs?.[0]?.value || configs?.[0]?.valor || 'diretor.geral@interlub.com';
+
+      // Novo token para a 2ª aprovação do diretor
+      const token_dir = crypto.randomUUID().replace(/-/g, '');
+
+      const { error: updError } = await supabase
+        .from('requisicao_compras')
+        .update({
+          status: 'Aguardando Aprovação Final',
+          cotacao_valor: Number(cotacao_valor),
+          cotacao_fornecedor,
+          cotacao_anexos: cotacao_anexos || [],
+          cotacao_comentario: cotacao_comentario || '',
+          cotacao_data: new Date().toISOString(),
+          cotacao_comprador_id: comprador_id || null,
+          cotacao_comprador_nome: comprador_nome || 'Comprador',
+          token_aprovacao: token_dir,
+          historico: [...(req_data.historico || []), {
+            data_hora: new Date().toISOString(),
+            tipo: 'cotacao_enviada',
+            descricao: `Cotação finalizada pelo comprador (${comprador_nome || 'Comprador'}). Valor: R$ ${Number(cotacao_valor).toLocaleString('pt-BR')} — Fornecedor: ${cotacao_fornecedor}. Aguardando aprovação final do diretor.`,
+            usuario: comprador_nome || 'Comprador',
+          }],
+        })
+        .eq('id', requisicao_id);
+
+      if (updError) throw updError;
+
+      const linkAprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
+      const linkReprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
+
+      const anexosHtml = cotacao_anexos?.length > 0
+        ? `<p><strong>Orçamentos/Anexos:</strong> ${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank">${a.file_name}</a>`).join(', ')}</p>`
+        : '';
+
+      await sendEmail(
+        diretorEmail,
+        `💰 Aprovação Final Necessária — Requisição ${req_data.numero_requisicao}`,
+        `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+          <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+            <h2 style="margin:0;">💰 Cotação Concluída — Aprovação Final do Diretor</h2>
+          </div>
+          <p>O comprador <strong>${comprador_nome || 'responsável'}</strong> inseriu o orçamento para a requisição <strong>${req_data.numero_requisicao}</strong> e solicita sua autorização final de compra.</p>
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+            <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
+            <p><strong>Item:</strong> ${req_data.item}</p>
+            ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
+            ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+            <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;" />
+            <p style="font-size:16px;color:#059669;"><strong>Valor da Cotação:</strong> R$ ${Number(cotacao_valor).toLocaleString('pt-BR')}</p>
+            <p><strong>Fornecedor Cotado:</strong> ${cotacao_fornecedor}</p>
+            ${cotacao_comentario ? `<p><strong>Comentário do Comprador:</strong> ${cotacao_comentario}</p>` : ''}
+            ${anexosHtml}
+          </div>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;margin-right:16px;">✅ APROVAR COMPRA</a>
+            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">❌ REPROVAR</a>
+          </div>
+        </div>`
+      );
+
+      if (req_data.colaborador_email) {
+        await sendEmail(
+          req_data.colaborador_email,
+          `⏳ Requisição ${req_data.numero_requisicao} — Cotação Concluída`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+            <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+              <h2 style="margin:0;">⏳ Cotação Realizada</h2>
+            </div>
+            <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+            <p>A cotação para sua requisição foi finalizada pelo setor de compras (Valor: <strong>R$ ${Number(cotacao_valor).toLocaleString('pt-BR')}</strong>) e enviada para autorização final do diretor.</p>
+          </div>`
+        );
+      }
+
+      return res.status(200).json({ success: true, action: 'cotacao_enviada' });
     }
 
     // ── SOLICITANTE EDITA E REENVIA ────────────────────────────────────────────────
@@ -187,7 +282,7 @@ export default async function handler(req, res) {
       if (!req_data) return res.status(404).json({ error: 'Requisição não encontrada' });
 
       const {
-        item, quantidade, centro_custo_codigo, centro_custo_nome,
+        item, material, cor, quantidade, centro_custo_codigo, centro_custo_nome,
         valor_unitario_minimo, valor_unitario_maximo,
         valor_minimo, valor_maximo,
         justificativa, urgencia, fornecedor_sugerido, anexos
@@ -196,7 +291,7 @@ export default async function handler(req, res) {
       const { error: editError } = await supabase
         .from('requisicao_compras')
         .update({
-          item, quantidade, centro_custo_codigo, centro_custo_nome,
+          item, material, cor, quantidade, centro_custo_codigo, centro_custo_nome,
           valor_unitario_minimo, valor_unitario_maximo,
           valor_minimo, valor_maximo,
           justificativa, urgencia, fornecedor_sugerido,
@@ -210,7 +305,7 @@ export default async function handler(req, res) {
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'edicao_reenvio',
-            descricao: 'Requisição editada e reenviada para aprovação com novos valores.',
+            descricao: 'Requisição editada e reenviada para aprovação do responsável.',
             usuario: req_data.colaborador_nome,
           }],
         })
@@ -218,46 +313,10 @@ export default async function handler(req, res) {
 
       if (editError) throw editError;
 
-      // E-mail para o aprovador
-      if (req_data.aprovador_email) {
-        const valorRangeTotal = valor_minimo && valor_maximo
-          ? `R$ ${Number(valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_maximo).toLocaleString('pt-BR')}`
-          : valor_minimo ? `A partir de R$ ${Number(valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
-        const valorRangeUnit = valor_unitario_minimo && valor_unitario_maximo
-          ? `R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_unitario_maximo).toLocaleString('pt-BR')}`
-          : valor_unitario_minimo ? `A partir de R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
-
-        await sendEmail(
-          req_data.aprovador_email,
-          `🔄 Requisição ${req_data.numero_requisicao} Editada e Reenviada`,
-          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-            <div style="background:#d97706;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-              <h2 style="margin:0;">🔄 Requisição Editada e Reenviada</h2>
-            </div>
-            <p>Olá, <strong>${req_data.aprovador_nome}</strong>!</p>
-            <p>O solicitante editou a requisição <strong>${req_data.numero_requisicao}</strong> e ela está novamente aguardando sua aprovação.</p>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-              <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
-              <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
-              <p><strong>Item:</strong> ${item}</p>
-              <p><strong>Quantidade:</strong> ${quantidade}</p>
-              ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
-              ${justificativa ? `<p><strong>Justificativa:</strong> ${justificativa}</p>` : ''}
-              ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
-              ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
-              <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
-            </div>
-            <a href="${origin}/portal-requisicoes" style="display:inline-block;background:#d97706;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
-              Acessar Portal para Aprovar
-            </a>
-          </div>`
-        );
-      }
-
       return res.status(200).json({ success: true, action: 'editada' });
     }
 
-    // ── AÇÃO DO DIRETOR VIA TOKEN ────────────────────────────────────────────────
+    // ── AÇÃO DO DIRETOR VIA TOKEN (Fase 1 ou Fase 2) ─────────────────────────────
     if (action === 'diretor_aprovar' || action === 'diretor_reprovar') {
       if (!token) return res.status(400).json({ error: 'Token inválido' });
 
@@ -269,92 +328,192 @@ export default async function handler(req, res) {
 
       const req_data = listData?.[0];
       if (!req_data) return res.status(404).json({ error: 'Token não encontrado ou já utilizado' });
-      if (req_data.status !== 'Aguardando Diretor') return res.status(400).json({ error: 'Esta requisição já foi processada' });
 
-      if (action === 'diretor_aprovar') {
-        const { error: finishError } = await supabase
+      // ── FASE 1: DIRETO APROVA 1ª VEZ (LIBERA COTAÇÃO) ──
+      if (req_data.status === 'Aguardando Diretor') {
+        if (action === 'diretor_aprovar') {
+          const { error: f1Error } = await supabase
+            .from('requisicao_compras')
+            .update({
+              status: 'Aguardando Cotação',
+              diretor_comentario: comentario || '',
+              diretor_data: new Date().toISOString(),
+              token_aprovacao: '',
+              historico: [...(req_data.historico || []), {
+                data_hora: new Date().toISOString(),
+                tipo: 'aprovacao_diretor_1',
+                descricao: 'Aprovado pelo diretor (1ª fase). Liberado para cotação pelo comprador.',
+                usuario: 'Diretor',
+              }],
+            })
+            .eq('id', req_data.id);
+
+          if (f1Error) throw f1Error;
+
+          // Busca todos os colaboradores que são compradores
+          const { data: compradores } = await supabase
+            .from('colaboradores')
+            .select('email, nome_completo')
+            .eq('eh_comprador', true);
+
+          const emailsCompradores = (compradores || []).map(c => c.email).filter(Boolean);
+
+          for (const buyerEmail of emailsCompradores) {
+            await sendEmail(
+              buyerEmail,
+              `🛒 Nova Requisição Liberada para Cotação — ${req_data.numero_requisicao}`,
+              `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+                <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                  <h2 style="margin:0;">🛒 Requisição Liberada para Cotação</h2>
+                </div>
+                <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi autorizada pelo diretor e aguarda elaboração de cotação.</p>
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                  <p><strong>Item:</strong> ${req_data.item}</p>
+                  ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
+                  ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+                  <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+                  <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
+                </div>
+                <a href="${origin}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
+              </div>`
+            );
+          }
+
+          if (req_data.colaborador_email) {
+            await sendEmail(
+              req_data.colaborador_email,
+              `⏳ Requisição ${req_data.numero_requisicao} — Liberada para Cotação`,
+              `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+                <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                  <h2 style="margin:0;">⏳ Em Cotação com Compras</h2>
+                </div>
+                <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+                <p>Sua requisição foi autorizada pelo diretor e está sendo cotada pelo setor de compras.</p>
+              </div>`
+            );
+          }
+
+          return res.status(200).json({ success: true, action: 'liberado_cotacao' });
+        }
+
+        // Diretor reprova na 1ª fase
+        const { error: rejectError } = await supabase
           .from('requisicao_compras')
           .update({
-            status: 'Aprovada',
+            status: 'Reprovada pelo Diretor',
             diretor_comentario: comentario || '',
             diretor_data: new Date().toISOString(),
             token_aprovacao: '',
             historico: [...(req_data.historico || []), {
               data_hora: new Date().toISOString(),
-              tipo: 'aprovacao_diretor',
-              descricao: 'Aprovado pelo diretor.',
+              tipo: 'reprovacao_diretor_1',
+              descricao: `Reprovado pelo diretor na 1ª fase. ${comentario ? 'Motivo: ' + comentario : ''}`,
               usuario: 'Diretor',
             }],
           })
           .eq('id', req_data.id);
 
-        if (finishError) throw finishError;
+        if (rejectError) throw rejectError;
 
         const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
         for (const targetEmail of emails) {
-          const nome = targetEmail === req_data.colaborador_email ? req_data.colaborador_nome : req_data.aprovador_nome;
           await sendEmail(
             targetEmail,
-            `✅ Requisição ${req_data.numero_requisicao} Aprovada pelo Diretor`,
+            `❌ Requisição ${req_data.numero_requisicao} Reprovada pelo Diretor`,
             `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-                <h2 style="margin:0;">✅ Requisição Aprovada!</h2>
+              <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">❌ Requisição Reprovada</h2>
               </div>
-              <p>Olá, <strong>${nome}</strong>!</p>
-              <p>A requisição de compra foi <strong>aprovada pelo diretor</strong>.</p>
-              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-                <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
-                <p><strong>Item:</strong> ${req_data.item}</p>
-                <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
-                ${comentario ? `<p><strong>Observação do Diretor:</strong> ${comentario}</p>` : ''}
-              </div>
+              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi reprovada pelo diretor.</p>
+              <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
             </div>`
           );
         }
-        return res.status(200).json({ success: true, action: 'aprovado' });
+        return res.status(200).json({ success: true, action: 'reprovado' });
       }
 
-      // Diretor reprova
-      const { error: rejectError } = await supabase
-        .from('requisicao_compras')
-        .update({
-          status: 'Reprovada pelo Diretor',
-          diretor_comentario: comentario || '',
-          diretor_data: new Date().toISOString(),
-          token_aprovacao: '',
-          historico: [...(req_data.historico || []), {
-            data_hora: new Date().toISOString(),
-            tipo: 'reprovacao_diretor',
-            descricao: `Reprovado pelo diretor. ${comentario ? 'Motivo: ' + comentario : ''}`,
-            usuario: 'Diretor',
-          }],
-        })
-        .eq('id', req_data.id);
+      // ── FASE 2: DIRETO APROVA FINAL ──
+      if (req_data.status === 'Aguardando Aprovação Final') {
+        if (action === 'diretor_aprovar') {
+          const { error: finishError } = await supabase
+            .from('requisicao_compras')
+            .update({
+              status: 'Aprovada',
+              diretor_comentario: comentario || '',
+              diretor_data: new Date().toISOString(),
+              token_aprovacao: '',
+              historico: [...(req_data.historico || []), {
+                data_hora: new Date().toISOString(),
+                tipo: 'aprovacao_diretor_final',
+                descricao: 'Aprovado definitivamente pelo diretor. Compra autorizada.',
+                usuario: 'Diretor',
+              }],
+            })
+            .eq('id', req_data.id);
 
-      if (rejectError) throw rejectError;
+          if (finishError) throw finishError;
 
-      const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
-      for (const targetEmail of emails) {
-        const nome = targetEmail === req_data.colaborador_email ? req_data.colaborador_nome : req_data.aprovador_nome;
-        await sendEmail(
-          targetEmail,
-          `❌ Requisição ${req_data.numero_requisicao} Reprovada pelo Diretor`,
-          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-            <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-              <h2 style="margin:0;">❌ Requisição Reprovada pelo Diretor</h2>
-            </div>
-            <p>Olá, <strong>${nome}</strong>!</p>
-            <p>A requisição de compra foi <strong>reprovada pelo diretor</strong>.</p>
-            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-              <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
-              <p><strong>Item:</strong> ${req_data.item}</p>
-              <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
-              <p><strong>Devolutiva:</strong> ${comentario || 'Sem comentário adicional.'}</p>
-            </div>
-          </div>`
-        );
+          const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
+          for (const targetEmail of emails) {
+            const nome = targetEmail === req_data.colaborador_email ? req_data.colaborador_nome : req_data.aprovador_nome;
+            await sendEmail(
+              targetEmail,
+              `✅ Requisição ${req_data.numero_requisicao} Aprovada Definitivamente`,
+              `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+                <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                  <h2 style="margin:0;">✅ Requisição Totalmente Aprovada!</h2>
+                </div>
+                <p>Olá, <strong>${nome}</strong>!</p>
+                <p>A requisição <strong>${req_data.numero_requisicao}</strong> teve a cotação aprovada definitivamente pelo diretor.</p>
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                  <p><strong>Item:</strong> ${req_data.item}</p>
+                  <p><strong>Valor Cotado:</strong> R$ ${Number(req_data.cotacao_valor || 0).toLocaleString('pt-BR')}</p>
+                  <p><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
+                  ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
+                </div>
+              </div>`
+            );
+          }
+          return res.status(200).json({ success: true, action: 'aprovado' });
+        }
+
+        // Diretor reprova na 2ª fase
+        const { error: rejectError } = await supabase
+          .from('requisicao_compras')
+          .update({
+            status: 'Reprovada pelo Diretor',
+            diretor_comentario: comentario || '',
+            diretor_data: new Date().toISOString(),
+            token_aprovacao: '',
+            historico: [...(req_data.historico || []), {
+              data_hora: new Date().toISOString(),
+              tipo: 'reprovacao_diretor_final',
+              descricao: `Reprovada a cotação pelo diretor. ${comentario ? 'Motivo: ' + comentario : ''}`,
+              usuario: 'Diretor',
+            }],
+          })
+          .eq('id', req_data.id);
+
+        if (rejectError) throw rejectError;
+
+        const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
+        for (const targetEmail of emails) {
+          await sendEmail(
+            targetEmail,
+            `❌ Requisição ${req_data.numero_requisicao} Reprovada na Fase Final`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">❌ Requisição Reprovada</h2>
+              </div>
+              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi reprovada na avaliação da cotação pelo diretor.</p>
+              <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
+            </div>`
+          );
+        }
+        return res.status(200).json({ success: true, action: 'reprovado' });
       }
-      return res.status(200).json({ success: true, action: 'reprovado' });
+
+      return res.status(400).json({ error: 'Esta requisição já foi processada' });
     }
 
     return res.status(400).json({ error: 'Ação inválida' });
