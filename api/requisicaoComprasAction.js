@@ -85,11 +85,11 @@ export default async function handler(req, res) {
       // Aprovar: enviar para a 1ª aprovação do diretor (liberação para cotação)
       const { data: configs } = await supabase
         .from('configuracoes')
-        .select('value')
-        .eq('key', 'diretor_email')
+        .select('*')
+        .or('chave.eq.diretor_email,key.eq.diretor_email')
         .limit(1);
 
-      const diretorEmail = configs?.[0]?.value || configs?.[0]?.valor || 'diretor.geral@interlub.com';
+      const diretorEmail = configs?.[0]?.valor || configs?.[0]?.value || 'diretor.geral@interlub.com';
       if (!diretorEmail) return res.status(500).json({ error: 'E-mail do diretor não configurado' });
 
       // Gera UUID para token de aprovação do diretor
@@ -186,11 +186,11 @@ export default async function handler(req, res) {
 
       const { data: configs } = await supabase
         .from('configuracoes')
-        .select('value')
-        .eq('key', 'diretor_email')
+        .select('*')
+        .or('chave.eq.diretor_email,key.eq.diretor_email')
         .limit(1);
 
-      const diretorEmail = configs?.[0]?.value || configs?.[0]?.valor || 'diretor.geral@interlub.com';
+      const diretorEmail = configs?.[0]?.valor || configs?.[0]?.value || 'diretor.geral@interlub.com';
 
       // Novo token para a 2ª aprovação do diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
