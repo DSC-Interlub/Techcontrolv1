@@ -66,6 +66,9 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
         throw new Error('Você não possui um responsável/aprovador vinculado. Solicite ao administrador que configure seu cadastro.');
       }
 
+      const finalAprovadorEmail = aprovador?.email || colaborador.responsavel_email || '';
+      const finalAprovadorNome = aprovador?.nome_completo || colaborador.responsavel_nome || '';
+
       const requisicao = await base44.entities.RequisicaoCompras.create({
         ...data,
         numero_requisicao: numeroRequisicao,
@@ -74,8 +77,8 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
         colaborador_email: colaborador.email,
         colaborador_area: colaborador.area,
         aprovador_id: colaborador.responsavel_id,
-        aprovador_nome: colaborador.responsavel_nome || aprovador?.nome_completo || '',
-        aprovador_email: colaborador.responsavel_email || aprovador?.email || '',
+        aprovador_nome: finalAprovadorNome,
+        aprovador_email: finalAprovadorEmail,
         status: 'Aguardando Aprovador',
         anexos: anexos,
         historico: [{
@@ -87,12 +90,12 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
       });
 
       // Notifica aprovador por e-mail
-      const aprovadorEmail = colaborador.responsavel_email || aprovador?.email;
-      if (aprovadorEmail) {
+      if (finalAprovadorEmail) {
         base44.functions.invoke('notificarAprovadorRequisicao', {
-          aprovador_email: aprovadorEmail,
-          aprovador_nome: colaborador.responsavel_nome || aprovador?.nome_completo || '',
+          aprovador_email: finalAprovadorEmail,
+          aprovador_nome: finalAprovadorNome,
           requisicao_id: requisicao.id,
+          numero_requisicao: numeroRequisicao,
           numero: numeroRequisicao,
           colaborador_nome: colaborador.nome_completo,
           colaborador_email: colaborador.email,
@@ -104,7 +107,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           valor_unitario_minimo: data.valor_unitario_minimo,
           valor_unitario_maximo: data.valor_unitario_maximo,
           centro_custo_nome: data.centro_custo_nome,
-        }).catch(() => {});
+        }).catch((err) => { console.error('Erro ao notificar aprovador:', err); });
       }
 
       return numeroRequisicao;

@@ -60,24 +60,34 @@ export default function PortalRequisicoes() {
     enabled: !!colaborador,
   });
 
-  if (loading || !colaborador) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
-  }
+  const { data: todosColaboradores = [] } = useQuery({
+    queryKey: ['portal_todos_colaboradores'],
+    queryFn: () => base44.entities.Colaboradores.list(),
+    enabled: !!colaborador,
+  });
 
   const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
 
-  // isAprovador: lê do campo do próprio colaborador
-  const isAprovador = !!(colaboradorFull?.is_aprovador || colaboradorFull?.cargo?.toLowerCase().includes('aprovador'));
+  // É aprovador se é gestor de alguém, se tem requisições onde é aprovador_id ou se possui cargo/flag de aprovador/gestão
+  const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
+  const temReqsComoAprovador = requisicoes.some(r => r.aprovador_id === colaboradorFull?.id);
 
-  // isComprador: lê do campo eh_comprador do colaborador ou cargo de compras
+  const isAprovador = isGestorDeAlguem || temReqsComoAprovador || !!(
+    colaboradorFull?.is_aprovador ||
+    colaboradorFull?.cargo?.toLowerCase().includes('aprovador') ||
+    colaboradorFull?.cargo?.toLowerCase().includes('gerente') ||
+    colaboradorFull?.cargo?.toLowerCase().includes('coordenador') ||
+    colaboradorFull?.cargo?.toLowerCase().includes('diretor') ||
+    colaboradorFull?.cargo?.toLowerCase().includes('supervisor')
+  );
+
+  // isComprador: lê do campo eh_comprador do colaborador ou área/cargo de compras
   const isComprador = !!(colaboradorFull?.eh_comprador || colaboradorFull?.area?.toLowerCase().includes('compras'));
 
-  // Se colaborador é aprovador, mostra as pendentes de aprovação dele
-  const requisicoesPendentesAprovador = isAprovador
-    ? requisicoes.filter(r =>
-        r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
-      )
-    : [];
+  // Requisições pendentes de aprovação atribuídas a este usuário
+  const requisicoesPendentesAprovador = requisicoes.filter(r =>
+    r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
+  );
 
   // Se colaborador é comprador, mostra as liberadas para cotação
   const requisicoesPendentesCotacao = isComprador
