@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { supabase } from "@/lib/supabase";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShoppingCart, Loader2, Paperclip, X, CheckCircle } from "lucide-react";
 
 export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel }) {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     item: "",
     material: "",
