@@ -80,6 +80,12 @@ export default function PortalRequisicoes() {
   }
 
   const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
+  const reqsAprovador = isAprovador ? requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id) : [];
+
+  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador
+  const todasRelacionadas = Array.from(
+    new Map([...minhasRequisicoes, ...reqsAprovador].map(r => [r.id, r])).values()
+  );
 
   // É aprovador se é gestor de alguém, se tem requisições onde é aprovador_id ou se possui cargo/flag de aprovador/gestão
   const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
@@ -107,11 +113,11 @@ export default function PortalRequisicoes() {
     ? requisicoes.filter(r => r.status === 'Aguardando Cotação')
     : [];
 
-  const pendentes = minhasRequisicoes.filter(r =>
+  const pendentes = todasRelacionadas.filter(r =>
     ['Aguardando Aprovador', 'Aguardando Diretor', 'Aguardando Cotação', 'Aguardando Aprovação Final'].includes(r.status)
   );
-  const aprovadas = minhasRequisicoes.filter(r => r.status === 'Aprovada');
-  const reprovadas = minhasRequisicoes.filter(r => r.status?.startsWith('Reprovada'));
+  const aprovadas = todasRelacionadas.filter(r => r.status === 'Aprovada');
+  const reprovadas = todasRelacionadas.filter(r => r.status?.startsWith('Reprovada'));
 
   // Lista filtrada para a visão completa do comprador
   const requisicoesCompradorFiltradas = requisicoes.filter(r => {
