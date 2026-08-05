@@ -76,25 +76,38 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       const newId = variables.data.responsavel_id;
       if (oldId !== newId) {
         try {
-          const pendentes = await base44.entities.RequisicaoCompras.filter({
+          const todasDoColab = await base44.entities.RequisicaoCompras.filter({
             colaborador_id: variables.id,
-            status: 'Aguardando Aprovador',
           });
-          if (pendentes.length > 0) {
+          if (todasDoColab.length > 0) {
+            const oldNome = colaborador?.responsavel_nome || 'Anterior';
+            const newNome = variables.data.responsavel_nome || 'Novo Aprovador';
+            const agora = new Date().toISOString();
+
             await base44.entities.RequisicaoCompras.bulkUpdate(
-              pendentes.map(r => ({
+              todasDoColab.map(r => ({
                 id: r.id,
                 aprovador_id: variables.data.responsavel_id || '',
                 aprovador_nome: variables.data.responsavel_nome || '',
                 aprovador_email: variables.data.responsavel_email || '',
+                historico: [
+                  ...(r.historico || []),
+                  {
+                    data_hora: agora,
+                    tipo: 'troca_aprovador',
+                    descricao: `Aprovador do colaborador alterado de "${oldNome}" para "${newNome}".`,
+                    usuario: 'Administrador',
+                  }
+                ]
               }))
             );
           }
         } catch (e) {
-          console.error('Erro ao atualizar requisições pendentes:', e);
+          console.error('Erro ao migrar requisições para o novo aprovador:', e);
         }
         queryClient.invalidateQueries({ queryKey: ['admin_requisicoes'] });
         queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+        queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
       }
       onClose();
     },

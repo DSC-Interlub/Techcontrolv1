@@ -113,7 +113,11 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
       return numeroRequisicao;
     },
     onSuccess: (numero) => {
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_requisicoes'] });
       setSubmitted(numero);
+      if (onSuccess) onSuccess();
     },
   });
 

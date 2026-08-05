@@ -4,9 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag } from "lucide-react";
+import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag, Search, ListFilter } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import NovaRequisicaoForm from "../components/requisicoes/NovaRequisicaoForm";
@@ -40,6 +42,10 @@ export default function PortalRequisicoes() {
   const [view, setView] = useState("lista"); // "lista" | "nova"
   const [selectedReq, setSelectedReq] = useState(null);
 
+  // Filtros da visão geral do comprador
+  const [buscaComprador, setBuscaComprador] = useState("");
+  const [filtroStatusComprador, setFiltroStatusComprador] = useState("todos");
+
   useEffect(() => {
     if (!loading) requireAuth();
   }, [loading]);
@@ -54,10 +60,13 @@ export default function PortalRequisicoes() {
     enabled: !!colaborador?.email,
   });
 
+  // Polling automático a cada 3s para eliminar delay de exibição
   const { data: requisicoes = [], isLoading } = useQuery({
     queryKey: ['portal_requisicoes', colaborador?.id],
     queryFn: () => base44.entities.RequisicaoCompras.list('-created_date'),
     enabled: !!colaborador,
+    refetchInterval: 3000,
+    staleTime: 0,
   });
 
   const { data: todosColaboradores = [] } = useQuery({
@@ -65,6 +74,10 @@ export default function PortalRequisicoes() {
     queryFn: () => base44.entities.Colaboradores.list(),
     enabled: !!colaborador,
   });
+
+  if (loading || !colaborador) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+  }
 
   const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
 
@@ -100,8 +113,20 @@ export default function PortalRequisicoes() {
   const aprovadas = minhasRequisicoes.filter(r => r.status === 'Aprovada');
   const reprovadas = minhasRequisicoes.filter(r => r.status?.startsWith('Reprovada'));
 
-  const numTabs = 3 + (isAprovador ? 1 : 0) + (isComprador ? 1 : 0);
-  const gridColsClass = numTabs === 5 ? "grid-cols-5" : numTabs === 4 ? "grid-cols-4" : "grid-cols-3";
+  // Lista filtrada para a visão completa do comprador
+  const requisicoesCompradorFiltradas = requisicoes.filter(r => {
+    if (filtroStatusComprador !== "todos" && r.status !== filtroStatusComprador) return false;
+    if (buscaComprador.trim()) {
+      const q = buscaComprador.toLowerCase();
+      const matchItem = r.item?.toLowerCase().includes(q);
+      const matchNum = r.numero_requisicao?.toLowerCase().includes(q);
+      const matchSolic = r.colaborador_nome?.toLowerCase().includes(q);
+      const matchArea = r.colaborador_area?.toLowerCase().includes(q);
+      const matchForn = r.cotacao_fornecedor?.toLowerCase().includes(q);
+      return matchItem || matchNum || matchSolic || matchArea || matchForn;
+    }
+    return true;
+  });
 
   if (view === "nova") {
     return (
@@ -115,6 +140,7 @@ export default function PortalRequisicoes() {
               colaborador={colaboradorFull || colaborador}
               onSuccess={() => {
                 queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+                queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
                 setView("lista");
               }}
               onCancel={() => setView("lista")}
@@ -128,7 +154,7 @@ export default function PortalRequisicoes() {
   return (
     <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
       <div className="p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -136,7 +162,7 @@ export default function PortalRequisicoes() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Requisições de Compra</h1>
-                <p className="text-muted-foreground mt-1">Solicite e acompanhe suas requisições</p>
+                <p className="text-muted-foreground mt-1">Solicite, acompanhe e gerencie as requisições da empresa</p>
               </div>
             </div>
             <Button onClick={() => setView("nova")} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
@@ -176,27 +202,34 @@ export default function PortalRequisicoes() {
           )}
 
           <Tabs defaultValue="minhas">
-            <TabsList className={`grid w-full mb-4 ${gridColsClass}`}>
-              <TabsTrigger value="minhas" className="text-xs">Minhas ({minhasRequisicoes.length})</TabsTrigger>
-              <TabsTrigger value="pendentes" className="text-xs">Em Andamento ({pendentes.length})</TabsTrigger>
-              <TabsTrigger value="historico" className="text-xs">Histórico ({aprovadas.length + reprovadas.length})</TabsTrigger>
-              {isAprovador && (
-                <TabsTrigger value="aprovador" className="text-xs relative flex items-center gap-1">
-                  <UserCheck className="w-3 h-3" />Aprovador
-                  {requisicoesPendentesAprovador.length > 0 && (
-                    <span className="ml-1 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">{requisicoesPendentesAprovador.length}</span>
-                  )}
-                </TabsTrigger>
-              )}
-              {isComprador && (
-                <TabsTrigger value="cotacoes" className="text-xs relative flex items-center gap-1">
-                  <ShoppingBag className="w-3 h-3" />Cotações
-                  {requisicoesPendentesCotacao.length > 0 && (
-                    <span className="ml-1 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{requisicoesPendentesCotacao.length}</span>
-                  )}
-                </TabsTrigger>
-              )}
-            </TabsList>
+            <div className="overflow-x-auto mb-4">
+              <TabsList className="flex w-max min-w-full gap-1 p-1 bg-muted rounded-lg">
+                <TabsTrigger value="minhas" className="text-xs px-3 py-1.5">Minhas ({minhasRequisicoes.length})</TabsTrigger>
+                <TabsTrigger value="pendentes" className="text-xs px-3 py-1.5">Em Andamento ({pendentes.length})</TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs px-3 py-1.5">Histórico ({aprovadas.length + reprovadas.length})</TabsTrigger>
+                {isAprovador && (
+                  <TabsTrigger value="aprovador" className="text-xs px-3 py-1.5 relative flex items-center gap-1">
+                    <UserCheck className="w-3.5 h-3.5" />Painel Aprovador
+                    {requisicoesPendentesAprovador.length > 0 && (
+                      <span className="ml-1 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">{requisicoesPendentesAprovador.length}</span>
+                    )}
+                  </TabsTrigger>
+                )}
+                {isComprador && (
+                  <TabsTrigger value="cotacoes" className="text-xs px-3 py-1.5 relative flex items-center gap-1">
+                    <ShoppingBag className="w-3.5 h-3.5 text-blue-600" />Cotações Pendentes
+                    {requisicoesPendentesCotacao.length > 0 && (
+                      <span className="ml-1 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{requisicoesPendentesCotacao.length}</span>
+                    )}
+                  </TabsTrigger>
+                )}
+                {isComprador && (
+                  <TabsTrigger value="todas_comprador" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-emerald-700">
+                    <ShoppingCart className="w-3.5 h-3.5" />Todas as Requisições ({requisicoes.length})
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             <TabsContent value="minhas">
               <RequisicaoLista lista={minhasRequisicoes} isLoading={isLoading} onSelect={setSelectedReq} empty="Você ainda não abriu requisições." />
@@ -222,6 +255,48 @@ export default function PortalRequisicoes() {
                 />
               </TabsContent>
             )}
+            {isComprador && (
+              <TabsContent value="todas_comprador">
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3 bg-slate-50 p-4 rounded-lg border">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por item, número, solicitante, área..."
+                        className="pl-9 text-sm"
+                        value={buscaComprador}
+                        onChange={e => setBuscaComprador(e.target.value)}
+                      />
+                    </div>
+                    <div className="w-full sm:w-64">
+                      <Select value={filtroStatusComprador} onValueChange={setFiltroStatusComprador}>
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Filtrar por Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos os Status</SelectItem>
+                          <SelectItem value="Aguardando Aprovador">Aguardando Aprovador</SelectItem>
+                          <SelectItem value="Aguardando Diretor">Aguardando Diretor</SelectItem>
+                          <SelectItem value="Aguardando Cotação">Aguardando Cotação</SelectItem>
+                          <SelectItem value="Aguardando Aprovação Final">Aguardando Aprovação Final</SelectItem>
+                          <SelectItem value="Aprovada">Aprovada</SelectItem>
+                          <SelectItem value="Reprovada pelo Aprovador">Reprovada pelo Aprovador</SelectItem>
+                          <SelectItem value="Reprovada pelo Diretor">Reprovada pelo Diretor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <RequisicaoLista
+                    lista={requisicoesCompradorFiltradas}
+                    isLoading={isLoading}
+                    onSelect={setSelectedReq}
+                    empty="Nenhuma requisição encontrada com os filtros selecionados."
+                    exibirSolicitante={true}
+                  />
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
@@ -238,6 +313,7 @@ export default function PortalRequisicoes() {
               isAdmin={false}
               onAcao={() => {
                 queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+                queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
                 setSelectedReq(null);
               }}
             />
@@ -248,7 +324,7 @@ export default function PortalRequisicoes() {
   );
 }
 
-function RequisicaoLista({ lista, isLoading, onSelect, empty }) {
+function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante = false }) {
   if (isLoading) return <p className="text-center py-8 text-muted-foreground">Carregando...</p>;
   if (!lista.length) return <p className="text-center py-8 text-muted-foreground">{empty}</p>;
 
@@ -266,6 +342,7 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty }) {
             </div>
             <p className="font-medium text-foreground truncate">{r.item}</p>
             <p className="text-xs text-muted-foreground">
+              {exibirSolicitante ? `${r.colaborador_nome} (${r.colaborador_area}) · ` : ""}
               Qtd: {r.quantidade}
               {r.material ? ` · Material: ${r.material}` : ""}
               {r.cor ? ` · Cor: ${r.cor}` : ""}
