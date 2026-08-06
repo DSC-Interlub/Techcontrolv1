@@ -5,25 +5,7 @@ async function sendEmail(to, subject, html) {
   return sendEmailUnified({ to, subject, html });
 }
 
-function getOrigin(req) {
-  const siteUrl = process.env.SITE_URL || process.env.PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-  if (siteUrl) {
-    return siteUrl.replace(/\/+$/, '');
-  }
-  const referer = req?.headers?.referer;
-  if (referer) {
-    try {
-      return new URL(referer).origin;
-    } catch (e) {}
-  }
-  const originHeader = req?.headers?.origin;
-  if (originHeader) {
-    try {
-      return new URL(originHeader).origin;
-    } catch (e) {}
-  }
-  return 'https://techcontrol.site';
-}
+const SITE_URL = 'https://techcontrol.site';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -36,7 +18,6 @@ export default async function handler(req, res) {
       cotacao_valor, cotacao_fornecedor, cotacao_anexos, cotacao_comentario,
       comprador_id, comprador_nome
     } = body;
-    const origin = getOrigin(req);
 
     // ── AÇÃO DO APROVADOR GESTOR (1º nível) ──────────────────────────────────────
     if (action === 'aprovador_aprovar' || action === 'aprovador_reprovar') {
@@ -138,8 +119,8 @@ export default async function handler(req, res) {
 
       if (updError2) throw updError2;
 
-      const linkAprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
-      const linkReprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
+      const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
+      const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
       const valorRangeTotal = req_data.valor_minimo && req_data.valor_maximo
         ? `R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_maximo).toLocaleString('pt-BR')}`
@@ -258,8 +239,8 @@ export default async function handler(req, res) {
 
       if (updError) throw updError;
 
-      const linkAprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
-      const linkReprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
+      const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
+      const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
       const anexosHtml = cotacao_anexos?.length > 0
         ? `<p style="margin:4px 0;"><strong>Orçamentos/Anexos:</strong> ${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank" style="color:#059669;font-weight:bold;">${a.file_name}</a>`).join(', ')}</p>`
@@ -432,7 +413,7 @@ export default async function handler(req, res) {
                   <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
                   <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
                 </div>
-                <a href="${origin}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
+                <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
               </div>`
             );
           }

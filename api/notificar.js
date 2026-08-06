@@ -2,6 +2,7 @@ import { createSupabaseAdmin } from './_supabase.js';
 import { sendEmail } from './_email.js';
 
 const ADM_EMAIL = 'adm.sp1@interlub.com';
+const SITE_URL = 'https://techcontrol.site';
 const PORTAL_URL = 'https://techcontrol.site/portal-login';
 
 // ── TEMPLATES DE TICKET (CHAMADOS) ─────────────────────────────────────────────
@@ -58,8 +59,6 @@ export default async function handler(req, res) {
     if (!type || !data) {
       return res.status(400).json({ error: 'Parâmetros "type" e "data" são obrigatórios.' });
     }
-
-    const origin = req.headers.referer || req.headers.origin || 'https://techcontrol.site';
 
     // ─────────────────────────────────────────────────────────────────────────────
     // 1. ABERTURA DE TICKET (CREATED)
@@ -189,7 +188,7 @@ export default async function handler(req, res) {
             ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}
             <p><strong>Valor Total:</strong> ${valorRangeTotal}</p>
           </div>
-          <a href="${origin}/portal-requisicoes" style="display:inline-block;background:#059669;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#059669;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
             Acessar Portal para Aprovar
           </a>
         </div>
@@ -212,7 +211,7 @@ export default async function handler(req, res) {
             <p><strong>Responsável:</strong> ${aprovador_nome}</p>
             <p><strong>Status:</strong> Aguardando Aprovador</p>
           </div>
-          <a href="${origin}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+          <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
             Acompanhar Requisição
           </a>
         </div>
