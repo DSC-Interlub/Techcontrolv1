@@ -7,6 +7,51 @@ async function sendEmail(to, subject, html) {
 
 const SITE_URL = 'https://techcontrol.site';
 
+// Helper para agregar TODOS os anexos de uma requisição de qualquer fonte
+function getTodosAnexosConsolidados(req_data, novosAnexos = []) {
+  const lista = [
+    ...(req_data?.anexos || []),
+    ...(req_data?.cotacao_anexos || []),
+    ...(novosAnexos || [])
+  ];
+  if (Array.isArray(req_data?.historico)) {
+    req_data.historico.forEach(h => {
+      if (Array.isArray(h?.anexos)) {
+        lista.push(...h.anexos);
+      }
+    });
+  }
+  const map = new Map();
+  lista.forEach(item => {
+    if (item && item.file_url && !map.has(item.file_url)) {
+      map.set(item.file_url, {
+        file_url: item.file_url,
+        file_name: item.file_name || item.name || 'Documento Anexo',
+        file_type: item.file_type || 'application/octet-stream'
+      });
+    }
+  });
+  return Array.from(map.values());
+}
+
+// Helper para gerar o bloco HTML com TODOS os anexos para e-mails
+function buildAnexosHtml(anexosList, titulo = '📎 Anexos e Documentos Vinculados:') {
+  if (!anexosList || anexosList.length === 0) return '';
+  
+  const linksHtml = anexosList.map(a => {
+    const nome = a.file_name || 'Documento Anexo';
+    const url = a.file_url || '#';
+    return `<a href="${url}" target="_blank" style="display:inline-block;margin-right:8px;margin-bottom:8px;background:#ffffff;padding:8px 14px;border-radius:6px;border:1px solid #cbd5e1;color:#2563eb;font-weight:bold;text-decoration:none;font-size:13px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">📄 ${nome}</a>`;
+  }).join('');
+
+  return `
+    <div style="margin-top:16px;padding:16px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;">
+      <p style="margin:0 0 10px 0;font-size:13px;color:#334155;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">${titulo}</p>
+      <div>${linksHtml}</div>
+    </div>
+  `;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -41,6 +86,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Esta requisição não está aguardando aprovador' });
       }
 
+      const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, anexos);
+
       // Reprovar pelo aprovador
       if (action === 'aprovador_reprovar') {
         const { error: updError } = await supabase
@@ -49,6 +96,7 @@ export default async function handler(req, res) {
             status: 'Reprovada pelo Aprovador',
             aprovador_comentario: comentario || '',
             aprovador_data: new Date().toISOString(),
+            anexos: todosAnexosConsolidados,
             historico: [...(req_data.historico || []), {
               data_hora: new Date().toISOString(),
               tipo: 'reprovacao_aprovador',
@@ -77,7 +125,8 @@ export default async function handler(req, res) {
                 <p><strong>Item:</strong> ${req_data.item}</p>
                 <p><strong>Devolutiva:</strong> ${comentario || 'Sem comentário adicional.'}</p>
               </div>
-              <p style="color:#64748b;font-size:14px;">Em caso de dúvidas, entre em contato com seu gestor.</p>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
+              <p style="color:#64748b;font-size:14px;margin-top:20px;">Em caso de dúvidas, entre em contato com seu gestor.</p>
             </div>`
           );
         }
@@ -110,10 +159,11 @@ export default async function handler(req, res) {
           aprovador_comentario: comentario || '',
           aprovador_data: new Date().toISOString(),
           token_aprovacao: token_dir,
+          anexos: todosAnexosConsolidados,
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'aprovacao_aprovador',
-            descricao: 'Aprovado pelo responsável. Aguardando 1ª aprovação do diretor (liberação para cotação).',
+            descricao: `Aprovado pelo responsável (${req_data.aprovador_nome || 'Aprovador'}). Aguardando 1ª aprovação do diretor (liberação para cotação). ${comentario ? 'Obs: ' + comentario : ''}`,
             usuario: req_data.aprovador_nome || 'Aprovador Responsável',
             numero_requisicao: req_data.numero_requisicao,
             anexos: anexos || [],
@@ -141,16 +191,17 @@ export default async function handler(req, res) {
           </div>
 
           <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;color:#1e3a8a;line-height:1.6;">
-            <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O colaborador <strong>${req_data.colaborador_nome}</strong> (${req_data.colaborador_area}) solicitou uma compra, que já foi analisada e <strong>aprovada pelo responsável ${req_data.aprovador_nome}</strong>.</p>
+            <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O colaborador <strong>${req_data.colaborador_nome}</strong> (${req_data.colaborador_area}) solicitou uma compra, que foi analisada e <strong>aprovada pelo responsável ${req_data.aprovador_nome}</strong>.</p>
             <p style="margin:0 0 8px 0;"><strong>O que se pede agora:</strong> Solicitamos a sua autorização inicial para <strong>liberar esta requisição para cotação</strong> de preços com os fornecedores pelo setor de compras.</p>
             <p style="margin:0;"><strong>O que acontecerá depois:</strong> Após o comprador cadastrar os orçamentos, você receberá um novo e-mail para a <strong>aprovação final de valores</strong> antes da efetivação da compra.</p>
           </div>
 
           <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin-bottom:24px;">
-            <h3 style="margin:0 0 12px 0;font-size:16px;color:#0f172a;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">📋 Dados da Requisição</h3>
+            <h3 style="margin:0 0 12px 0;font-size:16px;color:#0f172a;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">📋 Dados Completos da Requisição</h3>
             <p style="margin:4px 0;"><strong>Número da Requisição:</strong> ${req_data.numero_requisicao}</p>
-            <p style="margin:4px 0;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-            <p style="margin:4px 0;"><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
+            <p style="margin:4px 0;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area}) — <em>${req_data.colaborador_email || ''}</em></p>
+            <p style="margin:4px 0;"><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome} — <em>${req_data.aprovador_email || ''}</em></p>
+            ${comentario ? `<p style="margin:6px 0;padding:8px;background:#eff6ff;border-radius:6px;color:#1e40af;"><strong>Comentário do Aprovador (Gestor):</strong> "${comentario}"</p>` : ''}
             <p style="margin:4px 0;"><strong>Item / Produto:</strong> ${req_data.item}</p>
             ${req_data.material ? `<p style="margin:4px 0;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
             ${req_data.cor ? `<p style="margin:4px 0;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
@@ -158,11 +209,13 @@ export default async function handler(req, res) {
             ${req_data.centro_custo_nome ? `<p style="margin:4px 0;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
             <p style="margin:4px 0;"><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
             <p style="margin:4px 0;"><strong>Urgência:</strong> ${req_data.urgencia}</p>
+            ${req_data.fornecedor_sugerido ? `<p style="margin:4px 0;"><strong>Fornecedor Sugerido:</strong> ${req_data.fornecedor_sugerido}</p>` : ''}
             <p style="margin:4px 0;"><strong>Justificativa:</strong> ${req_data.justificativa}</p>
-            ${comentario ? `<p style="margin:4px 0;color:#1e40af;"><strong>Comentário do Aprovador:</strong> ${comentario}</p>` : ''}
           </div>
 
-          <div style="margin:24px 0;text-align:center;">
+          ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos da Solicitação Inicial e Parecer do Gestor:')}
+
+          <div style="margin:28px 0 16px 0;text-align:center;">
             <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ LIBERAR COTAÇÃO</a>
             <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ REPROVAR</a>
           </div>
@@ -179,6 +232,7 @@ export default async function handler(req, res) {
             </div>
             <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
             <p>Sua requisição foi <strong>aprovada pelo seu responsável</strong> e aguarda autorização do diretor para cotação.</p>
+            ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Anexados no Pedido:')}
           </div>`
         );
       }
@@ -220,6 +274,7 @@ export default async function handler(req, res) {
 
       // Novo token para a 2ª aprovação do diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
+      const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, cotacao_anexos);
 
       const { error: updError } = await supabase
         .from('requisicao_compras')
@@ -233,6 +288,7 @@ export default async function handler(req, res) {
           cotacao_comprador_id: comprador_id || null,
           cotacao_comprador_nome: comprador_nome || 'Comprador',
           token_aprovacao: token_dir,
+          anexos: todosAnexosConsolidados,
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'cotacao_enviada',
@@ -249,10 +305,6 @@ export default async function handler(req, res) {
 
       const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
       const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
-
-      const anexosHtml = cotacao_anexos?.length > 0
-        ? `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #a7f3d0;"><p style="margin:0 0 4px 0;font-size:13px;color:#047857;font-weight:bold;">📎 Orçamentos / Anexos da Cotação:</p>${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank" style="display:inline-block;margin-right:8px;margin-bottom:4px;background:#ffffff;padding:4px 10px;border-radius:4px;border:1px solid #a7f3d0;color:#047857;font-weight:bold;text-decoration:none;font-size:12px;">📄 ${a.file_name}</a>`).join('')}</div>`
-        : '';
 
       await sendEmail(
         diretorEmail,
@@ -281,16 +333,19 @@ export default async function handler(req, res) {
             <p style="margin:6px 0;font-size:15px;color:#111827;"><strong>Fornecedor Cotado:</strong> <span style="color:#15803d;font-weight:bold;">${cotacao_fornecedor}</span></p>
             <p style="margin:6px 0;font-size:14px;color:#374151;"><strong>Comprador Responsável:</strong> ${comprador_nome || 'Comprador'}</p>
             ${cotacao_comentario ? `<p style="margin:8px 0 4px 0;font-size:13px;color:#166534;background:#ffffff;padding:8px 12px;border-radius:6px;border:1px solid #dcfce7;"><strong>Obs. Comprador:</strong> "${cotacao_comentario}"</p>` : ''}
-            ${anexosHtml}
+            ${buildAnexosHtml(cotacao_anexos, '📄 Orçamentos / Propostas Anexadas pelo Comprador:')}
           </div>
 
-          <!-- CARD 2: DADOS ORIGINAIS DA REQUISIÇÃO (SLATE/AZUL) -->
+          <!-- CARD 2: DADOS ORIGINAIS DA REQUISIÇÃO & GESTOR (AZUL/SLATE) -->
           <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;padding:20px;margin-bottom:24px;">
             <div style="border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:12px;">
-              <span style="background:#475569;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;">📋 Dados Originais da Requisição</span>
+              <span style="background:#475569;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;">📋 Dados Originais da Requisição & Histórico de Aprovação</span>
             </div>
-            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Número:</strong> ${req_data.numero_requisicao}</p>
-            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Número da Requisição:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area}) — <em>${req_data.colaborador_email || ''}</em></p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome} — <em>${req_data.aprovador_email || ''}</em></p>
+            ${req_data.aprovador_comentario ? `<p style="margin:6px 0;padding:6px 10px;background:#f1f5f9;border-radius:4px;font-size:12px;color:#1e3a8a;"><strong>Comentário do Aprovador (Gestor):</strong> "${req_data.aprovador_comentario}"</p>` : ''}
+            ${req_data.diretor_comentario ? `<p style="margin:6px 0;padding:6px 10px;background:#f1f5f9;border-radius:4px;font-size:12px;color:#1e3a8a;"><strong>Comentário do Diretor (1ª Fase):</strong> "${req_data.diretor_comentario}"</p>` : ''}
             <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Item / Produto:</strong> ${req_data.item}</p>
             ${req_data.material ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
             ${req_data.cor ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
@@ -299,7 +354,10 @@ export default async function handler(req, res) {
             <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Justificativa Original:</strong> ${req_data.justificativa}</p>
           </div>
 
-          <div style="margin:24px 0;text-align:center;">
+          <!-- CARD 3: TODOS OS ANEXOS CONSOLIDADOS DO PEDIDO -->
+          ${buildAnexosHtml(todosAnexosConsolidados, '📎 TODOS OS ANEXOS DA REQUISIÇÃO (Solicitante, Gestor, Diretor e Comprador):')}
+
+          <div style="margin:28px 0 16px 0;text-align:center;">
             <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ APROVAR COMPRA DEFINITIVA</a>
             <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ REPROVAR</a>
           </div>
@@ -316,6 +374,7 @@ export default async function handler(req, res) {
             </div>
             <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
             <p>A cotação para sua requisição foi finalizada pelo setor de compras (Valor: <strong>R$ ${Number(cotacao_valor).toLocaleString('pt-BR')}</strong>) e enviada para autorização final do diretor.</p>
+            ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos e Orçamentos Vinculados:')}
           </div>`
         );
       }
@@ -342,7 +401,7 @@ export default async function handler(req, res) {
         justificativa, urgencia, fornecedor_sugerido
       } = body;
 
-      const novosAnexos = anexos || req_data.anexos || [];
+      const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, anexos);
 
       const { error: editError } = await supabase
         .from('requisicao_compras')
@@ -351,7 +410,7 @@ export default async function handler(req, res) {
           valor_unitario_minimo, valor_unitario_maximo,
           valor_minimo, valor_maximo,
           justificativa, urgencia, fornecedor_sugerido,
-          anexos: novosAnexos,
+          anexos: todosAnexosConsolidados,
           status: 'Aguardando Aprovador',
           aprovador_comentario: '',
           aprovador_data: null,
@@ -364,7 +423,7 @@ export default async function handler(req, res) {
             descricao: 'Requisição editada e reenviada para aprovação do responsável.',
             usuario: req_data.colaborador_nome,
             numero_requisicao: req_data.numero_requisicao,
-            anexos: novosAnexos
+            anexos: anexos || []
           }],
         })
         .eq('id', requisicao_id);
@@ -374,7 +433,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, action: 'editada', numero_requisicao: req_data.numero_requisicao });
     }
 
-    // ── AÇÃO DO DIRETOR VIA TOKEN (Fase 1 ou Fase 2) ─────────────────────────────
+    // ── AÇÃO DO DIRETOR VIA TOKEN OU PORTAL (Fase 1 ou Fase 2) ─────────────────────
     if (action === 'diretor_aprovar' || action === 'diretor_reprovar') {
       if (!token) return res.status(400).json({ error: 'Token inválido' });
 
@@ -405,6 +464,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Token não encontrado ou já utilizado' });
       }
 
+      const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, anexos);
+
       // ── FASE 1: DIRETOR APROVA 1ª VEZ (LIBERA COTAÇÃO) ──
       if (req_data.status === 'Aguardando Diretor') {
         if (action === 'diretor_aprovar') {
@@ -415,6 +476,7 @@ export default async function handler(req, res) {
               diretor_comentario: comentario || '',
               diretor_data: new Date().toISOString(),
               token_aprovacao: '',
+              anexos: todosAnexosConsolidados,
               historico: [...(req_data.historico || []), {
                 data_hora: new Date().toISOString(),
                 tipo: 'aprovacao_diretor_1',
@@ -451,9 +513,15 @@ export default async function handler(req, res) {
                   ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
                   ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
                   <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
-                  <p><strong>Solicitante:</strong> ${req_data.colaborador_nome}</p>
+                  <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+                  <p><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
+                  ${req_data.aprovador_comentario ? `<p><strong>Obs. Gestor:</strong> ${req_data.aprovador_comentario}</p>` : ''}
+                  ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
                 </div>
-                <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
+                ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos para Elaboração da Cotação:')}
+                <div style="text-align:center;margin-top:24px;">
+                  <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
+                </div>
               </div>`
             );
           }
@@ -468,6 +536,7 @@ export default async function handler(req, res) {
                 </div>
                 <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
                 <p>Sua requisição foi autorizada pelo diretor e está sendo cotada pelo setor de compras.</p>
+                ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
               </div>`
             );
           }
@@ -483,6 +552,7 @@ export default async function handler(req, res) {
             diretor_comentario: comentario || '',
             diretor_data: new Date().toISOString(),
             token_aprovacao: '',
+            anexos: todosAnexosConsolidados,
             historico: [...(req_data.historico || []), {
               data_hora: new Date().toISOString(),
               tipo: 'reprovacao_diretor_1',
@@ -508,6 +578,7 @@ export default async function handler(req, res) {
               </div>
               <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi reprovada pelo diretor.</p>
               <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
             </div>`
           );
         }
@@ -524,6 +595,7 @@ export default async function handler(req, res) {
               diretor_comentario: comentario || '',
               diretor_data: new Date().toISOString(),
               token_aprovacao: '',
+              anexos: todosAnexosConsolidados,
               historico: [...(req_data.historico || []), {
                 data_hora: new Date().toISOString(),
                 tipo: 'aprovacao_diretor_final',
@@ -552,10 +624,12 @@ export default async function handler(req, res) {
                 <p>A requisição <strong>${req_data.numero_requisicao}</strong> teve a cotação aprovada definitivamente pelo diretor.</p>
                 <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
                   <p><strong>Item:</strong> ${req_data.item}</p>
-                  <p><strong>Valor Cotado:</strong> R$ ${Number(req_data.cotacao_valor || 0).toLocaleString('pt-BR')}</p>
+                  <p><strong>Valor Cotado:</strong> R$ ${Number(req_data.cotacao_valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   <p><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
+                  <p><strong>Comprador Responsável:</strong> ${req_data.cotacao_comprador_nome || '-'}</p>
                   ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
                 </div>
+                ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos e Orçamentos da Requisição:')}
               </div>`
             );
           }
@@ -570,6 +644,7 @@ export default async function handler(req, res) {
             diretor_comentario: comentario || '',
             diretor_data: new Date().toISOString(),
             token_aprovacao: '',
+            anexos: todosAnexosConsolidados,
             historico: [...(req_data.historico || []), {
               data_hora: new Date().toISOString(),
               tipo: 'reprovacao_diretor_final',
@@ -595,6 +670,7 @@ export default async function handler(req, res) {
               </div>
               <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi reprovada na avaliação da cotação pelo diretor.</p>
               <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
             </div>`
           );
         }

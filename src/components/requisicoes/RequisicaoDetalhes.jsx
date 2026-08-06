@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,29 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
   const [cotacaoAnexos, setCotacaoAnexos] = useState(requisicao.cotacao_anexos || []);
   const [cotacaoComentario, setCotacaoComentario] = useState(requisicao.cotacao_comentario || "");
   const [uploadingCotacaoAnexo, setUploadingCotacaoAnexo] = useState(false);
+
+  // Consolida todos os anexos de todas as etapas da requisição
+  const todosAnexosConsolidados = useMemo(() => {
+    const lista = [];
+    if (Array.isArray(requisicao.anexos)) lista.push(...requisicao.anexos);
+    if (Array.isArray(requisicao.cotacao_anexos)) lista.push(...requisicao.cotacao_anexos);
+    if (Array.isArray(requisicao.historico)) {
+      requisicao.historico.forEach(h => {
+        if (Array.isArray(h.anexos)) lista.push(...h.anexos);
+      });
+    }
+    const map = new Map();
+    lista.forEach(item => {
+      if (item && item.file_url && !map.has(item.file_url)) {
+        map.set(item.file_url, {
+          file_url: item.file_url,
+          file_name: item.file_name || item.name || 'Documento Anexo',
+          file_type: item.file_type || 'application/octet-stream'
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [requisicao]);
 
   const isAprovador = colaboradorAtual?.id === requisicao.aprovador_id;
   const isSolicitante = colaboradorAtual?.id === requisicao.colaborador_id;
@@ -223,12 +246,22 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
         </div>
       )}
 
-      {requisicao.anexos?.length > 0 && (
-        <div>
-          <p className="text-muted-foreground font-semibold mb-2">Anexos da Solicitação Inicial</p>
-          <div className="space-y-1">
-            {requisicao.anexos.map((a, i) => (
-              <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline text-sm bg-muted/40 p-2 rounded border">
+      {/* BLOCO DE TODOS OS ANEXOS E DOCUMENTOS CONSOLIDADOS DO PEDIDO */}
+      {todosAnexosConsolidados.length > 0 && (
+        <div className="bg-slate-50 border rounded-lg p-3 space-y-2">
+          <p className="font-semibold text-slate-800 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+            <Paperclip className="w-3.5 h-3.5 text-blue-600" />
+            <span>Todos os Anexos e Documentos da Requisição ({todosAnexosConsolidados.length})</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {todosAnexosConsolidados.map((a, i) => (
+              <a
+                key={i}
+                href={a.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs bg-white text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded border border-slate-200 shadow-sm font-medium transition-colors"
+              >
                 📎 {a.file_name}
               </a>
             ))}
