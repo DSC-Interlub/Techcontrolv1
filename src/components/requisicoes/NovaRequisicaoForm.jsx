@@ -87,6 +87,8 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           tipo: 'abertura',
           descricao: 'Requisição aberta pelo colaborador.',
           usuario: colaborador.nome_completo,
+          numero_requisicao: numeroRequisicao,
+          anexos: anexos || []
         }],
       });
 

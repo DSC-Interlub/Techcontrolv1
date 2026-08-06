@@ -24,6 +24,10 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
   const [acao, setAcao] = useState(null); // "aprovar" | "reprovar"
   const [editando, setEditando] = useState(false);
 
+  // Estados para anexos de aprovação/reprovação (Aprovador/Diretor)
+  const [acaoAnexos, setAcaoAnexos] = useState([]);
+  const [uploadingAcaoAnexo, setUploadingAcaoAnexo] = useState(false);
+
   // Estados para formulário de cotação (comprador)
   const [cotacaoValor, setCotacaoValor] = useState(requisicao.cotacao_valor || "");
   const [cotacaoFornecedor, setCotacaoFornecedor] = useState(requisicao.cotacao_fornecedor || "");
@@ -50,6 +54,7 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
           action: tipo === 'aprovar' ? 'diretor_aprovar' : 'diretor_reprovar',
           token: requisicao.token_aprovacao,
           comentario,
+          anexos: acaoAnexos,
         });
       }
       return base44.functions.invoke('requisicaoComprasAction', {
@@ -57,6 +62,7 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
         requisicao_id: requisicao.id,
         comentario,
         aprovador_email: colaboradorAtual?.email || requisicao.aprovador_email,
+        anexos: acaoAnexos,
       });
     },
     onSuccess: () => {
@@ -219,10 +225,10 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
 
       {requisicao.anexos?.length > 0 && (
         <div>
-          <p className="text-muted-foreground font-semibold mb-2">Anexos da Solicitação</p>
+          <p className="text-muted-foreground font-semibold mb-2">Anexos da Solicitação Inicial</p>
           <div className="space-y-1">
             {requisicao.anexos.map((a, i) => (
-              <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline text-sm">
+              <a key={i} href={a.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline text-sm bg-muted/40 p-2 rounded border">
                 📎 {a.file_name}
               </a>
             ))}
@@ -230,23 +236,54 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
         </div>
       )}
 
-      {/* Histórico */}
-      {requisicao.historico?.length > 0 && (
-        <div>
-          <p className="text-muted-foreground font-semibold mb-2">Histórico da Requisição</p>
-          <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3 bg-muted/20">
+      {/* HISTÓRICO COMPLETO E UNIFICADO COM ANEXOS POR ETAPA */}
+      <div className="border-t pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-bold text-foreground text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span>Histórico Completo da Requisição</span>
+          </p>
+          <span className="text-xs text-muted-foreground font-mono">#{requisicao.numero_requisicao}</span>
+        </div>
+
+        {(!requisicao.historico || requisicao.historico.length === 0) ? (
+          <p className="text-xs text-muted-foreground italic">Nenhum evento registrado ainda.</p>
+        ) : (
+          <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-blue-200">
             {requisicao.historico.map((h, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Clock className="w-3 h-3 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-foreground font-medium">{new Date(h.data_hora).toLocaleString('pt-BR')}</span>
-                  {' — '}{h.descricao}
+              <div key={i} className="relative bg-white border rounded-lg p-3 text-xs shadow-sm space-y-1">
+                <div className="absolute -left-[21px] top-3.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white ring-2 ring-blue-100" />
+                <div className="flex items-center justify-between flex-wrap gap-1 border-b pb-1.5 mb-1.5">
+                  <span className="font-semibold text-gray-900">{h.usuario || 'Sistema'}</span>
+                  <span className="text-gray-500 font-mono text-[11px]">{new Date(h.data_hora).toLocaleString('pt-BR')}</span>
                 </div>
+                <p className="text-gray-700 leading-relaxed">{h.descricao}</p>
+
+                {/* Anexos vinculados à etapa específica */}
+                {h.anexos && h.anexos.length > 0 && (
+                  <div className="pt-2 border-t mt-2">
+                    <p className="font-semibold text-[11px] text-gray-600 mb-1">Anexos desta etapa:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {h.anexos.map((anx, idx) => (
+                        <a
+                          key={idx}
+                          href={anx.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded border border-blue-200 text-[11px] font-medium transition-colors"
+                        >
+                          <Paperclip className="w-3 h-3 text-blue-600" />
+                          <span>{anx.file_name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* AÇÕES DO COMPRADOR: Cadastrar Cotação */}
       {podeAtuarComprador && (
@@ -384,13 +421,57 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
                   onChange={e => setComentario(e.target.value)}
                 />
               </div>
+
+              {/* UPLOAD DE ANEXOS OPCIONAIS DO APROVADOR */}
+              <div>
+                <Label className="flex items-center gap-2"><Paperclip className="w-4 h-4" />Anexar documento / parecer (opcional)</Label>
+                <label className="mt-1 flex items-center gap-2 cursor-pointer border border-dashed border-gray-300 bg-white rounded-lg p-2.5 hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    className="hidden"
+                    disabled={uploadingAcaoAnexo}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      setUploadingAcaoAnexo(true);
+                      const novos = [...acaoAnexos];
+                      for (const file of files) {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        novos.push({ file_url, file_name: file.name, file_type: file.type });
+                      }
+                      setAcaoAnexos(novos);
+                      setUploadingAcaoAnexo(false);
+                      e.target.value = "";
+                    }}
+                  />
+                  {uploadingAcaoAnexo
+                    ? <><Loader2 className="w-4 h-4 animate-spin text-blue-600" /><span className="text-xs text-blue-700">Enviando...</span></>
+                    : <><Paperclip className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-600 font-medium">Clique para anexar arquivo (opcional)</span></>
+                  }
+                </label>
+                {acaoAnexos.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {acaoAnexos.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white rounded px-2.5 py-1 text-xs border">
+                        <span className="truncate font-medium">📎 {a.file_name}</span>
+                        <button type="button" onClick={() => setAcaoAnexos(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive ml-2">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setAcao(null); setComentario(""); }}>
+                <Button variant="outline" className="flex-1" onClick={() => { setAcao(null); setComentario(""); setAcaoAnexos([]); }}>
                   Cancelar
                 </Button>
                 <Button
                   className={`flex-1 ${acao === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
-                  disabled={acaoMutation.isPending || (acao === 'reprovar' && !comentario.trim())}
+                  disabled={acaoMutation.isPending || uploadingAcaoAnexo || (acao === 'reprovar' && !comentario.trim())}
                   onClick={() => acaoMutation.mutate(acao)}
                 >
                   {acaoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (acao === 'aprovar' ? 'Confirmar Aprovação' : 'Confirmar Reprovação')}
@@ -441,13 +522,57 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
                   onChange={e => setComentario(e.target.value)}
                 />
               </div>
+
+              {/* UPLOAD DE ANEXOS OPCIONAIS DO DIRETOR NO PORTAL */}
+              <div>
+                <Label className="flex items-center gap-2"><Paperclip className="w-4 h-4" />Anexar documento / parecer (opcional)</Label>
+                <label className="mt-1 flex items-center gap-2 cursor-pointer border border-dashed border-gray-300 bg-white rounded-lg p-2.5 hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    className="hidden"
+                    disabled={uploadingAcaoAnexo}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      setUploadingAcaoAnexo(true);
+                      const novos = [...acaoAnexos];
+                      for (const file of files) {
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        novos.push({ file_url, file_name: file.name, file_type: file.type });
+                      }
+                      setAcaoAnexos(novos);
+                      setUploadingAcaoAnexo(false);
+                      e.target.value = "";
+                    }}
+                  />
+                  {uploadingAcaoAnexo
+                    ? <><Loader2 className="w-4 h-4 animate-spin text-blue-600" /><span className="text-xs text-blue-700">Enviando...</span></>
+                    : <><Paperclip className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-600 font-medium">Clique para anexar arquivo (opcional)</span></>
+                  }
+                </label>
+                {acaoAnexos.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {acaoAnexos.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white rounded px-2.5 py-1 text-xs border">
+                        <span className="truncate font-medium">📎 {a.file_name}</span>
+                        <button type="button" onClick={() => setAcaoAnexos(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive ml-2">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setAcao(null); setComentario(""); }}>
+                <Button variant="outline" className="flex-1" onClick={() => { setAcao(null); setComentario(""); setAcaoAnexos([]); }}>
                   Cancelar
                 </Button>
                 <Button
                   className={`flex-1 ${acao === 'aprovar' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
-                  disabled={acaoMutation.isPending || (acao === 'reprovar' && !comentario.trim())}
+                  disabled={acaoMutation.isPending || uploadingAcaoAnexo || (acao === 'reprovar' && !comentario.trim())}
                   onClick={() => acaoMutation.mutate(acao)}
                 >
                   {acaoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : (acao === 'aprovar' ? 'Confirmar' : 'Confirmar Reprovação')}

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const {
       action, requisicao_id, comentario, token, aprovador_email,
       cotacao_valor, cotacao_fornecedor, cotacao_anexos, cotacao_comentario,
-      comprador_id, comprador_nome
+      comprador_id, comprador_nome, anexos
     } = body;
 
     // ── AÇÃO DO APROVADOR GESTOR (1º nível) ──────────────────────────────────────
@@ -52,8 +52,10 @@ export default async function handler(req, res) {
             historico: [...(req_data.historico || []), {
               data_hora: new Date().toISOString(),
               tipo: 'reprovacao_aprovador',
-              descricao: `Reprovado pelo aprovador. ${comentario ? 'Motivo: ' + comentario : ''}`,
-              usuario: req_data.aprovador_nome,
+              descricao: `Reprovado pelo responsável. ${comentario ? 'Motivo: ' + comentario : ''}`,
+              usuario: req_data.aprovador_nome || 'Aprovador Responsável',
+              numero_requisicao: req_data.numero_requisicao,
+              anexos: anexos || []
             }],
           })
           .eq('id', requisicao_id);
@@ -80,7 +82,7 @@ export default async function handler(req, res) {
           );
         }
 
-        return res.status(200).json({ success: true, action: 'reprovado' });
+        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
       }
 
       // Aprovar: enviar para a 1ª aprovação do diretor (liberação para cotação)
@@ -112,7 +114,10 @@ export default async function handler(req, res) {
             data_hora: new Date().toISOString(),
             tipo: 'aprovacao_aprovador',
             descricao: 'Aprovado pelo responsável. Aguardando 1ª aprovação do diretor (liberação para cotação).',
-            usuario: req_data.aprovador_nome,
+            usuario: req_data.aprovador_nome || 'Aprovador Responsável',
+            numero_requisicao: req_data.numero_requisicao,
+            anexos: anexos || [],
+            token_gerado: token_dir
           }],
         })
         .eq('id', requisicao_id);
@@ -178,7 +183,7 @@ export default async function handler(req, res) {
         );
       }
 
-      return res.status(200).json({ success: true, action: 'enviado_diretor_1' });
+      return res.status(200).json({ success: true, action: 'enviado_diretor_1', numero_requisicao: req_data.numero_requisicao });
     }
 
     // ── COTAÇÃO ENVIADA PELO COMPRADOR ───────────────────────────────────────────
@@ -231,8 +236,11 @@ export default async function handler(req, res) {
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'cotacao_enviada',
-            descricao: `Cotação finalizada pelo comprador (${comprador_nome || 'Comprador'}). Valor: R$ ${Number(cotacao_valor).toLocaleString('pt-BR')} — Fornecedor: ${cotacao_fornecedor}. Aguardando aprovação final do diretor.`,
+            descricao: `Cotação finalizada pelo comprador (${comprador_nome || 'Comprador'}). Valor: R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — Fornecedor: ${cotacao_fornecedor}. Aguardando aprovação final do diretor.`,
             usuario: comprador_nome || 'Comprador',
+            numero_requisicao: req_data.numero_requisicao,
+            anexos: cotacao_anexos || [],
+            token_gerado: token_dir
           }],
         })
         .eq('id', requisicao_id);
@@ -243,45 +251,52 @@ export default async function handler(req, res) {
       const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
       const anexosHtml = cotacao_anexos?.length > 0
-        ? `<p style="margin:4px 0;"><strong>Orçamentos/Anexos:</strong> ${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank" style="color:#059669;font-weight:bold;">${a.file_name}</a>`).join(', ')}</p>`
+        ? `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed #a7f3d0;"><p style="margin:0 0 4px 0;font-size:13px;color:#047857;font-weight:bold;">📎 Orçamentos / Anexos da Cotação:</p>${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank" style="display:inline-block;margin-right:8px;margin-bottom:4px;background:#ffffff;padding:4px 10px;border-radius:4px;border:1px solid #a7f3d0;color:#047857;font-weight:bold;text-decoration:none;font-size:12px;">📄 ${a.file_name}</a>`).join('')}</div>`
         : '';
 
       await sendEmail(
         diretorEmail,
         `Ação necessária: Requisição ${req_data.numero_requisicao} aguardando sua aprovação final (Cotação Concluída)`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-          <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
+          <div style="background:#047857;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
             <h2 style="margin:0;font-size:20px;">💰 Cotação Concluída — Aprovação Final do Diretor</h2>
             <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Etapa final de autorização de compra</p>
           </div>
 
-          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin-bottom:20px;color:#065f46;line-height:1.6;">
+          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin-bottom:24px;color:#065f46;line-height:1.6;">
             <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O comprador <strong>${comprador_nome || 'responsável'}</strong> finalizou a cotação de preços e cadastrou o orçamento para a requisição <strong>${req_data.numero_requisicao}</strong> (Solicitante: <strong>${req_data.colaborador_nome}</strong>).</p>
             <p style="margin:0 0 8px 0;"><strong>O que se pede agora:</strong> Esta é a <strong>ÚLTIMA ETAPA</strong> do processo. Solicitamos sua aprovação final do valor e fornecedor selecionado para autorizar a compra.</p>
             <p style="margin:0;"><strong>O que acontecerá depois:</strong> Ao aprovar, a compra fica <strong>definitivamente autorizada</strong> e o setor de compras prosseguirá com o pedido e faturamento.</p>
           </div>
 
-          <!-- DADOS DA COTAÇÃO EM DESTAQUE -->
-          <div style="background:#ffffff;border:2px solid #059669;border-radius:8px;padding:18px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="margin:0 0 12px 0;font-size:16px;color:#047857;border-bottom:1px solid #e5e7eb;padding-bottom:8px;">💵 Dados da Cotação Realizada (Setor de Compras)</h3>
-            <p style="margin:4px 0;font-size:18px;color:#047857;"><strong>Valor da Cotação:</strong> R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            <p style="margin:4px 0;font-size:15px;color:#1f2937;"><strong>Fornecedor Cotado:</strong> ${cotacao_fornecedor}</p>
-            <p style="margin:4px 0;font-size:14px;color:#4b5563;"><strong>Comprador Responsável:</strong> ${comprador_nome || 'Comprador'}</p>
-            ${cotacao_comentario ? `<p style="margin:8px 0 4px 0;font-size:14px;color:#374151;"><strong>Comentários do Comprador:</strong> ${cotacao_comentario}</p>` : ''}
-            ${anexosHtml ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d1d5db;">${anexosHtml}</div>` : ''}
+          <!-- CARD 1: DADOS DA COTAÇÃO EM DESTAQUE (VERDE) -->
+          <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:10px;padding:20px;margin-bottom:24px;box-shadow:0 2px 4px rgba(0,0,0,0.04);">
+            <div style="border-bottom:2px solid #bbf7d0;padding-bottom:10px;margin-bottom:12px;">
+              <span style="background:#16a34a;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">💵 Dados da Cotação Realizada</span>
+            </div>
+            <div style="background:white;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:12px;">
+              <p style="margin:0 0 2px 0;font-size:12px;color:#15803d;font-weight:bold;text-transform:uppercase;">Valor Final da Cotação</p>
+              <p style="margin:0;font-size:26px;font-weight:800;color:#15803d;font-family:monospace;">R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+            <p style="margin:6px 0;font-size:15px;color:#111827;"><strong>Fornecedor Cotado:</strong> <span style="color:#15803d;font-weight:bold;">${cotacao_fornecedor}</span></p>
+            <p style="margin:6px 0;font-size:14px;color:#374151;"><strong>Comprador Responsável:</strong> ${comprador_nome || 'Comprador'}</p>
+            ${cotacao_comentario ? `<p style="margin:8px 0 4px 0;font-size:13px;color:#166534;background:#ffffff;padding:8px 12px;border-radius:6px;border:1px solid #dcfce7;"><strong>Obs. Comprador:</strong> "${cotacao_comentario}"</p>` : ''}
+            ${anexosHtml}
           </div>
 
-          <!-- DADOS ORIGINAIS DA REQUISIÇÃO -->
-          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:24px;">
-            <h3 style="margin:0 0 10px 0;font-size:15px;color:#475569;border-bottom:1px solid #f1f5f9;padding-bottom:6px;">📋 Dados Originais da Requisição</h3>
-            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Número:</strong> ${req_data.numero_requisicao}</p>
-            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Item:</strong> ${req_data.item}</p>
-            ${req_data.material ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
-            ${req_data.cor ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
-            ${req_data.centro_custo_nome ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
-            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Justificativa Original:</strong> ${req_data.justificativa}</p>
+          <!-- CARD 2: DADOS ORIGINAIS DA REQUISIÇÃO (SLATE/AZUL) -->
+          <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;padding:20px;margin-bottom:24px;">
+            <div style="border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:12px;">
+              <span style="background:#475569;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;">📋 Dados Originais da Requisição</span>
+            </div>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Número:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Item / Produto:</strong> ${req_data.item}</p>
+            ${req_data.material ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
+            ${req_data.cor ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            ${req_data.centro_custo_nome ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Justificativa Original:</strong> ${req_data.justificativa}</p>
           </div>
 
           <div style="margin:24px 0;text-align:center;">
@@ -305,7 +320,7 @@ export default async function handler(req, res) {
         );
       }
 
-      return res.status(200).json({ success: true, action: 'cotacao_enviada' });
+      return res.status(200).json({ success: true, action: 'cotacao_enviada', numero_requisicao: req_data.numero_requisicao });
     }
 
     // ── SOLICITANTE EDITA E REENVIA ────────────────────────────────────────────────
@@ -324,8 +339,10 @@ export default async function handler(req, res) {
         item, material, cor, quantidade, centro_custo_codigo, centro_custo_nome,
         valor_unitario_minimo, valor_unitario_maximo,
         valor_minimo, valor_maximo,
-        justificativa, urgencia, fornecedor_sugerido, anexos
+        justificativa, urgencia, fornecedor_sugerido
       } = body;
+
+      const novosAnexos = anexos || req_data.anexos || [];
 
       const { error: editError } = await supabase
         .from('requisicao_compras')
@@ -334,7 +351,7 @@ export default async function handler(req, res) {
           valor_unitario_minimo, valor_unitario_maximo,
           valor_minimo, valor_maximo,
           justificativa, urgencia, fornecedor_sugerido,
-          anexos: anexos || [],
+          anexos: novosAnexos,
           status: 'Aguardando Aprovador',
           aprovador_comentario: '',
           aprovador_data: null,
@@ -346,13 +363,15 @@ export default async function handler(req, res) {
             tipo: 'edicao_reenvio',
             descricao: 'Requisição editada e reenviada para aprovação do responsável.',
             usuario: req_data.colaborador_nome,
+            numero_requisicao: req_data.numero_requisicao,
+            anexos: novosAnexos
           }],
         })
         .eq('id', requisicao_id);
 
       if (editError) throw editError;
 
-      return res.status(200).json({ success: true, action: 'editada' });
+      return res.status(200).json({ success: true, action: 'editada', numero_requisicao: req_data.numero_requisicao });
     }
 
     // ── AÇÃO DO DIRETOR VIA TOKEN (Fase 1 ou Fase 2) ─────────────────────────────
@@ -365,10 +384,28 @@ export default async function handler(req, res) {
         .eq('token_aprovacao', token)
         .limit(1);
 
-      const req_data = listData?.[0];
-      if (!req_data) return res.status(404).json({ error: 'Token não encontrado ou já utilizado' });
+      let req_data = listData?.[0];
 
-      // ── FASE 1: DIRETO APROVA 1ª VEZ (LIBERA COTAÇÃO) ──
+      // Se o token não estiver no campo token_aprovacao (porque já foi utilizado/limpo)
+      if (!req_data) {
+        const { data: allReqs } = await supabase
+          .from('requisicao_compras')
+          .select('id, numero_requisicao, status, historico')
+          .order('created_date', { ascending: false })
+          .limit(100);
+
+        const match = (allReqs || []).find(r => JSON.stringify(r.historico || []).includes(token));
+        if (match) {
+          return res.status(400).json({
+            error: 'token_usado',
+            numero_requisicao: match.numero_requisicao,
+            status_atual: match.status
+          });
+        }
+        return res.status(404).json({ error: 'Token não encontrado ou já utilizado' });
+      }
+
+      // ── FASE 1: DIRETOR APROVA 1ª VEZ (LIBERA COTAÇÃO) ──
       if (req_data.status === 'Aguardando Diretor') {
         if (action === 'diretor_aprovar') {
           const { error: f1Error } = await supabase
@@ -381,15 +418,18 @@ export default async function handler(req, res) {
               historico: [...(req_data.historico || []), {
                 data_hora: new Date().toISOString(),
                 tipo: 'aprovacao_diretor_1',
-                descricao: 'Aprovado pelo diretor (1ª fase). Liberado para cotação pelo comprador.',
+                descricao: `Aprovado pelo diretor (1ª fase). Liberado para cotação pelo comprador. ${comentario ? 'Obs: ' + comentario : ''}`,
                 usuario: 'Diretor',
+                numero_requisicao: req_data.numero_requisicao,
+                anexos: anexos || [],
+                token_utilizado: token
               }],
             })
             .eq('id', req_data.id);
 
           if (f1Error) throw f1Error;
 
-          // Busca todos os colaboradores que são compradores
+          // Busca compradores
           const { data: compradores } = await supabase
             .from('colaboradores')
             .select('email, nome_completo')
@@ -432,7 +472,7 @@ export default async function handler(req, res) {
             );
           }
 
-          return res.status(200).json({ success: true, action: 'liberado_cotacao' });
+          return res.status(200).json({ success: true, action: 'liberado_cotacao', numero_requisicao: req_data.numero_requisicao });
         }
 
         // Diretor reprova na 1ª fase
@@ -448,6 +488,9 @@ export default async function handler(req, res) {
               tipo: 'reprovacao_diretor_1',
               descricao: `Reprovado pelo diretor na 1ª fase. ${comentario ? 'Motivo: ' + comentario : ''}`,
               usuario: 'Diretor',
+              numero_requisicao: req_data.numero_requisicao,
+              anexos: anexos || [],
+              token_utilizado: token
             }],
           })
           .eq('id', req_data.id);
@@ -468,10 +511,10 @@ export default async function handler(req, res) {
             </div>`
           );
         }
-        return res.status(200).json({ success: true, action: 'reprovado' });
+        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
       }
 
-      // ── FASE 2: DIRETO APROVA FINAL ──
+      // ── FASE 2: DIRETOR APROVA FINAL ──
       if (req_data.status === 'Aguardando Aprovação Final') {
         if (action === 'diretor_aprovar') {
           const { error: finishError } = await supabase
@@ -484,8 +527,11 @@ export default async function handler(req, res) {
               historico: [...(req_data.historico || []), {
                 data_hora: new Date().toISOString(),
                 tipo: 'aprovacao_diretor_final',
-                descricao: 'Aprovado definitivamente pelo diretor. Compra autorizada.',
+                descricao: `Aprovado definitivamente pelo diretor. Compra autorizada. ${comentario ? 'Obs: ' + comentario : ''}`,
                 usuario: 'Diretor',
+                numero_requisicao: req_data.numero_requisicao,
+                anexos: anexos || [],
+                token_utilizado: token
               }],
             })
             .eq('id', req_data.id);
@@ -513,7 +559,7 @@ export default async function handler(req, res) {
               </div>`
             );
           }
-          return res.status(200).json({ success: true, action: 'aprovado' });
+          return res.status(200).json({ success: true, action: 'aprovado', numero_requisicao: req_data.numero_requisicao });
         }
 
         // Diretor reprova na 2ª fase
@@ -529,6 +575,9 @@ export default async function handler(req, res) {
               tipo: 'reprovacao_diretor_final',
               descricao: `Reprovada a cotação pelo diretor. ${comentario ? 'Motivo: ' + comentario : ''}`,
               usuario: 'Diretor',
+              numero_requisicao: req_data.numero_requisicao,
+              anexos: anexos || [],
+              token_utilizado: token
             }],
           })
           .eq('id', req_data.id);
@@ -549,10 +598,14 @@ export default async function handler(req, res) {
             </div>`
           );
         }
-        return res.status(200).json({ success: true, action: 'reprovado' });
+        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
       }
 
-      return res.status(400).json({ error: 'Esta requisição já foi processada' });
+      return res.status(400).json({
+        error: 'token_usado',
+        numero_requisicao: req_data.numero_requisicao,
+        status_atual: req_data.status
+      });
     }
 
     return res.status(400).json({ error: 'Ação inválida' });
