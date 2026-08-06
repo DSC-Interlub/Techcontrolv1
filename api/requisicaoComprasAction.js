@@ -5,6 +5,26 @@ async function sendEmail(to, subject, html) {
   return sendEmailUnified({ to, subject, html });
 }
 
+function getOrigin(req) {
+  const siteUrl = process.env.SITE_URL || process.env.PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  if (siteUrl) {
+    return siteUrl.replace(/\/+$/, '');
+  }
+  const referer = req?.headers?.referer;
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch (e) {}
+  }
+  const originHeader = req?.headers?.origin;
+  if (originHeader) {
+    try {
+      return new URL(originHeader).origin;
+    } catch (e) {}
+  }
+  return 'https://techcontrol.site';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -16,7 +36,7 @@ export default async function handler(req, res) {
       cotacao_valor, cotacao_fornecedor, cotacao_anexos, cotacao_comentario,
       comprador_id, comprador_nome
     } = body;
-    const origin = req.headers.referer || req.headers.origin || 'https://techcontrol.site';
+    const origin = getOrigin(req);
 
     // ── AÇÃO DO APROVADOR GESTOR (1º nível) ──────────────────────────────────────
     if (action === 'aprovador_aprovar' || action === 'aprovador_reprovar') {
@@ -127,29 +147,38 @@ export default async function handler(req, res) {
 
       await sendEmail(
         diretorEmail,
-        `🛒 Liberação para Cotação — Requisição ${req_data.numero_requisicao}`,
+        `Ação necessária: Requisição ${req_data.numero_requisicao} aguardando sua aprovação para liberar cotação`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-          <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-            <h2 style="margin:0;">🛒 Requisição de Compra — 1ª Aprovação do Diretor</h2>
+          <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:20px;">🛒 Requisição de Compra — 1ª Aprovação do Diretor</h2>
+            <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Liberação para cotação de fornecedores</p>
           </div>
-          <p>Uma requisição foi aprovada pelo responsável e necessita da sua aprovação inicial para <strong>liberar a cotação pelo comprador</strong>.</p>
-          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-            <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
-            <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-            <p><strong>Aprovador:</strong> ${req_data.aprovador_nome}</p>
-            <p><strong>Item:</strong> ${req_data.item}</p>
-            ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
-            ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-            <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
-            ${req_data.centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
-            <p><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
-            <p><strong>Urgência:</strong> ${req_data.urgencia}</p>
-            <p><strong>Justificativa:</strong> ${req_data.justificativa}</p>
-            ${comentario ? `<p><strong>Comentário do Aprovador:</strong> ${comentario}</p>` : ''}
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;color:#1e3a8a;line-height:1.6;">
+            <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O colaborador <strong>${req_data.colaborador_nome}</strong> (${req_data.colaborador_area}) solicitou uma compra, que já foi analisada e <strong>aprovada pelo responsável ${req_data.aprovador_nome}</strong>.</p>
+            <p style="margin:0 0 8px 0;"><strong>O que se pede agora:</strong> Solicitamos a sua autorização inicial para <strong>liberar esta requisição para cotação</strong> de preços com os fornecedores pelo setor de compras.</p>
+            <p style="margin:0;"><strong>O que acontecerá depois:</strong> Após o comprador cadastrar os orçamentos, você receberá um novo e-mail para a <strong>aprovação final de valores</strong> antes da efetivação da compra.</p>
           </div>
+
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:18px;margin-bottom:24px;">
+            <h3 style="margin:0 0 12px 0;font-size:16px;color:#0f172a;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">📋 Dados da Requisição</h3>
+            <p style="margin:4px 0;"><strong>Número da Requisição:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;"><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
+            <p style="margin:4px 0;"><strong>Item / Produto:</strong> ${req_data.item}</p>
+            ${req_data.material ? `<p style="margin:4px 0;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
+            ${req_data.cor ? `<p style="margin:4px 0;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+            <p style="margin:4px 0;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            ${req_data.centro_custo_nome ? `<p style="margin:4px 0;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
+            <p style="margin:4px 0;"><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
+            <p style="margin:4px 0;"><strong>Urgência:</strong> ${req_data.urgencia}</p>
+            <p style="margin:4px 0;"><strong>Justificativa:</strong> ${req_data.justificativa}</p>
+            ${comentario ? `<p style="margin:4px 0;color:#1e40af;"><strong>Comentário do Aprovador:</strong> ${comentario}</p>` : ''}
+          </div>
+
           <div style="margin:24px 0;text-align:center;">
-            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;margin-right:16px;">✅ LIBERAR COTAÇÃO</a>
-            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">❌ REPROVAR</a>
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ LIBERAR COTAÇÃO</a>
+            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ REPROVAR</a>
           </div>
         </div>`
       );
@@ -233,32 +262,50 @@ export default async function handler(req, res) {
       const linkReprovar = `${origin}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
       const anexosHtml = cotacao_anexos?.length > 0
-        ? `<p><strong>Orçamentos/Anexos:</strong> ${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank">${a.file_name}</a>`).join(', ')}</p>`
+        ? `<p style="margin:4px 0;"><strong>Orçamentos/Anexos:</strong> ${cotacao_anexos.map(a => `<a href="${a.file_url}" target="_blank" style="color:#059669;font-weight:bold;">${a.file_name}</a>`).join(', ')}</p>`
         : '';
 
       await sendEmail(
         diretorEmail,
-        `💰 Aprovação Final Necessária — Requisição ${req_data.numero_requisicao}`,
+        `Ação necessária: Requisição ${req_data.numero_requisicao} aguardando sua aprovação final (Cotação Concluída)`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-          <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-            <h2 style="margin:0;">💰 Cotação Concluída — Aprovação Final do Diretor</h2>
+          <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:20px;">💰 Cotação Concluída — Aprovação Final do Diretor</h2>
+            <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Etapa final de autorização de compra</p>
           </div>
-          <p>O comprador <strong>${comprador_nome || 'responsável'}</strong> inseriu o orçamento para a requisição <strong>${req_data.numero_requisicao}</strong> e solicita sua autorização final de compra.</p>
-          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-            <p><strong>Número:</strong> ${req_data.numero_requisicao}</p>
-            <p><strong>Item:</strong> ${req_data.item}</p>
-            ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
-            ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-            <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
-            <hr style="border:none;border-top:1px solid #e2e8f0;margin:12px 0;" />
-            <p style="font-size:16px;color:#059669;"><strong>Valor da Cotação:</strong> R$ ${Number(cotacao_valor).toLocaleString('pt-BR')}</p>
-            <p><strong>Fornecedor Cotado:</strong> ${cotacao_fornecedor}</p>
-            ${cotacao_comentario ? `<p><strong>Comentário do Comprador:</strong> ${cotacao_comentario}</p>` : ''}
-            ${anexosHtml}
+
+          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin-bottom:20px;color:#065f46;line-height:1.6;">
+            <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O comprador <strong>${comprador_nome || 'responsável'}</strong> finalizou a cotação de preços e cadastrou o orçamento para a requisição <strong>${req_data.numero_requisicao}</strong> (Solicitante: <strong>${req_data.colaborador_nome}</strong>).</p>
+            <p style="margin:0 0 8px 0;"><strong>O que se pede agora:</strong> Esta é a <strong>ÚLTIMA ETAPA</strong> do processo. Solicitamos sua aprovação final do valor e fornecedor selecionado para autorizar a compra.</p>
+            <p style="margin:0;"><strong>O que acontecerá depois:</strong> Ao aprovar, a compra fica <strong>definitivamente autorizada</strong> e o setor de compras prosseguirá com o pedido e faturamento.</p>
           </div>
+
+          <!-- DADOS DA COTAÇÃO EM DESTAQUE -->
+          <div style="background:#ffffff;border:2px solid #059669;border-radius:8px;padding:18px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="margin:0 0 12px 0;font-size:16px;color:#047857;border-bottom:1px solid #e5e7eb;padding-bottom:8px;">💵 Dados da Cotação Realizada (Setor de Compras)</h3>
+            <p style="margin:4px 0;font-size:18px;color:#047857;"><strong>Valor da Cotação:</strong> R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            <p style="margin:4px 0;font-size:15px;color:#1f2937;"><strong>Fornecedor Cotado:</strong> ${cotacao_fornecedor}</p>
+            <p style="margin:4px 0;font-size:14px;color:#4b5563;"><strong>Comprador Responsável:</strong> ${comprador_nome || 'Comprador'}</p>
+            ${cotacao_comentario ? `<p style="margin:8px 0 4px 0;font-size:14px;color:#374151;"><strong>Comentários do Comprador:</strong> ${cotacao_comentario}</p>` : ''}
+            ${anexosHtml ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d1d5db;">${anexosHtml}</div>` : ''}
+          </div>
+
+          <!-- DADOS ORIGINAIS DA REQUISIÇÃO -->
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <h3 style="margin:0 0 10px 0;font-size:15px;color:#475569;border-bottom:1px solid #f1f5f9;padding-bottom:6px;">📋 Dados Originais da Requisição</h3>
+            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Número:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Item:</strong> ${req_data.item}</p>
+            ${req_data.material ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
+            ${req_data.cor ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            ${req_data.centro_custo_nome ? `<p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
+            <p style="margin:4px 0;font-size:13px;color:#64748b;"><strong>Justificativa Original:</strong> ${req_data.justificativa}</p>
+          </div>
+
           <div style="margin:24px 0;text-align:center;">
-            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;margin-right:16px;">✅ APROVAR COMPRA</a>
-            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">❌ REPROVAR</a>
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ APROVAR COMPRA DEFINITIVA</a>
+            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ REPROVAR</a>
           </div>
         </div>`
       );
