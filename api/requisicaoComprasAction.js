@@ -83,14 +83,19 @@ export default async function handler(req, res) {
       }
 
       // Aprovar: enviar para a 1ª aprovação do diretor (liberação para cotação)
-      const { data: configs } = await supabase
+      const { data: configRecord } = await supabase
         .from('configuracoes')
-        .select('*')
-        .or('chave.eq.diretor_email,key.eq.diretor_email')
-        .limit(1);
+        .select('valor')
+        .eq('chave', 'diretor_email')
+        .maybeSingle();
 
-      const diretorEmail = configs?.[0]?.valor || configs?.[0]?.value || 'diretor.geral@interlub.com';
-      if (!diretorEmail) return res.status(500).json({ error: 'E-mail do diretor não configurado' });
+      const diretorEmail = configRecord?.valor?.trim();
+      if (!diretorEmail) {
+        console.error('[requisicaoComprasAction] ERRO: E-mail do diretor não configurado na tabela configuracoes (chave: diretor_email).');
+        return res.status(400).json({
+          error: 'E-mail do diretor não cadastrado. A aprovação foi paralisada. Defina o e-mail do diretor em Administração > Requisições de Compra > Aprovadores.'
+        });
+      }
 
       // Gera UUID para token de aprovação do diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
@@ -184,13 +189,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Esta requisição não está aguardando cotação' });
       }
 
-      const { data: configs } = await supabase
+      const { data: configRecord } = await supabase
         .from('configuracoes')
-        .select('*')
-        .or('chave.eq.diretor_email,key.eq.diretor_email')
-        .limit(1);
+        .select('valor')
+        .eq('chave', 'diretor_email')
+        .maybeSingle();
 
-      const diretorEmail = configs?.[0]?.valor || configs?.[0]?.value || 'diretor.geral@interlub.com';
+      const diretorEmail = configRecord?.valor?.trim();
+      if (!diretorEmail) {
+        console.error('[requisicaoComprasAction] ERRO: E-mail do diretor não configurado na tabela configuracoes (chave: diretor_email).');
+        return res.status(400).json({
+          error: 'E-mail do diretor não cadastrado. A aprovação final foi paralisada. Defina o e-mail do diretor em Administração > Requisições de Compra > Aprovadores.'
+        });
+      }
 
       // Novo token para a 2ª aprovação do diretor
       const token_dir = crypto.randomUUID().replace(/-/g, '');
