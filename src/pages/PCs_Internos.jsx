@@ -357,6 +357,16 @@ export default function PCs_Internos() {
     return equipamentos.filter(e => (!e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível") && !(!e.colaborador_id && e.area));
   }, [equipamentos]);
 
+  // KPIs
+  const stats = useMemo(() => {
+    return {
+      total: equipamentos.length,
+      emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
+      disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
+      manutencaoEProblema: equipamentos.filter(e => e.status === "Manutenção" || e.condicao === "Com Problema" || e.condicao === "Danificado").length,
+    };
+  }, [equipamentos]);
+
   // Exportação para Excel (.xlsx) com TODOS os campos cadastrados e enriquecidos
   const mapEquipamentoParaExcel = (eq) => {
     const colab = colaboradores.find(c => c.id === eq.colaborador_id || (eq.usuario_atual && c.nome_completo === eq.usuario_atual));
