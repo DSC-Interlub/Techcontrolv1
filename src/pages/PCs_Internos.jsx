@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Plus, Pencil, Trash2, Monitor, Search, Users, List, UserPlus, UserMinus,
   Laptop, Cpu, ShieldAlert, AlertTriangle, RefreshCw, Box, CheckCircle2,
-  Building2, LayoutGrid, SlidersHorizontal, ArrowRightLeft
+  Building2, LayoutGrid, SlidersHorizontal, ArrowRightLeft, FileSpreadsheet, ChevronDown, Filter
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import EquipamentoForm from "../components/equipamentos/EquipamentoForm";
 import EquipamentoDetalhes from "../components/equipamentos/EquipamentoDetalhes";
 import { useAuth } from "@/lib/AuthContext";
 import { extrairAnyDesk } from "@/utils/eval";
-import { formatarDataSemFuso } from "@/utils/date";
+import { formatarDataSemFuso, formatarDataHoraSemFuso } from "@/utils/date";
+import * as XLSX from "xlsx";
+
+function calcTempoUso(acquisitionDate) {
+  if (!acquisitionDate) return "—";
+  const today = new Date();
+  const acquisition = new Date(acquisitionDate);
+  if (isNaN(acquisition.getTime())) return "—";
+  const diffDays = Math.ceil(Math.abs(today - acquisition) / (1000 * 60 * 60 * 24));
+  if (diffDays < 30) return diffDays === 1 ? "1 dia" : `${diffDays} dias`;
+  if (diffDays < 365) { const m = Math.floor(diffDays / 30); return m === 1 ? "1 mês" : `${m} meses`; }
+  const years = Math.floor(diffDays / 365);
+  const months = Math.floor((diffDays % 365) / 30);
+  return months === 0 ? `${years} ano${years > 1 ? 's' : ''}` : `${years} ano${years > 1 ? 's' : ''} e ${months} mês${months > 1 ? 'es' : ''}`;
+}
 
 function getInitials(name) {
   if (!name) return "??";
@@ -104,6 +126,12 @@ export default function PCs_Internos() {
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores'],
     queryFn: () => base44.entities.Colaboradores.list(),
+    staleTime: 30000,
+  });
+
+  const { data: avaliacoes = [] } = useQuery({
+    queryKey: ['avaliacoes'],
+    queryFn: () => base44.entities.Avaliacoes.list('-data_avaliacao'),
     staleTime: 30000,
   });
 
@@ -329,15 +357,146 @@ export default function PCs_Internos() {
     return equipamentos.filter(e => (!e.usuario_atual || e.usuario_atual.trim() === "" || e.status === "Disponível") && !(!e.colaborador_id && e.area));
   }, [equipamentos]);
 
-  // KPIs
-  const stats = useMemo(() => {
+  // Exportação para Excel (.xlsx) com TODOS os campos cadastrados e enriquecidos
+  const mapEquipamentoParaExcel = (eq) => {
+    const colab = colaboradores.find(c => c.id === eq.colaborador_id || (eq.usuario_atual && c.nome_completo === eq.usuario_atual));
+    const ultimaAvaliacao = avaliacoes.find(a => a.equipamento_id === eq.id);
+
+    const isCompartilhado = !eq.colaborador_id && eq.area;
+    const modoAtribuicao = isCompartilhado
+      ? 'Setor Compartilhado'
+      : (eq.usuario_atual?.trim() ? 'Colaborador Específico' : 'Disponível / Estoque');
+
+    const dataFormatacao = eq.data_formatacao ||
+      (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao) || null;
+
+    const histFormat = Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes.length > 0
+      ? eq.historico_formatacoes.map(f => `${formatarDataSemFuso(f.data_formatacao)}${f.observacoes ? ' (' + f.observacoes + ')' : ''}`).join('; ')
+      : 'Nenhuma';
+
+    const histUsuarios = Array.isArray(eq.usuarios_anteriores) && eq.usuarios_anteriores.length > 0
+      ? eq.usuarios_anteriores.map(u => `${u.nome || 'Usuário'} (${formatarDataSemFuso(u.data_inicio)} → ${u.data_fim ? formatarDataSemFuso(u.data_fim) : 'Atual'})`).join('; ')
+      : 'Nenhum';
+
+    const anydeskVal = extrairAnyDesk(eq) || extrairAnyDesk(ultimaAvaliacao) || 'Não informado';
+    
+    let soVal = '—';
+    if (eq.versao_windows) {
+      soVal = eq.versao_windows.split('|')[0].trim();
+    } else if (ultimaAvaliacao?.versao_windows) {
+      soVal = ultimaAvaliacao.versao_windows.split('|')[0].trim();
+    }
+
     return {
-      total: equipamentos.length,
-      emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
-      disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
-      manutencaoEProblema: equipamentos.filter(e => e.status === "Manutenção" || e.condicao === "Com Problema" || e.condicao === "Danificado").length,
+      "Tipo": eq.tipo || '—',
+      "Etiqueta Interna": eq.etiqueta_interna || '—',
+      "Service Tag / Serial Number": eq.service_tag || eq.numero_serie || '—',
+      "Marca": eq.marca || '—',
+      "Modelo": eq.modelo || '—',
+      "Processador": eq.processador || '—',
+      "Nota Fiscal": eq.nota_fiscal || '—',
+      "Valor (R$)": eq.valor != null && !isNaN(Number(eq.valor)) ? Number(eq.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—',
+      "Data de Aquisição": eq.data_aquisicao ? formatarDataSemFuso(eq.data_aquisicao) : '—',
+      "Tempo de Uso": calcTempoUso(eq.data_aquisicao) || eq.tempo_uso || '—',
+      "Status": eq.status || 'Disponível',
+      "Modo de Atribuição": modoAtribuicao,
+      "Usuário / Responsável Atual": eq.usuario_atual || (isCompartilhado ? `Compartilhado — ${eq.area}` : 'Estoque / Sem Usuário'),
+      "Usuário Desde": eq.usuario_desde ? formatarDataSemFuso(eq.usuario_desde) : '—',
+      "Área / Setor": eq.area || colab?.area || '—',
+      "E-mail do Colaborador": colab?.email || '—',
+      "Cargo do Colaborador": colab?.cargo || '—',
+      "Status do Colaborador": colab?.status || '—',
+      "AnyDesk ID": anydeskVal,
+      "Memória RAM": eq.memoria_ram || ultimaAvaliacao?.memoria_ram || '—',
+      "Sistema Operacional": soVal,
+      "Tipo de Armazenamento (SSD/HD)": ultimaAvaliacao?.tipo_armazenamento || '—',
+      "Espaço em Disco": ultimaAvaliacao?.espaco_disco || '—',
+      "Office": eq.office || '—',
+      "Antivírus": eq.antivirus || ultimaAvaliacao?.antivirus || '—',
+      "Condição / Desempenho": eq.condicao || ultimaAvaliacao?.desempenho || '—',
+      "Última Formatação": dataFormatacao ? formatarDataSemFuso(dataFormatacao) : 'Não registrada',
+      "Histórico de Formatações": histFormat,
+      "Histórico de Usuários Anteriores": histUsuarios,
+      "Avaliação Técnica - Data": ultimaAvaliacao?.data_avaliacao ? formatarDataSemFuso(ultimaAvaliacao.data_avaliacao) : 'Não avaliada',
+      "Avaliação Técnica - Pontuação": ultimaAvaliacao?.pontuacao_total != null ? `${ultimaAvaliacao.pontuacao_total} pts` : '—',
+      "Avaliação Técnica - Classificação": ultimaAvaliacao?.classificacao || '—',
+      "Avaliação Técnica - Atende ao Trabalho?": ultimaAvaliacao?.atende_trabalho || '—',
+      "Avaliação Técnica - Recomendação Usuário": ultimaAvaliacao?.recomendacao_usuario || '—',
+      "Disponível p/ Reserva?": eq.disponivel_para_reserva ? 'Sim' : 'Não',
+      "Observações Gerais": eq.observacoes || '—',
+      "Data de Cadastro": eq.created_date ? formatarDataHoraSemFuso(eq.created_date) : '—'
     };
-  }, [equipamentos]);
+  };
+
+  const handleExportarExcel = (apenasFiltrados = false) => {
+    const listaParaExportar = apenasFiltrados ? filteredEquipamentos : equipamentos;
+    
+    if (listaParaExportar.length === 0) {
+      alert("Nenhum equipamento encontrado para exportação.");
+      return;
+    }
+
+    const todosDados = listaParaExportar.map(mapEquipamentoParaExcel);
+    const desktopsDados = listaParaExportar.filter(e => (e.tipo || '').toLowerCase().includes('desktop')).map(mapEquipamentoParaExcel);
+    const notebooksDados = listaParaExportar.filter(e => (e.tipo || '').toLowerCase().includes('notebook')).map(mapEquipamentoParaExcel);
+    const monitoresDados = listaParaExportar.filter(e => (e.tipo || '').toLowerCase().includes('monitor')).map(mapEquipamentoParaExcel);
+
+    // Resumo por Usuário
+    const resumoDados = userGroups.map(g => ({
+      "Usuário / Setor": g.usuario,
+      "Área / Departamento": g.area,
+      "Cargo": g.cargo,
+      "Total Desktops": g.desktops.length,
+      "Total Notebooks": g.notebooks.length,
+      "Total Monitores": g.monitores.length,
+      "Outros Equipamentos": g.outros.length,
+      "Total Geral": g.items.length
+    }));
+
+    const wb = XLSX.utils.book_new();
+
+    const autoWidth = (ws, data) => {
+      if (!data || data.length === 0) return;
+      const keys = Object.keys(data[0]);
+      ws['!cols'] = keys.map(k => ({
+        wch: Math.max(k.length + 4, ...data.map(row => (row[k] ? String(row[k]).length : 0)))
+      }));
+    };
+
+    const wsTodos = XLSX.utils.json_to_sheet(todosDados);
+    autoWidth(wsTodos, todosDados);
+    XLSX.utils.book_append_sheet(wb, wsTodos, apenasFiltrados ? "Equipamentos Filtrados" : "Todos os Equipamentos");
+
+    if (desktopsDados.length > 0) {
+      const wsDesktops = XLSX.utils.json_to_sheet(desktopsDados);
+      autoWidth(wsDesktops, desktopsDados);
+      XLSX.utils.book_append_sheet(wb, wsDesktops, "Desktops");
+    }
+
+    if (notebooksDados.length > 0) {
+      const wsNotebooks = XLSX.utils.json_to_sheet(notebooksDados);
+      autoWidth(wsNotebooks, notebooksDados);
+      XLSX.utils.book_append_sheet(wb, wsNotebooks, "Notebooks");
+    }
+
+    if (monitoresDados.length > 0) {
+      const wsMonitores = XLSX.utils.json_to_sheet(monitoresDados);
+      autoWidth(wsMonitores, monitoresDados);
+      XLSX.utils.book_append_sheet(wb, wsMonitores, "Monitores");
+    }
+
+    if (resumoDados.length > 0) {
+      const wsResumo = XLSX.utils.json_to_sheet(resumoDados);
+      autoWidth(wsResumo, resumoDados);
+      XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo por Usuário");
+    }
+
+    const dataHoje = new Date().toISOString().split('T')[0];
+    const suf = apenasFiltrados ? '_filtrados' : '_todos';
+    const fileName = `relatorio_pcs_internos${suf}_${dataHoje}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+  };
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
@@ -357,18 +516,47 @@ export default function PCs_Internos() {
             </div>
           </div>
 
-          {isAdmin && (
-            <Button
-              onClick={() => {
-                setEditingEquipamento(null);
-                setShowForm(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl text-white shadow-xs"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Equipamento
-            </Button>
-          )}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 font-bold rounded-xl shadow-xs gap-2"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Exportar Excel (.xlsx)</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-xs text-slate-500 uppercase tracking-wider">Relatórios em Excel</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExportarExcel(false)} className="cursor-pointer font-medium">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 mr-2" />
+                  Exportar Todos ({equipamentos.length} equipamentos)
+                </DropdownMenuItem>
+                {filteredEquipamentos.length !== equipamentos.length && (
+                  <DropdownMenuItem onClick={() => handleExportarExcel(true)} className="cursor-pointer font-medium">
+                    <Filter className="w-4 h-4 text-blue-600 mr-2" />
+                    Exportar Apenas Filtrados ({filteredEquipamentos.length} equipamentos)
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {isAdmin && (
+              <Button
+                onClick={() => {
+                  setEditingEquipamento(null);
+                  setShowForm(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl text-white shadow-xs"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Equipamento
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* ── 1. CARTÕES DE RESUMO KPI NO TOPO ────────────────────────────── */}
