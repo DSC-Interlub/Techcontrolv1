@@ -58,8 +58,10 @@ export function usePortalColaborador() {
     window.location.href = "/portal-login";
   };
 
-  const temAcessoComunicados = Array.isArray(colaborador?.permissoes_comunicados) &&
-    colaborador.permissoes_comunicados.length > 0;
+  const temAcessoComunicados =
+    colaborador?.area === "Comunicação e Branding" ||
+    colaborador?.area === "Conexão Humana" ||
+    (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.length > 0);
 
   return { colaborador, temAcessoComunicados, logout };
 }

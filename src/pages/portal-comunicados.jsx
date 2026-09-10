@@ -1,4 +1,6 @@
 import React, { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import PortalLayout from "../components/portal/PortalLayout";
 import PainelComunicados from "../components/comunicados/PainelComunicados";
@@ -9,9 +11,25 @@ import { Loader2 } from "lucide-react";
 export default function PortalComunicados() {
   const { colaborador, loading, logout, requireAuth } = usePortalAuth();
 
-  useEffect(() => { if (!loading) requireAuth(); }, [loading]);
+  useEffect(() => {
+    if (!loading) requireAuth();
+  }, [loading]);
 
-  if (loading || !colaborador) {
+  // Busca dados frescos do colaborador logado
+  const { data: colaboradorFull, isLoading: loadingFull } = useQuery({
+    queryKey: ["portal_colab_comunicados_full", colaborador?.email],
+    queryFn: async () => {
+      if (!colaborador?.email) return null;
+      const results = await base44.entities.Colaboradores.filter({ email: colaborador.email });
+      return results?.[0] || null;
+    },
+    enabled: !!colaborador?.email,
+    staleTime: 60_000,
+  });
+
+  const colabAtivo = colaboradorFull || colaborador;
+
+  if (loading || !colaborador || loadingFull) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
@@ -19,27 +37,32 @@ export default function PortalComunicados() {
     );
   }
 
-  const permissoes = colaborador.permissoes_comunicados || [];
+  const permissoes = colabAtivo?.permissoes_comunicados || [];
   const podeVerVisao = permissoes.includes("ver_visao_geral");
   const podeCadastrarArtes = permissoes.includes("cadastrar_artes");
   const podeGerirColabs = permissoes.includes("gerir_colaboradores");
 
-  if (!podeVerVisao && !podeCadastrarArtes && !podeGerirColabs) {
+  const area = colabAtivo?.area || "";
+  const isComunicacao = area === "Comunicação e Branding" || podeCadastrarArtes;
+  const isConexaoHumana = area === "Conexão Humana" || podeGerirColabs || podeVerVisao;
+  const temAcesso = isComunicacao || isConexaoHumana || podeVerVisao || podeCadastrarArtes || podeGerirColabs;
+
+  if (!temAcesso) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout}>
-        <div className="p-8 text-center text-gray-500">
+      <PortalLayout colaborador={colabAtivo} onLogout={logout}>
+        <div className="p-8 text-center text-muted-foreground">
           <p className="text-lg font-medium">Sem permissão de acesso</p>
-          <p className="text-sm mt-1">Você não tem permissões de comunicados configuradas. Contate o administrador.</p>
+          <p className="text-sm mt-1">Este módulo é reservado às áreas de Comunicação e Branding e Conexão Humana (DP/RH/DHO).</p>
         </div>
       </PortalLayout>
     );
   }
 
-  const nomeUsuario = colaborador.nome_completo || "";
+  const nomeUsuario = colabAtivo?.nome_completo || "";
 
-  if (podeGerirColabs) {
+  if (isConexaoHumana || podeGerirColabs) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout}>
+      <PortalLayout colaborador={colabAtivo} onLogout={logout}>
         <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
           <Tabs defaultValue="painel" className="w-full">
             <TabsList className="mb-4">
@@ -48,9 +71,10 @@ export default function PortalComunicados() {
             </TabsList>
             <TabsContent value="painel">
               <PainelComunicados
-                podeCriarArte={podeCadastrarArtes || podeVerVisao}
-                podeGerenciarConfig={podeVerVisao}
+                podeCriarArte={isComunicacao}
+                podeGerenciarConfig={false}
                 nomeUsuario={nomeUsuario}
+                colaboradorAtual={colabAtivo}
               />
             </TabsContent>
             <TabsContent value="colabs">
@@ -63,12 +87,13 @@ export default function PortalComunicados() {
   }
 
   return (
-    <PortalLayout colaborador={colaborador} onLogout={logout}>
+    <PortalLayout colaborador={colabAtivo} onLogout={logout}>
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <PainelComunicados
-          podeCriarArte={podeCadastrarArtes || podeVerVisao}
-          podeGerenciarConfig={podeVerVisao}
+          podeCriarArte={isComunicacao}
+          podeGerenciarConfig={false}
           nomeUsuario={nomeUsuario}
+          colaboradorAtual={colabAtivo}
         />
       </div>
     </PortalLayout>
