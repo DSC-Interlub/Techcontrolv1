@@ -343,22 +343,87 @@ function ModalConfiguracoesAdmin({ open, onOpenChange }) {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Configurações dos 4 tipos de e-mail */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Templates de Assunto & Destinatários (4 Tipos)
-            </h4>
+        <div className="flex justify-end pt-3 border-t">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-            {loadConfigs ? (
-              <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-            ) : (
-              configsValidas.map(cfg => (
-                <div key={cfg.id} className="border rounded-lg p-3 bg-card space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <span className="font-bold text-foreground">{TIPO_LABELS[cfg.tipo_comunicado] || cfg.label}</span>
+// ── MODAL: CONFIGURAÇÃO DE MODELOS & DESTINATÁRIOS (BRANDING / ADMIN) ─────────
+function ModalConfiguracaoModelos({ open, onOpenChange }) {
+  const queryClient = useQueryClient();
+  const [salvoMsg, setSalvoMsg] = useState("");
+
+  const { data: configs = [], isLoading } = useQuery({
+    queryKey: ["comunicados_config"],
+    queryFn: () => base44.entities.Comunicados_Config.list(),
+  });
+
+  const updateConfigMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Comunicados_Config.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comunicados_config"] });
+      setSalvoMsg("Alterações salvas! Os próximos envios diários utilizarão estes modelos.");
+      setTimeout(() => setSalvoMsg(""), 4000);
+    },
+  });
+
+  const tiposPermitidos = ["aniversario_colaborador", "aniversario_conjuge", "aniversario_filho_1ano", "tempo_empresa"];
+  const configsValidas = configs.filter(c => tiposPermitidos.includes(c.tipo_comunicado));
+
+  const tagsPorTipo = {
+    aniversario_colaborador: ["{nome}", "{area}"],
+    aniversario_conjuge: ["{nome}", "{nome_conjuge}", "{area}"],
+    aniversario_filho_1ano: ["{nome}", "{nome_filho}", "{area}"],
+    tempo_empresa: ["{nome}", "{anos}", "{area}"],
+  };
+
+  const handleInsertTag = (cfg, tag) => {
+    const atual = cfg.assunto_template || "";
+    const novo = atual ? `${atual} ${tag}` : tag;
+    updateConfigMut.mutate({ id: cfg.id, data: { assunto_template: novo } });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-6">
+        <DialogHeader className="pb-3 border-b">
+          <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
+            <Sparkles className="w-5 h-5 text-purple-600" />
+            Configurar Modelos de Assunto & Destinatários
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Personalize o título dos e-mails e quem deve receber cada um dos 4 comunicados automáticos.
+          </DialogDescription>
+        </DialogHeader>
+
+        {salvoMsg && (
+          <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs px-3 py-2 rounded-lg mt-2 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{salvoMsg}</span>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
+          {isLoading ? (
+            <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-purple-600" /></div>
+          ) : configsValidas.length === 0 ? (
+            <p className="text-xs text-center text-gray-500 py-6">Nenhuma configuração encontrada.</p>
+          ) : (
+            configsValidas.map(cfg => {
+              const tags = tagsPorTipo[cfg.tipo_comunicado] || ["{nome}"];
+              return (
+                <div key={cfg.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2.5">
+                    <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                      {TIPO_LABELS[cfg.tipo_comunicado] || cfg.label}
+                    </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">{cfg.ativo ? "Ativo" : "Inativo"}</span>
+                      <span className="text-[11px] font-medium text-slate-500">{cfg.ativo ? "Ativo" : "Pausado"}</span>
                       <Switch
                         checked={cfg.ativo}
                         onCheckedChange={v => updateConfigMut.mutate({ id: cfg.id, data: { ativo: v } })}
@@ -366,38 +431,66 @@ function ModalConfiguracoesAdmin({ open, onOpenChange }) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                  <div className="space-y-3">
                     <div>
-                      <Label className="text-[11px]">Template do Assunto</Label>
+                      <div className="flex items-center justify-between mb-1">
+                        <Label className="text-[11px] font-bold text-slate-700">Assunto do E-mail</Label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400">Variáveis:</span>
+                          {tags.map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => handleInsertTag(cfg, t)}
+                              className="text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 rounded px-1.5 py-0.5 cursor-pointer transition-colors"
+                              title={`Clique para inserir ${t}`}
+                            >
+                              +{t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <Input
                         defaultValue={cfg.assunto_template}
+                        key={cfg.assunto_template}
                         onBlur={e => {
                           if (e.target.value !== cfg.assunto_template) {
                             updateConfigMut.mutate({ id: cfg.id, data: { assunto_template: e.target.value } });
                           }
                         }}
-                        className="h-7 text-xs mt-1"
+                        className="h-8 text-xs"
                       />
                     </div>
+
                     <div>
-                      <Label className="text-[11px]">Perfil de Destinatários</Label>
+                      <Label className="text-[11px] font-bold text-slate-700">Quem recebe este comunicado?</Label>
                       <Select
                         value={cfg.destinatarios_tipo || "todos_colaboradores"}
                         onValueChange={v => updateConfigMut.mutate({ id: cfg.id, data: { destinatarios_tipo: v } })}
                       >
-                        <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="todos_colaboradores" className="text-xs">Todos os colaboradores ativos</SelectItem>
-                          <SelectItem value="colaborador_conjuge_gestor" className="text-xs">Colaborador + cônjuge + gestor</SelectItem>
-                          <SelectItem value="colaborador_e_gestor" className="text-xs">Colaborador + gestor</SelectItem>
+                          <SelectItem value="todos_colaboradores" className="text-xs">
+                            📢 Toda a empresa (Todos os colaboradores ativos)
+                          </SelectItem>
+                          <SelectItem value="colaborador_conjuge_gestor" className="text-xs">
+                            💑 Colaborador + Cônjuge + Gestor direto
+                          </SelectItem>
+                          <SelectItem value="colaborador_e_gestor" className="text-xs">
+                            👤 Apenas Colaborador + Gestor direto
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="flex justify-end pt-3 border-t">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Fechar</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -416,14 +509,25 @@ export default function PainelComunicados({
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [openAdminModal, setOpenAdminModal] = useState(false);
+  const [openModelosModal, setOpenModelosModal] = useState(false);
   const [openModalFora, setOpenModalFora] = useState(false);
   const [previewImagem, setPreviewImagem] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
 
-  // Identificação das Áreas Relevantes (TAREFA 1)
+  // Identificação das Áreas Relevantes
   const userArea = colaboradorAtual?.area || "";
-  const isComunicacao = userArea === "Comunicação e Branding" || podeCriarArte;
-  const isConexaoHumana = userArea === "Conexão Humana" || podeGerenciarConfig;
+  const isComunicacao = 
+    colaboradorAtual?.eh_comunicacao_branding ||
+    userArea === "Comunicação e Branding" ||
+    (Array.isArray(colaboradorAtual?.permissoes_comunicados) && colaboradorAtual.permissoes_comunicados.includes("comunicacao_branding")) ||
+    podeCriarArte;
+
+  const isConexaoHumana = 
+    colaboradorAtual?.eh_conexao_humana ||
+    userArea === "Conexão Humana" ||
+    (Array.isArray(colaboradorAtual?.permissoes_comunicados) && colaboradorAtual.permissoes_comunicados.includes("conexao_humana")) ||
+    podeGerenciarConfig;
+
   const isAdmin = podeGerenciarConfig;
 
   // 1. Busca Demandas de Artes
@@ -568,6 +672,19 @@ export default function PainelComunicados({
                     {totalForaDosComunicados} fora
                   </Badge>
                 )}
+              </Button>
+            )}
+
+            {/* Botão de Modelos & Assuntos para Comunicação e Branding / Admin */}
+            {(isComunicacao || isAdmin) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenModelosModal(true)}
+                className="text-xs font-semibold border-purple-300 bg-purple-50/50 hover:bg-purple-100 text-purple-900"
+              >
+                <Sparkles className="w-4 h-4 mr-1.5 text-purple-600" />
+                Modelos & Destinatários
               </Button>
             )}
 
@@ -913,14 +1030,20 @@ export default function PainelComunicados({
         </DialogContent>
       </Dialog>
 
-      {/* 2. Modal de Colaboradores Fora dos Comunicados */}
+      {/* 2. Modal de Modelos & Destinatários (Branding / Admin) */}
+      <ModalConfiguracaoModelos
+        open={openModelosModal}
+        onOpenChange={setOpenModelosModal}
+      />
+
+      {/* 3. Modal de Colaboradores Fora dos Comunicados */}
       <ModalColaboradoresFora
         open={openModalFora}
         onOpenChange={setOpenModalFora}
         colaboradores={colaboradores}
       />
 
-      {/* 3. Modal de Ajustes TI / Admin & Disparo de Emergência */}
+      {/* 4. Modal de Ajustes TI / Admin & Disparo de Emergência */}
       <ModalConfiguracoesAdmin
         open={openAdminModal}
         onOpenChange={setOpenAdminModal}

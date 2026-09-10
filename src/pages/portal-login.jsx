@@ -74,6 +74,8 @@ export default function PortalLogin() {
         email: colaborador.email,
         area: colaborador.area,
         tipo_funcionario: colaborador.tipo_funcionario,
+        eh_comunicacao_branding: colaborador.eh_comunicacao_branding ?? false,
+        eh_conexao_humana: colaborador.eh_conexao_humana ?? false,
         permissoes_comunicados: colaborador.permissoes_comunicados || [],
       }));
 
@@ -117,6 +119,8 @@ export default function PortalLogin() {
         email: colaborador.email,
         area: colaborador.area,
         tipo_funcionario: colaborador.tipo_funcionario,
+        eh_comunicacao_branding: colaborador.eh_comunicacao_branding ?? false,
+        eh_conexao_humana: colaborador.eh_conexao_humana ?? false,
         permissoes_comunicados: colaborador.permissoes_comunicados || [],
       }));
 
@@ -167,6 +171,8 @@ export default function PortalLogin() {
         email: colaboradorLogando.email,
         area: colaboradorLogando.area,
         tipo_funcionario: colaboradorLogando.tipo_funcionario,
+        eh_comunicacao_branding: colaboradorLogando.eh_comunicacao_branding ?? false,
+        eh_conexao_humana: colaboradorLogando.eh_conexao_humana ?? false,
         permissoes_comunicados: colaboradorLogando.permissoes_comunicados || [],
       }));
 

@@ -35,9 +35,11 @@ const PERMISSOES_COMUNICADOS = [
 
 const hoje = new Date().toISOString().split("T")[0];
 
-export default function ColaboradorForm({ colaborador, onClose, currentUserRole }) {
+export default function ColaboradorForm({ colaborador, onClose, currentUserRole, modoPortal = false }) {
   const [formData, setFormData] = useState(() => colaborador || {
-    senhas_sistemas: [], filhos: [], incluir_comunicados: true, permissoes_comunicados: [], status: "Ativo"
+    senhas_sistemas: [], filhos: [], incluir_comunicados: true, 
+    eh_comunicacao_branding: false, eh_conexao_humana: false,
+    permissoes_comunicados: [], status: "Ativo"
   });
   const [activeTab, setActiveTab] = useState("profissional");
   const [showSenhas, setShowSenhas] = useState({});
@@ -47,7 +49,26 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
   const fotoRef = useRef();
 
   useEffect(() => {
-    setFormData(colaborador || { senhas_sistemas: [], filhos: [], incluir_comunicados: true, permissoes_comunicados: [], status: "Ativo" });
+    const isBranding = colaborador?.eh_comunicacao_branding || 
+      (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.includes('comunicacao_branding')) ||
+      colaborador?.area === 'Comunicação e Branding';
+
+    const isConexao = colaborador?.eh_conexao_humana || 
+      (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.includes('conexao_humana')) ||
+      colaborador?.area === 'Conexão Humana';
+
+    setFormData(colaborador ? {
+      ...colaborador,
+      eh_comunicacao_branding: isBranding,
+      eh_conexao_humana: isConexao,
+      incluir_comunicados: colaborador.incluir_comunicados !== false,
+      filhos: colaborador.filhos || [],
+      senhas_sistemas: colaborador.senhas_sistemas || [],
+    } : { 
+      senhas_sistemas: [], filhos: [], incluir_comunicados: true, 
+      eh_comunicacao_branding: false, eh_conexao_humana: false,
+      permissoes_comunicados: [], status: "Ativo" 
+    });
     setShowSenhas({});
     setErrors({});
   }, [colaborador?.id]);
@@ -197,6 +218,14 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
       cleanedData.responsavel_id = null;
     }
 
+    // Sincronização simplificada de papéis de gestão
+    const perms = [];
+    if (formData.eh_comunicacao_branding) perms.push('comunicacao_branding');
+    if (formData.eh_conexao_humana) perms.push('conexao_humana');
+    cleanedData.permissoes_comunicados = perms;
+    cleanedData.eh_comunicacao_branding = !!formData.eh_comunicacao_branding;
+    cleanedData.eh_conexao_humana = !!formData.eh_conexao_humana;
+
     if (colaborador) {
       updateMutation.mutate({ id: colaborador.id, data: cleanedData });
     } else {
@@ -272,7 +301,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
     const pess = [formData.foto_url, formData.data_nascimento, formData.graduacao, formData.resumo_experiencia, formData.contato_responsavel_nome].filter(Boolean).length;
     const fam = [formData.conjuge_nome, (formData.filhos || []).length > 0].filter(Boolean).length;
     const comp = formData.responsavel_id ? 1 : 0;
-    const coms = (formData.permissoes_comunicados || []).length + (formData.incluir_comunicados ? 1 : 0);
+    const coms = (formData.eh_comunicacao_branding ? 1 : 0) + (formData.eh_conexao_humana ? 1 : 0) + (formData.incluir_comunicados ? 1 : 0);
     const sec = [formData.senha_portal, formData.senha_microsoft, formData.senha_login_maquina, (formData.senhas_sistemas || []).length > 0].filter(Boolean).length;
 
     return { prof, pess, fam, comp, coms, sec };
@@ -289,7 +318,9 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
               {colaborador ? `Editar Colaborador: ${colaborador.nome_completo}` : "Novo Colaborador"}
             </CardTitle>
             <p className="text-xs text-gray-500 mt-0.5">
-              Organizado em 6 seções para cadastro e governança eficiente.
+              {modoPortal 
+                ? "Gestão de Cadastro — Conexão Humana (DP/RH/DHO)"
+                : "Organizado em 6 seções para cadastro e governança eficiente."}
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full"><X className="w-4 h-4" /></Button>
@@ -306,40 +337,60 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full mb-6 h-auto p-1 bg-gray-100 gap-1 rounded-xl">
-              <TabsTrigger value="profissional" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                <Briefcase className="w-3.5 h-3.5" />
-                <span>Profissional</span>
-                {tabCounts.prof > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.prof}</Badge>}
-              </TabsTrigger>
-              <TabsTrigger value="pessoal" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Pessoal</span>
-                {tabCounts.pess > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.pess}</Badge>}
-              </TabsTrigger>
-              <TabsTrigger value="familia" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                <Heart className="w-3.5 h-3.5" />
-                <span>Família</span>
-                {tabCounts.fam > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.fam}</Badge>}
-              </TabsTrigger>
-              <TabsTrigger value="compras" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span>Compras</span>
-                {tabCounts.comp > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700">✓</Badge>}
-              </TabsTrigger>
-              <TabsTrigger value="comunicados" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                <Megaphone className="w-3.5 h-3.5" />
-                <span>Comunicados</span>
-                {tabCounts.coms > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700">{tabCounts.coms}</Badge>}
-              </TabsTrigger>
-              {!isComunicadosRole && (
-                <TabsTrigger value="acesso" className="text-xs py-2 flex items-center gap-1.5 justify-center">
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Segurança</span>
-                  {tabCounts.sec > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700">{tabCounts.sec}</Badge>}
+            {modoPortal ? (
+              <TabsList className="grid grid-cols-3 w-full mb-6 h-auto p-1 bg-gray-100 gap-1 rounded-xl">
+                <TabsTrigger value="profissional" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Profissional</span>
+                  {tabCounts.prof > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.prof}</Badge>}
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger value="pessoal" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Pessoal & Gestão</span>
+                  {tabCounts.pess > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.pess}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="familia" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>Família & Dependentes</span>
+                  {tabCounts.fam > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.fam}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+            ) : (
+              <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full mb-6 h-auto p-1 bg-gray-100 gap-1 rounded-xl">
+                <TabsTrigger value="profissional" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  <span>Profissional</span>
+                  {tabCounts.prof > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.prof}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="pessoal" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Pessoal</span>
+                  {tabCounts.pess > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.pess}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="familia" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>Família</span>
+                  {tabCounts.fam > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-indigo-100 text-indigo-700">{tabCounts.fam}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="compras" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>Compras</span>
+                  {tabCounts.comp > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700">✓</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="comunicados" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                  <Megaphone className="w-3.5 h-3.5" />
+                  <span>Comunicados</span>
+                  {tabCounts.coms > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-purple-100 text-purple-700">{tabCounts.coms}</Badge>}
+                </TabsTrigger>
+                {!isComunicadosRole && (
+                  <TabsTrigger value="acesso" className="text-xs py-2 flex items-center gap-1.5 justify-center">
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Segurança</span>
+                    {tabCounts.sec > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700">{tabCounts.sec}</Badge>}
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            )}
 
             {/* ── 1. PROFISSIONAL ── */}
             <TabsContent value="profissional" className="space-y-4">
@@ -629,29 +680,50 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole 
                 </label>
               </div>
 
-              {/* Permissões no Portal */}
+              {/* Papéis de Gestão no Portal */}
               {currentUserRole === 'admin' && (
-                <div className="border-t pt-5">
-                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Permissões de Comunicados no Portal</h4>
-                  <p className="text-xs text-gray-500 mb-3">Define quais funcionalidades de comunicados este colaborador pode gerenciar no portal.</p>
+                <div className="border-t pt-5 space-y-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Papéis de Acesso no Portal</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Selecione se este colaborador possui funções de gestão no Portal do Colaborador.</p>
+                  </div>
 
-                  <div className="space-y-2.5">
-                    {PERMISSOES_COMUNICADOS.map(p => {
-                      const checked = (formData.permissoes_comunicados || []).includes(p.value);
-                      const toggle = () => {
-                        const atual = formData.permissoes_comunicados || [];
-                        set('permissoes_comunicados', checked ? atual.filter(v => v !== p.value) : [...atual, p.value]);
-                      };
-                      return (
-                        <div key={p.value} className="flex items-start gap-3 bg-white border border-gray-200 hover:border-indigo-200 rounded-lg p-3 transition-colors">
-                          <input type="checkbox" id={`perm_${p.value}`} checked={checked} onChange={toggle} className="w-4 h-4 mt-0.5 accent-indigo-600 cursor-pointer" />
-                          <label htmlFor={`perm_${p.value}`} className="cursor-pointer">
-                            <p className="text-xs font-bold text-gray-900">{p.label}</p>
-                            <p className="text-[11px] text-gray-500 mt-0.5">{p.desc}</p>
-                          </label>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    {/* Comunicação e Branding */}
+                    <div className="flex items-start gap-3 bg-white border border-gray-200 hover:border-indigo-300 rounded-xl p-3.5 transition-all">
+                      <Switch
+                        id="role_branding"
+                        checked={!!formData.eh_comunicacao_branding}
+                        onCheckedChange={v => set('eh_comunicacao_branding', v)}
+                        className="mt-0.5"
+                      />
+                      <label htmlFor="role_branding" className="cursor-pointer space-y-0.5">
+                        <span className="text-xs font-bold text-gray-900 block flex items-center gap-1.5">
+                          🎨 Comunicação e Branding
+                        </span>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                          Permite fazer upload de artes personalizadas, planejar comunicados do mês e editar modelos de assunto.
+                        </p>
+                      </label>
+                    </div>
+
+                    {/* Conexão Humana */}
+                    <div className="flex items-start gap-3 bg-white border border-gray-200 hover:border-indigo-300 rounded-xl p-3.5 transition-all">
+                      <Switch
+                        id="role_conexao"
+                        checked={!!formData.eh_conexao_humana}
+                        onCheckedChange={v => set('eh_conexao_humana', v)}
+                        className="mt-0.5"
+                      />
+                      <label htmlFor="role_conexao" className="cursor-pointer space-y-0.5">
+                        <span className="text-xs font-bold text-gray-900 block flex items-center gap-1.5">
+                          👥 Conexão Humana (DP/RH/DHO)
+                        </span>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                          Permite criar e gerenciar o cadastro completo de colaboradores, dependentes e auditar dados incompletos.
+                        </p>
+                      </label>
+                    </div>
                   </div>
                 </div>
               )}

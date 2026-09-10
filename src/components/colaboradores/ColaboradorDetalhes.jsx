@@ -346,18 +346,22 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
                 </div>
 
                 <div>
-                  <p className="font-bold text-gray-800 mb-2 uppercase text-[11px] tracking-wider">Permissões de Gestão no Portal ({ (colaborador.permissoes_comunicados || []).length })</p>
-                  {(colaborador.permissoes_comunicados || []).length === 0 ? (
-                    <p className="text-gray-400 italic">Nenhuma permissão especial de comunicados atribuída.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {(colaborador.permissoes_comunicados || []).map((p, i) => (
-                        <Badge key={i} className="bg-indigo-50 text-indigo-700 border-indigo-200 font-mono text-[11px]">
-                          {p}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <p className="font-bold text-gray-800 mb-2 uppercase text-[11px] tracking-wider">Papéis no Portal de Comunicados</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || (colaborador.permissoes_comunicados || []).includes("cadastrar_artes") || colaborador.area === "Comunicação e Branding") && (
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs py-1 px-2.5">
+                        🎨 Comunicação e Branding (Artes & Modelos)
+                      </Badge>
+                    )}
+                    {(colaborador.eh_conexao_humana || (colaborador.permissoes_comunicados || []).includes("conexao_humana") || (colaborador.permissoes_comunicados || []).includes("gerir_colaboradores") || colaborador.area === "Conexão Humana") && (
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-xs py-1 px-2.5">
+                        👥 Conexão Humana (Cadastro & Auditoria)
+                      </Badge>
+                    )}
+                    {!colaborador.eh_comunicacao_branding && !colaborador.eh_conexao_humana && (colaborador.permissoes_comunicados || []).length === 0 && colaborador.area !== "Comunicação e Branding" && colaborador.area !== "Conexão Humana" && (
+                      <p className="text-gray-400 italic text-xs">Colaborador padrão (sem papéis especiais de comunicados).</p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -445,8 +445,11 @@ export default function Colaboradores() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold">{colaborador.nome_completo}</span>
-                                {(colaborador.permissoes_comunicados || []).length > 0 && (
-                                  <Badge className="bg-indigo-100 text-indigo-700 text-xs">Acesso Comunicados</Badge>
+                                {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || colaborador.area === "Comunicação e Branding") && (
+                                  <Badge className="bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0 border border-purple-200">🎨 Branding</Badge>
+                                )}
+                                {(colaborador.eh_conexao_humana || (colaborador.permissoes_comunicados || []).includes("conexao_humana") || colaborador.area === "Conexão Humana") && (
+                                  <Badge className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0 border border-emerald-200">👥 Conexão Humana</Badge>
                                 )}
                                 {obterPendencias(colaborador).map((p, idx) => (
                                   <Badge
@@ -541,8 +544,11 @@ export default function Colaboradores() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold">{colaborador.nome_completo}</span>
-                                {(colaborador.permissoes_comunicados || []).length > 0 && (
-                                  <Badge className="bg-indigo-100 text-indigo-700 text-xs">Acesso Comunicados</Badge>
+                                {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || colaborador.area === "Comunicação e Branding") && (
+                                  <Badge className="bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0 border border-purple-200">🎨 Branding</Badge>
+                                )}
+                                {(colaborador.eh_conexao_humana || (colaborador.permissoes_comunicados || []).includes("conexao_humana") || colaborador.area === "Conexão Humana") && (
+                                  <Badge className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0 border border-emerald-200">👥 Conexão Humana</Badge>
                                 )}
                                 {obterPendencias(colaborador).map((p, idx) => (
                                   <Badge

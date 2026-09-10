@@ -46,6 +46,8 @@ export function usePortalColaborador() {
       email: fresco.email,
       area: fresco.area,
       tipo_funcionario: fresco.tipo_funcionario,
+      eh_comunicacao_branding: fresco.eh_comunicacao_branding ?? false,
+      eh_conexao_humana: fresco.eh_conexao_humana ?? false,
       permissoes_comunicados: fresco.permissoes_comunicados || [],
     };
     sessionStorage.setItem('portal_colaborador', JSON.stringify(sessao));
@@ -59,6 +61,8 @@ export function usePortalColaborador() {
   };
 
   const temAcessoComunicados =
+    Boolean(colaborador?.eh_comunicacao_branding) ||
+    Boolean(colaborador?.eh_conexao_humana) ||
     colaborador?.area === "Comunicação e Branding" ||
     colaborador?.area === "Conexão Humana" ||
     (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.length > 0);

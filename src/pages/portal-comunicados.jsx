@@ -37,15 +37,17 @@ export default function PortalComunicados() {
     );
   }
 
-  const permissoes = colabAtivo?.permissoes_comunicados || [];
-  const podeVerVisao = permissoes.includes("ver_visao_geral");
-  const podeCadastrarArtes = permissoes.includes("cadastrar_artes");
-  const podeGerirColabs = permissoes.includes("gerir_colaboradores");
+  const isComunicacao = 
+    colabAtivo?.eh_comunicacao_branding ||
+    colabAtivo?.area === "Comunicação e Branding" ||
+    (Array.isArray(colabAtivo?.permissoes_comunicados) && colabAtivo.permissoes_comunicados.includes("comunicacao_branding"));
 
-  const area = colabAtivo?.area || "";
-  const isComunicacao = area === "Comunicação e Branding" || podeCadastrarArtes;
-  const isConexaoHumana = area === "Conexão Humana" || podeGerirColabs || podeVerVisao;
-  const temAcesso = isComunicacao || isConexaoHumana || podeVerVisao || podeCadastrarArtes || podeGerirColabs;
+  const isConexaoHumana = 
+    colabAtivo?.eh_conexao_humana ||
+    colabAtivo?.area === "Conexão Humana" ||
+    (Array.isArray(colabAtivo?.permissoes_comunicados) && colabAtivo.permissoes_comunicados.includes("conexao_humana"));
+
+  const temAcesso = isComunicacao || isConexaoHumana;
 
   if (!temAcesso) {
     return (
