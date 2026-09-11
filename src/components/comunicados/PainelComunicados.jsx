@@ -508,11 +508,12 @@ export default function PainelComunicados({
   const [abaAtiva, setAbaAtiva] = useState("precisa_arte"); // "precisa_arte" | "prontos" | "enviados"
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [mesAno, setMesAno] = useState(() => new Date());
   const [openAdminModal, setOpenAdminModal] = useState(false);
   const [openModelosModal, setOpenModelosModal] = useState(false);
   const [openModalFora, setOpenModalFora] = useState(false);
   const [previewImagem, setPreviewImagem] = useState(null);
-  const [uploadingId, setUploadingId] = useState(null);
+  const [uploadingChave, setUploadingChave] = useState(null);
 
   // Identificação das Áreas Relevantes
   const userArea = colaboradorAtual?.area || "";
@@ -530,18 +531,18 @@ export default function PainelComunicados({
 
   const isAdmin = podeGerenciarConfig;
 
-  // 1. Busca Demandas de Artes
-  const { data: demandas = [], isLoading: loadDemandas } = useQuery({
-    queryKey: ["comunicados_artes"],
-    queryFn: () => base44.entities.Comunicados_Artes.list("-data_evento", 400),
-    staleTime: 10_000,
-  });
-
-  // 2. Busca Colaboradores para Cruzamento e Alerta
-  const { data: colaboradores = [] } = useQuery({
+  // 1. Busca Colaboradores Ativos (Fonte Única da Verdade)
+  const { data: colaboradores = [], isLoading: loadColabs } = useQuery({
     queryKey: ["colaboradores"],
     queryFn: () => base44.entities.Colaboradores.list(),
     staleTime: 30_000,
+  });
+
+  // 2. Busca Estado de Artes Salvas no Banco
+  const { data: artes = [], isLoading: loadArtes } = useQuery({
+    queryKey: ["comunicados_artes"],
+    queryFn: () => base44.entities.Comunicados_Artes.list("-data_evento", 600),
+    staleTime: 10_000,
   });
 
   // 3. Busca Histórico de Envios (Resend / Logs)
@@ -556,31 +557,144 @@ export default function PainelComunicados({
     return colaboradores.filter(c => c.status !== "Desligado" && c.incluir_comunicados === false).length;
   }, [colaboradores]);
 
-  // Filtra as demandas válidas para a janela de eventos (exclusivo 4 tipos)
-  const demandasValidas = useMemo(() => {
-    const tiposPermitidos = ["aniversario_colaborador", "aniversario_conjuge", "aniversario_filho_1ano", "tempo_empresa"];
+  // ── CÁLCULO AO VIVO DOS EVENTOS DO MÊS SELECIONADO ─────────────────────────
+  const anoAtual = mesAno.getFullYear();
+  const mesAtualNum = mesAno.getMonth() + 1;
+  const mesFmt = String(mesAtualNum).padStart(2, "0");
 
-    return demandas.filter(d => {
-      if (!tiposPermitidos.includes(d.tipo_comunicado)) return false;
-      if (!d.data_evento) return false;
-      return true;
+  const eventosDoMes = useMemo(() => {
+    const artesMap = {};
+    (artes || []).forEach(a => {
+      if (a.colaborador_id && a.tipo_comunicado && a.data_evento) {
+        artesMap[`${a.colaborador_id}_${a.tipo_comunicado}_${a.data_evento}`] = a;
+      }
     });
-  }, [demandas]);
+
+    const lista = [];
+
+    for (const c of colaboradores) {
+      if (c.status === "Desligado" || c.incluir_comunicados === false) continue;
+
+      // 1. Aniversário do Colaborador
+      if (c.data_nascimento) {
+        const parts = c.data_nascimento.split("-");
+        if (parts.length === 3 && parts[1] === mesFmt) {
+          const dia = parts[2];
+          const anoNasc = parseInt(parts[0], 10);
+          const dataEvento = `${anoAtual}-${mesFmt}-${dia}`;
+          const chave = `${c.id}_aniversario_colaborador_${dataEvento}`;
+          const arte = artesMap[chave];
+          lista.push({
+            chave,
+            tipo_comunicado: "aniversario_colaborador",
+            colaborador_id: c.id,
+            colaborador_nome: c.nome_completo,
+            area: c.area,
+            data_evento: dataEvento,
+            descricao_evento: `Aniversário de ${anoAtual - anoNasc} anos`,
+            demanda_id: arte?.id || null,
+            imagem_url: arte?.imagem_url || null,
+            status_arte: arte?.status_arte || (arte?.imagem_url ? "arte_carregada" : "sem_arte"),
+          });
+        }
+      }
+
+      // 2. Aniversário do Cônjuge
+      if (c.conjuge_data_nascimento && c.conjuge_nome) {
+        const parts = c.conjuge_data_nascimento.split("-");
+        if (parts.length === 3 && parts[1] === mesFmt) {
+          const dia = parts[2];
+          const dataEvento = `${anoAtual}-${mesFmt}-${dia}`;
+          const chave = `${c.id}_aniversario_conjuge_${dataEvento}`;
+          const arte = artesMap[chave];
+          lista.push({
+            chave,
+            tipo_comunicado: "aniversario_conjuge",
+            colaborador_id: c.id,
+            colaborador_nome: c.nome_completo,
+            conjuge_nome: c.conjuge_nome,
+            area: c.area,
+            data_evento: dataEvento,
+            descricao_evento: `Aniversário do cônjuge (${c.conjuge_nome})`,
+            demanda_id: arte?.id || null,
+            imagem_url: arte?.imagem_url || null,
+            status_arte: arte?.status_arte || (arte?.imagem_url ? "arte_carregada" : "sem_arte"),
+          });
+        }
+      }
+
+      // 3. 1 Aninho do Filho(a)
+      if (Array.isArray(c.filhos)) {
+        for (const f of c.filhos) {
+          const dNasc = f.data_nascimento || f.filho_data_nascimento;
+          const nomeF = f.nome || f.filho_nome;
+          if (dNasc && nomeF) {
+            const parts = dNasc.split("-");
+            if (parts.length === 3 && anoAtual - parseInt(parts[0], 10) === 1 && parts[1] === mesFmt) {
+              const dia = parts[2];
+              const dataEvento = `${anoAtual}-${mesFmt}-${dia}`;
+              const chave = `${c.id}_aniversario_filho_1ano_${dataEvento}`;
+              const arte = artesMap[chave];
+              lista.push({
+                chave,
+                tipo_comunicado: "aniversario_filho_1ano",
+                colaborador_id: c.id,
+                colaborador_nome: c.nome_completo,
+                filho_nome: nomeF,
+                area: c.area,
+                data_evento: dataEvento,
+                descricao_evento: `1 Aninho de ${nomeF}`,
+                demanda_id: arte?.id || null,
+                imagem_url: arte?.imagem_url || null,
+                status_arte: arte?.status_arte || (arte?.imagem_url ? "arte_carregada" : "sem_arte"),
+              });
+            }
+          }
+        }
+      }
+
+      // 4. Tempo de Empresa
+      if (c.data_admissao) {
+        const parts = c.data_admissao.split("-");
+        if (parts.length === 3) {
+          const anoAdm = parseInt(parts[0], 10);
+          const anos = anoAtual - anoAdm;
+          if (anos >= 1 && parts[1] === mesFmt) {
+            const dia = parts[2];
+            const dataEvento = `${anoAtual}-${mesFmt}-${dia}`;
+            const chave = `${c.id}_tempo_empresa_${dataEvento}`;
+            const arte = artesMap[chave];
+            lista.push({
+              chave,
+              tipo_comunicado: "tempo_empresa",
+              colaborador_id: c.id,
+              colaborador_nome: c.nome_completo,
+              anos_empresa: anos,
+              area: c.area,
+              data_evento: dataEvento,
+              descricao_evento: `${anos} ano${anos > 1 ? "s" : ""} de empresa`,
+              demanda_id: arte?.id || null,
+              imagem_url: arte?.imagem_url || null,
+              status_arte: arte?.status_arte || (arte?.imagem_url ? "arte_carregada" : "sem_arte"),
+            });
+          }
+        }
+      }
+    }
+
+    return lista.sort((a, b) => (a.data_evento || "").localeCompare(b.data_evento || ""));
+  }, [colaboradores, artes, anoAtual, mesFmt]);
 
   // ── 3 CATEGORIAS OPERACIONAIS (AS 3 ABAS) ──────────────────────────────────
   // 1. Precisa de Arte: Sem arte cadastrada
   const listaPrecisaArte = useMemo(() => {
-    return demandasValidas
-      .filter(d => d.status_arte === "sem_arte" || !d.imagem_url)
-      .sort((a, b) => (a.data_evento || "").localeCompare(b.data_evento || ""));
-  }, [demandasValidas]);
+    return eventosDoMes.filter(e => e.status_arte === "sem_arte" || !e.imagem_url);
+  }, [eventosDoMes]);
 
-  // 2. Este Mês / Prontos: Arte carregada e aguardando data de envio
+  // 2. Este Mês / Prontos: Arte carregada
   const listaProntos = useMemo(() => {
-    return demandasValidas
-      .filter(d => d.status_arte === "arte_carregada" && d.imagem_url)
-      .sort((a, b) => (a.data_evento || "").localeCompare(b.data_evento || ""));
-  }, [demandasValidas]);
+    return eventosDoMes.filter(e => e.status_arte === "arte_carregada" && e.imagem_url);
+  }, [eventosDoMes]);
 
   // 3. Enviados: Disparados com sucesso
   const listaEnviados = useMemo(() => {
@@ -608,32 +722,51 @@ export default function PainelComunicados({
   }, [abaAtiva, listaPrecisaArte, listaProntos, listaEnviados, busca, filtroTipo]);
 
   // Handlers de Upload e Remoção de Arte
-  const handleUploadArte = async (demanda, file) => {
+  const handleUploadArte = async (item, file) => {
     if (!file) return;
-    setUploadingId(demanda.id);
+    setUploadingChave(item.chave);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.Comunicados_Artes.update(demanda.id, {
-        imagem_url: file_url,
-        status_arte: "arte_carregada",
-        criado_por: nomeUsuario || "Portal",
-      });
+      
+      if (item.demanda_id) {
+        await base44.entities.Comunicados_Artes.update(item.demanda_id, {
+          imagem_url: file_url,
+          status_arte: "arte_carregada",
+          criado_por: nomeUsuario || "Portal",
+        });
+      } else {
+        await base44.entities.Comunicados_Artes.create({
+          colaborador_id: item.colaborador_id,
+          colaborador_nome: item.colaborador_nome,
+          tipo_comunicado: item.tipo_comunicado,
+          data_evento: item.data_evento,
+          descricao_evento: item.descricao_evento,
+          imagem_url: file_url,
+          status_arte: "arte_carregada",
+          ano_referencia: anoAtual,
+          anos_empresa: item.anos_empresa || null,
+          filho_nome: item.filho_nome || null,
+          criado_por: nomeUsuario || "Portal",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
     } catch (err) {
       alert("Erro ao fazer upload da arte: " + err.message);
     } finally {
-      setUploadingId(null);
+      setUploadingChave(null);
     }
   };
 
-  const handleRemoverArte = async (demanda) => {
-    if (!confirm(`Remover a arte do comunicado de ${demanda.colaborador_nome}?`)) return;
+  const handleRemoverArte = async (item) => {
+    if (!confirm(`Remover a arte do comunicado de ${item.colaborador_nome}?`)) return;
     try {
-      await base44.entities.Comunicados_Artes.update(demanda.id, {
-        imagem_url: "",
-        status_arte: "sem_arte",
-      });
-      queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
+      if (item.demanda_id) {
+        await base44.entities.Comunicados_Artes.update(item.demanda_id, {
+          imagem_url: "",
+          status_arte: "sem_arte",
+        });
+        queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
+      }
     } catch (err) {
       alert("Erro ao remover arte: " + err.message);
     }
@@ -789,21 +922,57 @@ export default function PainelComunicados({
         </div>
       </div>
 
-      {/* ── BARRA DE FILTROS & BUSCA ──────────────────────────────────────── */}
-      <div className="bg-card border rounded-xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por colaborador..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            className="pl-9 h-9 text-xs"
-          />
+      {/* ── BARRA DE SELEÇÃO DE MÊS & FILTROS ────────────────────────────── */}
+      <div className="bg-card border rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMesAno(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+            className="h-9 px-2.5 text-xs font-bold"
+            title="Mês Anterior"
+          >
+            ‹ Anterior
+          </Button>
+
+          <div className="px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-950 text-xs font-extrabold capitalize flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+            {format(mesAno, "MMMM 'de' yyyy", { locale: ptBR })}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMesAno(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+            className="h-9 px-2.5 text-xs font-bold"
+            title="Próximo Mês"
+          >
+            Próximo ›
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMesAno(new Date())}
+            className="h-9 text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            Hoje
+          </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center gap-2 justify-end">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por colaborador..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="pl-9 h-9 text-xs"
+            />
+          </div>
+
           <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-            <SelectTrigger className="h-9 text-xs w-[200px]">
+            <SelectTrigger className="h-9 text-xs w-[180px]">
               <SelectValue placeholder="Filtrar por tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -818,10 +987,11 @@ export default function PainelComunicados({
             variant="ghost"
             size="sm"
             onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
               queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
               queryClient.invalidateQueries({ queryKey: ["comunicados_log"] });
             }}
-            className="h-9 text-xs text-muted-foreground hover:text-foreground"
+            className="h-9 text-xs text-muted-foreground hover:text-foreground shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1" /> Atualizar
           </Button>
@@ -830,21 +1000,21 @@ export default function PainelComunicados({
 
       {/* ── CONTEÚDO DA ABA ATIVA ─────────────────────────────────────────── */}
       <div>
-        {loadDemandas || loadLogs ? (
+        {loadColabs || loadArtes || loadLogs ? (
           <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>
         ) : itensExibidos.length === 0 ? (
           <div className="bg-card border rounded-2xl p-12 text-center text-muted-foreground">
             {abaAtiva === "precisa_arte" && (
               <>
                 <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-foreground">Tudo pronto! Nenhuma arte pendente.</h3>
-                <p className="text-xs text-muted-foreground mt-1">Todos os eventos dos próximos dias já possuem arte cadastrada.</p>
+                <h3 className="text-base font-bold text-foreground">Tudo pronto! Nenhuma arte pendente para este mês.</h3>
+                <p className="text-xs text-muted-foreground mt-1">Todos os eventos de {format(mesAno, "MMMM 'de' yyyy", { locale: ptBR })} já possuem arte cadastrada.</p>
               </>
             )}
             {abaAtiva === "prontos" && (
               <>
                 <Calendar className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-foreground">Nenhum comunicado pronto no momento.</h3>
+                <h3 className="text-base font-bold text-foreground">Nenhum comunicado pronto no momento para este mês.</h3>
                 <p className="text-xs text-muted-foreground mt-1">Carregue as artes na aba "Precisa de Arte" para agendar os envios.</p>
               </>
             )}
@@ -862,7 +1032,7 @@ export default function PainelComunicados({
               // ── CARD DA ABA: ENVIADOS (LOGS) ──
               if (abaAtiva === "enviados") {
                 return (
-                  <Card key={item.id} className="border shadow-sm hover:shadow-md transition-shadow">
+                  <Card key={item.id || item.chave} className="border shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${TIPO_COR[item.tipo_comunicado] || "bg-gray-100"}`}>
@@ -895,7 +1065,7 @@ export default function PainelComunicados({
 
               return (
                 <Card
-                  key={item.id}
+                  key={item.chave || item.id}
                   className={`border shadow-sm hover:shadow-md transition-all ${
                     isUrgente
                       ? "border-red-400 bg-red-50/40 ring-1 ring-red-300"
@@ -938,7 +1108,7 @@ export default function PainelComunicados({
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <button
                             onClick={() => setPreviewImagem(item.imagem_url)}
-                            className="group relative shrink-0"
+                            className="group relative shrink-0 cursor-pointer"
                             title="Clique para ampliar a arte"
                           >
                             <img
@@ -975,15 +1145,15 @@ export default function PainelComunicados({
                               type="file"
                               accept="image/*"
                               className="hidden"
-                              disabled={uploadingId === item.id}
+                              disabled={uploadingChave === item.chave}
                               onChange={e => handleUploadArte(item, e.target.files?.[0])}
                             />
                             <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${
                               item.imagem_url
                                 ? "border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700"
                                 : "border-indigo-300 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-                            } ${uploadingId === item.id ? "opacity-50 cursor-not-allowed" : ""}`}>
-                              {uploadingId === item.id ? (
+                            } ${uploadingChave === item.chave ? "opacity-50 cursor-not-allowed" : ""}`}>
+                              {uploadingChave === item.chave ? (
                                 <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Enviando...</>
                               ) : item.imagem_url ? (
                                 <><RefreshCw className="w-3 h-3" /> Trocar</>
@@ -999,7 +1169,7 @@ export default function PainelComunicados({
                               size="icon"
                               onClick={() => handleRemoverArte(item)}
                               title="Remover Arte"
-                              className="h-7 w-7 text-red-600 hover:bg-red-50 rounded-lg"
+                              className="h-7 w-7 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>

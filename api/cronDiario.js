@@ -256,9 +256,12 @@ export default async function handler(req, res) {
     if (!runType || runType === 'comunicados') {
       const hojeStr = new Date().toISOString().split('T')[0];
 
-      // Geração automática incremental das demandas dos próximos 30 dias
-      console.log('[cronDiario] Gerando demandas para os próximos 30 dias...');
-      await supabase.rpc('gerar_demandas_comunicados', { dias_busca: 30 });
+      // Geração automática incremental das demandas dos próximos 30 dias (se RPC existir)
+      try {
+        await supabase.rpc('gerar_demandas_comunicados', { dias_busca: 30 });
+      } catch (rpcErr) {
+        console.log('[cronDiario] RPC gerar_demandas_comunicados ignorado:', rpcErr.message);
+      }
 
       // Carrega as configurações de assunto, ativos, destinatários etc. do banco de dados
       const { data: configs } = await supabase.from('comunicados_config').select('*');

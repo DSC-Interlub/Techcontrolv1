@@ -165,28 +165,84 @@ export default function GestaoColaboradoresPortal() {
     queryFn: () => base44.entities.Colaboradores.list(),
   });
 
-  // Auditoria de cadastros incompletos para e-mails automáticos
+  const [filtroNivelAuditoria, setFiltroNivelAuditoria] = useState("todos"); // "todos" | "critico" | "gestao" | "cadastral"
+
+  // Auditoria completa e hierárquica de cadastros incompletos
   const auditoriaIncompletos = useMemo(() => {
     return colaboradores
       .filter(c => c.status !== "Desligado")
       .map(c => {
         const pendencias = [];
-        if (!c.data_nascimento) pendencias.push({ nivel: "critico", desc: "Sem data de nascimento (impede aniversário)" });
-        if (c.conjuge_nome && !c.conjuge_data_nascimento) pendencias.push({ nivel: "critico", desc: "Cônjuge cadastrado sem data de nascimento" });
-        if (Array.isArray(c.filhos) && c.filhos.some(f => f.filho_nome && !f.filho_data_nascimento)) pendencias.push({ nivel: "critico", desc: "Filho(a) cadastrado(a) sem data de nascimento" });
-        if (!c.data_admissao) pendencias.push({ nivel: "critico", desc: "Sem data de admissão (impede tempo de empresa)" });
-        if (!c.email) pendencias.push({ nivel: "alerta", desc: "Sem e-mail corporativo" });
-        if (c.conjuge_nome && !c.conjuge_email) pendencias.push({ nivel: "alerta", desc: "Cônjuge cadastrado sem e-mail" });
-        if (!c.responsavel_nome && !c.contato_responsavel_nome) pendencias.push({ nivel: "alerta", desc: "Gestor direto não informado" });
+
+        // 🔴 Nível 1 — Crítico / Bloqueante (Acesso & Comunicados)
+        if (!c.email) pendencias.push({ nivel: "critico", categoria: "Acesso", desc: "Sem e-mail corporativo (impede login e comunicados)" });
+        if (!c.data_nascimento) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de nascimento (impede aniversário de colaborador)" });
+        if (!c.data_admissao) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de admissão (impede tempo de empresa)" });
+        if (c.conjuge_nome && !c.conjuge_data_nascimento) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Cônjuge cadastrado sem data de nascimento" });
+        if (Array.isArray(c.filhos) && c.filhos.some(f => (f.nome || f.filho_nome) && !(f.data_nascimento || f.filho_data_nascimento))) {
+          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Filho(a) cadastrado(a) sem data de nascimento" });
+        }
+
+        // 🟡 Nível 2 — Alto / Gestão & Contato
+        if (!c.responsavel_nome && !c.contato_responsavel_nome && !c.responsavel_email) {
+          pendencias.push({ nivel: "gestao", categoria: "Gestão", desc: "Gestor direto não informado" });
+        }
+        if (!c.telefone) {
+          pendencias.push({ nivel: "gestao", categoria: "Contato", desc: "Telefone / WhatsApp não informado" });
+        }
+        if (c.conjuge_nome && !c.conjuge_email) {
+          pendencias.push({ nivel: "gestao", categoria: "Família", desc: "Cônjuge cadastrado sem e-mail" });
+        }
+
+        // 🔵 Nível 3 — Médio / Estrutura & Cadastro Geral
+        if (!c.cargo) {
+          pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Cargo / Função não informado" });
+        }
+        if (!c.area || c.area === "Sem Área") {
+          pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Área / Departamento não informado" });
+        }
+        if (!c.local_trabalho) {
+          pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Unidade / Local de trabalho não informado" });
+        }
+        if (!c.tipo_funcionario) {
+          pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Tipo de colaborador (Interno/Externo) não informado" });
+        }
 
         return {
           colaborador: c,
           pendencias,
-          temCritico: pendencias.some(p => p.nivel === "critico")
+          temCritico: pendencias.some(p => p.nivel === "critico"),
+          temGestao: pendencias.some(p => p.nivel === "gestao"),
+          temCadastral: pendencias.some(p => p.nivel === "cadastral"),
         };
       })
       .filter(item => item.pendencias.length > 0);
   }, [colaboradores]);
+
+  // Contadores por prioridade de auditoria
+  const totalCriticos = useMemo(() => auditoriaIncompletos.filter(a => a.temCritico).length, [auditoriaIncompletos]);
+  const totalGestao = useMemo(() => auditoriaIncompletos.filter(a => a.temGestao).length, [auditoriaIncompletos]);
+  const totalCadastrais = useMemo(() => auditoriaIncompletos.filter(a => a.temCadastral).length, [auditoriaIncompletos]);
+
+  // Auditoria filtrada pelo nível selecionado
+  const auditoriaFiltrada = useMemo(() => {
+    if (filtroNivelAuditoria === "critico") {
+      return auditoriaIncompletos
+        .map(a => ({ ...a, pendencias: a.pendencias.filter(p => p.nivel === "critico") }))
+        .filter(a => a.pendencias.length > 0);
+    }
+    if (filtroNivelAuditoria === "gestao") {
+      return auditoriaIncompletos
+        .map(a => ({ ...a, pendencias: a.pendencias.filter(p => p.nivel === "gestao") }))
+        .filter(a => a.pendencias.length > 0);
+    }
+    if (filtroNivelAuditoria === "cadastral") {
+      return auditoriaIncompletos
+        .map(a => ({ ...a, pendencias: a.pendencias.filter(p => p.nivel === "cadastral") }))
+        .filter(a => a.pendencias.length > 0);
+    }
+    return auditoriaIncompletos;
+  }, [auditoriaIncompletos, filtroNivelAuditoria]);
 
   const filtrados = useMemo(() => {
     let r = colaboradores;
@@ -209,48 +265,102 @@ export default function GestaoColaboradoresPortal() {
       {auditoriaIncompletos.length > 0 ? (
         <Card className="border-amber-200 bg-amber-50/40 shadow-sm overflow-hidden">
           <CardHeader className="py-3 px-4 bg-amber-100/60 border-b border-amber-200">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                 <div>
                   <CardTitle className="text-sm font-bold text-amber-950 flex items-center gap-2">
-                    Qualidade Cadastral para Comunicados
+                    Auditoria de Qualidade do Cadastro Geral
                     <Badge className="bg-amber-600 text-white hover:bg-amber-700 text-xs px-2 py-0.5">
                       {auditoriaIncompletos.length} com pendências
                     </Badge>
                   </CardTitle>
                   <p className="text-[11px] text-amber-800 mt-0.5">
-                    Os dados abaixo são essenciais para que os 4 tipos de comunicados automáticos sejam disparados no dia correto.
+                    Organizado por hierarquia: priorize campos críticos (bloqueiam e-mails e acesso) antes dos informativos.
                   </p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-amber-900 hover:bg-amber-200/60 text-xs h-7"
-                onClick={() => setExpandirAuditoria(!expandirAuditoria)}
-              >
-                {expandirAuditoria ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
-                {expandirAuditoria ? "Ocultar" : "Ver Detalhes"}
-              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-amber-900 hover:bg-amber-200/60 text-xs h-7"
+                  onClick={() => setExpandirAuditoria(!expandirAuditoria)}
+                >
+                  {expandirAuditoria ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                  {expandirAuditoria ? "Ocultar" : "Ver Detalhes"}
+                </Button>
+              </div>
             </div>
           </CardHeader>
 
           {expandirAuditoria && (
-            <CardContent className="p-4 space-y-2.5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                {auditoriaIncompletos.map(({ colaborador, pendencias, temCritico }) => (
+            <CardContent className="p-4 space-y-3">
+              {/* Filtros por Nível de Severidade */}
+              <div className="flex items-center gap-1.5 flex-wrap border-b pb-3">
+                <Button
+                  size="sm"
+                  variant={filtroNivelAuditoria === "todos" ? "default" : "outline"}
+                  onClick={() => setFiltroNivelAuditoria("todos")}
+                  className={`h-7 text-xs ${filtroNivelAuditoria === "todos" ? "bg-amber-700 hover:bg-amber-800 text-white" : "border-amber-300 text-amber-900"}`}
+                >
+                  Todos ({auditoriaIncompletos.length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtroNivelAuditoria === "critico" ? "default" : "outline"}
+                  onClick={() => setFiltroNivelAuditoria("critico")}
+                  className={`h-7 text-xs ${filtroNivelAuditoria === "critico" ? "bg-red-600 hover:bg-red-700 text-white" : "border-red-300 text-red-700 hover:bg-red-50"}`}
+                >
+                  🔴 Críticos / Bloqueantes ({totalCriticos})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtroNivelAuditoria === "gestao" ? "default" : "outline"}
+                  onClick={() => setFiltroNivelAuditoria("gestao")}
+                  className={`h-7 text-xs ${filtroNivelAuditoria === "gestao" ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-amber-300 text-amber-800 hover:bg-amber-50"}`}
+                >
+                  🟡 Gestão & Contato ({totalGestao})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={filtroNivelAuditoria === "cadastral" ? "default" : "outline"}
+                  onClick={() => setFiltroNivelAuditoria("cadastral")}
+                  className={`h-7 text-xs ${filtroNivelAuditoria === "cadastral" ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-300 text-blue-800 hover:bg-blue-50"}`}
+                >
+                  🔵 Estrutura & Cadastro ({totalCadastrais})
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-80 overflow-y-auto pr-1">
+                {auditoriaFiltrada.map(({ colaborador, pendencias }) => (
                   <div key={colaborador.id} className="flex items-start justify-between gap-3 bg-white border border-amber-200/80 rounded-lg p-3 shadow-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs font-bold text-gray-900">{colaborador.nome_completo}</span>
-                        <span className="text-[10px] text-gray-500">({colaborador.area})</span>
+                        <span className="text-[10px] text-gray-500">({colaborador.area || "Sem Área"})</span>
                       </div>
-                      <ul className="space-y-0.5">
+                      <ul className="space-y-1">
                         {pendencias.map((p, idx) => (
-                          <li key={idx} className={`text-[11px] flex items-center gap-1 ${p.nivel === "critico" ? "text-red-600 font-medium" : "text-amber-700"}`}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
-                            {p.desc}
+                          <li key={idx} className={`text-[11px] flex items-start gap-1.5 ${
+                            p.nivel === "critico"
+                              ? "text-red-700 font-medium"
+                              : p.nivel === "gestao"
+                              ? "text-amber-800"
+                              : "text-blue-800"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                              p.nivel === "critico"
+                                ? "bg-red-600"
+                                : p.nivel === "gestao"
+                                ? "bg-amber-500"
+                                : "bg-blue-500"
+                            }`} />
+                            <span>
+                              <strong className="font-semibold text-[10px] uppercase mr-1">[{p.categoria}]:</strong>
+                              {p.desc}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -258,7 +368,7 @@ export default function GestaoColaboradoresPortal() {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="text-xs h-7 border-indigo-200 text-indigo-700 hover:bg-indigo-50 shrink-0"
+                      className="text-xs h-7 border-indigo-200 text-indigo-700 hover:bg-indigo-50 shrink-0 font-medium cursor-pointer"
                       onClick={() => setEditando(colaborador)}
                     >
                       <Pencil className="w-3 h-3 mr-1" />
@@ -274,8 +384,8 @@ export default function GestaoColaboradoresPortal() {
         <div className="bg-green-50 border border-green-200 rounded-xl p-3.5 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
           <div>
-            <p className="text-xs font-bold text-green-900">Base 100% Qualificada</p>
-            <p className="text-[11px] text-green-700">Todos os colaboradores ativos possuem datas de nascimento, cônjuge, filhos e liderança completos para os comunicados automáticos.</p>
+            <p className="text-xs font-bold text-green-900">Base 100% Qualificada e Completa</p>
+            <p className="text-[11px] text-green-700">Todos os colaboradores ativos possuem todos os dados profissionais, pessoais, familiares e de gestão preenchidos.</p>
           </div>
         </div>
       )}

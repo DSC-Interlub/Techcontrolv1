@@ -62,7 +62,7 @@ export default function PortalComunicados() {
 
   const nomeUsuario = colabAtivo?.nome_completo || "";
 
-  if (isConexaoHumana || podeGerirColabs) {
+  if (isConexaoHumana) {
     return (
       <PortalLayout colaborador={colabAtivo} onLogout={logout}>
         <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
