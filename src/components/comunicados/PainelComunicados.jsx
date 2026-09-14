@@ -84,74 +84,176 @@ function BadgeUrgencia({ dataEvento }) {
   );
 }
 
-// ── MODAL: GESTÃO DE COLABORADORES FORA DOS COMUNICADOS (TAREFA 2) ───────────
-function ModalColaboradoresFora({ open, onOpenChange, colaboradores, onUpdateSuccess }) {
+// ── MOTOR DE RESOLUÇÃO CONCRETA DE DESTINATÁRIOS ────────────────────────────
+export function resolverDestinatarios(item, colaborador, todosColaboradores, config) {
+  const avisos = [];
+  const emailsSet = new Set();
+
+  if (config && config.ativo === false) {
+    return { emailsValidos: [], avisos: ["Comunicado desativado nas configurações"], total: 0 };
+  }
+
+  // Obter papéis selecionados
+  let papeis = [];
+  if (Array.isArray(config?.destinatarios_papeis)) {
+    papeis = config.destinatarios_papeis;
+  } else if (typeof config?.destinatarios_papeis === "string") {
+    try {
+      papeis = JSON.parse(config.destinatarios_papeis);
+    } catch {
+      papeis = [];
+    }
+  }
+
+  // Fallback se papeis estiver vazio
+  if (!papeis || papeis.length === 0) {
+    const destTipo = config?.destinatarios_tipo || "todos_colaboradores";
+    if (destTipo === "todos_colaboradores") {
+      papeis = ["proprio_colaborador", "toda_empresa"];
+    } else if (destTipo === "colaborador_conjuge_gestor") {
+      papeis = ["proprio_colaborador", "conjuge", "gestor_direto"];
+    } else if (destTipo === "colaborador_e_gestor") {
+      papeis = ["proprio_colaborador", "gestor_direto"];
+    }
+  }
+
+  const colab = colaborador || (todosColaboradores || []).find(c => c.id === item?.colaborador_id);
+
+  // 1. Toda a empresa
+  if (papeis.includes("toda_empresa")) {
+    (todosColaboradores || []).forEach(c => {
+      if (c.status !== "Desligado" && c.incluir_comunicados !== false && c.email) {
+        emailsSet.add(c.email.trim().toLowerCase());
+      }
+    });
+  }
+
+  // 2. Toda a área do colaborador
+  if (papeis.includes("area_colaborador") && colab?.area) {
+    (todosColaboradores || []).forEach(c => {
+      if (c.status !== "Desligado" && c.incluir_comunicados !== false && c.area === colab.area && c.email) {
+        emailsSet.add(c.email.trim().toLowerCase());
+      }
+    });
+  }
+
+  // 3. Próprio colaborador
+  if (papeis.includes("proprio_colaborador")) {
+    if (colab?.email) {
+      emailsSet.add(colab.email.trim().toLowerCase());
+    } else {
+      avisos.push("Colaborador: e-mail não cadastrado");
+    }
+  }
+
+  // 4. Gestor direto
+  if (papeis.includes("gestor_direto")) {
+    const emailGestor = colab?.responsavel_email || colab?.contato_responsavel_email;
+    if (emailGestor) {
+      emailsSet.add(emailGestor.trim().toLowerCase());
+    } else {
+      avisos.push("Gestor direto: e-mail não cadastrado");
+    }
+  }
+
+  // 5. Cônjuge
+  if (papeis.includes("conjuge")) {
+    if (colab?.conjuge_email) {
+      emailsSet.add(colab.conjuge_email.trim().toLowerCase());
+    } else if (colab?.conjuge_nome || item?.tipo_comunicado === "aniversario_conjuge") {
+      avisos.push("Cônjuge: e-mail não cadastrado (não receberá)");
+    }
+  }
+
+  // 6. Filho (Pais / Responsáveis)
+  if (papeis.includes("filho")) {
+    if (colab?.email) {
+      emailsSet.add(colab.email.trim().toLowerCase());
+    }
+  }
+
+  // 7. Destinatários adicionais
+  let adicionais = [];
+  if (Array.isArray(config?.destinatarios_adicionais)) {
+    adicionais = config.destinatarios_adicionais;
+  } else if (typeof config?.destinatarios_adicionais === "string") {
+    try {
+      adicionais = JSON.parse(config.destinatarios_adicionais);
+    } catch {
+      adicionais = config.destinatarios_adicionais.split(",").map(s => s.trim()).filter(Boolean);
+    }
+  }
+  adicionais.forEach(email => {
+    if (email && email.includes("@")) {
+      emailsSet.add(email.trim().toLowerCase());
+    }
+  });
+
+  const emailsValidos = Array.from(emailsSet);
+  return {
+    emailsValidos,
+    avisos,
+    total: emailsValidos.length,
+    papeis,
+  };
+}
+
+// ── MODAL: GESTÃO DE EXCEÇÕES (COLABORADORES QUE NÃO RECEBEM) ───────────────
+function ModalExcecoesComunicados({ open, onOpenChange, colaboradores, onUpdateSuccess }) {
   const queryClient = useQueryClient();
   const [busca, setBusca] = useState("");
-  const [selecionados, setSelecionados] = useState([]);
+  const [colabParaExcluir, setColabParaExcluir] = useState("");
   const [salvando, setSalvando] = useState(false);
 
-  const foraDosComunicados = useMemo(() => {
+  // Lista de Exceções: colaboradores com incluir_comunicados === false
+  const excecoes = useMemo(() => {
     return (colaboradores || [])
       .filter(c => c.status !== "Desligado" && c.incluir_comunicados === false)
       .sort((a, b) => (a.nome_completo || "").localeCompare(b.nome_completo || ""));
   }, [colaboradores]);
 
+  // Colaboradores ativos habilitados (para o seletor de adicionar exceção)
+  const ativosHabilitados = useMemo(() => {
+    return (colaboradores || [])
+      .filter(c => c.status !== "Desligado" && c.incluir_comunicados !== false)
+      .sort((a, b) => (a.nome_completo || "").localeCompare(b.nome_completo || ""));
+  }, [colaboradores]);
+
   const filtrados = useMemo(() => {
-    if (!busca.trim()) return foraDosComunicados;
+    if (!busca.trim()) return excecoes;
     const q = busca.toLowerCase().trim();
-    return foraDosComunicados.filter(c =>
+    return excecoes.filter(c =>
       (c.nome_completo || "").toLowerCase().includes(q) ||
       (c.area || "").toLowerCase().includes(q) ||
       (c.cargo || "").toLowerCase().includes(q)
     );
-  }, [foraDosComunicados, busca]);
+  }, [excecoes, busca]);
 
-  const toggleSelecionado = (id) => {
-    setSelecionados(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleTodosVisiveis = () => {
-    const idsVisiveis = filtrados.map(c => c.id);
-    const todosMarcados = idsVisiveis.every(id => selecionados.includes(id));
-    if (todosMarcados) {
-      setSelecionados(prev => prev.filter(id => !idsVisiveis.includes(id)));
-    } else {
-      setSelecionados(prev => [...new Set([...prev, ...idsVisiveis])]);
-    }
-  };
-
-  const handleHabilitarIndividuo = async (colab) => {
+  const handleAdicionarExcecao = async () => {
+    if (!colabParaExcluir) return;
     setSalvando(true);
     try {
-      await base44.entities.Colaboradores.update(colab.id, { incluir_comunicados: true });
-      await base44.functions.invoke("gerarDemandasComunicados", { dias_busca: 30 });
+      await base44.entities.Colaboradores.update(colabParaExcluir, { incluir_comunicados: false });
       queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
       queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
+      setColabParaExcluir("");
       if (onUpdateSuccess) onUpdateSuccess();
     } catch (err) {
-      alert("Erro ao habilitar colaborador: " + err.message);
+      alert("Erro ao registrar exceção: " + err.message);
     } finally {
       setSalvando(false);
     }
   };
 
-  const handleHabilitarSelecionados = async () => {
-    if (!selecionados.length) return;
+  const handleReativarComunicados = async (colab) => {
     setSalvando(true);
     try {
-      for (const id of selecionados) {
-        await base44.entities.Colaboradores.update(id, { incluir_comunicados: true });
-      }
-      await base44.functions.invoke("gerarDemandasComunicados", { dias_busca: 30 });
+      await base44.entities.Colaboradores.update(colab.id, { incluir_comunicados: true });
       queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
       queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
-      setSelecionados([]);
       if (onUpdateSuccess) onUpdateSuccess();
     } catch (err) {
-      alert("Erro ao habilitar colaboradores: " + err.message);
+      alert("Erro ao reativar colaborador: " + err.message);
     } finally {
       setSalvando(false);
     }
@@ -159,91 +261,101 @@ function ModalColaboradoresFora({ open, onOpenChange, colaboradores, onUpdateSuc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6">
         <DialogHeader className="pb-3 border-b">
-          <DialogTitle className="text-lg font-bold flex items-center gap-2 text-amber-900">
+          <DialogTitle className="text-lg font-bold flex items-center gap-2 text-slate-900">
             <Users className="w-5 h-5 text-amber-600" />
-            Colaboradores Fora dos Comunicados Automáticos ({foraDosComunicados.length})
+            Exceções dos Comunicados (Não Recebem E-mails)
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            A equipe de <strong>Conexão Humana (DP/RH/DHO)</strong> pode revisar quem deve receber comunicados de aniversário e tempo de empresa. A ativação é feita sob demanda.
+            Por padrão, todos os colaboradores ativos recebem os 4 comunicados automáticos. Use esta lista para registrar exceções (ex: solicitação do colaborador ou condição específica).
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, área ou cargo..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              className="pl-9 h-9 text-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleTodosVisiveis}
-              className="text-xs h-9"
-            >
-              {filtrados.every(c => selecionados.includes(c.id)) && filtrados.length > 0 ? "Desmarcar Todos" : "Selecionar Todos"}
-            </Button>
+        {/* Formulário para Adicionar Exceção */}
+        <div className="py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 mt-2">
+          <Label className="text-xs font-bold text-slate-800">
+            Adicionar Colaborador à Lista de Exceções
+          </Label>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <Select value={colabParaExcluir} onValueChange={setColabParaExcluir}>
+              <SelectTrigger className="flex-1 h-9 text-xs bg-white">
+                <SelectValue placeholder="Selecione um colaborador ativo..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {ativosHabilitados.map(c => (
+                  <SelectItem key={c.id} value={c.id} className="text-xs">
+                    {c.nome_completo} ({c.area || "Sem Área"} · {c.cargo || "Colaborador"})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               size="sm"
-              disabled={salvando || selecionados.length === 0}
-              onClick={handleHabilitarSelecionados}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9 font-medium"
+              disabled={!colabParaExcluir || salvando}
+              onClick={handleAdicionarExcecao}
+              className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-9 font-semibold shrink-0"
             >
-              {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <UserCheck className="w-3.5 h-3.5 mr-1" />}
-              Habilitar Selecionados ({selecionados.length})
+              {salvando ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <XCircle className="w-3.5 h-3.5 mr-1" />}
+              Excluir dos Comunicados
             </Button>
           </div>
         </div>
 
+        {/* Barra de Busca de Exceções */}
+        <div className="py-2 flex items-center justify-between gap-3 border-b">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar exceção por nome, área ou cargo..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="pl-9 h-8 text-xs"
+            />
+          </div>
+          <span className="text-xs font-semibold text-slate-500">
+            Total de exceções: {excecoes.length}
+          </span>
+        </div>
+
+        {/* Lista de Exceções Cadastradas */}
         <div className="flex-1 overflow-y-auto divide-y pr-1 py-1">
           {filtrados.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-xs">
+            <div className="text-center py-10 text-muted-foreground text-xs">
               <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-              <p className="font-semibold text-foreground">Nenhum colaborador pendente nesta lista!</p>
-              <p className="mt-1">Todos os colaboradores ativos estão habilitados para os comunicados automáticos.</p>
+              <p className="font-semibold text-foreground">Nenhuma exceção cadastrada</p>
+              <p className="mt-1">Todos os colaboradores ativos estão habilitados para receber comunicados.</p>
             </div>
           ) : (
             filtrados.map(c => (
               <div key={c.id} className="py-3 px-2 flex items-center justify-between gap-3 hover:bg-slate-50 rounded-lg transition-colors">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <Checkbox
-                    checked={selecionados.includes(c.id)}
-                    onCheckedChange={() => toggleSelecionado(c.id)}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{c.nome_completo}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {c.area || "Sem Área"} · {c.cargo || c.tipo_funcionario || "Colaborador"}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px] text-slate-500">
-                      {c.data_nascimento && <span>🎂 Nasc: {format(parseISO(c.data_nascimento), "dd/MM/yyyy")}</span>}
-                      {c.data_admissao && <span>🏢 Adm: {format(parseISO(c.data_admissao), "dd/MM/yyyy")}</span>}
-                      {c.conjuge_nome && <span>💑 Cônjuge: {c.conjuge_nome}</span>}
-                      {Array.isArray(c.filhos) && c.filhos.length > 0 && <span>👶 {c.filhos.length} filho(s)</span>}
-                    </div>
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-foreground truncate">{c.nome_completo}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {c.area || "Sem Área"} · {c.cargo || c.tipo_funcionario || "Colaborador"}
+                  </p>
+                  <Badge variant="outline" className="mt-1 text-[10px] text-amber-800 bg-amber-50 border-amber-300">
+                    🚫 Excluído dos comunicados
+                  </Badge>
                 </div>
 
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={salvando}
-                  onClick={() => handleHabilitarIndividuo(c)}
+                  onClick={() => handleReativarComunicados(c)}
                   className="text-xs shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <UserCheck className="w-3.5 h-3.5 mr-1" />
-                  Habilitar
+                  Reativar Comunicados
                 </Button>
               </div>
             ))
           )}
+        </div>
+
+        <div className="flex justify-end pt-3 border-t">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Fechar</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -290,12 +402,6 @@ function ModalConfiguracoesAdmin({ open, onOpenChange }) {
       setDisparando(false);
     }
   };
-
-  // Filtra apenas os 4 tipos permitidos
-  const configsValidas = useMemo(() => {
-    const tiposPermitidos = ["aniversario_colaborador", "aniversario_conjuge", "aniversario_filho_1ano", "tempo_empresa"];
-    return configs.filter(c => tiposPermitidos.includes(c.tipo_comunicado));
-  }, [configs]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -353,8 +459,18 @@ function ModalConfiguracoesAdmin({ open, onOpenChange }) {
   );
 }
 
-// ── MODAL: CONFIGURAÇÃO DE MODELOS & DESTINATÁRIOS (BRANDING / ADMIN) ─────────
-function ModalConfiguracaoModelos({ open, onOpenChange }) {
+// ── OPÇÕES DE PAPÉIS DE DESTINATÁRIOS ─────────────────────────────────────────
+const PAPEIS_DESTINATARIOS_OPCOES = [
+  { id: "proprio_colaborador", label: "O próprio aniversariante / colaborador", icon: "🎂" },
+  { id: "gestor_direto", label: "Gestor direto do colaborador", icon: "👔" },
+  { id: "conjuge", label: "Cônjuge (quando cadastrado)", icon: "💑" },
+  { id: "filho", label: "Pais / Responsáveis (no 1 aninho)", icon: "👶" },
+  { id: "area_colaborador", label: "Toda a área / departamento do aniversariante", icon: "🏢" },
+  { id: "toda_empresa", label: "Toda a empresa (todos os colaboradores ativos)", icon: "📢" },
+];
+
+// ── MODAL: CONFIGURAÇÃO DE MODELOS & DESTINATÁRIOS (BRANDING & CONEXÃO HUMANA)
+function ModalConfiguracaoModelos({ open, onOpenChange, colaboradores = [] }) {
   const queryClient = useQueryClient();
   const [salvoMsg, setSalvoMsg] = useState("");
 
@@ -367,7 +483,7 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
     mutationFn: ({ id, data }) => base44.entities.Comunicados_Config.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comunicados_config"] });
-      setSalvoMsg("Alterações salvas! Os próximos envios diários utilizarão estes modelos.");
+      setSalvoMsg("Alterações salvas! Os próximos envios diários utilizarão estas definições.");
       setTimeout(() => setSalvoMsg(""), 4000);
     },
   });
@@ -388,16 +504,47 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
     updateConfigMut.mutate({ id: cfg.id, data: { assunto_template: novo } });
   };
 
+  const handleTogglePapel = (cfg, papelId) => {
+    let papeisAtuais = [];
+    if (Array.isArray(cfg.destinatarios_papeis)) {
+      papeisAtuais = [...cfg.destinatarios_papeis];
+    } else if (typeof cfg.destinatarios_papeis === "string") {
+      try {
+        papeisAtuais = JSON.parse(cfg.destinatarios_papeis);
+      } catch {
+        papeisAtuais = [];
+      }
+    } else {
+      // Fallback
+      if (cfg.destinatarios_tipo === "todos_colaboradores") papeisAtuais = ["proprio_colaborador", "toda_empresa"];
+      else if (cfg.destinatarios_tipo === "colaborador_conjuge_gestor") papeisAtuais = ["proprio_colaborador", "conjuge", "gestor_direto"];
+      else if (cfg.destinatarios_tipo === "colaborador_e_gestor") papeisAtuais = ["proprio_colaborador", "gestor_direto"];
+    }
+
+    if (papeisAtuais.includes(papelId)) {
+      papeisAtuais = papeisAtuais.filter(p => p !== papelId);
+    } else {
+      papeisAtuais.push(papelId);
+    }
+
+    updateConfigMut.mutate({ id: cfg.id, data: { destinatarios_papeis: papeisAtuais } });
+  };
+
+  const handleAdicionaisChange = (cfg, val) => {
+    const emails = val.split(",").map(s => s.trim()).filter(Boolean);
+    updateConfigMut.mutate({ id: cfg.id, data: { destinatarios_adicionais: emails } });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col p-6">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6">
         <DialogHeader className="pb-3 border-b">
           <DialogTitle className="text-base font-bold flex items-center gap-2 text-slate-900">
             <Sparkles className="w-5 h-5 text-purple-600" />
             Configurar Modelos de Assunto & Destinatários
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Personalize o título dos e-mails e quem deve receber cada um dos 4 comunicados automáticos.
+            Personalize o assunto e selecione flexivelmente quem deve receber cada comunicado (sem depender apenas de "toda a empresa").
           </DialogDescription>
         </DialogHeader>
 
@@ -416,8 +563,36 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
           ) : (
             configsValidas.map(cfg => {
               const tags = tagsPorTipo[cfg.tipo_comunicado] || ["{nome}"];
+
+              let papeisAtuais = [];
+              if (Array.isArray(cfg.destinatarios_papeis)) {
+                papeisAtuais = cfg.destinatarios_papeis;
+              } else if (typeof cfg.destinatarios_papeis === "string") {
+                try {
+                  papeisAtuais = JSON.parse(cfg.destinatarios_papeis);
+                } catch {
+                  papeisAtuais = [];
+                }
+              } else {
+                if (cfg.destinatarios_tipo === "todos_colaboradores") papeisAtuais = ["proprio_colaborador", "toda_empresa"];
+                else if (cfg.destinatarios_tipo === "colaborador_conjuge_gestor") papeisAtuais = ["proprio_colaborador", "conjuge", "gestor_direto"];
+                else if (cfg.destinatarios_tipo === "colaborador_e_gestor") papeisAtuais = ["proprio_colaborador", "gestor_direto"];
+              }
+
+              let adicionaisStr = "";
+              if (Array.isArray(cfg.destinatarios_adicionais)) {
+                adicionaisStr = cfg.destinatarios_adicionais.join(", ");
+              } else if (typeof cfg.destinatarios_adicionais === "string") {
+                try {
+                  const parsed = JSON.parse(cfg.destinatarios_adicionais);
+                  adicionaisStr = Array.isArray(parsed) ? parsed.join(", ") : cfg.destinatarios_adicionais;
+                } catch {
+                  adicionaisStr = cfg.destinatarios_adicionais;
+                }
+              }
+
               return (
-                <div key={cfg.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs space-y-3">
+                <div key={cfg.id} className="border border-slate-200 rounded-xl p-4 bg-white shadow-xs space-y-4">
                   <div className="flex items-center justify-between border-b pb-2.5">
                     <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                       {TIPO_LABELS[cfg.tipo_comunicado] || cfg.label}
@@ -432,6 +607,7 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
                   </div>
 
                   <div className="space-y-3">
+                    {/* Assunto do E-mail */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <Label className="text-[11px] font-bold text-slate-700">Assunto do E-mail</Label>
@@ -462,25 +638,45 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
                       />
                     </div>
 
-                    <div>
-                      <Label className="text-[11px] font-bold text-slate-700">Quem recebe este comunicado?</Label>
-                      <Select
-                        value={cfg.destinatarios_tipo || "todos_colaboradores"}
-                        onValueChange={v => updateConfigMut.mutate({ id: cfg.id, data: { destinatarios_tipo: v } })}
-                      >
-                        <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todos_colaboradores" className="text-xs">
-                            📢 Toda a empresa (Todos os colaboradores ativos)
-                          </SelectItem>
-                          <SelectItem value="colaborador_conjuge_gestor" className="text-xs">
-                            💑 Colaborador + Cônjuge + Gestor direto
-                          </SelectItem>
-                          <SelectItem value="colaborador_e_gestor" className="text-xs">
-                            👤 Apenas Colaborador + Gestor direto
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {/* Definição Flexível de Destinatários por Papéis */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                      <Label className="text-[11px] font-bold text-slate-800 flex items-center justify-between">
+                        <span>Quem deve receber este comunicado? (Marque todos que se aplicam)</span>
+                      </Label>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {PAPEIS_DESTINATARIOS_OPCOES.map(op => {
+                          const checked = papeisAtuais.includes(op.id);
+                          return (
+                            <label
+                              key={op.id}
+                              className={`flex items-center gap-2 p-2 rounded-md border text-xs cursor-pointer transition-colors ${
+                                checked ? "bg-purple-50 border-purple-300 text-purple-950 font-semibold" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => handleTogglePapel(cfg, op.id)}
+                              />
+                              <span>{op.icon} {op.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+
+                      {/* Destinatários Adicionais */}
+                      <div className="pt-2 border-t border-slate-200">
+                        <Label className="text-[10px] font-semibold text-slate-600">
+                          E-mails Adicionais (Opcional — separados por vírgula):
+                        </Label>
+                        <Input
+                          placeholder="ex: rh@interlub.com, diretoria@interlub.com"
+                          defaultValue={adicionaisStr}
+                          key={adicionaisStr}
+                          onBlur={e => handleAdicionaisChange(cfg, e.target.value)}
+                          className="h-7 text-xs bg-white mt-1"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -494,6 +690,59 @@ function ModalConfiguracaoModelos({ open, onOpenChange }) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ── COMPONENTE DE PRÉ-VISUALIZAÇÃO DE DESTINATÁRIOS NO CARD ─────────────────
+function DestinatariosCardPreview({ item, colaborador, todosColaboradores, config }) {
+  const [expandido, setExpandido] = useState(false);
+  const info = useMemo(() => {
+    return resolverDestinatarios(item, colaborador, todosColaboradores, config);
+  }, [item, colaborador, todosColaboradores, config]);
+
+  return (
+    <div className="bg-slate-50/90 border border-slate-200/80 rounded-lg p-2.5 space-y-1.5 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-indigo-600" />
+          Destinatários: <strong className="text-indigo-950">{info.total} e-mail(s)</strong>
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpandido(!expandido)}
+          className="h-6 px-2 text-[11px] text-indigo-700 hover:bg-indigo-50 font-medium"
+        >
+          {expandido ? "Ocultar" : "Ver lista"}
+        </Button>
+      </div>
+
+      {info.avisos.length > 0 && (
+        <div className="space-y-1 pt-1">
+          {info.avisos.map((aviso, idx) => (
+            <div key={idx} className="flex items-center gap-1.5 text-[11px] font-medium text-amber-800 bg-amber-50/80 border border-amber-200 px-2 py-0.5 rounded">
+              <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+              <span>{aviso}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {expandido && (
+        <div className="pt-2 border-t border-slate-200 max-h-36 overflow-y-auto space-y-1 pr-1">
+          {info.emailsValidos.length === 0 ? (
+            <p className="text-[11px] text-slate-500 italic">Nenhum destinatário válido configurado.</p>
+          ) : (
+            info.emailsValidos.map((email, idx) => (
+              <div key={idx} className="flex items-center gap-1.5 text-[11px] text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-100 font-mono truncate">
+                <span className="text-slate-400">✉</span>
+                <span className="truncate">{email}</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -511,7 +760,7 @@ export default function PainelComunicados({
   const [mesAno, setMesAno] = useState(() => new Date());
   const [openAdminModal, setOpenAdminModal] = useState(false);
   const [openModelosModal, setOpenModelosModal] = useState(false);
-  const [openModalFora, setOpenModalFora] = useState(false);
+  const [openExcecoesModal, setOpenExcecoesModal] = useState(false);
   const [previewImagem, setPreviewImagem] = useState(null);
   const [uploadingChave, setUploadingChave] = useState(null);
 
@@ -538,22 +787,37 @@ export default function PainelComunicados({
     staleTime: 30_000,
   });
 
-  // 2. Busca Estado de Artes Salvas no Banco
+  // 2. Busca Configurações dos 4 tipos de comunicado
+  const { data: configs = [] } = useQuery({
+    queryKey: ["comunicados_config"],
+    queryFn: () => base44.entities.Comunicados_Config.list(),
+    staleTime: 30_000,
+  });
+
+  const configsMap = useMemo(() => {
+    const map = {};
+    (configs || []).forEach(cfg => {
+      map[cfg.tipo_comunicado] = cfg;
+    });
+    return map;
+  }, [configs]);
+
+  // 3. Busca Estado de Artes Salvas no Banco
   const { data: artes = [], isLoading: loadArtes } = useQuery({
     queryKey: ["comunicados_artes"],
     queryFn: () => base44.entities.Comunicados_Artes.list("-data_evento", 600),
     staleTime: 10_000,
   });
 
-  // 3. Busca Histórico de Envios (Resend / Logs)
+  // 4. Busca Histórico de Envios (Resend / Logs)
   const { data: logs = [], isLoading: loadLogs } = useQuery({
     queryKey: ["comunicados_log"],
     queryFn: () => base44.entities.Comunicados_Log.list("-data_envio", 100),
     staleTime: 15_000,
   });
 
-  // Colaboradores fora dos comunicados (para badge de alerta)
-  const totalForaDosComunicados = useMemo(() => {
+  // Total de exceções registradas (incluir_comunicados === false)
+  const totalExcecoes = useMemo(() => {
     return colaboradores.filter(c => c.status !== "Desligado" && c.incluir_comunicados === false).length;
   }, [colaboradores]);
 
@@ -790,26 +1054,26 @@ export default function PainelComunicados({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Botão de Gestão de Colaboradores para Conexão Humana / Admin */}
+            {/* Botão de Exceções para Conexão Humana / Admin */}
             {(isConexaoHumana || isAdmin) && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setOpenModalFora(true)}
+                onClick={() => setOpenExcecoesModal(true)}
                 className="text-xs font-semibold border-amber-300 bg-amber-50/50 hover:bg-amber-100 text-amber-900"
               >
                 <Users className="w-4 h-4 mr-1.5 text-amber-600" />
-                Colaboradores Habilitados
-                {totalForaDosComunicados > 0 && (
+                Exceções dos Comunicados
+                {totalExcecoes > 0 && (
                   <Badge className="ml-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0 h-4">
-                    {totalForaDosComunicados} fora
+                    {totalExcecoes}
                   </Badge>
                 )}
               </Button>
             )}
 
-            {/* Botão de Modelos & Assuntos para Comunicação e Branding / Admin */}
-            {(isComunicacao || isAdmin) && (
+            {/* Botão de Modelos & Assuntos para Comunicação e Branding, Conexão Humana e Admin */}
+            {(isComunicacao || isConexaoHumana || isAdmin) && (
               <Button
                 variant="outline"
                 size="sm"
@@ -835,32 +1099,6 @@ export default function PainelComunicados({
             )}
           </div>
         </div>
-
-        {/* ALERTA DESTACADO: Colaboradores Fora dos Comunicados (TAREFA 2) */}
-        {(isConexaoHumana || isAdmin) && totalForaDosComunicados > 0 && (
-          <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700 shrink-0 mt-0.5">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-950">
-                  {totalForaDosComunicados} colaborador(es) ativo(s) ainda não estão habilitados para os Comunicados Automáticos
-                </p>
-                <p className="text-[11px] text-amber-800 mt-0.5">
-                  Equipe de Conexão Humana: revise e habilite individualmente os colaboradores para que suas datas gerem comunicados.
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setOpenModalFora(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 shadow-sm"
-            >
-              Revisar e Habilitar <ArrowRight className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </div>
-        )}
 
         {/* 3 CONTADORES CHAVE (AS 3 ABAS) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -988,6 +1226,7 @@ export default function PainelComunicados({
             size="sm"
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ["colaboradores"] });
+              queryClient.invalidateQueries({ queryKey: ["comunicados_config"] });
               queryClient.invalidateQueries({ queryKey: ["comunicados_artes"] });
               queryClient.invalidateQueries({ queryKey: ["comunicados_log"] });
             }}
@@ -1062,6 +1301,8 @@ export default function PainelComunicados({
               const diffHoje = dataEvento ? differenceInDays(dataEvento, new Date()) : null;
               const isUrgente = diffHoje !== null && diffHoje <= 3 && item.status_arte === "sem_arte";
               const isAtencao = diffHoje !== null && diffHoje > 3 && diffHoje <= 10 && item.status_arte === "sem_arte";
+              const colab = colaboradores.find(c => c.id === item.colaborador_id);
+              const config = configsMap[item.tipo_comunicado];
 
               return (
                 <Card
@@ -1101,6 +1342,14 @@ export default function PainelComunicados({
                         )}
                       </div>
                     </div>
+
+                    {/* Bloco de Destinatários Resolvidos em Tempo Real */}
+                    <DestinatariosCardPreview
+                      item={item}
+                      colaborador={colab}
+                      todosColaboradores={colaboradores}
+                      config={config}
+                    />
 
                     {/* Bloco de Arte & Ações de Upload */}
                     <div className="border-t pt-3 flex items-center justify-between gap-2">
@@ -1200,16 +1449,17 @@ export default function PainelComunicados({
         </DialogContent>
       </Dialog>
 
-      {/* 2. Modal de Modelos & Destinatários (Branding / Admin) */}
+      {/* 2. Modal de Modelos & Destinatários (Branding / Conexão Humana / Admin) */}
       <ModalConfiguracaoModelos
         open={openModelosModal}
         onOpenChange={setOpenModelosModal}
+        colaboradores={colaboradores}
       />
 
-      {/* 3. Modal de Colaboradores Fora dos Comunicados */}
-      <ModalColaboradoresFora
-        open={openModalFora}
-        onOpenChange={setOpenModalFora}
+      {/* 3. Modal de Exceções dos Comunicados (Conexão Humana / Admin) */}
+      <ModalExcecoesComunicados
+        open={openExcecoesModal}
+        onOpenChange={setOpenExcecoesModal}
         colaboradores={colaboradores}
       />
 

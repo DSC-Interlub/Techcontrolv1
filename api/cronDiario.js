@@ -88,28 +88,77 @@ async function processarComunicadoTipo(supabase, tipo, hojeStr, todosColabs, con
       }
     }
 
-    // Determinar destinatários com base em destinatarios_tipo ou fallback hardcoded
-    let destinatarios = [];
-    const destTipo = config?.destinatarios_tipo || 'todos_colaboradores';
+    // Determinar destinatários com base em destinatarios_papeis ou fallback em destinatarios_tipo
+    const emailsSet = new Set();
 
-    if (destTipo === 'todos_colaboradores') {
-      destinatarios = destinatariosGlobal;
-    } else if (destTipo === 'colaborador_conjuge_gestor') {
-      destinatarios = [
-        colaborador.email,
-        colaborador.conjuge_email,
-        colaborador.responsavel_email,
-        colaborador.contato_responsavel_email
-      ].filter(Boolean);
-    } else if (destTipo === 'colaborador_e_gestor') {
-      destinatarios = [
-        colaborador.email,
-        colaborador.responsavel_email,
-        colaborador.contato_responsavel_email
-      ].filter(Boolean);
-    } else if (destTipo === 'manual') {
-      // Sem envio automático
-      continue;
+    let papeis = [];
+    if (Array.isArray(config?.destinatarios_papeis)) {
+      papeis = config.destinatarios_papeis;
+    } else if (typeof config?.destinatarios_papeis === 'string') {
+      try {
+        papeis = JSON.parse(config.destinatarios_papeis);
+      } catch (e) {
+        papeis = [];
+      }
+    }
+
+    // Fallback se papeis estiver vazio
+    if (!papeis || papeis.length === 0) {
+      const destTipo = config?.destinatarios_tipo || 'todos_colaboradores';
+      if (destTipo === 'todos_colaboradores') {
+        papeis = ['proprio_colaborador', 'toda_empresa'];
+      } else if (destTipo === 'colaborador_conjuge_gestor') {
+        papeis = ['proprio_colaborador', 'conjuge', 'gestor_direto'];
+      } else if (destTipo === 'colaborador_e_gestor') {
+        papeis = ['proprio_colaborador', 'gestor_direto'];
+      }
+    }
+
+    // 1. Toda a empresa
+    if (papeis.includes('toda_empresa')) {
+      (todosColabs || []).forEach(c => {
+        if (c.status !== 'Desligado' && c.incluir_comunicados !== false && c.email) {
+          emailsSet.add(c.email.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 2. Toda a área do colaborador
+    if (papeis.includes('area_colaborador') && colaborador.area) {
+      (todosColabs || []).forEach(c => {
+        if (c.status !== 'Desligado' && c.incluir_comunicados !== false && c.area === colaborador.area && c.email) {
+          emailsSet.add(c.email.trim().toLowerCase());
+        }
+      });
+    }
+
+    // 3. Próprio colaborador
+    if (papeis.includes('proprio_colaborador')) {
+      if (colaborador.email) {
+        emailsSet.add(colaborador.email.trim().toLowerCase());
+      }
+    }
+
+    // 4. Gestor direto
+    if (papeis.includes('gestor_direto')) {
+      const emailGestor = colaborador.responsavel_email || colaborador.contato_responsavel_email;
+      if (emailGestor) {
+        emailsSet.add(emailGestor.trim().toLowerCase());
+      }
+    }
+
+    // 5. Cônjuge
+    if (papeis.includes('conjuge')) {
+      if (colaborador.conjuge_email) {
+        emailsSet.add(colaborador.conjuge_email.trim().toLowerCase());
+      }
+    }
+
+    // 6. Filho (Pais)
+    if (papeis.includes('filho')) {
+      if (colaborador.email) {
+        emailsSet.add(colaborador.email.trim().toLowerCase());
+      }
     }
 
     // Adicionar destinatários adicionais se existirem na configuração
@@ -120,11 +169,18 @@ async function processarComunicadoTipo(supabase, tipo, hojeStr, todosColabs, con
           ? config.destinatarios_adicionais
           : JSON.parse(config.destinatarios_adicionais || '[]');
       } catch (e) {
-        console.warn('[cronDiario] Erro ao parsear destinatarios_adicionais:', e);
+        if (typeof config.destinatarios_adicionais === 'string') {
+          adicionais = config.destinatarios_adicionais.split(',').map(s => s.trim()).filter(Boolean);
+        }
       }
-      destinatarios = [...new Set([...destinatarios, ...adicionais])];
+      adicionais.forEach(email => {
+        if (email && email.includes('@')) {
+          emailsSet.add(email.trim().toLowerCase());
+        }
+      });
     }
 
+    const destinatarios = Array.from(emailsSet);
     if (!destinatarios?.length) continue;
 
     // CCs da configuração

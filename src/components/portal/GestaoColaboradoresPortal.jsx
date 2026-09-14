@@ -175,17 +175,40 @@ export default function GestaoColaboradoresPortal() {
         const pendencias = [];
 
         // 🔴 Nível 1 — Crítico / Bloqueante (Acesso & Comunicados)
-        if (!c.email) pendencias.push({ nivel: "critico", categoria: "Acesso", desc: "Sem e-mail corporativo (impede login e comunicados)" });
-        if (!c.data_nascimento) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de nascimento (impede aniversário de colaborador)" });
-        if (!c.data_admissao) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de admissão (impede tempo de empresa)" });
-        if (c.conjuge_nome && !c.conjuge_data_nascimento) pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Cônjuge cadastrado sem data de nascimento" });
-        if (Array.isArray(c.filhos) && c.filhos.some(f => (f.nome || f.filho_nome) && !(f.data_nascimento || f.filho_data_nascimento))) {
-          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Filho(a) cadastrado(a) sem data de nascimento" });
+        if (!c.email) {
+          pendencias.push({ nivel: "critico", categoria: "Acesso", desc: "Sem e-mail corporativo (impede login e comunicados)" });
+        }
+        if (!c.data_nascimento) {
+          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de nascimento (impede aniversário de colaborador)" });
+        }
+        if (!c.data_admissao) {
+          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Sem data de admissão (impede tempo de empresa)" });
+        }
+        if (c.conjuge_nome && !c.conjuge_data_nascimento) {
+          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Cônjuge cadastrado sem data de nascimento" });
+        }
+        if (!c.conjuge_nome && (c.conjuge_data_nascimento || c.conjuge_email)) {
+          pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: "Dados de cônjuge informados sem o nome completo do cônjuge" });
+        }
+        if (Array.isArray(c.filhos)) {
+          c.filhos.forEach((f, idx) => {
+            const nomeF = f.nome || f.filho_nome;
+            const dataF = f.data_nascimento || f.filho_data_nascimento;
+            if (nomeF && !dataF) {
+              pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: `Filho(a) "${nomeF}" sem data de nascimento (impede 1 aninho)` });
+            }
+            if (!nomeF && dataF) {
+              pendencias.push({ nivel: "critico", categoria: "Comunicados", desc: `Filho #${idx + 1} com data de nascimento mas sem nome` });
+            }
+          });
         }
 
         // 🟡 Nível 2 — Alto / Gestão & Contato
-        if (!c.responsavel_nome && !c.contato_responsavel_nome && !c.responsavel_email) {
-          pendencias.push({ nivel: "gestao", categoria: "Gestão", desc: "Gestor direto não informado" });
+        if (!c.responsavel_nome && !c.contato_responsavel_nome) {
+          pendencias.push({ nivel: "gestao", categoria: "Gestão", desc: "Gestor direto: nome não informado" });
+        }
+        if (!c.responsavel_email && !c.contato_responsavel_email) {
+          pendencias.push({ nivel: "gestao", categoria: "Gestão", desc: "Gestor direto: e-mail não informado (impede cópia ao gestor)" });
         }
         if (!c.telefone) {
           pendencias.push({ nivel: "gestao", categoria: "Contato", desc: "Telefone / WhatsApp não informado" });
@@ -195,6 +218,18 @@ export default function GestaoColaboradoresPortal() {
         }
 
         // 🔵 Nível 3 — Médio / Estrutura & Cadastro Geral
+        if (!c.foto_url) {
+          pendencias.push({ nivel: "cadastral", categoria: "Perfil", desc: "Foto do perfil não cadastrada" });
+        }
+        if (!c.graduacao) {
+          pendencias.push({ nivel: "cadastral", categoria: "Formação", desc: "Formação / Graduação não informada" });
+        }
+        if (!c.resumo_experiencia) {
+          pendencias.push({ nivel: "cadastral", categoria: "Currículo", desc: "Resumo de experiência / biografia não informado" });
+        }
+        if (!c.cpf) {
+          pendencias.push({ nivel: "cadastral", categoria: "Documento", desc: "CPF não cadastrado" });
+        }
         if (!c.cargo) {
           pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Cargo / Função não informado" });
         }
@@ -206,6 +241,9 @@ export default function GestaoColaboradoresPortal() {
         }
         if (!c.tipo_funcionario) {
           pendencias.push({ nivel: "cadastral", categoria: "Cadastro", desc: "Tipo de colaborador (Interno/Externo) não informado" });
+        }
+        if (c.tipo_funcionario === "Interno" && !c.ramal) {
+          pendencias.push({ nivel: "cadastral", categoria: "Contato", desc: "Ramal interno não informado" });
         }
 
         return {
