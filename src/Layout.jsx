@@ -115,6 +115,11 @@ const operacoesItems = [
     icon: Headset,
   },
   {
+    title: "Facilities & Predial",
+    url: createPageUrl("ChamadosFacilities"),
+    icon: Building2,
+  },
+  {
     title: "Requisições de Compra",
     url: createPageUrl("RequisicaoCompras"),
     icon: ShoppingCart,

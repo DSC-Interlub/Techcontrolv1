@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Headset, Calendar, Users, Phone, Activity, ArrowRight, Loader2, CheckCircle, Clock, AlertCircle, ShoppingCart } from "lucide-react";
+import { Headset, Calendar, Users, Phone, Activity, ArrowRight, Loader2, CheckCircle, Clock, AlertCircle, ShoppingCart, Building2 } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import PortalLayout from "../components/portal/PortalLayout";
@@ -35,6 +35,13 @@ export default function Portal() {
     staleTime: 60000,
   });
 
+  const { data: chamadosFacilities = [] } = useQuery({
+    queryKey: ['portal_facilities_counter', colaborador?.id],
+    queryFn: () => base44.entities.ChamadosFacilities.list('-created_date'),
+    enabled: !!colaborador,
+    staleTime: 60000,
+  });
+
   const { data: reservas = [] } = useQuery({
     queryKey: ['portal_reservas_nb', colaborador?.email],
     queryFn: () => base44.entities.Reservas.filter({ solicitante_email: colaborador.email }, '-created_date'),
@@ -54,9 +61,20 @@ export default function Portal() {
   }
 
   const nomeNorm = normalizeUserName(colaborador.nome_completo);
+  const emailNorm = (colaborador.email || "").toLowerCase().trim();
+  const colabIdStr = colaborador?.id ? String(colaborador.id) : "";
 
   const meusChamados = chamados.filter(c => normalizeUserName(c.solicitante_nome) === nomeNorm);
   const chamadosAbertos = meusChamados.filter(c => c.status !== "Resolvido" && c.status !== "Cancelado");
+
+  const minhasFacilities = chamadosFacilities.filter(c => {
+    if (!c) return false;
+    if (c.solicitante_id && String(c.solicitante_id) === colabIdStr) return true;
+    const matchEmail = emailNorm && c.email && (c.email.toLowerCase().trim() === emailNorm);
+    const solicitanteNorm = normalizeUserName(c.solicitante_nome);
+    return matchEmail || solicitanteNorm === nomeNorm;
+  });
+  const facilitiesAbertas = minhasFacilities.filter(c => c.status !== "Concluído" && c.status !== "Cancelado");
 
   const minhasReservasNb = reservas.filter(r =>
     r.solicitante_email?.toLowerCase() === colaborador.email?.toLowerCase() && r.status !== "Cancelada"
@@ -68,13 +86,22 @@ export default function Portal() {
 
   const cards = [
     {
-      title: "Abrir Chamado",
+      title: "Abrir Chamado (TI)",
       desc: "Solicite suporte técnico para problemas de TI",
       icon: Headset,
       color: "bg-orange-100 text-orange-600",
       url: createPageUrl("portal-chamados"),
       badge: chamadosAbertos.length > 0 ? `${chamadosAbertos.length} em aberto` : null,
       badgeColor: "bg-orange-100 text-orange-800",
+    },
+    {
+      title: "Solicitações Facilities",
+      desc: "Serviços prediais, limpeza, manutenção, elétrica e climatização",
+      icon: Building2,
+      color: "bg-amber-100 text-amber-700",
+      url: createPageUrl("portal-facilities"),
+      badge: facilitiesAbertas.length > 0 ? `${facilitiesAbertas.length} em andamento` : null,
+      badgeColor: "bg-amber-100 text-amber-800",
     },
     {
       title: "Requisições de Compra",

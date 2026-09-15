@@ -26,6 +26,23 @@ function htmlTicketChatMessage(nome, remetente, mensagem, numero) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table width="580" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:20px;"><span style="background:#1e40af;border-radius:12px;padding:10px 22px;color:#fff;font-size:18px;font-weight:700;display:inline-block;">⚙ TechControl</span></td></tr><tr><td style="background:#7c3aed;border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;"><p style="margin:0;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">💬 Nova Mensagem</p></td></tr><tr><td style="background:#fff;border-radius:0 0 10px 10px;padding:36px 40px;"><p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Olá, ${nome}!</p><p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Nova mensagem de <strong>${remetente}</strong>.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;"><tr><td style="padding:20px 24px 12px;border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Chamado #${numero}</p></td></tr><tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;"><strong>Mensagem:</strong><br>"${mensagem.substring(0, 300)}${mensagem.length > 300 ? '...' : ''}"</td></tr></table><div style="text-align:center;"><a href="${PORTAL_URL}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;">💬 Ver Mensagem</a></div></td></tr><tr><td align="center" style="padding:24px 0 8px;"><p style="margin:0;font-size:12px;color:#9ca3af;">E-mail gerado automaticamente pelo <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
 }
 
+// ── TEMPLATES DE FACILITIES ──────────────────────────────────────────────────
+function htmlFacilitiesCreatedUser(f) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table width="580" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:20px;"><span style="background:#b45309;border-radius:12px;padding:10px 22px;color:#fff;font-size:18px;font-weight:700;display:inline-block;">🏢 Facilities & Infraestrutura</span></td></tr><tr><td style="background:#d97706;border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;"><p style="margin:0;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">📋 Solicitação Registrada</p></td></tr><tr><td style="background:#fff;border-radius:0 0 10px 10px;padding:36px 40px;"><p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Olá, ${f.solicitante_nome}!</p><p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Sua solicitação de facilities foi registrada com sucesso. A equipe de manutenção e infraestrutura já foi notificada.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;"><tr><td style="padding:20px 24px 12px;border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Número da Solicitação</p><p style="margin:0;font-size:28px;font-weight:800;color:#b45309;font-family:monospace;">${f.numero_solicitacao}</p></td></tr><tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;"><strong>Tipo de Serviço:</strong> ${f.tipo_servico}<br><strong>Local:</strong> ${f.local_ocorrencia}<br><strong>Prioridade:</strong> ${f.prioridade || 'Média'}${f.necessita_parada_area ? '<br><strong style="color:#b45309;">⚠️ Parada de Área Requerida:</strong> ' + (f.periodo_parada || 'Sim') : ''}</td></tr></table><div style="text-align:center;"><a href="${PORTAL_URL}" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;">🔍 Acompanhar Solicitação</a></div></td></tr><tr><td align="center" style="padding:24px 0 8px;"><p style="margin:0;font-size:12px;color:#9ca3af;">E-mail gerado automaticamente pelo <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+function htmlFacilitiesCreatedAdmin(f) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table width="580" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:20px;"><span style="background:#b45309;border-radius:12px;padding:10px 22px;color:#fff;font-size:18px;font-weight:700;display:inline-block;">🏢 Facilities & Infraestrutura</span></td></tr><tr><td style="background:#d97706;border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;"><p style="margin:0;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">⚡ Nova Demanda de Facilities</p></td></tr><tr><td style="background:#fff;border-radius:0 0 10px 10px;padding:36px 40px;"><p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Olá, Equipe de Facilities!</p><p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Nova solicitação aberta por <strong>${f.solicitante_nome}</strong> (${f.area_departamento || '-'}).</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;"><tr><td style="padding:20px 24px 12px;border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Número da Solicitação</p><p style="margin:0;font-size:28px;font-weight:800;color:#b45309;font-family:monospace;">${f.numero_solicitacao}</p></td></tr><tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;"><strong>Tipo de Serviço:</strong> ${f.tipo_servico}<br><strong>Local:</strong> ${f.local_ocorrencia}<br><strong>Prioridade:</strong> ${f.prioridade || 'Média'}<br><strong>Descrição:</strong> ${f.descricao}</td></tr></table><div style="text-align:center;"><a href="${SITE_URL}/ChamadosFacilities" style="display:inline-block;background:#b45309;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;">🛠 Acessar Painel de Facilities</a></div></td></tr><tr><td align="center" style="padding:24px 0 8px;"><p style="margin:0;font-size:12px;color:#9ca3af;">E-mail gerado automaticamente pelo <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+function htmlFacilitiesStarted(f, responsavel) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table width="580" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:20px;"><span style="background:#b45309;border-radius:12px;padding:10px 22px;color:#fff;font-size:18px;font-weight:700;display:inline-block;">🏢 Facilities & Infraestrutura</span></td></tr><tr><td style="background:#2563eb;border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;"><p style="margin:0;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">⚡ Atendimento Iniciado</p></td></tr><tr><td style="background:#fff;border-radius:0 0 10px 10px;padding:36px 40px;"><p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Olá, ${f.solicitante_nome}!</p><p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Sua solicitação de facilities está em andamento com <strong>${responsavel}</strong>.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;"><tr><td style="padding:20px 24px 12px;border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Número da Solicitação</p><p style="margin:0;font-size:28px;font-weight:800;color:#b45309;font-family:monospace;">${f.numero_solicitacao}</p></td></tr><tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;"><strong>Tipo:</strong> ${f.tipo_servico}<br><strong>Local:</strong> ${f.local_ocorrencia}<br><strong>Responsável:</strong> ${responsavel}${f.prazo_atendimento ? '<br><strong>Prazo Previsto:</strong> ' + f.prazo_atendimento : ''}</td></tr></table><div style="text-align:center;"><a href="${PORTAL_URL}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;">🔍 Acompanhar Solicitação</a></div></td></tr><tr><td align="center" style="padding:24px 0 8px;"><p style="margin:0;font-size:12px;color:#9ca3af;">E-mail gerado automaticamente pelo <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
+function htmlFacilitiesClosed(f, responsavel) {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table width="580" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:20px;"><span style="background:#b45309;border-radius:12px;padding:10px 22px;color:#fff;font-size:18px;font-weight:700;display:inline-block;">🏢 Facilities & Infraestrutura</span></td></tr><tr><td style="background:#16a34a;border-radius:10px 10px 0 0;padding:18px 32px;text-align:center;"><p style="margin:0;color:#fff;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">✅ Serviço de Facilities Concluído</p></td></tr><tr><td style="background:#fff;border-radius:0 0 10px 10px;padding:36px 40px;"><p style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Olá, ${f.solicitante_nome}!</p><p style="margin:0 0 28px;font-size:15px;color:#6b7280;">Sua solicitação de facilities foi concluída por <strong>${responsavel}</strong>.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;margin-bottom:28px;"><tr><td style="padding:20px 24px 12px;border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:600;">Número da Solicitação</p><p style="margin:0;font-size:28px;font-weight:800;color:#b45309;font-family:monospace;">${f.numero_solicitacao}</p></td></tr><tr><td style="padding:16px 24px;font-size:14px;color:#374151;line-height:1.7;"><strong>Tipo de Serviço:</strong> ${f.tipo_servico}<br><strong>Local:</strong> ${f.local_ocorrencia}${f.descricao_servico_executado ? '<br><strong>Serviço Realizado:</strong> ' + f.descricao_servico_executado : ''}</td></tr></table><div style="background:#fffbeb;border:2px solid #fcd34d;border-radius:10px;padding:24px;margin-bottom:24px;text-align:center;"><p style="margin:0 0 12px;font-size:16px;font-weight:700;color:#92400e;">⭐ Avalie o Atendimento de Facilities</p><p style="margin:0 0 16px;font-size:13px;color:#78350f;">Sua avaliação (4 critérios: Tempo, Atendimento, Qualidade e Comunicação) nos ajuda a manter a qualidade dos nossos ambientes.</p><a href="${PORTAL_URL}" style="display:inline-block;background:#d97706;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-size:15px;font-weight:700;">⭐ Avaliar no Portal</a><p style="margin:12px 0 0;font-size:12px;color:#92400e;">Solicitação <strong>${f.numero_solicitacao}</strong></p></div></td></tr><tr><td align="center" style="padding:24px 0 8px;"><p style="margin:0;font-size:12px;color:#9ca3af;">E-mail gerado automaticamente pelo <strong>TechControl</strong>.</p></td></tr></table></td></tr></table></body></html>`;
+}
+
 // ── TEMPLATE DE COMUNICADOS (IMAGENS COMPLETAS) ─────────────────────────────────
 function buildImageComunicadoHtml(arteUrl) {
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#ffffff;"><div style="max-width:640px;margin:0 auto;background:#ffffff;"><img src="${arteUrl}" style="display:block;width:100%;max-width:640px;border:0;margin:0;padding:0;" /><div style="padding:12px 0;text-align:center;"><p style="margin:0;font-size:11px;color:#9ca3af;">© ${new Date().getFullYear()} · Todos os direitos reservados</p></div></div></body></html>`;
@@ -329,6 +346,70 @@ export default async function handler(req, res) {
         });
         return res.status(500).json({ ok: false, msg: erro.message });
       }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 8. FACILITIES: ABERTURA DE SOLICITAÇÃO (CREATED)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (type === 'sendEmailFacilitiesCreated') {
+      const chamadoId = data.chamado_id || data.id;
+      const { data: fac } = await supabase.from('chamados_facilities').select('*').eq('id', chamadoId).single();
+      if (!fac?.email) return res.status(404).json({ error: 'Solicitação ou e-mail do solicitante não encontrado' });
+
+      await Promise.all([
+        sendEmail({
+          to: fac.email,
+          subject: `[Facilities] Solicitação ${fac.numero_solicitacao} recebida com sucesso`,
+          html: htmlFacilitiesCreatedUser(fac)
+        }),
+        sendEmail({
+          to: ADM_EMAIL,
+          subject: `[Facilities] Nova Demanda: ${fac.numero_solicitacao} — ${fac.solicitante_nome} (${fac.tipo_servico})`,
+          html: htmlFacilitiesCreatedAdmin(fac)
+        })
+      ]);
+
+      return res.status(200).json({ success: true });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 9. FACILITIES: ATENDIMENTO INICIADO (STARTED)
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (type === 'sendEmailFacilitiesStarted') {
+      const chamadoId = data.chamado_id || data.id;
+      const { responsavel } = data;
+      const { data: fac } = await supabase.from('chamados_facilities').select('*').eq('id', chamadoId).single();
+      if (!fac?.email) return res.status(404).json({ error: 'Solicitação ou e-mail do solicitante não encontrado' });
+
+      const respNome = responsavel || fac.responsavel_execucao_nome || fac.responsavel_analise_nome || fac.fornecedor_nome || 'Equipe de Facilities';
+
+      await sendEmail({
+        to: fac.email,
+        subject: `[Facilities] Solicitação ${fac.numero_solicitacao} - Atendimento em andamento ⚡`,
+        html: htmlFacilitiesStarted(fac, respNome)
+      });
+
+      return res.status(200).json({ success: true });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // 10. FACILITIES: CONCLUÍDO (CLOSED) COM PESQUISA DE SATISFAÇÃO
+    // ─────────────────────────────────────────────────────────────────────────────
+    if (type === 'sendEmailFacilitiesClosed') {
+      const chamadoId = data.chamado_id || data.id;
+      const { responsavel } = data;
+      const { data: fac } = await supabase.from('chamados_facilities').select('*').eq('id', chamadoId).single();
+      if (!fac?.email) return res.status(404).json({ error: 'Solicitação ou e-mail do solicitante não encontrado' });
+
+      const respNome = responsavel || fac.responsavel_execucao_nome || fac.fornecedor_nome || 'Equipe de Facilities';
+
+      await sendEmail({
+        to: fac.email,
+        subject: `[Facilities] Solicitação ${fac.numero_solicitacao} Concluída ✅ — Avalie nosso atendimento`,
+        html: htmlFacilitiesClosed(fac, respNome)
+      });
+
+      return res.status(200).json({ success: true });
     }
 
     return res.status(400).json({ error: 'Tipo de notificação inválido' });

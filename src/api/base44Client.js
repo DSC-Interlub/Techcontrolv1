@@ -28,7 +28,9 @@ const tableMap = {
   TarefasManutencao: 'tarefas_manutencao_equipamento',
   User: 'profiles',
   ProjetosInternos: 'projetos_internos',
-  ProjetosChat: 'projetos_chat'
+  ProjetosChat: 'projetos_chat',
+  ChamadosFacilities: 'chamados_facilities',
+  Chamados_Facilities: 'chamados_facilities'
 };
 
 const sanitizeData = (obj) => {
@@ -91,6 +93,8 @@ const createEntityHandler = (entityName) => {
           query = query.or(`item.ilike.${term},colaborador_nome.ilike.${term},numero_requisicao.ilike.${term},colaborador_area.ilike.${term}`);
         } else if (tableName === 'chamados') {
           query = query.or(`assunto.ilike.${term},solicitante_nome.ilike.${term},numero_chamado.ilike.${term}`);
+        } else if (tableName === 'chamados_facilities') {
+          query = query.or(`descricao.ilike.${term},solicitante_nome.ilike.${term},numero_solicitacao.ilike.${term},local_ocorrencia.ilike.${term}`);
         }
       }
 
@@ -366,7 +370,10 @@ export const base44 = {
         'sendEmailChatMessage',
         'notificarAprovadorRequisicao',
         'enviarBoasVindas',
-        'enviarDespedida'
+        'enviarDespedida',
+        'sendEmailFacilitiesCreated',
+        'sendEmailFacilitiesStarted',
+        'sendEmailFacilitiesClosed'
       ];
 
       if (unifiedNotifications.includes(name)) {

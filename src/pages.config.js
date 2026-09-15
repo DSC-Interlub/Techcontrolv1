@@ -44,10 +44,12 @@ const salaTreinamento = lazy(() => import('./pages/sala-treinamento'));
 const Comunicados = lazy(() => import('./pages/Comunicados'));
 const portalComunicados = lazy(() => import('./pages/portal-comunicados'));
 const portalRequisicoes = lazy(() => import('./pages/portal-requisicoes'));
+const portalFacilities = lazy(() => import('./pages/portal-facilities'));
 const aprovacaoDiretor = lazy(() => import('./pages/aprovacao-diretor'));
 const Login = lazy(() => import('./pages/Login'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const RequisicaoCompras = lazy(() => import('./pages/RequisicaoCompras'));
+const ChamadosFacilities = lazy(() => import('./pages/ChamadosFacilities'));
 const CentrosCusto = lazy(() => import('./pages/CentrosCusto'));
 const Painel_Maquinas = lazy(() => import('./pages/Painel_Maquinas'));
 
@@ -85,10 +87,12 @@ export const PAGES = {
     "Comunicados": Comunicados,
     "portal-comunicados": portalComunicados,
     "portal-requisicoes": portalRequisicoes,
+    "portal-facilities": portalFacilities,
     "aprovacao-diretor": aprovacaoDiretor,
     "login": Login,
     "reset-password": ResetPassword,
     "RequisicaoCompras": RequisicaoCompras,
+    "ChamadosFacilities": ChamadosFacilities,
     "CentrosCusto": CentrosCusto,
     "Painel_Maquinas": Painel_Maquinas,
 }

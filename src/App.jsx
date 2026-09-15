@@ -39,6 +39,7 @@ const PUBLIC_PAGES = [
   'portal-ramais',
   'portal-requisicoes',
   'portal-comunicados',
+  'portal-facilities',
   'acompanhar-chamado',
   'chamado-publico',
   'reserva-publica',

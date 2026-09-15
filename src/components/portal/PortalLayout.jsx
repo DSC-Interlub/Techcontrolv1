@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { usePortalColaborador } from "./usePortalColaborador";
 import {
   LayoutDashboard, Headset, Calendar, Users, Phone, Activity,
-  Settings, LogOut, Sun, Moon, KeyRound, X, Eye, EyeOff, Megaphone, ShoppingCart
+  Settings, LogOut, Sun, Moon, KeyRound, X, Eye, EyeOff, Megaphone, ShoppingCart, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,8 @@ import {
 
 const staticNavItems = [
   { title: "Início", url: createPageUrl("portal"), icon: LayoutDashboard },
-  { title: "Meus Chamados", url: createPageUrl("portal-chamados"), icon: Headset },
+  { title: "Meus Chamados (TI)", url: createPageUrl("portal-chamados"), icon: Headset },
+  { title: "Solicitações Facilities", url: createPageUrl("portal-facilities"), icon: Building2 },
   { title: "Requisições de Compra", url: createPageUrl("portal-requisicoes"), icon: ShoppingCart },
   { title: "Reservar Notebook", url: createPageUrl("portal-reservas"), icon: Calendar },
   { title: "Sala de Treinamento", url: createPageUrl("portal-sala"), icon: Users },
