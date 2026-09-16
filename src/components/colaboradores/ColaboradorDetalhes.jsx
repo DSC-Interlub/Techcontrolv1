@@ -346,8 +346,18 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
                 </div>
 
                 <div>
-                  <p className="font-bold text-gray-800 mb-2 uppercase text-[11px] tracking-wider">Papéis no Portal de Comunicados</p>
+                  <p className="font-bold text-gray-800 mb-2 uppercase text-[11px] tracking-wider">Papéis de Acesso no Portal</p>
                   <div className="flex flex-wrap gap-2">
+                    {(colaborador.eh_facilities || colaborador.area?.toLowerCase().includes("facilities")) && (
+                      <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs py-1 px-2.5">
+                        🏢 Equipe de Facilities (Triagem & Gestão)
+                      </Badge>
+                    )}
+                    {(colaborador.eh_comprador || colaborador.area?.toLowerCase().includes("compras")) && (
+                      <Badge className="bg-blue-100 text-blue-800 border-blue-300 text-xs py-1 px-2.5">
+                        🛒 Comprador (Cotações & Compras)
+                      </Badge>
+                    )}
                     {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || (colaborador.permissoes_comunicados || []).includes("cadastrar_artes") || colaborador.area === "Comunicação e Branding") && (
                       <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs py-1 px-2.5">
                         🎨 Comunicação e Branding (Artes & Modelos)
@@ -358,8 +368,8 @@ export default function ColaboradorDetalhes({ colaborador, onClose, onEdit, hide
                         👥 Conexão Humana (Cadastro & Auditoria)
                       </Badge>
                     )}
-                    {!colaborador.eh_comunicacao_branding && !colaborador.eh_conexao_humana && (colaborador.permissoes_comunicados || []).length === 0 && colaborador.area !== "Comunicação e Branding" && colaborador.area !== "Conexão Humana" && (
-                      <p className="text-gray-400 italic text-xs">Colaborador padrão (sem papéis especiais de comunicados).</p>
+                    {!colaborador.eh_facilities && !colaborador.eh_comprador && !colaborador.eh_comunicacao_branding && !colaborador.eh_conexao_humana && (colaborador.permissoes_comunicados || []).length === 0 && colaborador.area !== "Comunicação e Branding" && colaborador.area !== "Conexão Humana" && !colaborador.area?.toLowerCase().includes("facilities") && !colaborador.area?.toLowerCase().includes("compras") && (
+                      <p className="text-gray-400 italic text-xs">Colaborador padrão (sem papéis especiais de gestão).</p>
                     )}
                   </div>
                 </div>

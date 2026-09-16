@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Building2, Plus, Loader2, CheckCircle, Star, ChevronLeft, Send,
   Paperclip, X, Clock, AlertTriangle, CheckCircle2, Wrench, ShieldAlert,
-  Sparkles, FileText, MapPin, User, Phone, Mail, Calendar, Eye
+  Sparkles, FileText, MapPin, User, Phone, Mail, Calendar, Eye, Download,
+  ExternalLink, UserCheck, RefreshCw, DollarSign, Briefcase, ShieldCheck,
+  Layers, Users, Search
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,8 +49,8 @@ const statusColors = {
 };
 
 const prioridadeColors = {
-  "Crítica": "bg-red-600 text-white",
-  "Alta": "bg-orange-500 text-white",
+  "Crítica": "bg-red-600 text-white font-bold",
+  "Alta": "bg-orange-500 text-white font-medium",
   "Média": "bg-amber-100 text-amber-800 border-amber-200",
   "Baixa": "bg-slate-100 text-slate-700 border-slate-200",
 };
@@ -58,100 +61,145 @@ const normalizeUserName = (name) => {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
     .trim();
 };
 
 function AvaliacaoFacilities({ chamado, onAvaliar, loading, autoShow = false }) {
-  const [show, setShow] = useState(autoShow);
-  const [avaliacao, setAvaliacao] = useState({
-    tempo_resolucao: 5,
-    qualidade_atendimento: 5,
-    qualidade_solucao: 5,
-    comunicacao: 5,
-    comentario: ""
-  });
+  const [tempoResolucao, setTempoResolucao] = useState(5);
+  const [qualidadeAtendimento, setQualidadeAtendimento] = useState(5);
+  const [qualidadeSolucao, setQualidadeSolucao] = useState(5);
+  const [comunicacao, setComunicacao] = useState(5);
+  const [comentario, setComentario] = useState("");
+  const [enviado, setEnviado] = useState(false);
+  const [openForm, setOpenForm] = useState(autoShow);
 
-  useEffect(() => {
-    if (autoShow) setShow(true);
-  }, [autoShow]);
+  const mediaCalculada = useMemo(() => {
+    const soma = tempoResolucao + qualidadeAtendimento + qualidadeSolucao + comunicacao;
+    return (soma / 4).toFixed(1);
+  }, [tempoResolucao, qualidadeAtendimento, qualidadeSolucao, comunicacao]);
 
-  const StarRow = ({ label, campo }) => (
-    <div>
-      <div className="flex items-center justify-between">
-        <Label className="text-amber-900 font-semibold text-sm">{label}</Label>
-        <span className="text-xs font-bold text-amber-700">{avaliacao[campo]} ⭐</span>
-      </div>
-      <div className="flex gap-2 mt-1">
-        {[1, 2, 3, 4, 5].map(n => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => setAvaliacao(prev => ({ ...prev, [campo]: n }))}
-            className="transition-all hover:scale-125 focus:outline-none"
-          >
-            <Star className={`w-7 h-7 ${n <= avaliacao[campo] ? 'fill-amber-500 text-amber-500' : 'fill-none text-gray-300'}`} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const handleEnviar = () => {
-    onAvaliar(avaliacao);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await onAvaliar({
+      chamadoId: chamado.id,
+      avaliacao_tempo_resolucao: tempoResolucao,
+      avaliacao_qualidade_atendimento: qualidadeAtendimento,
+      avaliacao_qualidade_solucao: qualidadeSolucao,
+      avaliacao_comunicacao: comunicacao,
+      avaliacao_nota_geral: parseFloat(mediaCalculada),
+      avaliacao_comentario: comentario.trim() || null,
+      satisfacao_respondida: true,
+      avaliacao_data: new Date().toISOString(),
+    });
+    setEnviado(true);
   };
 
-  if (chamado.satisfacao_respondida || chamado.avaliacao_data) {
+  if (enviado || chamado.satisfacao_respondida || chamado.avaliacao_data) {
+    const nota = chamado.avaliacao_nota_geral || mediaCalculada;
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-        <p className="text-green-800 font-semibold flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
-          Avaliação de Satisfação registrada · Média: {chamado.avaliacao_nota_geral ? Number(chamado.avaliacao_nota_geral).toFixed(1) : "5.0"} ⭐
-        </p>
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-3">
+        <div className="flex items-center gap-2 text-green-700 font-semibold mb-1">
+          <CheckCircle className="w-5 h-5" />
+          <span>Pesquisa de Satisfação Respondida</span>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <div className="flex text-amber-500">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star
+                key={s}
+                className={`w-4 h-4 ${s <= Math.round(Number(nota)) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+              />
+            ))}
+          </div>
+          <span className="text-sm font-bold text-gray-700">Média: {nota} / 5.0</span>
+        </div>
         {chamado.avaliacao_comentario && (
-          <p className="text-sm text-green-700 mt-1">"{chamado.avaliacao_comentario}"</p>
+          <p className="text-xs text-gray-600 italic mt-2 bg-white/70 p-2 rounded border border-green-100">
+            "{chamado.avaliacao_comentario}"
+          </p>
         )}
       </div>
     );
   }
 
-  if (chamado.status !== "Concluído") return null;
+  if (!openForm) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-amber-900">Solicitação Concluída!</p>
+          <p className="text-[11px] text-amber-700">Avalie a qualidade do atendimento recebido.</p>
+        </div>
+        <Button size="sm" onClick={() => setOpenForm(true)} className="bg-amber-600 hover:bg-amber-700 text-white text-xs">
+          <Star className="w-3.5 h-3.5 mr-1" /> Avaliar Atendimento
+        </Button>
+      </div>
+    );
+  }
+
+  const CritStar = ({ label, value, onChange }) => (
+    <div className="flex items-center justify-between py-1 border-b border-amber-100 last:border-0">
+      <span className="text-xs font-medium text-gray-700">{label}</span>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => onChange(star)}
+            className="p-0.5 hover:scale-110 transition-transform"
+          >
+            <Star
+              className={`w-4 h-4 ${star <= value ? "fill-amber-400 text-amber-500" : "text-gray-300"}`}
+            />
+          </button>
+        ))}
+        <span className="text-xs font-bold text-amber-800 ml-1.5 w-4 text-center">{value}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 mt-4 shadow-sm" id="bloco-avaliacao-facilities">
-      <p className="font-bold text-amber-900 mb-3 flex items-center gap-2 text-base">
-        <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
-        Pesquisa de Satisfação do Serviço
-      </p>
-      {!show ? (
-        <Button onClick={() => setShow(true)} className="bg-amber-600 hover:bg-amber-700 w-full text-white font-semibold">
-          Avaliar Atendimento de Facilities
-        </Button>
-      ) : (
-        <div className="space-y-4">
-          <StarRow label="Tempo de Atendimento e Resolução" campo="tempo_resolucao" />
-          <StarRow label="Qualidade e Postura da Equipe" campo="qualidade_atendimento" />
-          <StarRow label="Qualidade do Serviço Executado" campo="qualidade_solucao" />
-          <StarRow label="Comunicação e Clareza" campo="comunicacao" />
-          <div>
-            <Label className="text-amber-900 font-semibold">Comentários e Sugestões (opcional)</Label>
-            <Textarea
-              placeholder="Conte como foi o atendimento da equipe de Facilities..."
-              rows={2}
-              value={avaliacao.comentario}
-              onChange={e => setAvaliacao(prev => ({ ...prev, comentario: e.target.value }))}
-              className="mt-1 bg-white"
-            />
-          </div>
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => setShow(false)}>Cancelar</Button>
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white flex-1 font-semibold" onClick={handleEnviar} disabled={loading}>
-              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : "Enviar Avaliação"}
-            </Button>
-          </div>
+      <div className="flex items-center justify-between mb-3 border-b border-amber-200 pb-2">
+        <div className="flex items-center gap-2">
+          <Star className="w-5 h-5 text-amber-600 fill-amber-400" />
+          <h4 className="text-sm font-bold text-amber-950">
+            Avaliar Atendimento de Facilities
+          </h4>
         </div>
-      )}
+        <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-xs">
+          Média: {mediaCalculada} ★
+        </Badge>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="bg-white/80 rounded-md p-3 border border-amber-200 space-y-1">
+          <CritStar label="Tempo de Resolução" value={tempoResolucao} onChange={setTempoResolucao} />
+          <CritStar label="Qualidade do Atendimento" value={qualidadeAtendimento} onChange={setQualidadeAtendimento} />
+          <CritStar label="Qualidade da Solução" value={qualidadeSolucao} onChange={setQualidadeSolucao} />
+          <CritStar label="Comunicação e Postura" value={comunicacao} onChange={setComunicacao} />
+        </div>
+
+        <div>
+          <Label className="text-xs font-medium text-gray-700">Comentário ou Sugestão (opcional)</Label>
+          <Textarea
+            value={comentario}
+            onChange={(e) => setComentario(e.target.value)}
+            placeholder="Conte como foi o atendimento da equipe de Facilities..."
+            className="text-xs mt-1 bg-white border-amber-200"
+            rows={2}
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOpenForm(false)} className="text-xs">
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading} size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1" />}
+            Enviar Avaliação
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -159,10 +207,45 @@ function AvaliacaoFacilities({ chamado, onAvaliar, loading, autoShow = false }) 
 export default function PortalFacilities() {
   const { colaborador, loading, logout, requireAuth } = usePortalAuth();
   const queryClient = useQueryClient();
+
+  // Dados frescos do colaborador para checar permissão de equipe de facilities
+  const colabId = colaborador?.id || null;
+  const { data: colaboradorFull } = useQuery({
+    queryKey: ["portal_colaborador_facilities_fresh", colabId],
+    queryFn: () => (colabId ? base44.entities.Colaboradores.get(colabId) : null),
+    enabled: !!colabId,
+    staleTime: 60000,
+  });
+
+  const colabAtivo = colaboradorFull || colaborador;
+
+  const isEquipeFacilities = Boolean(
+    colabAtivo?.eh_facilities ||
+    colaborador?.eh_facilities ||
+    colabAtivo?.area?.toLowerCase().includes("facilities") ||
+    colaborador?.area?.toLowerCase().includes("facilities")
+  );
+
+  const [modoGestao, setModoGestao] = useState(false);
   const [view, setView] = useState("lista"); // "lista" | "novo"
   const [selectedChamado, setSelectedChamado] = useState(null);
   const [autoShowAvaliacao, setAutoShowAvaliacao] = useState(false);
-  
+
+  // Estados da Gestão Operacional de Facilities
+  const [buscaAdmin, setBuscaAdmin] = useState("");
+  const [filtroTipoAdmin, setFiltroTipoAdmin] = useState("todos");
+  const [filtroPrioridadeAdmin, setFiltroPrioridadeAdmin] = useState("todos");
+  const [filtroAtendimentoAdmin, setFiltroAtendimentoAdmin] = useState("todos");
+  const [abaGestaoAtiva, setAbaGestaoAtiva] = useState("todos");
+
+  // Modal de Triagem / Atendimento (Gestão)
+  const [triagemModalChamado, setTriagemModalChamado] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [novosAnexosEtapa, setNovosAnexosEtapa] = useState([]);
+  const [uploadingAnexoEtapa, setUploadingAnexoEtapa] = useState(false);
+  const [novoComentarioHistorico, setNovoComentarioHistorico] = useState("");
+
+  // Formulário Nova Solicitação
   const [formData, setFormData] = useState({
     local_ocorrencia: "",
     tipo_servico: "",
@@ -181,20 +264,46 @@ export default function PortalFacilities() {
     if (!loading) requireAuth();
   }, [loading]);
 
-  const { data: chamadosFacilities = [], isLoading } = useQuery({
+  // Se o colaborador tem perfil de equipe de facilities, inicializa no modo gestão
+  useEffect(() => {
+    if (isEquipeFacilities) {
+      setModoGestao(true);
+    }
+  }, [isEquipeFacilities]);
+
+  // Lista geral de chamados de facilities
+  const { data: chamadosFacilities = [], isLoading, refetch } = useQuery({
     queryKey: ['portal_facilities_list'],
     queryFn: () => base44.entities.ChamadosFacilities.list('-created_date'),
     enabled: !!colaborador,
+    staleTime: 30000,
   });
 
+  // Lista de colaboradores para atribuição técnica
+  const { data: listaColaboradores = [] } = useQuery({
+    queryKey: ['portal_colaboradores_list_fac'],
+    queryFn: () => base44.entities.Colaboradores.list('nome_completo'),
+    enabled: isEquipeFacilities,
+    staleTime: 60000,
+  });
+
+  // Lista de empresas terceiras
+  const { data: empresasTerceiras = [] } = useQuery({
+    queryKey: ['portal_empresas_terceiras_fac'],
+    queryFn: () => base44.entities.EmpresasTerceiras.list('nome_empresa'),
+    enabled: isEquipeFacilities,
+    staleTime: 60000,
+  });
+
+  // Mutation Criar Nova Solicitação
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const payload = {
-        solicitante_id: colaborador.id || null,
-        solicitante_nome: colaborador.nome_completo,
-        area_departamento: colaborador.area || "",
-        telefone_ramal: colaborador.telefone || "",
-        email: colaborador.email || "",
+        solicitante_id: colabAtivo.id || null,
+        solicitante_nome: colabAtivo.nome_completo,
+        area_departamento: colabAtivo.area || "",
+        telefone_ramal: colabAtivo.telefone || "",
+        email: colabAtivo.email || "",
         local_ocorrencia: data.local_ocorrencia.trim(),
         tipo_servico: data.tipo_servico,
         tipo_servico_outro: data.tipo_servico === "Outros" ? data.tipo_servico_outro?.trim() : null,
@@ -208,26 +317,26 @@ export default function PortalFacilities() {
           {
             data_hora: new Date().toISOString(),
             tipo: "criacao",
-            descricao: `Solicitação aberta por ${colaborador.nome_completo}`,
-            usuario_nome: colaborador.nome_completo,
-            usuario: colaborador.nome_completo,
-            usuario_id: colaborador.id || null,
+            descricao: `Solicitação registrada via Portal por ${colabAtivo.nome_completo} (${colabAtivo.area || "Geral"}). Prioridade indicada: ${data.prioridade || "Média"}.`,
+            usuario_nome: colabAtivo.nome_completo,
+            usuario: colabAtivo.nome_completo,
+            usuario_id: colabAtivo.id || null,
             status_anterior: null,
             status_novo: "Aberto",
-            anexos: anexos || []
+            anexos: anexos
           }
         ]
       };
-
+      
       const res = await base44.entities.ChamadosFacilities.create(payload);
       if (res?.id) {
         base44.functions.invoke('sendEmailFacilitiesCreated', { chamado_id: res.id }).catch(e => console.warn('Erro envio email abertura facilities:', e));
       }
       return res;
     },
-    onSuccess: (data) => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['portal_facilities_list'] });
-      setSubmitSuccess(data?.numero_solicitacao || "FAC-Registrado");
+      setSubmitSuccess(res?.numero_solicitacao || "Registrado com sucesso");
       setFormData({
         local_ocorrencia: "",
         tipo_servico: "",
@@ -241,54 +350,176 @@ export default function PortalFacilities() {
     },
     onError: (err) => {
       console.error("Erro ao criar chamado de facilities:", err);
-      alert("Erro ao enviar solicitação: " + (err.message || "Tente novamente"));
+      alert("Erro ao abrir solicitação: " + (err.message || "Tente novamente."));
     }
   });
 
-  const avaliacaoMutation = useMutation({
-    mutationFn: async ({ id, av }) => {
-      const t = Number(av.tempo_resolucao) || 5;
-      const q = Number(av.qualidade_atendimento) || 5;
-      const s = Number(av.qualidade_solucao) || 5;
-      const c = Number(av.comunicacao) || 5;
-      const nota = (t + q + s + c) / 4;
-      const notaFinal = Math.round(nota * 10) / 10;
+  // Mutation Atualizar Chamado / Triagem (Equipe de Facilities)
+  const updateChamadoMutation = useMutation({
+    mutationFn: async ({ id, dataToUpdate, novoStatus, acaoDescricao }) => {
+      const agora = new Date().toISOString();
+      const statusAnterior = triagemModalChamado.status;
+      const statusFinal = novoStatus || dataToUpdate.status || statusAnterior;
+      const nomeOperador = colabAtivo.nome_completo;
 
-      const novoHistorico = [...(selectedChamado?.historico || [])];
+      const novoHistorico = [...(triagemModalChamado.historico || [])];
+      
+      let descricaoEvento = acaoDescricao;
+      if (!descricaoEvento) {
+        if (statusAnterior !== statusFinal) {
+          descricaoEvento = `Status alterado de "${statusAnterior}" para "${statusFinal}" por ${nomeOperador}`;
+        } else {
+          descricaoEvento = `Atualização cadastral e triagem registrada por ${nomeOperador}`;
+        }
+      }
+      if (novoComentarioHistorico.trim()) {
+        descricaoEvento += ` — Observação: "${novoComentarioHistorico.trim()}"`;
+      }
+
       novoHistorico.push({
-        data_hora: new Date().toISOString(),
-        tipo: "avaliacao",
-        descricao: `Pesquisa de satisfação respondida com nota geral ${notaFinal.toFixed(1)}/5 ⭐${av.comentario ? ` — Comentário: "${av.comentario}"` : ""}`,
-        usuario_nome: colaborador.nome_completo,
-        usuario: colaborador.nome_completo,
-        usuario_id: colaborador.id || null,
-        status_anterior: selectedChamado?.status,
-        status_novo: selectedChamado?.status,
-        anexos: []
+        data_hora: agora,
+        tipo: statusFinal === "Concluído" ? "conclusao" : "atualizacao",
+        descricao: descricaoEvento,
+        usuario_nome: nomeOperador,
+        usuario: nomeOperador,
+        usuario_id: colabAtivo.id || null,
+        status_anterior: statusAnterior,
+        status_novo: statusFinal,
+        anexos: novosAnexosEtapa || []
       });
 
-      return await base44.entities.ChamadosFacilities.update(id, {
-        satisfacao_respondida: true,
-        avaliacao_tempo_resolucao: t,
-        avaliacao_qualidade_atendimento: q,
-        avaliacao_qualidade_solucao: s,
-        avaliacao_comunicacao: c,
-        avaliacao_nota_geral: notaFinal,
-        avaliacao_comentario: av.comentario || "",
-        avaliacao_data: new Date().toISOString(),
+      const payload = {
+        ...dataToUpdate,
+        orcamento_valor: dataToUpdate.orcamento_valor !== undefined && dataToUpdate.orcamento_valor !== "" && dataToUpdate.orcamento_valor !== null
+          ? parseFloat(String(dataToUpdate.orcamento_valor).replace(',', '.')) || null
+          : null,
+        status: statusFinal,
+        updated_date: agora,
         historico: novoHistorico
+      };
+
+      if (statusFinal === "Em Execução" && !triagemModalChamado.data_inicio_atendimento) {
+        payload.data_inicio_atendimento = agora;
+      }
+
+      if (statusFinal === "Concluído") {
+        payload.data_conclusao = agora;
+        if (payload.terceiro_envolvido) {
+          payload.terceiro_data_resolucao = agora;
+        }
+      }
+
+      const res = await base44.entities.ChamadosFacilities.update(id, payload);
+
+      // Disparos de e-mail de notificação
+      if (statusFinal === "Em Execução" && statusAnterior !== "Em Execução") {
+        base44.functions.invoke('sendEmailFacilitiesStarted', {
+          chamado_id: id,
+          responsavel: payload.responsavel_execucao_nome || payload.terceiro_empresa || nomeOperador
+        }).catch(err => console.warn("Erro ao disparar email started:", err));
+      }
+
+      if (statusFinal === "Concluído" && statusAnterior !== "Concluído") {
+        base44.functions.invoke('sendEmailFacilitiesClosed', {
+          chamado_id: id,
+          responsavel: payload.responsavel_execucao_nome || payload.terceiro_empresa || nomeOperador
+        }).catch(err => console.warn("Erro ao disparar email closed:", err));
+      }
+
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_facilities_list'] });
+      setTriagemModalChamado(null);
+      setNovosAnexosEtapa([]);
+      setNovoComentarioHistorico("");
+    },
+    onError: (err) => {
+      alert("Erro ao atualizar solicitação: " + (err.message || "Tente novamente."));
+    }
+  });
+
+  // Mutation Avaliar Satisfação (Colaborador)
+  const avaliarMutation = useMutation({
+    mutationFn: async ({ chamadoId, ...dadosAvaliacao }) => {
+      return await base44.entities.ChamadosFacilities.update(chamadoId, {
+        ...dadosAvaliacao,
+        historico: [
+          ...(selectedChamado?.historico || []),
+          {
+            data_hora: new Date().toISOString(),
+            tipo: "avaliacao",
+            descricao: `Pesquisa de satisfação respondida por ${colabAtivo.nome_completo}. Nota média consolidada: ${dadosAvaliacao.avaliacao_nota_geral} ★`,
+            usuario_nome: colabAtivo.nome_completo,
+            usuario: colabAtivo.nome_completo,
+            usuario_id: colabAtivo.id || null,
+          }
+        ]
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_facilities_list'] });
-      setSelectedChamado(null);
-      setAutoShowAvaliacao(false);
-    },
-    onError: (err) => {
-      console.error("Erro ao enviar avaliação:", err);
-      alert("Não foi possível registrar sua avaliação. Tente novamente.");
+      if (selectedChamado) {
+        setSelectedChamado(prev => ({
+          ...prev,
+          satisfacao_respondida: true,
+          avaliacao_data: new Date().toISOString()
+        }));
+      }
     }
   });
+
+  const handleFileUpload = async (e, isEtapa = false) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (isEtapa) setUploadingAnexoEtapa(true);
+    else setUploadingAnexo(true);
+
+    try {
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const anexoItem = {
+          nome: file.name,
+          url: file_url,
+          tamanho: file.size,
+          tipo: file.type,
+          data: new Date().toISOString(),
+          enviado_por: colabAtivo.nome_completo
+        };
+        if (isEtapa) {
+          setNovosAnexosEtapa(prev => [...prev, anexoItem]);
+        } else {
+          setAnexos(prev => [...prev, anexoItem]);
+        }
+      }
+    } catch (err) {
+      alert("Erro no upload do arquivo: " + err.message);
+    } finally {
+      if (isEtapa) setUploadingAnexoEtapa(false);
+      else setUploadingAnexo(false);
+    }
+  };
+
+  const handleAbrirTriagem = (chamado) => {
+    setTriagemModalChamado(chamado);
+    setEditFormData({
+      status: chamado.status || "Aberto",
+      prioridade_definida: chamado.prioridade_definida || chamado.prioridade || "Média",
+      categoria_confirmada: chamado.categoria_confirmada || chamado.tipo_servico || "",
+      prazo_atendimento: chamado.prazo_atendimento || "",
+      responsavel_analise_nome: chamado.responsavel_analise_nome || colabAtivo.nome_completo,
+      tratamento: chamado.tratamento || (chamado.terceiro_envolvido ? "Encaminhado para fornecedor" : "Executado internamente"),
+      responsavel_execucao_nome: chamado.responsavel_execucao_nome || "",
+      terceiro_envolvido: !!chamado.terceiro_envolvido,
+      terceiro_empresa: chamado.terceiro_empresa || "",
+      terceiro_numero_chamado: chamado.terceiro_numero_chamado || "",
+      orcamento_valor: chamado.orcamento_valor || "",
+      descricao_servico_executado: chamado.descricao_servico_executado || "",
+    });
+    setNovosAnexosEtapa([]);
+    setNovoComentarioHistorico("");
+  };
 
   if (loading || !colaborador) {
     return (
@@ -298,9 +529,10 @@ export default function PortalFacilities() {
     );
   }
 
-  const nomeNorm = normalizeUserName(colaborador.nome_completo);
-  const emailNorm = (colaborador.email || "").toLowerCase().trim();
-  const colabIdStr = colaborador?.id ? String(colaborador.id) : "";
+  // Filtragem das Minhas Solicitações (Visão do Solicitante)
+  const nomeNorm = normalizeUserName(colabAtivo.nome_completo);
+  const emailNorm = (colabAtivo.email || "").toLowerCase().trim();
+  const colabIdStr = colabAtivo?.id ? String(colabAtivo.id) : "";
 
   const minhasSolicitacoes = chamadosFacilities.filter(c => {
     if (!c) return false;
@@ -321,10 +553,50 @@ export default function PortalFacilities() {
   const aguardandoAvaliacao = minhasSolicitacoes.filter(c => c.status === "Concluído" && !c.satisfacao_respondida && !c.avaliacao_data);
   const concluidosCancelados = minhasSolicitacoes.filter(c => (c.status === "Concluído" && (c.satisfacao_respondida || c.avaliacao_data)) || c.status === "Cancelado");
 
+  // Filtragem da Gestão Operacional de Facilities (Todas as solicitações)
+  const chamadosGestaoFiltrados = chamadosFacilities.filter(c => {
+    if (abaGestaoAtiva === "abertos" && !["Aberto", "Em Análise"].includes(c.status)) return false;
+    if (abaGestaoAtiva === "execucao" && !["Em Execução", "Aguardando Orçamento"].includes(c.status)) return false;
+    if (abaGestaoAtiva === "aguardando_avaliacao" && !(c.status === "Concluído" && !c.satisfacao_respondida && !c.avaliacao_data)) return false;
+    if (abaGestaoAtiva === "concluidos" && !["Concluído", "Cancelado"].includes(c.status)) return false;
+
+    if (filtroTipoAdmin !== "todos" && c.tipo_servico !== filtroTipoAdmin) return false;
+    if (filtroPrioridadeAdmin !== "todos" && (c.prioridade_definida || c.prioridade) !== filtroPrioridadeAdmin) return false;
+    if (filtroAtendimentoAdmin === "interno" && c.terceiro_envolvido) return false;
+    if (filtroAtendimentoAdmin === "terceiro" && !c.terceiro_envolvido) return false;
+
+    if (buscaAdmin.trim()) {
+      const q = buscaAdmin.toLowerCase();
+      const matchNum = c.numero_solicitacao?.toLowerCase().includes(q);
+      const matchSolic = c.solicitante_nome?.toLowerCase().includes(q);
+      const matchLocal = c.local_ocorrencia?.toLowerCase().includes(q);
+      const matchTerc = c.terceiro_empresa?.toLowerCase().includes(q);
+      const matchDesc = c.descricao?.toLowerCase().includes(q);
+      return matchNum || matchSolic || matchLocal || matchTerc || matchDesc;
+    }
+    return true;
+  });
+
+  // Métricas da Gestão
+  const statsGestao = {
+    total: chamadosFacilities.length,
+    abertos: chamadosFacilities.filter(c => ["Aberto", "Em Análise"].includes(c.status)).length,
+    emExecucao: chamadosFacilities.filter(c => ["Em Execução", "Aguardando Orçamento"].includes(c.status)).length,
+    concluidos: chamadosFacilities.filter(c => c.status === "Concluído").length,
+    paradaArea: chamadosFacilities.filter(c => c.necessita_parada_area && c.status !== "Concluído" && c.status !== "Cancelado").length,
+    mediaSatisfacao: (() => {
+      const avaliados = chamadosFacilities.filter(c => c.avaliacao_nota_geral);
+      if (avaliados.length === 0) return "—";
+      const soma = avaliados.reduce((acc, c) => acc + Number(c.avaliacao_nota_geral), 0);
+      return (soma / avaliados.length).toFixed(1);
+    })(),
+    totalAvaliados: chamadosFacilities.filter(c => c.avaliacao_nota_geral).length
+  };
+
   // Tela de sucesso após abertura
   if (view === "novo" && submitSuccess) {
     return (
-      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
+      <PortalLayout colaborador={colabAtivo} onLogout={logout} permissoesComunicados={colabAtivo.permissoes_comunicados || []}>
         <div className="p-8 max-w-md mx-auto text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -337,9 +609,9 @@ export default function PortalFacilities() {
           </div>
           <div className="flex flex-col gap-3 mt-6">
             <Button onClick={() => { setSubmitSuccess(null); setView("lista"); }} className="bg-amber-600 hover:bg-amber-700 w-full text-white font-semibold">
-              Ver Minhas Solicitações
+              {modoGestao ? "Voltar ao Painel da Equipe" : "Ver Minhas Solicitações"}
             </Button>
-            <Button variant="outline" onClick={() => setSubmitSuccess(null)} className="w-full">
+            <Button variant="outline" onClick={() => { setSubmitSuccess(null); setView("novo"); }} className="w-full">
               Abrir Outra Solicitação
             </Button>
           </div>
@@ -348,247 +620,345 @@ export default function PortalFacilities() {
     );
   }
 
-  // Formulário de Nova Solicitação
-  if (view === "novo") {
-    return (
-      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
-        <div className="p-4 md:p-8">
-          <div className="max-w-3xl mx-auto">
-            <Button variant="outline" className="mb-6 gap-2" onClick={() => setView("lista")}>
-              <ChevronLeft className="w-4 h-4" /> Voltar para Solicitações
-            </Button>
-
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center shadow-sm">
-                <Building2 className="w-6 h-6" />
+  // Componente de lista de chamados do solicitante
+  const TabFacilitiesContent = ({ lista, empty, showAvaliarBtn = false }) => (
+    <div className="space-y-3">
+      {lista.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground bg-muted/20">
+          <p className="text-sm">{empty}</p>
+        </Card>
+      ) : (
+        lista.map((chamado) => (
+          <Card
+            key={chamado.id}
+            className="hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-amber-500"
+            onClick={() => { setSelectedChamado(chamado); setAutoShowAvaliacao(showAvaliarBtn); }}
+          >
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                    {chamado.numero_solicitacao || "FAC-S/N"}
+                  </span>
+                  <Badge className={`text-xs ${statusColors[chamado.status] || "bg-gray-100 text-gray-800"}`}>
+                    {chamado.status}
+                  </Badge>
+                  <Badge className={`text-xs ${prioridadeColors[chamado.prioridade_definida || chamado.prioridade] || "bg-slate-100"}`}>
+                    {chamado.prioridade_definida || chamado.prioridade}
+                  </Badge>
+                  {chamado.necessita_parada_area && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700 bg-amber-50 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Parada Necessária
+                    </Badge>
+                  )}
+                  {chamado.terceiro_envolvido && (
+                    <Badge variant="secondary" className="text-[11px] bg-sky-50 text-sky-800 border-sky-200">
+                      🏢 Terceiro: {chamado.terceiro_empresa}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {showAvaliarBtn && (
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedChamado(chamado);
+                        setAutoShowAvaliacao(true);
+                      }}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs h-7"
+                    >
+                      <Star className="w-3.5 h-3.5 mr-1" /> Avaliar
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Eye className="w-3.5 h-3.5" /> Detalhes
+                  </span>
+                </div>
               </div>
+
+              <h3 className="font-semibold text-foreground text-sm">
+                {chamado.tipo_servico} · <span className="font-normal text-muted-foreground">{chamado.local_ocorrencia}</span>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {chamado.descricao}
+              </p>
+
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-3 pt-2 border-t">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {chamado.created_date ? format(parseISO(chamado.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "-"}
+                </span>
+                {chamado.avaliacao_nota_geral && (
+                  <span className="flex items-center gap-1 text-amber-600 font-bold">
+                    <Star className="w-3 h-3 fill-amber-400" />
+                    {chamado.avaliacao_nota_geral} ★
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+
+  return (
+    <PortalLayout colaborador={colabAtivo} onLogout={logout} permissoesComunicados={colabAtivo.permissoes_comunicados || []}>
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+
+        {/* ── SELETOR DE VISÃO (QUANDO O COLABORADOR FAZ PARTE DE FACILITIES) ── */}
+        {isEquipeFacilities && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-200 rounded-xl p-3 gap-3">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-600 text-white p-1.5 rounded-lg">
+                <Building2 className="w-5 h-5" />
+              </span>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Solicitação de Facilities</h1>
-                <p className="text-muted-foreground text-sm">Serviços prediais, infraestrutura, manutenção e conservação</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-sm text-amber-950">Módulo de Facilities & Infraestrutura</p>
+                  <Badge className="bg-amber-600 text-white text-[10px] font-bold">🏢 Equipe de Facilities</Badge>
+                </div>
+                <p className="text-xs text-amber-800">Você possui permissão de gestão operacional para triar e atender todas as solicitações da empresa.</p>
               </div>
             </div>
 
-            <Card className="shadow-lg border-border">
-              <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(formData); }}>
-                <CardContent className="pt-6 space-y-6">
-                  
-                  {/* Bloco 1: Identificação do Solicitante (Fixa/Automática) */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-border rounded-xl p-4 space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-amber-600" /> Identificação do Solicitante
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="text-xs text-muted-foreground">Nome:</span>
-                        <p className="font-semibold text-foreground">{colaborador.nome_completo}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">Área / Departamento:</span>
-                        <p className="font-semibold text-foreground">{colaborador.area || "Não informada"}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">E-mail:</span>
-                        <p className="font-semibold text-foreground">{colaborador.email || "Não informado"}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">Telefone / Ramal:</span>
-                        <p className="font-semibold text-foreground">{colaborador.telefone || "Não informado"}</p>
-                      </div>
-                    </div>
-                  </div>
+            <div className="flex items-center bg-white border border-amber-300 rounded-lg p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => { setModoGestao(true); setView("lista"); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  modoGestao && view === "lista"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" /> Gestão da Equipe (Todas)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setModoGestao(false); setView("lista"); }}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  !modoGestao && view === "lista"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> Minhas Solicitações
+              </button>
+            </div>
+          </div>
+        )}
 
-                  {/* Bloco 2: Local da Ocorrência */}
+        {/* ── MODO 1: FORMULÁRIO DE NOVA SOLICITAÇÃO ── */}
+        {view === "novo" ? (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" onClick={() => setView("lista")} className="flex items-center gap-1 text-sm text-muted-foreground">
+                <ChevronLeft className="w-4 h-4" /> Voltar
+              </Button>
+              <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                Nova Solicitação
+              </Badge>
+            </div>
+
+            <Card className="border-amber-200 shadow-sm">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50/30 border-b border-amber-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-600 rounded-xl text-white shadow-sm">
+                    <Building2 className="w-6 h-6" />
+                  </div>
                   <div>
-                    <Label className="flex items-center gap-1.5 font-semibold text-foreground">
-                      <MapPin className="w-4 h-4 text-amber-600" /> Local da Ocorrência *
+                    <CardTitle className="text-xl font-bold text-gray-900">Solicitação de Serviços de Facilities</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Preencha os detalhes para registrar manutenções, limpeza, reparos prediais ou serviços operacionais.
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-6 space-y-5">
+                {/* Dados do Solicitante (Preenchidos Automaticamente) */}
+                <div className="bg-gray-50 border rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Solicitante:</span>
+                    <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
+                      <User className="w-3.5 h-3.5 text-amber-600" /> {colabAtivo.nome_completo}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Área / Departamento:</span>
+                    <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-amber-600" /> {colabAtivo.area || "Geral"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Ramal / Telefone:</span>
+                    <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
+                      <Phone className="w-3.5 h-3.5 text-amber-600" /> {colabAtivo.telefone || "Não informado"}
+                    </span>
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!formData.tipo_servico) return alert("Selecione o Tipo de Serviço.");
+                    if (!formData.local_ocorrencia.trim()) return alert("Informe o Local da Ocorrência.");
+                    if (!formData.descricao.trim()) return alert("Descreva a necessidade do serviço.");
+                    createMutation.mutate(formData);
+                  }}
+                  className="space-y-5"
+                >
+                  {/* Local da Ocorrência */}
+                  <div>
+                    <Label className="text-xs font-bold text-gray-800">
+                      Local da Ocorrência / Instalação <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       required
-                      placeholder="Ex: Prédio Administrativo - 2º Andar - Sala de Reunião 01 / Galpão 3 - Linha de Envase"
                       value={formData.local_ocorrencia}
-                      onChange={(e) => setFormData(p => ({ ...p, local_ocorrencia: e.target.value }))}
-                      className="mt-1.5"
+                      onChange={(e) => setFormData({ ...formData, local_ocorrencia: e.target.value })}
+                      placeholder="Ex: Prédio Administrativo - 2º Andar - Sala de Reunião 01"
+                      className="text-sm mt-1"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Especifique o prédio, andar, setor ou ambiente exato onde o serviço é necessário.</p>
                   </div>
 
-                  {/* Bloco 3: Tipo de Serviço */}
+                  {/* Tipo de Serviço */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="font-semibold text-foreground">Tipo de Serviço *</Label>
+                      <Label className="text-xs font-bold text-gray-800">
+                        Tipo de Serviço <span className="text-red-500">*</span>
+                      </Label>
                       <Select
-                        required
                         value={formData.tipo_servico}
-                        onValueChange={(val) => setFormData(p => ({ ...p, tipo_servico: val, tipo_servico_outro: val === "Outros" ? p.tipo_servico_outro : "" }))}
+                        onValueChange={(val) => setFormData({ ...formData, tipo_servico: val })}
                       >
-                        <SelectTrigger className="mt-1.5">
-                          <SelectValue placeholder="Selecione o tipo de serviço" />
+                        <SelectTrigger className="text-sm mt-1">
+                          <SelectValue placeholder="Selecione o serviço..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {TIPOS_SERVICO.map(t => (
+                          {TIPOS_SERVICO.map((t) => (
                             <SelectItem key={t} value={t}>{t}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div>
-                      <Label className="font-semibold text-foreground">Prioridade Sugerida *</Label>
-                      <Select
-                        required
-                        value={formData.prioridade}
-                        onValueChange={(val) => setFormData(p => ({ ...p, prioridade: val }))}
-                      >
-                        <SelectTrigger className="mt-1.5">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Baixa">Baixa (Pode aguardar planejamento)</SelectItem>
-                          <SelectItem value="Média">Média (Atendimento padrão)</SelectItem>
-                          <SelectItem value="Alta">Alta (Impacta rotina do setor)</SelectItem>
-                          <SelectItem value="Crítica">Crítica (Risco imediato à segurança/operação)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Campo condicional para Outros */}
-                  {formData.tipo_servico === "Outros" && (
-                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 rounded-lg p-3">
-                      <Label className="font-semibold text-amber-900 dark:text-amber-200">Especifique o Tipo de Serviço *</Label>
-                      <Input
-                        required
-                        placeholder="Descreva a categoria ou tipo de serviço específico"
-                        value={formData.tipo_servico_outro}
-                        onChange={(e) => setFormData(p => ({ ...p, tipo_servico_outro: e.target.value }))}
-                        className="mt-1 bg-white dark:bg-background"
-                      />
-                    </div>
-                  )}
-
-                  {/* Bloco 4: Descrição Detalhada */}
-                  <div>
-                    <Label className="font-semibold text-foreground">Descrição Detalhada do Problema / Solicitação *</Label>
-                    <Textarea
-                      required
-                      placeholder="Descreva claramente o que precisa ser feito, sintomas observados, dimensões, quantidade, se há vazamento, ruído anormal, lâmpada queimada, etc."
-                      rows={4}
-                      value={formData.descricao}
-                      onChange={(e) => setFormData(p => ({ ...p, descricao: e.target.value }))}
-                      className="mt-1.5"
-                    />
-                  </div>
-
-                  {/* Bloco 5: Necessidade de Parada da Área */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-border rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
+                    {formData.tipo_servico === "Outros" && (
                       <div>
-                        <p className="font-semibold text-foreground text-sm flex items-center gap-2">
-                          <ShieldAlert className="w-4 h-4 text-amber-600" />
-                          Necessita de Parada da Área ou Equipamento?
-                        </p>
-                        <p className="text-xs text-muted-foreground">Indique se a execução do serviço exigirá isolar o local ou pausar máquinas.</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={formData.necessita_parada_area ? "default" : "outline"}
-                          className={formData.necessita_parada_area ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
-                          onClick={() => setFormData(p => ({ ...p, necessita_parada_area: true }))}
-                        >
-                          Sim
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={!formData.necessita_parada_area ? "secondary" : "outline"}
-                          onClick={() => setFormData(p => ({ ...p, necessita_parada_area: false, periodo_parada: "" }))}
-                        >
-                          Não
-                        </Button>
-                      </div>
-                    </div>
-
-                    {formData.necessita_parada_area && (
-                      <div className="pt-2 border-t border-border">
-                        <Label className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                          Qual o melhor período / horário para a parada?
+                        <Label className="text-xs font-bold text-gray-800">
+                          Especifique o Serviço <span className="text-red-500">*</span>
                         </Label>
                         <Input
-                          placeholder="Ex: Após o expediente (18h), Sábado pela manhã, Durante intervalo de almoço..."
-                          value={formData.periodo_parada}
-                          onChange={(e) => setFormData(p => ({ ...p, periodo_parada: e.target.value }))}
-                          className="mt-1 bg-white dark:bg-background text-sm"
+                          required
+                          value={formData.tipo_servico_outro}
+                          onChange={(e) => setFormData({ ...formData, tipo_servico_outro: e.target.value })}
+                          placeholder="Descreva o tipo de serviço..."
+                          className="text-sm mt-1"
                         />
                       </div>
                     )}
                   </div>
 
-                  {/* Bloco 6: Anexos e Fotos */}
+                  {/* Descrição Detalhada */}
                   <div>
-                    <Label className="flex items-center gap-2 font-semibold text-foreground">
-                      <Paperclip className="w-4 h-4 text-amber-600" /> Fotos e Anexos (opcional)
+                    <Label className="text-xs font-bold text-gray-800">
+                      Descrição da Necessidade / Problema <span className="text-red-500">*</span>
                     </Label>
-                    <p className="text-xs text-muted-foreground mb-2">Fotos do local ou do problema facilitam a triagem e o atendimento rápido.</p>
-                    <label className="flex items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-border rounded-xl p-5 hover:border-amber-500 hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition-colors">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*,video/*,.pdf,.doc,.docx"
-                        className="hidden"
-                        disabled={uploadingAnexo}
-                        onChange={async (e) => {
-                          const files = Array.from(e.target.files);
-                          if (!files.length) return;
-                          setUploadingAnexo(true);
-                          const novosAnexos = [...anexos];
-                          for (const file of files) {
-                            try {
-                              const { file_url } = await base44.integrations.Core.UploadFile({ file });
-                              novosAnexos.push({
-                                file_url,
-                                file_name: file.name,
-                                file_type: file.type.startsWith('image') ? 'imagem' : 'arquivo',
-                                mime_type: file.type
-                              });
-                            } catch (uploadErr) {
-                              console.error("Erro no upload:", uploadErr);
-                              alert(`Erro ao subir ${file.name}`);
-                            }
-                          }
-                          setAnexos(novosAnexos);
-                          setUploadingAnexo(false);
-                          e.target.value = "";
-                        }}
-                      />
-                      {uploadingAnexo ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
-                          <span className="text-sm font-medium text-amber-600">Enviando arquivos...</span>
-                        </>
-                      ) : (
-                        <div className="text-center">
-                          <Paperclip className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                          <span className="text-sm font-medium text-foreground">Clique para adicionar fotos ou documentos</span>
-                          <p className="text-xs text-muted-foreground">PNG, JPG, PDF até 10MB</p>
+                    <Textarea
+                      required
+                      value={formData.descricao}
+                      onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                      placeholder="Descreva claramente o que precisa ser feito ou o problema ocorrido..."
+                      rows={4}
+                      className="text-sm mt-1"
+                    />
+                  </div>
+
+                  {/* Prioridade e Parada de Área */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-50/50 p-4 border border-amber-200 rounded-lg">
+                    <div>
+                      <Label className="text-xs font-bold text-gray-800">Prioridade Indicada</Label>
+                      <Select
+                        value={formData.prioridade}
+                        onValueChange={(val) => setFormData({ ...formData, prioridade: val })}
+                      >
+                        <SelectTrigger className="text-sm mt-1 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Baixa">Baixa (Pode aguardar cronograma)</SelectItem>
+                          <SelectItem value="Média">Média (Atendimento regular)</SelectItem>
+                          <SelectItem value="Alta">Alta (Impacta atividade do setor)</SelectItem>
+                          <SelectItem value="Crítica">Crítica (Risco iminente / Parada total)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-bold text-gray-800">Necessita Paralisação da Área?</Label>
+                      <div className="flex items-center gap-4 mt-2">
+                        <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                          <input
+                            type="radio"
+                            name="parada"
+                            checked={!formData.necessita_parada_area}
+                            onChange={() => setFormData({ ...formData, necessita_parada_area: false, periodo_parada: "" })}
+                          /> Não
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-amber-900 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="parada"
+                            checked={formData.necessita_parada_area}
+                            onChange={() => setFormData({ ...formData, necessita_parada_area: true })}
+                          /> Sim, requer parada
+                        </label>
+                      </div>
+
+                      {formData.necessita_parada_area && (
+                        <div className="mt-2">
+                          <Input
+                            value={formData.periodo_parada}
+                            onChange={(e) => setFormData({ ...formData, periodo_parada: e.target.value })}
+                            placeholder="Ex: Após o expediente, final de semana, sábado 14h..."
+                            className="text-xs bg-white"
+                          />
                         </div>
                       )}
-                    </label>
+                    </div>
+                  </div>
+
+                  {/* Anexos */}
+                  <div>
+                    <Label className="text-xs font-bold text-gray-800">Fotos ou Documentos (opcional)</Label>
+                    <div className="mt-1 flex items-center gap-3">
+                      <label className="cursor-pointer bg-white border border-gray-300 hover:border-amber-400 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                        <Paperclip className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{uploadingAnexo ? "Enviando..." : "Anexar Arquivos"}</span>
+                        <input
+                          type="file"
+                          multiple
+                          onChange={(e) => handleFileUpload(e, false)}
+                          className="hidden"
+                          disabled={uploadingAnexo}
+                        />
+                      </label>
+                      {uploadingAnexo && <Loader2 className="w-4 h-4 animate-spin text-amber-600" />}
+                    </div>
 
                     {anexos.length > 0 && (
-                      <div className="mt-3 space-y-1.5">
-                        {anexos.map((a, i) => (
-                          <div key={i} className="flex items-center justify-between bg-muted/60 rounded-lg px-3 py-2 text-sm">
-                            <span className="truncate flex items-center gap-2">
-                              📎 {a.file_name}
-                            </span>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {anexos.map((anexo, idx) => (
+                          <div key={idx} className="bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1 text-xs flex items-center gap-2">
+                            <span className="truncate max-w-[200px] text-amber-950">{anexo.nome}</span>
                             <button
                               type="button"
-                              onClick={() => setAnexos(prev => prev.filter((_, idx) => idx !== i))}
-                              className="text-muted-foreground hover:text-destructive ml-2 shrink-0 p-1"
+                              onClick={() => setAnexos(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-red-500 hover:text-red-700"
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                         ))}
@@ -596,393 +966,777 @@ export default function PortalFacilities() {
                     )}
                   </div>
 
-                </CardContent>
-
-                <div className="border-t p-5 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/30 rounded-b-xl">
-                  <Button type="button" variant="outline" onClick={() => setView("lista")}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-2"
-                    disabled={createMutation.isPending}
-                  >
-                    {createMutation.isPending ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Registrando...</>
-                    ) : (
-                      <><Send className="w-4 h-4" /> Registrar Solicitação</>
-                    )}
-                  </Button>
-                </div>
-              </form>
+                  {/* Botões de Ação */}
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => setView("lista")}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-6"
+                    >
+                      {createMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" /> Registrando...
+                        </>
+                      ) : (
+                        "Registrar Solicitação"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
             </Card>
           </div>
-        </div>
-      </PortalLayout>
-    );
-  }
-
-  // Card da Lista de Solicitações
-  const SolicitationCard = ({ chamado, showAvaliarBtn = false }) => (
-    <div
-      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card border rounded-xl hover:shadow-md cursor-pointer transition-all gap-3 border-border hover:border-amber-300"
-      onClick={() => setSelectedChamado(chamado)}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-          <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900">
-            {chamado.numero_solicitacao || "FAC-Pendente"}
-          </span>
-          <Badge className={`${statusColors[chamado.status] || "bg-gray-100 text-gray-800"} border text-xs`}>
-            {chamado.status}
-          </Badge>
-          <Badge className={`text-xs ${prioridadeColors[chamado.prioridade] || "bg-gray-100 text-gray-700"}`}>
-            {chamado.prioridade}
-          </Badge>
-          {chamado.necessita_parada_area && (
-            <Badge variant="outline" className="text-[11px] text-amber-700 border-amber-300 bg-amber-50">
-              Parada Necessária
-            </Badge>
-          )}
-        </div>
-
-        <h4 className="font-semibold text-foreground text-sm truncate">{chamado.tipo_servico} · {chamado.local_ocorrencia}</h4>
-        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{chamado.descricao}</p>
-        
-        <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground flex-wrap">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {chamado.created_date ? format(parseISO(chamado.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "—"}
-          </span>
-          {chamado.responsavel_analise_nome && (
-            <span>• Responsável: {chamado.responsavel_analise_nome}</span>
-          )}
-          {chamado.data_conclusao && (
-            <span className="text-green-700 dark:text-green-400 font-medium">
-              • Concluído em {format(parseISO(chamado.data_conclusao), "dd/MM/yyyy", { locale: ptBR })}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-        {showAvaliarBtn && (
-          <Button
-            size="sm"
-            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1 shadow-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedChamado(chamado);
-              setAutoShowAvaliacao(true);
-            }}
-          >
-            <Star className="w-3.5 h-3.5 fill-current" />
-            Avaliar
-          </Button>
-        )}
-        <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-          <Eye className="w-4 h-4 mr-1" /> Detalhes
-        </Button>
-      </div>
-    </div>
-  );
-
-  const TabFacilitiesContent = ({ lista, empty, showAvaliarBtn = false }) => (
-    <div className="space-y-3">
-      {isLoading ? (
-        <div className="text-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-600 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Carregando solicitações...</p>
-        </div>
-      ) : lista.length === 0 ? (
-        <div className="text-center py-12 bg-card border rounded-xl border-dashed">
-          <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">{empty}</p>
-        </div>
-      ) : (
-        lista.map(c => (
-          <SolicitationCard key={c.id} chamado={c} showAvaliarBtn={showAvaliarBtn} />
-        ))
-      )}
-    </div>
-  );
-
-  return (
-    <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
-      <div className="p-4 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-6">
-          
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center shadow-sm">
-                <Building2 className="w-6 h-6" />
-              </div>
+        ) : modoGestao && isEquipeFacilities ? (
+          /* ── MODO 2: GESTÃO OPERACIONAL DE FACILITIES (EQUIPE DE FACILITIES) ── */
+          <div className="space-y-6">
+            {/* Cabeçalho */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Solicitações de Facilities</h1>
-                <p className="text-muted-foreground text-sm">Acompanhe e registre manutenções, limpeza e serviços prediais</p>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Building2 className="w-7 h-7 text-amber-600" />
+                  Gestão Operacional de Facilities
+                </h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Triagem, atendimento predial, fornecedores terceiros e controle de ordens de serviço.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="flex items-center gap-1.5 text-xs">
+                  <RefreshCw className="w-3.5 h-3.5" /> Atualizar
+                </Button>
+                <Button onClick={() => setView("novo")} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Nova Solicitação
+                </Button>
               </div>
             </div>
-            <Button
-              onClick={() => setView("novo")}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-2 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Nova Solicitação
-            </Button>
-          </div>
 
-          {/* Cards de Métricas */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card>
-              <CardContent className="pt-4 pb-4 text-center">
-                <p className="text-2xl font-bold text-red-600">{abertosAnalise.length}</p>
-                <p className="text-xs text-muted-foreground font-medium">Em Aberto / Análise</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4 pb-4 text-center">
-                <p className="text-2xl font-bold text-blue-600">{emExecucao.length}</p>
-                <p className="text-xs text-muted-foreground font-medium">Em Execução</p>
-              </CardContent>
-            </Card>
-            <Card className={aguardandoAvaliacao.length > 0 ? "border-amber-300 bg-amber-50/60 dark:bg-amber-950/20" : ""}>
-              <CardContent className="pt-4 pb-4 text-center">
-                <p className={`text-2xl font-bold ${aguardandoAvaliacao.length > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
-                  {aguardandoAvaliacao.length}
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <Card className="border-l-4 border-l-slate-400 p-3">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase">Total Geral</p>
+                <p className="text-2xl font-black text-foreground mt-1">{statsGestao.total}</p>
+              </Card>
+              <Card className="border-l-4 border-l-amber-500 p-3 bg-amber-50/40">
+                <p className="text-[11px] font-bold text-amber-900 uppercase">Em Aberto / Triagem</p>
+                <p className="text-2xl font-black text-amber-700 mt-1">{statsGestao.abertos}</p>
+              </Card>
+              <Card className="border-l-4 border-l-blue-500 p-3 bg-blue-50/40">
+                <p className="text-[11px] font-bold text-blue-900 uppercase">Em Execução</p>
+                <p className="text-2xl font-black text-blue-700 mt-1">{statsGestao.emExecucao}</p>
+              </Card>
+              <Card className="border-l-4 border-l-green-500 p-3 bg-green-50/40">
+                <p className="text-[11px] font-bold text-green-900 uppercase">Concluídos</p>
+                <p className="text-2xl font-black text-green-700 mt-1">{statsGestao.concluidos}</p>
+              </Card>
+              <Card className="border-l-4 border-l-yellow-400 p-3 bg-yellow-50/30">
+                <p className="text-[11px] font-bold text-yellow-900 uppercase flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" /> Satisfação Média
                 </p>
-                <p className="text-xs text-muted-foreground font-medium">Aguard. Avaliação</p>
-              </CardContent>
+                <p className="text-2xl font-black text-yellow-800 mt-1">
+                  {statsGestao.mediaSatisfacao} <span className="text-xs font-normal text-muted-foreground">({statsGestao.totalAvaliados} aval.)</span>
+                </p>
+              </Card>
+              <Card className="border-l-4 border-l-red-500 p-3 bg-red-50/40">
+                <p className="text-[11px] font-bold text-red-900 uppercase flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3 text-red-600" /> Paradas de Área
+                </p>
+                <p className="text-2xl font-black text-red-700 mt-1">{statsGestao.paradaArea}</p>
+              </Card>
+            </div>
+
+            {/* Barra de Filtros */}
+            <Card className="p-4 space-y-3 bg-card border-border">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                  <Input
+                    value={buscaAdmin}
+                    onChange={(e) => setBuscaAdmin(e.target.value)}
+                    placeholder="Buscar por número FAC-, solicitante, local, terceiro..."
+                    className="pl-9 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <Select value={filtroTipoAdmin} onValueChange={setFiltroTipoAdmin}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Tipo de Serviço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os Serviços</SelectItem>
+                      {TIPOS_SERVICO.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Select value={filtroPrioridadeAdmin} onValueChange={setFiltroPrioridadeAdmin}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Prioridade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas Prioridades</SelectItem>
+                      <SelectItem value="Crítica">Crítica</SelectItem>
+                      <SelectItem value="Alta">Alta</SelectItem>
+                      <SelectItem value="Média">Média</SelectItem>
+                      <SelectItem value="Baixa">Baixa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Select value={filtroAtendimentoAdmin} onValueChange={setFiltroAtendimentoAdmin}>
+                    <SelectTrigger className="text-xs">
+                      <SelectValue placeholder="Tipo Atendimento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos Atendimentos</SelectItem>
+                      <SelectItem value="interno">Executado Internamente</SelectItem>
+                      <SelectItem value="terceiro">Fornecedor Terceiro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </Card>
-            <Card>
-              <CardContent className="pt-4 pb-4 text-center">
-                <p className="text-2xl font-bold text-green-600">{concluidosCancelados.length}</p>
-                <p className="text-xs text-muted-foreground font-medium">Concluídos</p>
-              </CardContent>
-            </Card>
+
+            {/* Abas e Tabela da Gestão */}
+            <Tabs value={abaGestaoAtiva} onValueChange={setAbaGestaoAtiva} className="w-full">
+              <TabsList className="bg-muted/60 p-1 flex-wrap h-auto gap-1">
+                <TabsTrigger value="todos" className="text-xs font-semibold">
+                  Todos ({chamadosFacilities.length})
+                </TabsTrigger>
+                <TabsTrigger value="abertos" className="text-xs font-semibold text-amber-700">
+                  Abertos / Triagem ({statsGestao.abertos})
+                </TabsTrigger>
+                <TabsTrigger value="execucao" className="text-xs font-semibold text-blue-700">
+                  Em Execução ({statsGestao.emExecucao})
+                </TabsTrigger>
+                <TabsTrigger value="aguardando_avaliacao" className="text-xs font-semibold text-yellow-700">
+                  Aguard. Avaliação ({chamadosFacilities.filter(c => c.status === "Concluído" && !c.satisfacao_respondida && !c.avaliacao_data).length})
+                </TabsTrigger>
+                <TabsTrigger value="concluidos" className="text-xs font-semibold text-green-700">
+                  Concluídos ({statsGestao.concluidos})
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="mt-4 bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="w-[120px] text-xs">Nº Solicitação</TableHead>
+                      <TableHead className="text-xs">Solicitante & Área</TableHead>
+                      <TableHead className="text-xs">Serviço & Local</TableHead>
+                      <TableHead className="text-xs">Prioridade</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Responsável / Terceiro</TableHead>
+                      <TableHead className="text-xs">Abertura</TableHead>
+                      <TableHead className="text-xs">Satisfação</TableHead>
+                      <TableHead className="text-xs text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin text-amber-600 mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ) : chamadosGestaoFiltrados.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">
+                          Nenhuma solicitação encontrada para os filtros selecionados.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      chamadosGestaoFiltrados.map((c) => (
+                        <TableRow key={c.id} className="hover:bg-muted/30">
+                          <TableCell className="font-mono font-bold text-xs text-amber-900">
+                            {c.numero_solicitacao || "FAC-S/N"}
+                            {c.necessita_parada_area && (
+                              <span title="Parada de área necessária" className="ml-1 text-amber-600">⚠️</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <p className="font-semibold text-foreground">{c.solicitante_nome}</p>
+                            <p className="text-[11px] text-muted-foreground">{c.area_departamento || "-"}</p>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <p className="font-medium text-foreground">{c.tipo_servico}</p>
+                            <p className="text-[11px] text-muted-foreground truncate max-w-[180px] flex items-center gap-1">
+                              <MapPin className="w-3 h-3 shrink-0 text-amber-600" /> {c.local_ocorrencia}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${prioridadeColors[c.prioridade_definida || c.prioridade] || "bg-slate-100"}`}>
+                              {c.prioridade_definida || c.prioridade}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-[10px] ${statusColors[c.status] || "bg-gray-100"}`}>
+                              {c.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {c.terceiro_envolvido ? (
+                              <div>
+                                <p className="font-semibold text-sky-800 flex items-center gap-1">
+                                  🏢 {c.terceiro_empresa}
+                                </p>
+                                {c.terceiro_numero_chamado && (
+                                  <p className="text-[10px] text-muted-foreground">OS: {c.terceiro_numero_chamado}</p>
+                                )}
+                              </div>
+                            ) : c.responsavel_execucao_nome ? (
+                              <p className="font-medium text-gray-700 flex items-center gap-1">
+                                🔧 {c.responsavel_execucao_nome}
+                              </p>
+                            ) : (
+                              <span className="text-muted-foreground italic text-[11px]">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-[11px] text-muted-foreground">
+                            {c.created_date ? format(parseISO(c.created_date), "dd/MM/yy HH:mm", { locale: ptBR }) : "-"}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {c.avaliacao_nota_geral ? (
+                              <span className="font-bold text-amber-600 flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                {c.avaliacao_nota_geral} <Star className="w-3 h-3 fill-amber-400" />
+                              </span>
+                            ) : c.status === "Concluído" ? (
+                              <span className="text-[10px] text-yellow-700 italic">Pendente</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAbrirTriagem(c)}
+                              className="text-xs h-7 gap-1 border-amber-300 hover:bg-amber-50"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> Atender
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Tabs>
           </div>
+        ) : (
+          /* ── MODO 3: VISÃO PADRÃO DO COLABORADOR (MINHAS SOLICITAÇÕES) ── */
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Building2 className="w-7 h-7 text-amber-600" />
+                  Solicitações de Facilities
+                </h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Acompanhe e registre manutenções, limpeza e serviços prediais.
+                </p>
+              </div>
+              <Button onClick={() => setView("novo")} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5">
+                <Plus className="w-4 h-4" /> Nova Solicitação
+              </Button>
+            </div>
 
-          {/* Banner de Avaliação Pendente */}
-          {aguardandoAvaliacao.length > 0 && (
-            <Alert className="bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200">
-              <Star className="w-4 h-4 text-amber-600 fill-amber-500" />
-              <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
-                <span>Você tem <strong>{aguardandoAvaliacao.length} solicitação(ões)</strong> concluída(s) aguardando sua avaliação de satisfação.</span>
-              </AlertDescription>
-            </Alert>
-          )}
+            {/* Cards de Status */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card className="p-4 text-center border-l-4 border-l-amber-500">
+                <p className="text-2xl font-bold text-amber-600">{abertosAnalise.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Em Aberto / Análise</p>
+              </Card>
+              <Card className="p-4 text-center border-l-4 border-l-blue-500">
+                <p className="text-2xl font-bold text-blue-600">{emExecucao.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Em Execução</p>
+              </Card>
+              <Card className="p-4 text-center border-l-4 border-l-yellow-500 bg-yellow-50/30">
+                <p className="text-2xl font-bold text-yellow-600">{aguardandoAvaliacao.length}</p>
+                <p className="text-xs text-yellow-800 font-medium mt-1">Aguard. Avaliação</p>
+              </Card>
+              <Card className="p-4 text-center border-l-4 border-l-green-500">
+                <p className="text-2xl font-bold text-green-600">{concluidosCancelados.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">Concluídos</p>
+              </Card>
+            </div>
 
-          {/* Abas */}
-          <Tabs defaultValue="abertos">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
-              <TabsTrigger value="abertos" className="text-xs">
-                Em Aberto ({abertosAnalise.length})
-              </TabsTrigger>
-              <TabsTrigger value="execucao" className="text-xs">
-                Em Execução ({emExecucao.length})
-              </TabsTrigger>
-              <TabsTrigger value="avaliacao" className="text-xs">
-                Aguard. Avaliação ({aguardandoAvaliacao.length})
-              </TabsTrigger>
-              <TabsTrigger value="concluidos" className="text-xs">
-                Concluídos ({concluidosCancelados.length})
-              </TabsTrigger>
-            </TabsList>
+            {/* Alerta de Pesquisa Pendente */}
+            {aguardandoAvaliacao.length > 0 && (
+              <Alert className="bg-amber-50 border-amber-300 text-amber-900">
+                <Star className="h-4 w-4 text-amber-600 fill-amber-400" />
+                <AlertDescription className="text-xs font-semibold">
+                  Você tem {aguardandoAvaliacao.length} solicitação(ões) concluída(s) aguardando sua avaliação de satisfação.
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <TabsContent value="abertos">
-              <TabFacilitiesContent lista={abertosAnalise} empty="Nenhuma solicitação em aberto ou em análise no momento." />
-            </TabsContent>
-            <TabsContent value="execucao">
-              <TabFacilitiesContent lista={emExecucao} empty="Nenhuma solicitação em execução no momento." />
-            </TabsContent>
-            <TabsContent value="avaliacao">
-              <TabFacilitiesContent
-                lista={aguardandoAvaliacao}
-                empty="Nenhuma solicitação aguardando avaliação no momento."
-                showAvaliarBtn
-              />
-            </TabsContent>
-            <TabsContent value="concluidos">
-              <TabFacilitiesContent lista={concluidosCancelados} empty="Nenhuma solicitação concluída encontrada." />
-            </TabsContent>
-          </Tabs>
+            {/* Abas */}
+            <Tabs defaultValue="abertos" className="w-full">
+              <TabsList className="grid grid-cols-4 w-full bg-muted/60">
+                <TabsTrigger value="abertos" className="text-xs">
+                  Em Aberto ({abertosAnalise.length})
+                </TabsTrigger>
+                <TabsTrigger value="execucao" className="text-xs">
+                  Em Execução ({emExecucao.length})
+                </TabsTrigger>
+                <TabsTrigger value="avaliacao" className="text-xs text-amber-700 font-semibold">
+                  Aguard. Avaliação ({aguardandoAvaliacao.length})
+                </TabsTrigger>
+                <TabsTrigger value="concluidos" className="text-xs">
+                  Concluídos ({concluidosCancelados.length})
+                </TabsTrigger>
+              </TabsList>
 
-        </div>
-      </div>
+              <TabsContent value="abertos" className="mt-4">
+                <TabFacilitiesContent lista={abertosAnalise} empty="Nenhuma solicitação em aberto ou em análise no momento." />
+              </TabsContent>
+              <TabsContent value="execucao" className="mt-4">
+                <TabFacilitiesContent lista={emExecucao} empty="Nenhuma solicitação em execução no momento." />
+              </TabsContent>
+              <TabsContent value="avaliacao" className="mt-4">
+                <TabFacilitiesContent
+                  lista={aguardandoAvaliacao}
+                  empty="Nenhuma solicitação pendente de avaliação. Obrigado!"
+                  showAvaliarBtn={true}
+                />
+              </TabsContent>
+              <TabsContent value="concluidos" className="mt-4">
+                <TabFacilitiesContent lista={concluidosCancelados} empty="Nenhuma solicitação concluída encontrada." />
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
 
-      {/* Modal de Detalhes da Solicitação */}
-      <Dialog open={!!selectedChamado} onOpenChange={(open) => { if (!open) { setSelectedChamado(null); setAutoShowAvaliacao(false); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {selectedChamado && (
-            <>
+        {/* ── MODAL DETALHES RÁPIDOS DA SOLICITAÇÃO (VISÃO DO SOLICITANTE) ── */}
+        {selectedChamado && (
+          <Dialog open={!!selectedChamado} onOpenChange={() => { setSelectedChamado(null); setAutoShowAvaliacao(false); }}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    {selectedChamado.numero_solicitacao}
-                  </span>
-                  <Badge className={statusColors[selectedChamado.status] || "bg-gray-100"}>
-                    {selectedChamado.status}
-                  </Badge>
-                  <Badge className={prioridadeColors[selectedChamado.prioridade] || "bg-gray-100"}>
-                    Prioridade: {selectedChamado.prioridade}
+                <div className="flex items-center justify-between gap-2 pr-6">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
+                      {selectedChamado.numero_solicitacao || "FAC-S/N"}
+                    </span>
+                    <Badge className={`text-xs ${statusColors[selectedChamado.status] || "bg-gray-100"}`}>
+                      {selectedChamado.status}
+                    </Badge>
+                  </div>
+                  <Badge className={`text-xs ${prioridadeColors[selectedChamado.prioridade_definida || selectedChamado.prioridade] || "bg-slate-100"}`}>
+                    Prioridade: {selectedChamado.prioridade_definida || selectedChamado.prioridade}
                   </Badge>
                 </div>
-                <DialogTitle className="text-xl font-bold">
+                <DialogTitle className="text-lg font-bold text-foreground mt-2">
                   {selectedChamado.tipo_servico}
                 </DialogTitle>
-                <DialogDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
-                  {selectedChamado.local_ocorrencia}
+                <DialogDescription className="text-xs flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" /> {selectedChamado.local_ocorrencia}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 pt-2">
-                
-                {/* Detalhes da Solicitação */}
-                <div className="bg-muted/40 rounded-xl p-4 space-y-2 border border-border">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Descrição do Pedido</h4>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{selectedChamado.descricao}</p>
-                  
-                  {selectedChamado.tipo_servico_outro && (
-                    <p className="text-xs text-amber-800 bg-amber-50 p-2 rounded">
-                      <strong>Especificação Outros:</strong> {selectedChamado.tipo_servico_outro}
-                    </p>
-                  )}
+              <div className="space-y-4 pt-2 text-xs">
+                {/* Informações Gerais */}
+                <div className="bg-muted/30 p-3 rounded-lg space-y-2 border">
+                  <div>
+                    <span className="font-semibold text-foreground">Descrição do Pedido:</span>
+                    <p className="text-muted-foreground mt-0.5 leading-relaxed">{selectedChamado.descricao}</p>
+                  </div>
 
                   {selectedChamado.necessita_parada_area && (
-                    <div className="pt-2 text-xs text-amber-800 dark:text-amber-300 font-medium">
-                      ⚠️ <strong>Parada de Área solicitada:</strong> {selectedChamado.periodo_parada || "Sem período especificado"}
+                    <div className="bg-amber-50 border border-amber-200 p-2 rounded text-amber-900 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                      <div>
+                        <span className="font-bold">Paralisação de Área Necessária</span>
+                        {selectedChamado.periodo_parada && (
+                          <p className="text-[11px] mt-0.5">Período sugerido: {selectedChamado.periodo_parada}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedChamado.terceiro_envolvido && (
+                    <div className="bg-sky-50 border border-sky-200 p-2 rounded text-sky-900">
+                      <span className="font-bold">Prestador / Fornecedor Terceiro:</span> {selectedChamado.terceiro_empresa}
+                      {selectedChamado.terceiro_numero_chamado && (
+                        <span className="block text-[11px] text-sky-700">OS/Chamado: {selectedChamado.terceiro_numero_chamado}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedChamado.descricao_servico_executado && (
+                    <div className="bg-green-50 border border-green-200 p-2.5 rounded text-green-900 mt-2">
+                      <span className="font-bold block text-green-950">Serviço Executado:</span>
+                      <p className="text-[11px] mt-0.5 text-green-800">{selectedChamado.descricao_servico_executado}</p>
                     </div>
                   )}
                 </div>
 
-                {/* Anexos */}
-                {Array.isArray(selectedChamado.anexos) && selectedChamado.anexos.length > 0 && (
-                  <div className="border border-border rounded-xl p-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5 text-amber-600" /> Anexos e Fotos ({selectedChamado.anexos.length})
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Anexos da Abertura */}
+                {selectedChamado.anexos && selectedChamado.anexos.length > 0 && (
+                  <div>
+                    <span className="font-semibold text-foreground block mb-1.5">Anexos:</span>
+                    <div className="flex flex-wrap gap-2">
                       {selectedChamado.anexos.map((anexo, idx) => (
                         <a
                           key={idx}
-                          href={anexo.file_url}
+                          href={anexo.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card hover:bg-muted text-xs truncate transition-colors"
+                          className="bg-white border hover:border-amber-400 p-2 rounded-md text-xs flex items-center gap-2 text-amber-900 shadow-sm"
                         >
-                          <span>📎</span>
-                          <span className="truncate font-medium text-blue-600 dark:text-blue-400">{anexo.file_name || `Anexo ${idx + 1}`}</span>
+                          <Paperclip className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="truncate max-w-[150px]">{anexo.nome}</span>
+                          <ExternalLink className="w-3 h-3 text-muted-foreground" />
                         </a>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Bloco de Atendimento e Execução (quando preenchido pelo Facilities) */}
-                {(selectedChamado.responsavel_analise_nome || selectedChamado.descricao_servico_executado || selectedChamado.fornecedor_nome || selectedChamado.prazo_atendimento) && (
-                  <div className="bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 rounded-xl p-4 space-y-2.5">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                      <Wrench className="w-3.5 h-3.5" /> Informações de Atendimento
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      {selectedChamado.responsavel_analise_nome && (
-                        <div>
-                          <span className="text-muted-foreground">Responsável pela Análise:</span>
-                          <p className="font-semibold text-foreground">{selectedChamado.responsavel_analise_nome}</p>
+                {/* Histórico da Solicitação */}
+                {selectedChamado.historico && selectedChamado.historico.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <span className="font-semibold text-foreground block">Linha do Tempo:</span>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {selectedChamado.historico.map((h, i) => (
+                        <div key={i} className="text-[11px] bg-muted/20 p-2 rounded border-l-2 border-l-amber-500">
+                          <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+                            <span className="font-medium text-foreground">{h.usuario_nome || h.usuario || "Sistema"}</span>
+                            <span>{h.data_hora ? format(parseISO(h.data_hora), "dd/MM/yyyy HH:mm", { locale: ptBR }) : ""}</span>
+                          </div>
+                          <p className="text-gray-700">{h.descricao}</p>
                         </div>
-                      )}
-                      {selectedChamado.prazo_atendimento && (
-                        <div>
-                          <span className="text-muted-foreground">Prazo Estimado:</span>
-                          <p className="font-semibold text-foreground">{selectedChamado.prazo_atendimento}</p>
-                        </div>
-                      )}
-                      {selectedChamado.tratamento && (
-                        <div>
-                          <span className="text-muted-foreground">Tratamento:</span>
-                          <p className="font-semibold text-foreground">{selectedChamado.tratamento}</p>
-                        </div>
-                      )}
-                      {selectedChamado.fornecedor_nome && (
-                        <div>
-                          <span className="text-muted-foreground">Fornecedor / Prestador:</span>
-                          <p className="font-semibold text-foreground">{selectedChamado.fornecedor_nome}</p>
-                        </div>
-                      )}
+                      ))}
                     </div>
-
-                    {selectedChamado.descricao_servico_executado && (
-                      <div className="pt-2 border-t border-blue-200/60">
-                        <span className="text-xs font-semibold text-blue-900 dark:text-blue-300">Serviço Executado:</span>
-                        <p className="text-xs text-foreground whitespace-pre-wrap mt-0.5">{selectedChamado.descricao_servico_executado}</p>
-                      </div>
-                    )}
                   </div>
                 )}
 
-                {/* Histórico / Timeline de Etapas */}
-                <div className="border border-border rounded-xl p-4 space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-600" /> Linha do Tempo e Histórico
-                  </h4>
+                {/* Pesquisa de Satisfação (se concluído) */}
+                {selectedChamado.status === "Concluído" && (
+                  <AvaliacaoFacilities
+                    chamado={selectedChamado}
+                    onAvaliar={avaliarMutation.mutateAsync}
+                    loading={avaliarMutation.isPending}
+                    autoShow={autoShowAvaliacao}
+                  />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
-                  {(!Array.isArray(selectedChamado.historico) || selectedChamado.historico.length === 0) ? (
-                    <p className="text-xs text-muted-foreground italic">Nenhum evento adicional registrado.</p>
+        {/* ── MODAL COMPLETO DE TRIAGEM & ATENDIMENTO (EQUIPE DE FACILITIES) ── */}
+        {triagemModalChamado && (
+          <Dialog open={!!triagemModalChamado} onOpenChange={() => setTriagemModalChamado(null)}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <div className="flex items-center justify-between gap-2 pr-6">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded">
+                      {triagemModalChamado.numero_solicitacao || "FAC-S/N"}
+                    </span>
+                    <Badge className={`text-xs ${statusColors[editFormData.status] || "bg-gray-100"}`}>
+                      {editFormData.status}
+                    </Badge>
+                  </div>
+                  <Badge className="bg-amber-600 text-white text-xs">
+                    Triagem & Atendimento de Facilities
+                  </Badge>
+                </div>
+                <DialogTitle className="text-lg font-bold text-foreground mt-2">
+                  {triagemModalChamado.tipo_servico}
+                </DialogTitle>
+                <DialogDescription className="text-xs flex items-center gap-1 text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" /> {triagemModalChamado.local_ocorrencia} · Solicitante: {triagemModalChamado.solicitante_nome} ({triagemModalChamado.area_departamento || "Geral"})
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 pt-2 text-xs">
+                {/* Resumo da Demanda Original */}
+                <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-3 space-y-1.5">
+                  <span className="font-bold text-amber-950 block">Necessidade / Descrição:</span>
+                  <p className="text-gray-800 leading-relaxed">{triagemModalChamado.descricao}</p>
+                  {triagemModalChamado.necessita_parada_area && (
+                    <div className="bg-amber-100/80 border border-amber-300 p-2 rounded text-amber-900 text-[11px] flex items-center gap-2 mt-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span><strong>Parada de Área Requerida:</strong> {triagemModalChamado.periodo_parada || "Conforme necessidade"}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bloco de Triagem & Atribuição */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-card border rounded-lg p-4">
+                  <div>
+                    <Label className="text-xs font-bold text-gray-800">Status do Chamado</Label>
+                    <Select
+                      value={editFormData.status}
+                      onValueChange={(v) => setEditFormData({ ...editFormData, status: v })}
+                    >
+                      <SelectTrigger className="text-xs mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aberto">Aberto</SelectItem>
+                        <SelectItem value="Em Análise">Em Análise</SelectItem>
+                        <SelectItem value="Em Execução">Em Execução</SelectItem>
+                        <SelectItem value="Aguardando Orçamento">Aguardando Orçamento</SelectItem>
+                        <SelectItem value="Concluído">Concluído</SelectItem>
+                        <SelectItem value="Cancelado">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-bold text-gray-800">Prioridade Definida</Label>
+                    <Select
+                      value={editFormData.prioridade_definida}
+                      onValueChange={(v) => setEditFormData({ ...editFormData, prioridade_definida: v })}
+                    >
+                      <SelectTrigger className="text-xs mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Baixa">Baixa</SelectItem>
+                        <SelectItem value="Média">Média</SelectItem>
+                        <SelectItem value="Alta">Alta</SelectItem>
+                        <SelectItem value="Crítica">Crítica</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-bold text-gray-800">Prazo Estimado</Label>
+                    <Input
+                      value={editFormData.prazo_atendimento}
+                      onChange={(e) => setEditFormData({ ...editFormData, prazo_atendimento: e.target.value })}
+                      placeholder="Ex: 24 horas, 3 dias, 20/09..."
+                      className="text-xs mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Atribuição: Interno vs Terceiro */}
+                <div className="bg-gray-50 border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                      Tipo de Atendimento / Responsável
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!editFormData.terceiro_envolvido ? "default" : "outline"}
+                        onClick={() => setEditFormData({ ...editFormData, terceiro_envolvido: false })}
+                        className={`text-xs h-7 ${!editFormData.terceiro_envolvido ? "bg-amber-600 text-white" : ""}`}
+                      >
+                        <Wrench className="w-3.5 h-3.5 mr-1" /> Técnico Interno
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={editFormData.terceiro_envolvido ? "default" : "outline"}
+                        onClick={() => setEditFormData({ ...editFormData, terceiro_envolvido: true })}
+                        className={`text-xs h-7 ${editFormData.terceiro_envolvido ? "bg-sky-600 text-white" : ""}`}
+                      >
+                        <Building2 className="w-3.5 h-3.5 mr-1" /> Fornecedor Terceiro
+                      </Button>
+                    </div>
+                  </div>
+
+                  {!editFormData.terceiro_envolvido ? (
+                    <div>
+                      <Label className="text-xs font-medium text-gray-700">Técnico / Responsável Interno</Label>
+                      <Select
+                        value={editFormData.responsavel_execucao_nome || "nao_atribuido"}
+                        onValueChange={(v) => setEditFormData({ ...editFormData, responsavel_execucao_nome: v === "nao_atribuido" ? "" : v })}
+                      >
+                        <SelectTrigger className="text-xs mt-1 bg-white">
+                          <SelectValue placeholder="Selecione um técnico ou colaborador..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nao_atribuido">-- Não atribuído --</SelectItem>
+                          {listaColaboradores.map((col) => (
+                            <SelectItem key={col.id} value={col.nome_completo}>
+                              {col.nome_completo} ({col.area || "Geral"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   ) : (
-                    <div className="relative pl-6 space-y-3 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-amber-200 dark:before:bg-amber-900">
-                      {selectedChamado.historico.map((h, i) => (
-                        <div key={i} className="relative bg-card border border-border rounded-lg p-3 text-xs shadow-sm space-y-1">
-                          <div className="absolute -left-[21px] top-3.5 w-2.5 h-2.5 rounded-full bg-amber-600 border-2 border-background ring-2 ring-amber-100 dark:ring-amber-950" />
-                          <div className="flex items-center justify-between flex-wrap gap-1 border-b border-border pb-1.5 mb-1.5">
-                            <span className="font-semibold text-foreground">{h.usuario_nome || h.usuario || 'Sistema'}</span>
-                            <span className="text-muted-foreground font-mono text-[11px]">
-                              {h.data_hora ? format(parseISO(h.data_hora), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}
-                            </span>
-                          </div>
-                          <p className="text-muted-foreground leading-relaxed">{h.descricao}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                      <div>
+                        <Label className="text-xs font-medium text-gray-700">Empresa / Fornecedor</Label>
+                        <Input
+                          value={editFormData.terceiro_empresa}
+                          onChange={(e) => setEditFormData({ ...editFormData, terceiro_empresa: e.target.value })}
+                          placeholder="Nome da empresa ou prestador"
+                          className="text-xs mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-700">Nº da OS / Chamado Terceiro</Label>
+                        <Input
+                          value={editFormData.terceiro_numero_chamado}
+                          onChange={(e) => setEditFormData({ ...editFormData, terceiro_numero_chamado: e.target.value })}
+                          placeholder="Ex: OS-9842"
+                          className="text-xs mt-1 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium text-gray-700">Valor Orçado (R$ - Informativo)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editFormData.orcamento_valor}
+                          onChange={(e) => setEditFormData({ ...editFormData, orcamento_valor: e.target.value })}
+                          placeholder="0,00"
+                          className="text-xs mt-1 bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                          {/* Anexos vinculados a esta etapa específica */}
-                          {Array.isArray(h.anexos) && h.anexos.length > 0 && (
-                            <div className="pt-2 border-t border-border mt-2">
-                              <p className="font-semibold text-[11px] text-foreground mb-1 flex items-center gap-1">
-                                <Paperclip className="w-3 h-3 text-amber-600" /> Anexos desta etapa:
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {h.anexos.map((anx, idx) => (
-                                  <a
-                                    key={idx}
-                                    href={anx.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 px-2.5 py-1 rounded border border-amber-200 dark:border-amber-900 text-[11px] font-medium transition-colors"
-                                  >
-                                    <span>📎</span>
-                                    <span>{anx.file_name || `Anexo ${idx + 1}`}</span>
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                {/* Descrição do Serviço Executado (quando Concluído) */}
+                {editFormData.status === "Concluído" && (
+                  <div className="bg-green-50 border border-green-300 rounded-lg p-3 space-y-1.5">
+                    <Label className="text-xs font-bold text-green-950">
+                      Descrição Detalhada do Serviço Executado <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      required
+                      value={editFormData.descricao_servico_executado}
+                      onChange={(e) => setEditFormData({ ...editFormData, descricao_servico_executado: e.target.value })}
+                      placeholder="Descreva detalhadamente o serviço que foi realizado pela equipe ou terceiro..."
+                      rows={3}
+                      className="text-xs bg-white border-green-200"
+                    />
+                  </div>
+                )}
+
+                {/* Anexos de Ordem de Serviço / Orçamentos / Fotos */}
+                <div>
+                  <Label className="text-xs font-bold text-gray-800">Adicionar Anexos / OS / Relatórios da Etapa</Label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <label className="cursor-pointer bg-white border border-gray-300 hover:border-amber-400 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                      <Paperclip className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{uploadingAnexoEtapa ? "Enviando..." : "Anexar Arquivos"}</span>
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => handleFileUpload(e, true)}
+                        className="hidden"
+                        disabled={uploadingAnexoEtapa}
+                      />
+                    </label>
+                    {uploadingAnexoEtapa && <Loader2 className="w-4 h-4 animate-spin text-amber-600" />}
+                  </div>
+
+                  {novosAnexosEtapa.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {novosAnexosEtapa.map((anexo, idx) => (
+                        <div key={idx} className="bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1 text-xs flex items-center gap-2">
+                          <span className="truncate max-w-[200px] text-amber-950">{anexo.nome}</span>
+                          <button
+                            type="button"
+                            onClick={() => setNovosAnexosEtapa(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Pesquisa de Satisfação */}
-                <AvaliacaoFacilities
-                  chamado={selectedChamado}
-                  onAvaliar={(av) => avaliacaoMutation.mutate({ id: selectedChamado.id, av })}
-                  loading={avaliacaoMutation.isPending}
-                  autoShow={autoShowAvaliacao}
-                />
+                {/* Observação para o Histórico */}
+                <div>
+                  <Label className="text-xs font-bold text-gray-800">Nota / Observação do Histórico</Label>
+                  <Input
+                    value={novoComentarioHistorico}
+                    onChange={(e) => setNovoComentarioHistorico(e.target.value)}
+                    placeholder="Ex: Agendado técnico terceirizado para domingo 08:00..."
+                    className="text-xs mt-1"
+                  />
+                </div>
 
+                {/* Histórico Atual */}
+                {triagemModalChamado.historico && triagemModalChamado.historico.length > 0 && (
+                  <div className="border-t pt-3 space-y-2">
+                    <span className="font-bold text-gray-800 block text-xs">Histórico Completo da Solicitação:</span>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {triagemModalChamado.historico.map((h, idx) => (
+                        <div key={idx} className="bg-muted/30 p-2.5 rounded border-l-2 border-l-amber-500 text-[11px]">
+                          <div className="flex items-center justify-between text-muted-foreground mb-0.5">
+                            <span className="font-semibold text-foreground">{h.usuario_nome || h.usuario || "Sistema"}</span>
+                            <span>{h.data_hora ? format(parseISO(h.data_hora), "dd/MM/yyyy HH:mm", { locale: ptBR }) : ""}</span>
+                          </div>
+                          <p className="text-gray-800">{h.descricao}</p>
+                          {h.anexos && h.anexos.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                              {h.anexos.map((a, ai) => (
+                                <a
+                                  key={ai}
+                                  href={a.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded flex items-center gap-1 text-amber-800 hover:underline"
+                                >
+                                  <Paperclip className="w-3 h-3" /> {a.nome}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+
+              <DialogFooter className="border-t pt-3 gap-2">
+                <Button variant="outline" size="sm" onClick={() => setTriagemModalChamado(null)} className="text-xs">
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={updateChamadoMutation.isPending}
+                  onClick={() => {
+                    if (editFormData.status === "Concluído" && !editFormData.descricao_servico_executado?.trim()) {
+                      return alert("Por favor, descreva o serviço executado antes de concluir.");
+                    }
+                    updateChamadoMutation.mutate({
+                      id: triagemModalChamado.id,
+                      dataToUpdate: editFormData
+                    });
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs px-5"
+                >
+                  {updateChamadoMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> Salvando...
+                    </>
+                  ) : (
+                    "Salvar Alterações"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+      </div>
     </PortalLayout>
   );
 }

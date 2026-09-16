@@ -36,8 +36,12 @@ const PERMISSOES_COMUNICADOS = [
 const hoje = new Date().toISOString().split("T")[0];
 
 export default function ColaboradorForm({ colaborador, onClose, currentUserRole, modoPortal = false }) {
-  const [formData, setFormData] = useState(() => colaborador || {
+  const [formData, setFormData] = useState(() => colaborador ? {
+    ...colaborador,
+    eh_facilities: colaborador.eh_facilities === true || colaborador.area?.toLowerCase().includes('facilities'),
+  } : {
     senhas_sistemas: [], filhos: [], incluir_comunicados: true, 
+    eh_comprador: false, eh_facilities: false,
     eh_comunicacao_branding: false, eh_conexao_humana: false,
     permissoes_comunicados: [], status: "Ativo"
   });
@@ -57,8 +61,12 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole,
       (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.includes('conexao_humana')) ||
       colaborador?.area === 'Conexão Humana';
 
+    const isFacilities = colaborador?.eh_facilities === true ||
+      colaborador?.area?.toLowerCase().includes('facilities');
+
     setFormData(colaborador ? {
       ...colaborador,
+      eh_facilities: isFacilities,
       eh_comunicacao_branding: isBranding,
       eh_conexao_humana: isConexao,
       incluir_comunicados: colaborador.incluir_comunicados !== false,
@@ -66,6 +74,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole,
       senhas_sistemas: colaborador.senhas_sistemas || [],
     } : { 
       senhas_sistemas: [], filhos: [], incluir_comunicados: true, 
+      eh_comprador: false, eh_facilities: false,
       eh_comunicacao_branding: false, eh_conexao_humana: false,
       permissoes_comunicados: [], status: "Ativo" 
     });
@@ -225,6 +234,8 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole,
     cleanedData.permissoes_comunicados = perms;
     cleanedData.eh_comunicacao_branding = !!formData.eh_comunicacao_branding;
     cleanedData.eh_conexao_humana = !!formData.eh_conexao_humana;
+    cleanedData.eh_facilities = !!formData.eh_facilities;
+    cleanedData.eh_comprador = !!formData.eh_comprador;
 
     if (colaborador) {
       updateMutation.mutate({ id: colaborador.id, data: cleanedData });
@@ -688,7 +699,7 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole,
                     <p className="text-xs text-gray-500 mt-0.5">Selecione se este colaborador possui funções de gestão no Portal do Colaborador.</p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                     {/* Comunicação e Branding */}
                     <div className="flex items-start gap-3 bg-white border border-gray-200 hover:border-indigo-300 rounded-xl p-3.5 transition-all">
                       <Switch
@@ -717,10 +728,28 @@ export default function ColaboradorForm({ colaborador, onClose, currentUserRole,
                       />
                       <label htmlFor="role_conexao" className="cursor-pointer space-y-0.5">
                         <span className="text-xs font-bold text-gray-900 block flex items-center gap-1.5">
-                          👥 Conexão Humana (DP/RH/DHO)
+                          👥 Conexão Humana (DP/RH)
                         </span>
                         <p className="text-[11px] text-gray-500 leading-relaxed">
                           Permite criar e gerenciar o cadastro completo de colaboradores, dependentes e auditar dados incompletos.
+                        </p>
+                      </label>
+                    </div>
+
+                    {/* Equipe de Facilities */}
+                    <div className="flex items-start gap-3 bg-white border border-gray-200 hover:border-amber-300 rounded-xl p-3.5 transition-all">
+                      <Switch
+                        id="role_facilities"
+                        checked={!!formData.eh_facilities}
+                        onCheckedChange={v => set('eh_facilities', v)}
+                        className="mt-0.5"
+                      />
+                      <label htmlFor="role_facilities" className="cursor-pointer space-y-0.5">
+                        <span className="text-xs font-bold text-gray-900 block flex items-center gap-1.5">
+                          🏢 Equipe de Facilities & Predial
+                        </span>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                          Permite visualizar todas as solicitações no Portal, realizar triagem, atribuir a fornecedores terceiros e concluir chamados.
                         </p>
                       </label>
                     </div>

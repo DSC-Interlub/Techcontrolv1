@@ -445,6 +445,12 @@ export default function Colaboradores() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold">{colaborador.nome_completo}</span>
+                                {(colaborador.eh_facilities || colaborador.area?.toLowerCase().includes("facilities")) && (
+                                  <Badge className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0 border border-amber-200">🏢 Facilities</Badge>
+                                )}
+                                {(colaborador.eh_comprador || colaborador.area?.toLowerCase().includes("compras")) && (
+                                  <Badge className="bg-blue-100 text-blue-800 text-[10px] px-1.5 py-0 border border-blue-200">🛒 Compras</Badge>
+                                )}
                                 {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || colaborador.area === "Comunicação e Branding") && (
                                   <Badge className="bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0 border border-purple-200">🎨 Branding</Badge>
                                 )}
@@ -544,6 +550,12 @@ export default function Colaboradores() {
                             <TableCell className="font-medium">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold">{colaborador.nome_completo}</span>
+                                {(colaborador.eh_facilities || colaborador.area?.toLowerCase().includes("facilities")) && (
+                                  <Badge className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0 border border-amber-200">🏢 Facilities</Badge>
+                                )}
+                                {(colaborador.eh_comprador || colaborador.area?.toLowerCase().includes("compras")) && (
+                                  <Badge className="bg-blue-100 text-blue-800 text-[10px] px-1.5 py-0 border border-blue-200">🛒 Compras</Badge>
+                                )}
                                 {(colaborador.eh_comunicacao_branding || (colaborador.permissoes_comunicados || []).includes("comunicacao_branding") || colaborador.area === "Comunicação e Branding") && (
                                   <Badge className="bg-purple-100 text-purple-800 text-[10px] px-1.5 py-0 border border-purple-200">🎨 Branding</Badge>
                                 )}

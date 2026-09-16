@@ -46,6 +46,8 @@ export function usePortalColaborador() {
       email: fresco.email,
       area: fresco.area,
       tipo_funcionario: fresco.tipo_funcionario,
+      eh_comprador: fresco.eh_comprador ?? false,
+      eh_facilities: fresco.eh_facilities ?? false,
       eh_comunicacao_branding: fresco.eh_comunicacao_branding ?? false,
       eh_conexao_humana: fresco.eh_conexao_humana ?? false,
       permissoes_comunicados: fresco.permissoes_comunicados || [],
@@ -67,5 +69,13 @@ export function usePortalColaborador() {
     colaborador?.area === "Conexão Humana" ||
     (Array.isArray(colaborador?.permissoes_comunicados) && colaborador.permissoes_comunicados.length > 0);
 
-  return { colaborador, temAcessoComunicados, logout };
+  const isEquipeFacilities =
+    Boolean(colaborador?.eh_facilities) ||
+    colaborador?.area?.toLowerCase().includes("facilities");
+
+  const isComprador =
+    Boolean(colaborador?.eh_comprador) ||
+    colaborador?.area?.toLowerCase().includes("compras");
+
+  return { colaborador, temAcessoComunicados, isEquipeFacilities, isComprador, logout };
 }

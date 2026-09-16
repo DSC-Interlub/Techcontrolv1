@@ -74,6 +74,8 @@ export default function PortalLogin() {
         email: colaborador.email,
         area: colaborador.area,
         tipo_funcionario: colaborador.tipo_funcionario,
+        eh_comprador: colaborador.eh_comprador ?? false,
+        eh_facilities: colaborador.eh_facilities ?? false,
         eh_comunicacao_branding: colaborador.eh_comunicacao_branding ?? false,
         eh_conexao_humana: colaborador.eh_conexao_humana ?? false,
         permissoes_comunicados: colaborador.permissoes_comunicados || [],
@@ -119,6 +121,8 @@ export default function PortalLogin() {
         email: colaborador.email,
         area: colaborador.area,
         tipo_funcionario: colaborador.tipo_funcionario,
+        eh_comprador: colaborador.eh_comprador ?? false,
+        eh_facilities: colaborador.eh_facilities ?? false,
         eh_comunicacao_branding: colaborador.eh_comunicacao_branding ?? false,
         eh_conexao_humana: colaborador.eh_conexao_humana ?? false,
         permissoes_comunicados: colaborador.permissoes_comunicados || [],
@@ -140,10 +144,6 @@ export default function PortalLogin() {
       setErro("A senha deve ter pelo menos 6 caracteres."); 
       return; 
     }
-    if (novaSenha === 'demo123') {
-      setErro("Essa senha não pode ser usada. Escolha outra senha.");
-      return;
-    }
     if (novaSenha !== confirmarSenha) { 
       setErro("As senhas não coincidem."); 
       return; 
@@ -157,7 +157,8 @@ export default function PortalLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           colaboradorId: colaboradorLogando.id,
-          novaSenha: novaSenha
+          senhaAtual: senha,
+          novaSenha
         })
       });
 
@@ -171,6 +172,8 @@ export default function PortalLogin() {
         email: colaboradorLogando.email,
         area: colaboradorLogando.area,
         tipo_funcionario: colaboradorLogando.tipo_funcionario,
+        eh_comprador: colaboradorLogando.eh_comprador ?? false,
+        eh_facilities: colaboradorLogando.eh_facilities ?? false,
         eh_comunicacao_branding: colaboradorLogando.eh_comunicacao_branding ?? false,
         eh_conexao_humana: colaboradorLogando.eh_conexao_humana ?? false,
         permissoes_comunicados: colaboradorLogando.permissoes_comunicados || [],

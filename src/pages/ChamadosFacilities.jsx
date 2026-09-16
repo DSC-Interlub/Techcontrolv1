@@ -146,6 +146,9 @@ export default function ChamadosFacilities() {
 
       const payload = {
         ...dataToUpdate,
+        orcamento_valor: dataToUpdate.orcamento_valor !== undefined && dataToUpdate.orcamento_valor !== "" && dataToUpdate.orcamento_valor !== null
+          ? parseFloat(String(dataToUpdate.orcamento_valor).replace(',', '.')) || null
+          : null,
         status: statusFinal,
         updated_date: agora,
         historico: novoHistorico
