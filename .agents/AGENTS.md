@@ -10,3 +10,4 @@ Antes de realizar qualquer tarefa, auditoria, análise, refatoração, implement
 2. **Uso Completo de Skills:** Identificar e combinar automaticamente todas as skills do repositório necessárias para cada tarefa.
 3. **Experiência do Usuário & Homologação:** Validar interações como um usuário real navegando pela aplicação.
 4. **Qualidade & Sincronização:** Garantir build sem erros, estabilidade de cache/dados, documentação atualizada e commit/push no GitHub ao concluir.
+5. **Migrations & PostgREST Schema Reload:** Toda alteração de schema/migration SQL (DDL, ALTER TABLE, CREATE TABLE, RLS) DEVE OBRIGATORIAMENTE conter `NOTIFY pgrst, 'reload schema';` ao final do script para evitar erros de cache desatualizado no PostgREST.

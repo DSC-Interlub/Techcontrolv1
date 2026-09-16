@@ -30,3 +30,7 @@ CREATE POLICY "anon_all_empresas_terceiras" ON public.empresas_terceiras FOR ALL
 
 DROP POLICY IF EXISTS "auth_all_empresas_terceiras" ON public.empresas_terceiras;
 CREATE POLICY "auth_all_empresas_terceiras" ON public.empresas_terceiras FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Notificar PostgREST para recarregar o cache de schema imediatamente
+NOTIFY pgrst, 'reload schema';
+

@@ -379,6 +379,7 @@ Nenhuma tarefa será considerada concluída sem:
 * homologação;
 * validação das integrações;
 * verificação de estabilidade;
+* atualização de schema com notificação PostgREST (NOTIFY pgrst, 'reload schema');
 * atualização do GitHub;
 * atualização da documentação quando necessário.
 

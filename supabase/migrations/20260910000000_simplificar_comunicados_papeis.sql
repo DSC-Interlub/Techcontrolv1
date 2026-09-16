@@ -40,3 +40,7 @@ DROP POLICY IF EXISTS "anon_insert_colaboradores_table" ON public.colaboradores;
 CREATE POLICY "anon_select_colaboradores" ON public.colaboradores FOR SELECT TO anon USING (true);
 CREATE POLICY "anon_update_colaboradores_table" ON public.colaboradores FOR UPDATE TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_insert_colaboradores_table" ON public.colaboradores FOR INSERT TO anon WITH CHECK (true);
+
+-- Notificar PostgREST para recarregar o cache de schema imediatamente
+NOTIFY pgrst, 'reload schema';
+

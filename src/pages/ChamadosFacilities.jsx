@@ -86,7 +86,7 @@ export default function ChamadosFacilities() {
 
   const { data: empresasTerceiras = [] } = useQuery({
     queryKey: ['empresas_terceiras_facilities'],
-    queryFn: () => base44.entities.EmpresasTerceiras.list('nome'),
+    queryFn: () => base44.entities.EmpresasTerceiras.list('nome_empresa'),
     staleTime: 60000,
   });
 
