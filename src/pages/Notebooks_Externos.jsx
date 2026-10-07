@@ -271,7 +271,7 @@ export default function Notebooks_Externos() {
                         <TableCell>
                           {equipamento.antivirus === "Sim" ? (
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
-                              {equipamento.antivirus_nome || "Sim (ESET)"}
+                              {equipamento.antivirus_nome || "ESET"}
                             </span>
                           ) : equipamento.antivirus === "Não" ? (
                             <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-xs">

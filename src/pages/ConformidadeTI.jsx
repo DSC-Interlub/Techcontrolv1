@@ -322,7 +322,7 @@ export default function ConformidadeTI() {
                               <span className="text-slate-400 italic">N/A</span>
                             ) : eq.antivirus === "Sim" || (eq.antivirus_nome || "").toLowerCase().includes("eset") ? (
                               <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                {eq.antivirus_nome || "Sim (ESET)"}
+                                {eq.antivirus_nome || "ESET"}
                               </Badge>
                             ) : (
                               <Badge className="bg-rose-100 text-rose-800 border border-rose-300">
