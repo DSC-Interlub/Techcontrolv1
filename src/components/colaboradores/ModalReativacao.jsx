@@ -39,11 +39,34 @@ export default function ModalReativacao({ colaborador, open, onClose, onCriarNov
         }).eq('id', colaborador.id);
 
         if (error) throw error;
+
+        // Se possui usuário interno no Supabase Auth, remover banimento (ban_duration: 'none')
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            await fetch('/api/manageUserStatus', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({ email: colaborador.email?.trim().toLowerCase(), ban: false })
+            });
+          }
+        } catch (authErr) {
+          console.warn('Erro ao remover ban de usuário interno no Supabase Auth:', authErr);
+        }
       } else {
         // 2. Renomear e-mail do registro inativo para liberar o e-mail original para um novo colaborador
+        // Formato correto de plus-addressing: usuario+inativo_<timestamp>@dominio.com
         const timestamp = Date.now();
-        const emailAntigo = colaborador.email || "";
-        const emailRenomeado = emailAntigo ? `${emailAntigo}+inativo_${timestamp}` : `inativo_${timestamp}@inativo.local`;
+        const emailAntigo = (colaborador.email || "").trim();
+        let emailRenomeado = `inativo_${timestamp}@inativo.local`;
+
+        if (emailAntigo && emailAntigo.includes('@')) {
+          const [userPart, domainPart] = emailAntigo.split('@');
+          emailRenomeado = `${userPart}+inativo_${timestamp}@${domainPart}`;
+        }
 
         const { error } = await supabase.from('colaboradores').update({
           email: emailRenomeado

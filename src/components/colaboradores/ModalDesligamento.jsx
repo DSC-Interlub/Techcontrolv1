@@ -271,14 +271,21 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
 
       if (errColab) throw errColab;
 
-      // G) Se possui conta Auth / Profile no Supabase, desativar via RPC ou service se existir
+      // G) Se possui conta de acesso ao sistema interno (Supabase Auth / profiles), banir a conta via Admin API
       try {
-        const { data: prof } = await supabase.from('profiles').select('id').eq('email', emailNorm).maybeSingle();
-        if (prof) {
-          await supabase.from('profiles').update({ status: 'Inativo' }).eq('id', prof.id);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          await fetch('/api/manageUserStatus', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ email: emailNorm, ban: true })
+          });
         }
       } catch (authErr) {
-        console.warn('Profile/auth desativação warning:', authErr);
+        console.warn('Erro ao banir usuário interno no Supabase Auth:', authErr);
       }
     },
     onSuccess: () => {
