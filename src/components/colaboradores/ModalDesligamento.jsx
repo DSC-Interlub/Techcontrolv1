@@ -111,9 +111,27 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
 
   const nomeNorm = colaborador.nome_completo?.trim().toLowerCase() || "";
   const emailNorm = colaborador.email?.trim().toLowerCase() || "";
+  const areaNorm = colaborador.area?.trim().toLowerCase() || "";
 
-  // Filtra equipamentos do colaborador
-  const matchEq = (e) => e.colaborador_id === colaborador.id || (e.usuario_atual && e.usuario_atual.trim().toLowerCase() === nomeNorm);
+  // Setores que possuem equipamentos compartilhados (não devem gerar devolução nem ser exibidos para devolução individual)
+  const isSetorCompartilhado = areaNorm.includes("opera") || areaNorm.includes("fábrica") || areaNorm.includes("fabrica") || areaNorm.includes("produç") || areaNorm.includes("produc");
+
+  // Filtra equipamentos do colaborador: se for setor compartilhado, equipamentos de setor/desktop não devem exigir devolução
+  const matchEq = (e) => {
+    // Se o equipamento for compartilhado do setor ou de setor operacional, não é equipamento pessoal a devolver
+    const isSharedTag = (e.usuario_atual && e.usuario_atual.toLowerCase().includes("compartilhado")) || !e.colaborador_id;
+    if (isSharedTag) return false;
+
+    // Se o colaborador for de Operações/Setor compartilhado, computadores do tipo Desktop/Monitor ou vinculados à área não exigem devolução
+    if (isSetorCompartilhado) {
+      const eqAreaNorm = (e.area || "").toLowerCase();
+      if (eqAreaNorm.includes("opera") || e.tipo === "Desktop" || e.tipo === "Monitor") {
+        return false;
+      }
+    }
+
+    return e.colaborador_id === colaborador.id || (e.usuario_atual && e.usuario_atual.trim().toLowerCase() === nomeNorm);
+  };
 
   const meusPcs = pcs.filter(matchEq);
   const meusNotebooks = notebooks.filter(matchEq);
@@ -132,11 +150,19 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
     r.cotacao_comprador_id === colaborador.id && STATUS_PENDENTES_COMPRADOR.includes(r.status)
   );
 
+  // Colaboradores que têm este usuário como Aprovador Direto no cadastro
+  const colabsComEsteAprovador = todosColaboradores.filter(c => 
+    c.id !== colaborador.id && c.status === 'Ativo' && c.responsavel_id === colaborador.id
+  );
+
   // Requisições como Aprovador
   const STATUS_PENDENTES_APROVADOR = ['Aguardando Aprovador'];
   const reqsComoAprovador = requisicoes.filter(r => 
     r.aprovador_id === colaborador.id && STATUS_PENDENTES_APROVADOR.includes(r.status)
   );
+
+  // Total de vínculos como aprovador (colaboradores subordinados + requisições ativas)
+  const totalVinculosAprovador = colabsComEsteAprovador.length + reqsComoAprovador.length;
 
   // Verificação de Diretor em configuracoes
   const cfgDiretor = configs.find(c => c.chave === 'diretor_email');
@@ -179,7 +205,7 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
 
   // Bloqueios de confirmação
   const pendenciaCompradorBloqueante = reqsComoComprador.length > 0 && !novoCompradorId;
-  const pendenciaAprovadorBloqueante = reqsComoAprovador.length > 0 && !novoAprovadorId;
+  const pendenciaAprovadorBloqueante = totalVinculosAprovador > 0 && !novoAprovadorId;
   const podeConfirmar = !pendenciaCompradorBloqueante && !pendenciaAprovadorBloqueante && motivo.trim().length > 0;
 
   // Mutação para executar desligamento
@@ -198,19 +224,36 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
         }
       }
 
-      // B) Se necessário reatribuir requisições de aprovador
-      if (reqsComoAprovador.length > 0 && novoAprovadorId) {
+      // B) Se necessário reatribuir aprovador em lote:
+      //    1. Para todos os colaboradores que tinham este usuário como aprovador cadastrado
+      //    2. Para todas as requisições pendentes aguardando aprovação dele
+      if (totalVinculosAprovador > 0 && novoAprovadorId) {
         const aprovadorAlvo = outrosAprovadores.find(c => c.id === novoAprovadorId);
-        for (const req of reqsComoAprovador) {
-          await supabase.from('requisicao_compras').update({
-            aprovador_id: novoAprovadorId,
-            aprovador_nome: aprovadorAlvo?.nome_completo || null,
-            aprovador_email: aprovadorAlvo?.email || null
-          }).eq('id', req.id);
+        
+        // 1. Atualizar todos os colaboradores que tinham este aprovador
+        if (colabsComEsteAprovador.length > 0) {
+          for (const colabSubordinado of colabsComEsteAprovador) {
+            await supabase.from('colaboradores').update({
+              responsavel_id: novoAprovadorId,
+              responsavel_nome: aprovadorAlvo?.nome_completo || null,
+              responsavel_email: aprovadorAlvo?.email || null
+            }).eq('id', colabSubordinado.id);
+          }
+        }
+
+        // 2. Atualizar requisições pendentes
+        if (reqsComoAprovador.length > 0) {
+          for (const req of reqsComoAprovador) {
+            await supabase.from('requisicao_compras').update({
+              aprovador_id: novoAprovadorId,
+              aprovador_nome: aprovadorAlvo?.nome_completo || null,
+              aprovador_email: aprovadorAlvo?.email || null
+            }).eq('id', req.id);
+          }
         }
       }
 
-      // C) Equipamentos: alterar status para 'Aguardando Devolução'
+      // C) Equipamentos: alterar status para 'Aguardando Devolução' (apenas os que requerem devolução)
       for (const p of meusPcs) {
         await supabase.from('pcs_internos').update({ status: 'Aguardando Devolução' }).eq('id', p.id);
       }
@@ -260,14 +303,20 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
         }
       ];
 
-      // F) Atualizar colaborador
+      // F) Atualizar colaborador e desativar todos os papéis especiais do portal
       const { error: errColab } = await supabase.from('colaboradores').update({
         status: 'Desligado',
         data_desligamento: hoje,
         motivo_desligamento: motivo.trim(),
         acesso_portal_bloqueado: true,
+        eh_comprador: false,
+        eh_facilities: false,
+        eh_conexao_humana: false,
+        eh_comunicacao_branding: false,
         historico_status: novoHistorico
       }).eq('id', colaborador.id);
+
+      if (errColab) throw errColab;
 
       if (errColab) throw errColab;
 
@@ -349,28 +398,45 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
             </h4>
 
             {/* 1. Equipamentos */}
-            <div className="bg-white border rounded-lg p-3 text-sm flex items-start justify-between">
-              <div>
-                <p className="font-semibold text-slate-800 flex items-center gap-2">
-                  <Monitor className="w-4 h-4 text-blue-600" />
-                  Equipamentos em posse: <span className="text-rose-600 font-bold">{totalEquipamentos}</span>
-                </p>
-                {totalEquipamentos > 0 ? (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Serão alterados automaticamente para <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-800 border-amber-300">Aguardando Devolução</Badge> mantendo o vínculo com o colaborador até a confirmação física.
+            {isSetorCompartilhado ? (
+              <div className="bg-emerald-50/60 border border-emerald-200 rounded-lg p-3 text-sm flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-emerald-900 flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-emerald-600" />
+                    Equipamentos do Setor Compartilhado ({colaborador.area})
                   </p>
-                ) : (
-                  <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Nenhum equipamento vinculado no sistema.
+                  <p className="text-xs text-emerald-700 mt-1">
+                    Os equipamentos pertencem ao setor operacional/fábrica e permanecem disponíveis para a equipe local, sem necessidade de devolução física individual.
                   </p>
-                )}
+                </div>
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
+                  Setor Operacional
+                </Badge>
               </div>
-              <Badge className={totalEquipamentos > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
-                {totalEquipamentos} itens
-              </Badge>
-            </div>
+            ) : (
+              <div className="bg-white border rounded-lg p-3 text-sm flex items-start justify-between">
+                <div>
+                  <p className="font-semibold text-slate-800 flex items-center gap-2">
+                    <Monitor className="w-4 h-4 text-blue-600" />
+                    Equipamentos em posse: <span className="text-rose-600 font-bold">{totalEquipamentos}</span>
+                  </p>
+                  {totalEquipamentos > 0 ? (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Serão alterados automaticamente para <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-800 border-amber-300">Aguardando Devolução</Badge> mantendo o vínculo com o colaborador até a confirmação física.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Nenhum equipamento pessoal vinculado no sistema.
+                    </p>
+                  )}
+                </div>
+                <Badge className={totalEquipamentos > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}>
+                  {totalEquipamentos} itens
+                </Badge>
+              </div>
+            )}
 
-            {/* 2. Cotações de Comprador (Bloqueante) */}
+            {/* 2. Cotações de Comprador (Bloqueante se houver pendências) */}
             {colaborador.eh_comprador && (
               <div className={`border rounded-lg p-3 text-sm ${reqsComoComprador.length > 0 ? "bg-rose-50 border-rose-200" : "bg-white"}`}>
                 <div className="flex items-start justify-between">
@@ -381,11 +447,11 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
                     </p>
                     {reqsComoComprador.length > 0 ? (
                       <p className="text-xs text-rose-700 mt-1 font-medium">
-                        Bloqueante: É obrigatório transferir as cotações pendentes para outro comprador antes de prosseguir.
+                        Bloqueante: É obrigatório transferir as cotações pendentes para outro comprador antes de prosseguir. O acesso às cotações será desativado.
                       </p>
                     ) : (
                       <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Nenhuma cotação pendente vinculada.
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Nenhuma cotação pendente vinculada. O papel de Comprador será desativado.
                       </p>
                     )}
                   </div>
@@ -412,23 +478,38 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
               </div>
             )}
 
-            {/* 3. Aprovador de Compras (Bloqueante se houver pendências) */}
-            {reqsComoAprovador.length > 0 && (
+            {/* 3. Aprovador de Compras e Gestor de Colaboradores (Bloqueante se houver subordinados ou requisições) */}
+            {totalVinculosAprovador > 0 && (
               <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="font-semibold text-rose-900 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-rose-600" />
-                      Requisições aguardando aprovação deste gestor: <span className="font-bold">{reqsComoAprovador.length}</span>
+                      Aprovador de Compras & Gestor Direto
                     </p>
-                    <p className="text-xs text-rose-700 mt-1">
-                      Bloqueante: Reatribua o aprovador das requisições em aberto.
-                    </p>
+                    <div className="text-xs text-rose-800 mt-1.5 space-y-1">
+                      {colabsComEsteAprovador.length > 0 && (
+                        <p>
+                          • <strong>{colabsComEsteAprovador.length}</strong> colaborador(es) têm este usuário como Aprovador Direto.
+                        </p>
+                      )}
+                      {reqsComoAprovador.length > 0 && (
+                        <p>
+                          • <strong>{reqsComoAprovador.length}</strong> requisição(ões) pendente(s) aguardam aprovação dele.
+                        </p>
+                      )}
+                      <p className="text-rose-700 font-medium pt-1">
+                        Bloqueante: Selecione um novo aprovador. Ele será atribuído automaticamente a todos os colaboradores vinculados e às requisições pendentes.
+                      </p>
+                    </div>
                   </div>
+                  <Badge className="bg-rose-100 text-rose-800 border-rose-300">
+                    {totalVinculosAprovador} pendências
+                  </Badge>
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-rose-200">
-                  <Label className="text-xs font-semibold text-rose-900">Transferir aprovações pendentes para:</Label>
+                  <Label className="text-xs font-semibold text-rose-900">Substituir por novo Gestor / Aprovador:</Label>
                   <Select value={novoAprovadorId} onValueChange={setNovoAprovadorId}>
                     <SelectTrigger className="mt-1 bg-white">
                       <SelectValue placeholder="Selecione o novo gestor aprovador" />
