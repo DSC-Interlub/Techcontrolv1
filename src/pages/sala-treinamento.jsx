@@ -16,7 +16,7 @@ import { Combobox } from "@/components/ui/combobox";
 import {
   Users, CalendarDays, ChevronLeft, ChevronRight, ExternalLink,
   CheckCircle, AlertCircle, Loader2, Copy, Check, Eye, Search,
-  User, Mail, Briefcase, Clock, FileText, Trash2, X
+  User, Mail, Briefcase, Clock, FileText, Trash2, X, Pencil
 } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import {
@@ -72,6 +72,24 @@ export default function SalaTreinamento() {
   const hoje = new Date();
   const inicioSemana = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), semanaOffset * 7);
   const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
+
+  // --- Edição de Sala ---
+  const [editingSala, setEditingSala] = useState(null);
+  const [nomeEditSala, setNomeEditSala] = useState("");
+
+  const editSalaMutation = useMutation({
+    mutationFn: async ({ id, nome }) => {
+      return base44.entities.Salas.update(id, { nome: nome.trim() });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['salas'] });
+      setEditingSala(null);
+      setNomeEditSala("");
+    },
+    onError: (err) => {
+      alert("Erro ao renomear sala: " + (err.message || "Tente novamente"));
+    }
+  });
 
   const { data: salas = [] } = useQuery({
     queryKey: ['salas'],
@@ -249,18 +267,30 @@ export default function SalaTreinamento() {
             {/* Seletor de Sala */}
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1.5 shadow-2xs">
               <span className="text-xs font-semibold text-gray-500 uppercase px-2">Sala:</span>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {salas.map((s) => (
-                  <Button
-                    key={s.id}
-                    variant={selectedSalaId === s.id ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSelectedSalaId(s.id)}
-                    className={selectedSalaId === s.id ? "bg-teal-600 hover:bg-teal-700 text-white font-medium" : "text-gray-700"}
-                  >
-                    {s.nome}
-                    <span className="ml-1.5 text-[11px] opacity-75">({s.capacidade}p)</span>
-                  </Button>
+                  <div key={s.id} className="flex items-center gap-0.5">
+                    <Button
+                      variant={selectedSalaId === s.id ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setSelectedSalaId(s.id)}
+                      className={selectedSalaId === s.id ? "bg-teal-600 hover:bg-teal-700 text-white font-medium" : "text-gray-700"}
+                    >
+                      {s.nome}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-gray-500 hover:text-teal-700 hover:bg-teal-50"
+                      title={`Editar nome da ${s.nome}`}
+                      onClick={() => {
+                        setEditingSala(s);
+                        setNomeEditSala(s.nome);
+                      }}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -278,7 +308,6 @@ export default function SalaTreinamento() {
           <div className="mb-6 bg-teal-50/60 border border-teal-200 rounded-xl p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge className="bg-teal-700 text-white font-semibold">{salaAtiva.nome}</Badge>
-              <span className="text-xs text-teal-900 font-medium">Capacidade: {salaAtiva.capacidade} pessoas</span>
             </div>
             <span className="text-xs text-teal-700 italic">Exibindo agenda e checagem de horários específica desta sala</span>
           </div>
@@ -379,7 +408,6 @@ export default function SalaTreinamento() {
                     <div><span className="text-gray-500">Data</span><p className="font-medium">{reservaDetalhes.data}</p></div>
                     <div><span className="text-gray-500">Horário</span><p className="font-medium">{reservaDetalhes.hora_inicio} – {reservaDetalhes.hora_fim}</p></div>
                     {reservaDetalhes.motivo && <div className="col-span-2"><span className="text-gray-500">Pauta</span><p className="font-medium">{reservaDetalhes.motivo}</p></div>}
-                    {reservaDetalhes.num_participantes && <div><span className="text-gray-500">Participantes</span><p className="font-medium">{reservaDetalhes.num_participantes}</p></div>}
                     {reservaDetalhes.observacoes && <div className="col-span-2"><span className="text-gray-500">Observações</span><p className="font-medium">{reservaDetalhes.observacoes}</p></div>}
                   </div>
                   <div className="pt-2 flex justify-end gap-2">
@@ -408,9 +436,6 @@ export default function SalaTreinamento() {
                     <CardTitle className="text-teal-900 text-base md:text-lg">
                       Reservar: {salaAtiva?.nome || "Sala"}
                     </CardTitle>
-                    <Badge variant="outline" className="bg-white text-teal-800 border-teal-300 font-semibold">
-                      Capacidade: {salaAtiva?.capacidade || 10}p
-                    </Badge>
                   </div>
                   <p className="text-xs text-teal-700 mt-1">
                     {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
@@ -468,10 +493,6 @@ export default function SalaTreinamento() {
                     <div>
                       <Label>Pauta / Motivo *</Label>
                       <Textarea required placeholder="Descreva o objetivo da reunião..." value={formData.motivo} onChange={(e) => setFormData({ ...formData, motivo: e.target.value })} rows={2} />
-                    </div>
-                    <div>
-                      <Label>Nº de Participantes</Label>
-                      <Input type="number" min="1" placeholder="Ex: 10" value={formData.num_participantes} onChange={(e) => setFormData({ ...formData, num_participantes: e.target.value })} />
                     </div>
                     <div>
                       <Label>Observações (opcional)</Label>
@@ -566,16 +587,15 @@ export default function SalaTreinamento() {
                         <TableHead>Data</TableHead>
                         <TableHead>Horário</TableHead>
                         <TableHead>Pauta</TableHead>
-                        <TableHead>Participantes</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingReservas ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">Carregando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Carregando...</TableCell></TableRow>
                       ) : reservasAtivas.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">Nenhuma reserva ativa</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Nenhuma reserva ativa</TableCell></TableRow>
                       ) : (
                         reservasAtivas.map((r) => (
                           <TableRow key={r.id}>
@@ -588,7 +608,6 @@ export default function SalaTreinamento() {
                             <TableCell>{r.data}</TableCell>
                             <TableCell>{r.hora_inicio} – {r.hora_fim}</TableCell>
                             <TableCell className="max-w-[180px] truncate">{r.motivo || "—"}</TableCell>
-                            <TableCell>{r.num_participantes || "—"}</TableCell>
                             <TableCell>
                               <Badge className={statusColors[r.status] || "bg-blue-100 text-blue-800"}>{r.status}</Badge>
                             </TableCell>
@@ -763,12 +782,6 @@ export default function SalaTreinamento() {
                       <p className="text-sm font-semibold text-gray-700 mb-1">Horário</p>
                       <div className="flex items-center gap-2 text-gray-900"><Clock className="w-4 h-4 text-gray-400" />{reservaDetalhes.hora_inicio} – {reservaDetalhes.hora_fim}</div>
                     </div>
-                    {reservaDetalhes.num_participantes && (
-                      <div>
-                        <p className="text-sm font-semibold text-gray-700 mb-1">Participantes</p>
-                        <div className="flex items-center gap-2 text-gray-900"><Users className="w-4 h-4 text-gray-400" />{reservaDetalhes.num_participantes}</div>
-                      </div>
-                    )}
                     <div>
                       <p className="text-sm font-semibold text-gray-700 mb-1">Criado em</p>
                       <div className="flex items-center gap-2 text-gray-900">
@@ -806,6 +819,63 @@ export default function SalaTreinamento() {
                 )}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Edição de Nome da Sala */}
+        <Dialog open={!!editingSala} onOpenChange={(open) => { if (!open) setEditingSala(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-teal-600" />
+                Editar Nome da Sala
+              </DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!nomeEditSala.trim()) return;
+                editSalaMutation.mutate({ id: editingSala.id, nome: nomeEditSala.trim() });
+              }}
+              className="space-y-4 pt-2"
+            >
+              <div>
+                <Label htmlFor="nome-sala">Nome da Sala</Label>
+                <Input
+                  id="nome-sala"
+                  value={nomeEditSala}
+                  onChange={(e) => setNomeEditSala(e.target.value)}
+                  placeholder="Ex: Sala de Reunião Principal"
+                  required
+                  autoFocus
+                  className="mt-1.5"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingSala(null)}
+                  disabled={editSalaMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                  disabled={editSalaMutation.isPending || !nomeEditSala.trim()}
+                >
+                  {editSalaMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar Alterações"
+                  )}
+                </Button>
+              </div>
+            </form>
           </DialogContent>
         </Dialog>
 

@@ -212,7 +212,6 @@ export default function PortalSala() {
                     className={selectedSalaId === s.id ? "bg-teal-600 hover:bg-teal-700 text-white font-medium" : "text-foreground"}
                   >
                     {s.nome}
-                    <span className="ml-1.5 text-[11px] opacity-75">({s.capacidade}p)</span>
                   </Button>
                 ))}
               </div>
@@ -223,7 +222,6 @@ export default function PortalSala() {
             <div className="mb-6 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Badge className="bg-teal-700 text-white font-semibold">{salaAtiva.nome}</Badge>
-                <span className="text-xs text-teal-900 dark:text-teal-200 font-medium">Capacidade: {salaAtiva.capacidade} pessoas</span>
               </div>
               <span className="text-xs text-teal-700 dark:text-teal-300 italic hidden sm:inline">Visualizando agenda desta sala</span>
             </div>
@@ -312,14 +310,9 @@ export default function PortalSala() {
                 <Card className="shadow-xl max-w-lg mx-auto">
                   <CardHeader className="border-b bg-teal-50 dark:bg-teal-950 flex flex-row items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
-                          {salaAtiva?.nome || "Sala"}
-                        </CardTitle>
-                        <Badge variant="outline" className="text-xs bg-white text-teal-800 border-teal-300">
-                          {salaAtiva?.capacidade || 10}p
-                        </Badge>
-                      </div>
+                      <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
+                        {salaAtiva?.nome || "Sala"}
+                      </CardTitle>
                       <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
                         {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
                       </p>
@@ -345,7 +338,6 @@ export default function PortalSala() {
                         </div>
                       </div>
                       <div><Label>Pauta / Motivo *</Label><Textarea required placeholder="Objetivo da reunião ou treinamento..." value={formData.motivo} onChange={e => setFormData({...formData, motivo: e.target.value})} rows={2} /></div>
-                      <div><Label>Nº de Participantes</Label><Input type="number" min="1" placeholder="Ex: 10" value={formData.num_participantes} onChange={e => setFormData({...formData, num_participantes: e.target.value})} /></div>
                       <div><Label>Observações</Label><Input placeholder="Projetor, coffee break, equipamentos, etc." value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} /></div>
                     </CardContent>
                     <div className="border-t p-5 flex justify-between">
@@ -368,20 +360,18 @@ export default function PortalSala() {
                         <TableHead>Data</TableHead>
                         <TableHead>Horário</TableHead>
                         <TableHead>Pauta</TableHead>
-                        <TableHead>Participantes</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {minhasReservas.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">Nenhuma reserva encontrada</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-500">Nenhuma reserva encontrada</TableCell></TableRow>
                       ) : minhasReservas.map(r => (
                         <TableRow key={r.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setReservaDetalhes(r)}>
                           <TableCell className="font-medium">{r.data}</TableCell>
                           <TableCell>{r.hora_inicio} – {r.hora_fim}</TableCell>
                           <TableCell className="max-w-[200px] truncate">{r.motivo || "—"}</TableCell>
-                          <TableCell>{r.num_participantes ? `${r.num_participantes} pessoas` : "—"}</TableCell>
                           <TableCell><Badge className={statusColors[r.status] || "bg-blue-100 text-blue-800"}>{r.status}</Badge></TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
@@ -465,15 +455,6 @@ export default function PortalSala() {
                           <p className="font-medium text-gray-700 dark:text-gray-300 break-all">{reservaDetalhes.solicitante_email}</p>
                         </div>
                       )}
-
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-teal-600" /> Participantes
-                        </span>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">
-                          {reservaDetalhes.num_participantes ? `${reservaDetalhes.num_participantes} pessoas` : "Não especificado"}
-                        </p>
-                      </div>
 
                       {reservaDetalhes.created_date && (
                         <div className="space-y-1 col-span-1 md:col-span-2 border-t pt-2 mt-1">
