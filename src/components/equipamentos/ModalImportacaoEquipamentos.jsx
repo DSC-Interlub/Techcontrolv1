@@ -26,6 +26,17 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
     setEtapa("upload");
   };
 
+  // Função auxiliar de normalização de etiqueta (ex: IL-DKP-28 -> IL-DKP-028, IL-NBK-8 -> IL-NBK-008)
+  const normalizarEtiqueta = (val) => {
+    if (!val) return "";
+    const s = String(val).trim().toUpperCase();
+    const m = s.match(/^(IL-[A-Z]+)-(\d+)$/);
+    if (m) {
+      return `${m[1]}-${String(parseInt(m[2], 10)).padStart(3, "0")}`;
+    }
+    return s;
+  };
+
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files[0];
     if (!uploadedFile) return;
@@ -37,7 +48,9 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
       try {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: "binary", cellDates: true });
-        const wsname = wb.SheetNames[0];
+        
+        // Prioriza sheet com nome 'Resumo por Usuário' se existir, ou a primeira
+        const wsname = wb.SheetNames.find(n => n.toLowerCase().includes("resumo") || n.toLowerCase().includes("usuario")) || wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
@@ -53,57 +66,91 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
         // Mapa de equipamentos existentes por etiqueta normalizada
         const eqMap = new Map();
         pcs.forEach(p => {
-          if (p.etiqueta_interna) eqMap.set(p.etiqueta_interna.trim().toUpperCase(), { ...p, origem_tabela: 'pcs_internos' });
+          if (p.etiqueta_interna) {
+            eqMap.set(normalizarEtiqueta(p.etiqueta_interna), { ...p, origem_tabela: 'pcs_internos' });
+          }
         });
         notebooks.forEach(n => {
-          if (n.etiqueta_interna) eqMap.set(n.etiqueta_interna.trim().toUpperCase(), { ...n, origem_tabela: 'notebooks_externos' });
+          if (n.etiqueta_interna) {
+            eqMap.set(normalizarEtiqueta(n.etiqueta_interna), { ...n, origem_tabela: 'notebooks_externos' });
+          }
+        });
+
+        // Mapa de colaboradores por nome para matching opcional de colaborador_id
+        const colabMap = new Map();
+        colaboradores.forEach(c => {
+          if (c.nome_completo) {
+            colabMap.set(c.nome_completo.trim().toLowerCase(), c);
+          }
         });
 
         data.forEach((row, idx) => {
-          // Busca campos em chaves flexíveis
-          const etiqueta = (
-            row["etiqueta_interna"] || row["Etiqueta"] || row["ETIQUETA"] || row["Etiqueta Interna"] || row["etiqueta"] || ""
-          ).toString().trim();
+          // Busca campos em chaves flexíveis case-insensitive
+          const getField = (possibleNames) => {
+            const foundKey = Object.keys(row).find(k => {
+              const kClean = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+              return possibleNames.some(p => {
+                const pClean = p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                return kClean === pClean || kClean.includes(pClean);
+              });
+            });
+            return foundKey ? row[foundKey] : "";
+          };
 
-          const colabPlanilha = (
-            row["colaborador"] || row["Colaborador"] || row["COLABORADOR"] || row["Nome"] || row["Usuário"] || ""
-          ).toString().trim();
+          const rawEtiqueta = getField([
+            "máquina", "maquina", "etiqueta_interna", "etiqueta", "etiqueta interna", "equipamento", "ativo"
+          ]);
+          const etiqueta = rawEtiqueta ? String(rawEtiqueta).trim() : "";
 
-          const antivirusPlanilha = (
-            row["antivirus"] || row["Antivírus"] || row["Antivirus"] || row["ANTIVIRUS"] || ""
-          ).toString().trim();
+          // Se a linha diz "Não", "Nao", "None" ou está vazia na máquina, ignora
+          if (!etiqueta || etiqueta.toLowerCase() === "não" || etiqueta.toLowerCase() === "nao" || etiqueta.toLowerCase() === "none") {
+            return;
+          }
 
-          const dataFormatPlanilhaRaw = (
-            row["data_formatacao"] || row["Data Formatação"] || row["Data da Formatação"] || row["Ultima Formatacao"] || ""
-          );
+          const colabPlanilha = String(getField([
+            "usuário / setor", "usuario / setor", "usuário", "usuario", "setor", "colaborador", "nome", "responsável"
+          ])).trim();
 
-          const anydeskPlanilha = (
-            row["anydesk"] || row["AnyDesk"] || row["ANYDESK"] || row["Anydesk ID"] || ""
-          ).toString().trim();
+          const antivirusPlanilha = String(getField([
+            "antivírus", "antivirus", "eset", "kaspersky", "defender", "proteção"
+          ])).trim();
 
-          if (!etiqueta) return; // ignora linha sem etiqueta
+          const dataFormatPlanilhaRaw = getField([
+            "data de instalação do windows/formatação", "data de instalacao do windows/formatacao",
+            "data de instalacao", "data instalacao", "formatação", "formatacao", "data_formatacao", "última formatação"
+          ]);
 
-          const key = etiqueta.toUpperCase();
+          const rawAnydesk = getField([
+            "anydesk", "anydesk id", "any desk", "acesso remoto", "any"
+          ]);
+          let anydeskPlanilha = rawAnydesk ? String(rawAnydesk).trim() : "";
+          if (anydeskPlanilha.toLowerCase() === "não" || anydeskPlanilha.toLowerCase() === "nao" || anydeskPlanilha.toLowerCase() === "none") {
+            anydeskPlanilha = "";
+          }
+
+          const key = normalizarEtiqueta(etiqueta);
           const eqExistente = eqMap.get(key);
 
           // Formatar data para YYYY-MM-DD se existir
           let dataFormatFormatada = null;
           if (dataFormatPlanilhaRaw) {
             if (dataFormatPlanilhaRaw instanceof Date) {
-              dataFormatFormatada = dataFormatPlanilhaRaw.toISOString().split("T")[0];
+              const y = dataFormatPlanilhaRaw.getFullYear();
+              const m = String(dataFormatPlanilhaRaw.getMonth() + 1).padStart(2, '0');
+              const d = String(dataFormatPlanilhaRaw.getDate()).padStart(2, '0');
+              dataFormatFormatada = `${y}-${m}-${d}`;
             } else {
               const str = dataFormatPlanilhaRaw.toString().trim();
-              if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-                dataFormatFormatada = str;
-              } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
-                const [d, m, y] = str.split("/");
-                dataFormatFormatada = `${y}-${m}-${d}`;
+              if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+                dataFormatFormatada = str.substring(0, 10);
+              } else if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+                const parts = str.split("/");
+                dataFormatFormatada = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
               }
             }
           }
 
           if (eqExistente) {
-            // Verificar divergência de colaborador
             const colabAtual = eqExistente.usuario_atual || "";
             const divergenteColab = colabPlanilha && colabAtual && 
               colabPlanilha.toLowerCase() !== colabAtual.toLowerCase();
@@ -121,12 +168,30 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
               }
             }
 
+            // Descobrir se o usuário na planilha corresponde a um colaborador cadastrado
+            let novoColaboradorId = eqExistente.colaborador_id;
+            let novoUsuarioAtual = eqExistente.usuario_atual;
+            if (colabPlanilha && colabPlanilha.toLowerCase() !== "disponível" && colabPlanilha.toLowerCase() !== "disponivel") {
+              novoUsuarioAtual = colabPlanilha;
+              const colabObj = colabMap.get(colabPlanilha.toLowerCase());
+              if (colabObj) {
+                novoColaboradorId = colabObj.id;
+              }
+            }
+
+            const mudouAntivirus = avNormalizado && avNormalizado !== eqExistente.antivirus;
+            const mudouNomeAv = avNome && avNome !== eqExistente.antivirus_nome;
+            const mudouDataFormat = dataFormatFormatada && dataFormatFormatada !== eqExistente.data_formatacao;
+            const mudouAnydesk = anydeskPlanilha && anydeskPlanilha !== (eqExistente.anydesk_id || "");
+            const mudouUsuario = colabPlanilha && colabPlanilha !== (eqExistente.usuario_atual || "") && !colabPlanilha.toLowerCase().includes("disponível");
+
             rowsMapeadas.push({
               idx,
-              etiqueta,
+              etiqueta: eqExistente.etiqueta_interna || etiqueta,
+              etiquetaPlanilha: etiqueta,
               tabela: eqExistente.origem_tabela,
               id: eqExistente.id,
-              modelo: `${eqExistente.marca} ${eqExistente.modelo}`,
+              modelo: `${eqExistente.marca || ''} ${eqExistente.modelo || ''}`.trim() || 'Equipamento',
               colabAtual,
               colabPlanilha,
               divergenteColab,
@@ -140,12 +205,9 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
               novoAntivirusNome: avNome || eqExistente.antivirus_nome,
               novaDataFormat: dataFormatFormatada || eqExistente.data_formatacao,
               novoAnydesk: anydeskPlanilha || eqExistente.anydesk_id,
-              temAlteracao: (
-                (avNormalizado && avNormalizado !== eqExistente.antivirus) ||
-                (avNome && avNome !== eqExistente.antivirus_nome) ||
-                (dataFormatFormatada && dataFormatFormatada !== eqExistente.data_formatacao) ||
-                (anydeskPlanilha && anydeskPlanilha !== eqExistente.anydesk_id)
-              )
+              novoUsuarioAtual,
+              novoColaboradorId,
+              temAlteracao: (mudouAntivirus || mudouNomeAv || mudouDataFormat || mudouAnydesk || mudouUsuario)
             });
           } else {
             semCorrespondencia.push({
@@ -172,15 +234,23 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
     setProcessando(true);
     let atualizados = 0;
     try {
-      for (const row of previewRows) {
-        if (!row.temAlteracao) continue;
+      const temLinhasComAlteracao = previewRows.some(r => r.temAlteracao);
+      const rowsParaProcessar = temLinhasComAlteracao ? previewRows.filter(r => r.temAlteracao) : previewRows;
 
+      for (const row of rowsParaProcessar) {
         const payload = {
           antivirus: row.novoAntivirus,
           antivirus_nome: row.novoAntivirusNome,
           data_formatacao: row.novaDataFormat,
-          anydesk_id: row.novoAnydesk
+          anydesk_id: row.novoAnydesk || null,
         };
+
+        if (row.novoUsuarioAtual) {
+          payload.usuario_atual = row.novoUsuarioAtual;
+        }
+        if (row.novoColaboradorId) {
+          payload.colaborador_id = row.novoColaboradorId;
+        }
 
         const { error } = await supabase
           .from(row.tabela)
@@ -194,11 +264,17 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
         }
       }
 
-      await supabase.rpc('pgrst_reload_schema').catch(() => null);
+      try {
+        await supabase.rpc('pgrst_reload_schema');
+      } catch (eRpc) {
+        // Ignora se a function não existir no schema
+      }
 
       queryClient.invalidateQueries({ queryKey: ['conformidade_ti'] });
       queryClient.invalidateQueries({ queryKey: ['pcs_internos'] });
+      queryClient.invalidateQueries({ queryKey: ['pcs_internos_import'] });
       queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
+      queryClient.invalidateQueries({ queryKey: ['notebooks_externos_import'] });
 
       toast({
         title: "Importação concluída!",
@@ -241,7 +317,7 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
               <Upload className="w-10 h-10 text-slate-400 mx-auto mb-3" />
               <p className="font-semibold text-slate-800">Selecione o arquivo da planilha (.xlsx)</p>
               <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                Colunas esperadas no arquivo: <code>etiqueta_interna</code>, <code>colaborador</code>, <code>antivirus</code>, <code>data_formatacao</code>, <code>anydesk</code>.
+                Colunas aceitas: <code>Máquina</code> (ou Etiqueta), <code>Usuário / Setor</code>, <code>Antivírus</code>, <code>Data de Instalação do Windows/Formatação</code> e <code>AnyDesk</code>.
               </p>
               <input
                 type="file"
@@ -353,15 +429,17 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={executarImportacao}
-              disabled={processando || previewRows.filter(r => r.temAlteracao).length === 0}
+              disabled={processando || previewRows.length === 0}
             >
               {processando ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Importando...
                 </>
-              ) : (
+              ) : previewRows.filter(r => r.temAlteracao).length > 0 ? (
                 `Confirmar e Atualizar (${previewRows.filter(r => r.temAlteracao).length})`
+              ) : (
+                `Reaplicar Dados da Planilha (${previewRows.length})`
               )}
             </Button>
           )}

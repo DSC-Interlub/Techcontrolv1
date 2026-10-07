@@ -336,6 +336,20 @@ export default function ModalDesligamento({ colaborador, open, onClose, onSucess
       } catch (authErr) {
         console.warn('Erro ao banir usuário interno no Supabase Auth:', authErr);
       }
+
+      // H) Forçar encerramento em tempo real de qualquer sessão ativa no Portal do Colaborador
+      try {
+        const securityChan = supabase.channel('portal-security-room');
+        await securityChan.subscribe();
+        await securityChan.send({
+          type: 'broadcast',
+          event: 'colaborador-desligado',
+          payload: { colaborador_id: colaborador.id, email: emailNorm }
+        });
+        setTimeout(() => supabase.removeChannel(securityChan), 1500);
+      } catch (eBroadcast) {
+        console.warn('Erro ao emitir broadcast de segurança:', eBroadcast);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['colaboradores'] });

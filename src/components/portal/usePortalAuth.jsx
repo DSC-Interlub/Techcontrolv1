@@ -28,7 +28,8 @@ export function usePortalAuth() {
 
   const requireAuth = () => {
     const user = getColaborador();
-    if (!user) {
+    if (!user || user.status === 'Desligado' || user.acesso_portal_bloqueado === true) {
+      sessionStorage.removeItem('portal_colaborador');
       window.location.href = createPageUrl("portal-login");
       return false;
     }

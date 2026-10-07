@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { supabase } from "@/lib/supabase";
 
 /**
  * Hook centralizado para dados do colaborador no portal.
@@ -24,7 +25,7 @@ export function usePortalColaborador() {
   const id = colaborador?.id || null;
   const queryClient = useQueryClient();
 
-  // Query com staleTime alto: só refaz a busca após 5 minutos de inatividade
+  // Query para dados frescos do banco
   const { data: fresco } = useQuery({
     queryKey: ["portal_colaborador", id],
     queryFn: async () => {
@@ -33,13 +34,79 @@ export function usePortalColaborador() {
       return result || null;
     },
     enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutos — não rebusca em troca de rota
-    gcTime: 10 * 60 * 1000,   // mantém no cache por 10 minutos
+    staleTime: 30 * 1000, // 30 segundos
+    refetchInterval: 15 * 1000, // Verifica a cada 15 segundos ativamente
+    refetchOnWindowFocus: true, // Ao voltar para a aba, verifica na hora
+    gcTime: 10 * 60 * 1000,
   });
 
-  // Quando dados frescos chegam, atualiza o sessionStorage e o estado local
+  const logout = () => {
+    sessionStorage.removeItem('portal_colaborador');
+    queryClient.clear();
+    window.location.href = "/portal-login";
+  };
+
+  // Monitor de Segurança:
+  // 1. Escuta canal de Broadcast em tempo real ('portal-security-room')
+  // 2. Escuta Postgres Changes caso o schema suporte
+  // 3. Checagem periódica a cada 3 segundos via query rápida do status atual do colaborador
+  useEffect(() => {
+    if (!id) return;
+
+    // Checagem imediata local
+    if (fresco && (fresco.status === 'Desligado' || fresco.acesso_portal_bloqueado === true)) {
+      console.warn('[Segurança] Colaborador desligado ou bloqueado detectado. Encerrando sessão do portal imediatamente.');
+      logout();
+      return;
+    }
+
+    // 1. Canal Broadcast Global de Segurança
+    const channelName = `portal-security-room`;
+    const secChannel = supabase
+      .channel(channelName)
+      .on('broadcast', { event: 'colaborador-desligado' }, (payload) => {
+        const pId = payload?.payload?.colaborador_id;
+        const pEmail = payload?.payload?.email;
+        if (pId === id || (pEmail && colaborador?.email && pEmail.toLowerCase() === colaborador.email.toLowerCase())) {
+          console.warn('[Segurança Broadcast] Evento de desligamento recebido em tempo real! Deslogando...');
+          logout();
+        }
+      })
+      .subscribe();
+
+    // 2. Polling ativo ultra-leve a cada 3 segundos para garantir deslogamento imediato
+    const interval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('colaboradores')
+          .select('status, acesso_portal_bloqueado')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (!error && data) {
+          if (data.status === 'Desligado' || data.acesso_portal_bloqueado === true) {
+            console.warn('[Segurança Monitor] Desligamento/bloqueio detectado pelo monitor ativo! Deslogando...');
+            logout();
+          }
+        }
+      } catch (e) {
+        // Silencioso em caso de erro de rede transitório
+      }
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(secChannel);
+      clearInterval(interval);
+    };
+  }, [id, fresco, colaborador?.email]);
+
+  // Quando dados frescos chegam (e válidos), atualiza o sessionStorage e o estado local
   useEffect(() => {
     if (!fresco) return;
+    if (fresco.status === 'Desligado' || fresco.acesso_portal_bloqueado === true) {
+      logout();
+      return;
+    }
     const sessao = {
       id: fresco.id,
       nome_completo: fresco.nome_completo,
@@ -55,12 +122,6 @@ export function usePortalColaborador() {
     sessionStorage.setItem('portal_colaborador', JSON.stringify(sessao));
     setColaborador(sessao);
   }, [fresco]);
-
-  const logout = () => {
-    sessionStorage.removeItem('portal_colaborador');
-    queryClient.clear();
-    window.location.href = "/portal-login";
-  };
 
   const temAcessoComunicados =
     Boolean(colaborador?.eh_comunicacao_branding) ||
