@@ -721,27 +721,31 @@ export default function Colaboradores() {
       </AlertDialog>
 
       {/* Modal de Desligamento com Checklist ao vivo */}
-      <ModalDesligamento
-        colaborador={desligandoColaborador}
-        open={!!desligandoColaborador}
-        onClose={() => setDesligandoColaborador(null)}
-        onSucesso={() => {
-          setDesligandoColaborador(null);
-          queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
-        }}
-      />
+      {desligandoColaborador && (
+        <ModalDesligamento
+          colaborador={desligandoColaborador}
+          open={!!desligandoColaborador}
+          onClose={() => setDesligandoColaborador(null)}
+          onSucesso={() => {
+            setDesligandoColaborador(null);
+            queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+          }}
+        />
+      )}
 
       {/* Modal de Reativação com as 2 opções */}
-      <ModalReativacao
-        colaborador={reativandoColaborador}
-        open={!!reativandoColaborador}
-        onClose={() => setReativandoColaborador(null)}
-        onCriarNovo={(emailOriginal) => {
-          setReativandoColaborador(null);
-          setEditingColaborador({ email: emailOriginal, tipo_funcionario: "Interno", status: "Ativo" });
-          setShowForm(true);
-        }}
-      />
+      {reativandoColaborador && (
+        <ModalReativacao
+          colaborador={reativandoColaborador}
+          open={!!reativandoColaborador}
+          onClose={() => setReativandoColaborador(null)}
+          onCriarNovo={(emailOriginal) => {
+            setReativandoColaborador(null);
+            setEditingColaborador({ email: emailOriginal, tipo_funcionario: "Interno", status: "Ativo" });
+            setShowForm(true);
+          }}
+        />
+      )}
     </div>
   );
 }
