@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Search, Eye, Pencil, Trash2, X, Download, AlertTriangle } from "lucide-react";
+import { Users, Plus, Search, Eye, Pencil, Trash2, X, Download, AlertTriangle, UserMinus, UserCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import ColaboradorDetalhes from "../components/colaboradores/ColaboradorDetalhes";
 import ColaboradorForm from "../components/colaboradores/ColaboradorForm";
+import ModalDesligamento from "../components/colaboradores/ModalDesligamento";
+import ModalReativacao from "../components/colaboradores/ModalReativacao";
 
 const COMUNICADOS_READONLY_ROLES = ['comunicados_gestao', 'comunicados_dp'];
 
@@ -29,6 +31,8 @@ export default function Colaboradores() {
   const [editingColaborador, setEditingColaborador] = useState(null);
   const [selectedColaborador, setSelectedColaborador] = useState(null);
   const [deletingColaborador, setDeletingColaborador] = useState(null);
+  const [desligandoColaborador, setDesligandoColaborador] = useState(null);
+  const [reativandoColaborador, setReativandoColaborador] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const { user: currentUser } = useAuth();
 
@@ -227,6 +231,7 @@ export default function Colaboradores() {
     ativos: validColaboradores.filter(c => c.status === "Ativo").length,
     ferias: validColaboradores.filter(c => c.status === "Férias").length,
     afastados: validColaboradores.filter(c => c.status === "Afastado").length,
+    desligados: validColaboradores.filter(c => c.status === "Desligado").length,
   };
 
   const colabsInternos = colaboradores.filter(c => c.tipo_funcionario === "Interno");
@@ -260,7 +265,7 @@ export default function Colaboradores() {
   return (
     <div className="p-4 md:p-8 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-xl flex items-center justify-center">
             <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -284,16 +289,22 @@ export default function Colaboradores() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-6">
+          <Card 
+            className={`cursor-pointer transition-all ${filterStatus === "all" ? "ring-2 ring-indigo-500" : ""}`}
+            onClick={() => setFilterStatus("all")}
+          >
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-sm text-muted-foreground">Todos</p>
                 <p className="text-3xl font-bold text-foreground mt-1">{stats.total}</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${filterStatus === "Ativo" ? "ring-2 ring-green-500" : ""}`}
+            onClick={() => setFilterStatus("Ativo")}
+          >
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Ativos</p>
@@ -301,7 +312,10 @@ export default function Colaboradores() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${filterStatus === "Férias" ? "ring-2 ring-blue-500" : ""}`}
+            onClick={() => setFilterStatus("Férias")}
+          >
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Férias</p>
@@ -309,11 +323,25 @@ export default function Colaboradores() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${filterStatus === "Afastado" ? "ring-2 ring-orange-500" : ""}`}
+            onClick={() => setFilterStatus("Afastado")}
+          >
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Afastados</p>
                 <p className="text-3xl font-bold text-orange-600 mt-1">{stats.afastados}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className={`cursor-pointer transition-all ${filterStatus === "Desligado" ? "ring-2 ring-rose-500" : ""}`}
+            onClick={() => setFilterStatus("Desligado")}
+          >
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Desligados</p>
+                <p className="text-3xl font-bold text-rose-600 mt-1">{stats.desligados}</p>
               </div>
             </CardContent>
           </Card>
@@ -493,6 +521,29 @@ export default function Colaboradores() {
                                     <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
                                       <Pencil className="w-4 h-4" />
                                     </Button>
+                                    {colaborador.status === "Desligado" ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                        onClick={() => setReativandoColaborador(colaborador)}
+                                        title="Reativar Colaborador"
+                                      >
+                                        <UserCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                        Reativar
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-rose-200 text-rose-700 hover:bg-rose-50"
+                                        onClick={() => setDesligandoColaborador(colaborador)}
+                                        title="Desligar Colaborador com Checklist"
+                                      >
+                                        <UserMinus className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                                        Desligar
+                                      </Button>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -598,6 +649,29 @@ export default function Colaboradores() {
                                     <Button size="sm" variant="ghost" onClick={() => { setEditingColaborador(colaborador); setShowForm(true); }}>
                                       <Pencil className="w-4 h-4" />
                                     </Button>
+                                    {colaborador.status === "Desligado" ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                                        onClick={() => setReativandoColaborador(colaborador)}
+                                        title="Reativar Colaborador"
+                                      >
+                                        <UserCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                        Reativar
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs border-rose-200 text-rose-700 hover:bg-rose-50"
+                                        onClick={() => setDesligandoColaborador(colaborador)}
+                                        title="Desligar Colaborador com Checklist"
+                                      >
+                                        <UserMinus className="w-3.5 h-3.5 mr-1 text-rose-600" />
+                                        Desligar
+                                      </Button>
+                                    )}
                                     <Button
                                       size="sm"
                                       variant="ghost"
@@ -645,6 +719,29 @@ export default function Colaboradores() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Desligamento com Checklist ao vivo */}
+      <ModalDesligamento
+        colaborador={desligandoColaborador}
+        open={!!desligandoColaborador}
+        onClose={() => setDesligandoColaborador(null)}
+        onSucesso={() => {
+          setDesligandoColaborador(null);
+          queryClient.invalidateQueries({ queryKey: ['colaboradores'] });
+        }}
+      />
+
+      {/* Modal de Reativação com as 2 opções */}
+      <ModalReativacao
+        colaborador={reativandoColaborador}
+        open={!!reativandoColaborador}
+        onClose={() => setReativandoColaborador(null)}
+        onCriarNovo={(emailOriginal) => {
+          setReativandoColaborador(null);
+          setEditingColaborador({ email: emailOriginal, tipo_funcionario: "Interno", status: "Ativo" });
+          setShowForm(true);
+        }}
+      />
     </div>
   );
 }

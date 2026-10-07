@@ -15,6 +15,7 @@ import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, startOfMon
 import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
+import { toast } from "@/components/ui/use-toast";
 
 const statusColors = {
   "Pendente": "bg-yellow-100 text-yellow-800",
@@ -75,8 +76,28 @@ export default function PortalReservas() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id) => base44.entities.Reservas.update(id, { status: "Cancelada" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] }),
+    mutationFn: async (id) => {
+      const updated = await base44.entities.Reservas.update(id, { status: "Cancelada" });
+      if (!updated) {
+        throw new Error("Não foi possível cancelar a reserva no banco de dados. Acesso ou status não compatível.");
+      }
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_todas_reservas'] });
+      toast({
+        title: "Reserva cancelada",
+        description: "A reserva do notebook foi cancelada com sucesso.",
+      });
+    },
+    onError: (err) => {
+      console.error("Erro ao cancelar reserva de notebook:", err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao cancelar reserva",
+        description: err.message || "Ocorreu um erro ao cancelar a reserva.",
+      });
+    },
   });
 
   if (loading || !colaborador) {

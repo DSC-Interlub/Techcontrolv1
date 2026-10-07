@@ -73,6 +73,23 @@ export default function SalaTreinamento() {
   const inicioSemana = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), semanaOffset * 7);
   const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
 
+  const { data: salas = [] } = useQuery({
+    queryKey: ['salas'],
+    queryFn: () => base44.entities.Salas.list(),
+  });
+
+  const [selectedSalaId, setSelectedSalaId] = useState(null);
+
+  // Define sala selecionada padrão quando carregar salas
+  useEffect(() => {
+    if (salas.length > 0 && !selectedSalaId) {
+      const padrao = salas.find(s => s.nome === "Sala de Treinamento") || salas[0];
+      setSelectedSalaId(padrao.id);
+    }
+  }, [salas, selectedSalaId]);
+
+  const salaAtiva = salas.find(s => s.id === selectedSalaId) || salas[0];
+
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores_sala'],
     queryFn: () => base44.entities.Colaboradores.list(),
@@ -83,6 +100,10 @@ export default function SalaTreinamento() {
     queryFn: () => base44.entities.ReservasSala.list('-created_date'),
   });
 
+  // Filtra reservas ativas da sala atualmente selecionada para o grid semanal e checagem de conflitos
+  const reservasAtivasDaSala = reservas.filter(r => 
+    r.status !== "Cancelada" && (!r.sala_id || r.sala_id === selectedSalaId)
+  );
   const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
 
   // --- Auto-concluir reservas passadas ---
@@ -133,13 +154,19 @@ export default function SalaTreinamento() {
   // --- Helpers agenda ---
   const getReservaNoSlot = (data, hora) => {
     const dataStr = format(data, 'yyyy-MM-dd');
-    return reservasAtivas.find(r => r.data === dataStr && hora >= r.hora_inicio && hora < r.hora_fim);
+    return reservasAtivasDaSala.find(r => r.data === dataStr && hora >= r.hora_inicio && hora < r.hora_fim);
   };
 
   const isSlotPassado = (data, hora) => new Date(`${format(data, 'yyyy-MM-dd')}T${hora}`) < new Date();
 
-  const checkConflict = (data, horaInicio, horaFim) =>
-    reservasAtivas.some(r => r.data === data && horaInicio < r.hora_fim && horaFim > r.hora_inicio);
+  const checkConflict = (data, horaInicio, horaFim, salaId) =>
+    reservas.some(r => 
+      r.status !== "Cancelada" &&
+      (!r.sala_id || r.sala_id === salaId) &&
+      r.data === data &&
+      horaInicio < r.hora_fim &&
+      horaFim > r.hora_inicio
+    );
 
   const handleSlotClick = (data, hora) => {
     const reserva = getReservaNoSlot(data, hora);
@@ -156,9 +183,13 @@ export default function SalaTreinamento() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataStr = format(selectedSlot.data, 'yyyy-MM-dd');
-    if (checkConflict(dataStr, selectedSlot.hora_inicio, formData.hora_fim)) { setConflictError(true); return; }
+    if (checkConflict(dataStr, selectedSlot.hora_inicio, formData.hora_fim, selectedSalaId)) { 
+      setConflictError(true); 
+      return; 
+    }
     createMutation.mutate({
       ...formData,
+      sala_id: selectedSalaId,
       data: dataStr,
       hora_inicio: selectedSlot.hora_inicio,
       num_participantes: formData.num_participantes ? Number(formData.num_participantes) : undefined,
@@ -204,26 +235,54 @@ export default function SalaTreinamento() {
       <div className="max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
               <Users className="w-6 h-6 text-teal-600" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Sala de Treinamento</h1>
-              <p className="text-gray-500 mt-1">Gerenciar agendamentos da sala</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Salas de Reunião & Treinamento</h1>
+              <p className="text-gray-500 mt-1">Gerenciar agendamentos das salas da empresa</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {/* Seletor de Sala */}
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1.5 shadow-2xs">
+              <span className="text-xs font-semibold text-gray-500 uppercase px-2">Sala:</span>
+              <div className="flex gap-1">
+                {salas.map((s) => (
+                  <Button
+                    key={s.id}
+                    variant={selectedSalaId === s.id ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSelectedSalaId(s.id)}
+                    className={selectedSalaId === s.id ? "bg-teal-600 hover:bg-teal-700 text-white font-medium" : "text-gray-700"}
+                  >
+                    {s.nome}
+                    <span className="ml-1.5 text-[11px] opacity-75">({s.capacidade}p)</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
               <span className="text-sm text-gray-600 font-mono truncate max-w-xs">{publicUrl}</span>
               <Button size="sm" variant="ghost" onClick={handleCopyLink} className="flex-shrink-0">
                 {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
               </Button>
             </div>
-            <p className="text-xs text-gray-500 text-center">Link público para agendamento</p>
           </div>
         </div>
+
+        {salaAtiva && (
+          <div className="mb-6 bg-teal-50/60 border border-teal-200 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-teal-700 text-white font-semibold">{salaAtiva.nome}</Badge>
+              <span className="text-xs text-teal-900 font-medium">Capacidade: {salaAtiva.capacidade} pessoas</span>
+            </div>
+            <span className="text-xs text-teal-700 italic">Exibindo agenda e checagem de horários específica desta sala</span>
+          </div>
+        )}
 
         {success && (
           <Alert className="mb-6 bg-green-50 border-green-200">
@@ -345,9 +404,17 @@ export default function SalaTreinamento() {
             {showForm && selectedSlot && (
               <Card className="shadow-xl max-w-lg mx-auto">
                 <CardHeader className="border-b bg-teal-50">
-                  <CardTitle className="text-teal-900">
-                    Reservar — {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-teal-900 text-base md:text-lg">
+                      Reservar: {salaAtiva?.nome || "Sala"}
+                    </CardTitle>
+                    <Badge variant="outline" className="bg-white text-teal-800 border-teal-300 font-semibold">
+                      Capacidade: {salaAtiva?.capacidade || 10}p
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-teal-700 mt-1">
+                    {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
+                  </p>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                   <CardContent className="pt-5 space-y-4">

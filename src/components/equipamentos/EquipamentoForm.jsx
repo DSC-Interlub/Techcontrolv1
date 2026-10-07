@@ -501,6 +501,46 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           )}
 
+          {formData.tipo !== "Monitor" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Possui Antivírus?</Label>
+                <Select
+                  value={formData.antivirus || "Não"}
+                  onValueChange={(value) => {
+                    handleChange("antivirus", value);
+                    if (value === "Sim") {
+                      if (!formData.antivirus_nome) {
+                        handleChange("antivirus_nome", "ESET");
+                      }
+                    } else {
+                      handleChange("antivirus_nome", "");
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sim">Sim</SelectItem>
+                    <SelectItem value="Não">Não</SelectItem>
+                    <SelectItem value="Não se aplica">Não se aplica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.antivirus === "Sim" && (
+                <div>
+                  <Label>Qual antivírus?</Label>
+                  <Input
+                    placeholder="Nome do antivírus (ex: ESET)"
+                    value={formData.antivirus_nome || ""}
+                    onChange={(e) => handleChange("antivirus_nome", e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-slate-50/50 p-4 border rounded-xl mb-4 space-y-4">
             <div>
               <Label className="text-xs font-bold text-slate-700">Modo de Atribuição</Label>
@@ -671,6 +711,7 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
                   <SelectItem value="Formatação">Formatação</SelectItem>
                   <SelectItem value="Danificado">Danificado</SelectItem>
+                  <SelectItem value="Aguardando Devolução">Aguardando Devolução</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-slate-500 mt-1">

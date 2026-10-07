@@ -19,6 +19,7 @@ import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
+import { toast } from "@/components/ui/use-toast";
 
 const HORARIOS = ["08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30","12:00","12:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30","17:00","17:30","18:00"];
 
@@ -55,6 +56,22 @@ export default function PortalSala() {
     if (!loading) requireAuth();
   }, [loading]);
 
+  const { data: salas = [] } = useQuery({
+    queryKey: ['salas_portal'],
+    queryFn: () => base44.entities.Salas.list(),
+  });
+
+  const [selectedSalaId, setSelectedSalaId] = useState(null);
+
+  useEffect(() => {
+    if (salas.length > 0 && !selectedSalaId) {
+      const padrao = salas.find(s => s.nome === "Sala de Treinamento") || salas[0];
+      setSelectedSalaId(padrao.id);
+    }
+  }, [salas, selectedSalaId]);
+
+  const salaAtiva = salas.find(s => s.id === selectedSalaId) || salas[0];
+
   const { data: reservas = [] } = useQuery({
     queryKey: ['portal_sala_reservas'],
     queryFn: () => base44.entities.ReservasSala.list('-created_date'),
@@ -75,11 +92,29 @@ export default function PortalSala() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (id) => base44.entities.ReservasSala.update(id, { status: "Cancelada" }),
+    mutationFn: async (id) => {
+      const updated = await base44.entities.ReservasSala.update(id, { status: "Cancelada" });
+      if (!updated) {
+        throw new Error("Não foi possível cancelar o agendamento da sala no banco de dados. Acesso ou status não compatível.");
+      }
+      return updated;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] });
       setReservaDetalhes(null);
       setConfirmCancelarId(null);
+      toast({
+        title: "Agendamento cancelado",
+        description: "A reserva da sala foi cancelada com sucesso.",
+      });
+    },
+    onError: (err) => {
+      console.error("Erro ao cancelar agendamento de sala:", err);
+      toast({
+        variant: "destructive",
+        title: "Erro ao cancelar agendamento",
+        description: err.message || "Ocorreu um erro ao cancelar o agendamento.",
+      });
     },
   });
 
@@ -91,19 +126,27 @@ export default function PortalSala() {
   const inicioSemana = addDays(startOfWeek(hoje, { weekStartsOn: 1 }), semanaOffset * 7);
   const diasSemana = Array.from({ length: 5 }, (_, i) => addDays(inicioSemana, i));
 
-  const reservasAtivas = reservas.filter(r => r.status !== "Cancelada");
+  const reservasAtivasDaSala = reservas.filter(r => 
+    r.status !== "Cancelada" && (!r.sala_id || r.sala_id === selectedSalaId)
+  );
   const nomeNorm = normalizeUserName(colaborador.nome_completo);
   const minhasReservas = reservas.filter(r => normalizeUserName(r.solicitante_nome) === nomeNorm);
 
   const getReservaNoSlot = (data, hora) => {
     const dataStr = format(data, 'yyyy-MM-dd');
-    return reservasAtivas.find(r => r.data === dataStr && hora >= r.hora_inicio && hora < r.hora_fim);
+    return reservasAtivasDaSala.find(r => r.data === dataStr && hora >= r.hora_inicio && hora < r.hora_fim);
   };
 
   const isSlotPassado = (data, hora) => new Date(`${format(data, 'yyyy-MM-dd')}T${hora}`) < new Date();
 
-  const checkConflict = (data, horaInicio, horaFim) =>
-    reservasAtivas.some(r => r.data === data && horaInicio < r.hora_fim && horaFim > r.hora_inicio);
+  const checkConflict = (data, horaInicio, horaFim, salaId) =>
+    reservas.some(r => 
+      r.status !== "Cancelada" &&
+      (!r.sala_id || r.sala_id === salaId) &&
+      r.data === data &&
+      horaInicio < r.hora_fim &&
+      horaFim > r.hora_inicio
+    );
 
   const handleSlotClick = (data, hora) => {
     const reserva = getReservaNoSlot(data, hora);
@@ -124,11 +167,15 @@ export default function PortalSala() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataStr = format(selectedSlot.data, 'yyyy-MM-dd');
-    if (checkConflict(dataStr, selectedSlot.hora_inicio, formData.hora_fim)) { setConflictError(true); return; }
+    if (checkConflict(dataStr, selectedSlot.hora_inicio, formData.hora_fim, selectedSalaId)) { 
+      setConflictError(true); 
+      return; 
+    }
     createMutation.mutate({
       solicitante_nome: colaborador.nome_completo,
       solicitante_email: colaborador.email,
       solicitante_area: colaborador.area,
+      sala_id: selectedSalaId,
       data: dataStr,
       hora_inicio: selectedSlot.hora_inicio,
       ...formData,
@@ -141,15 +188,46 @@ export default function PortalSala() {
     <PortalLayout colaborador={colaborador} onLogout={logout}>
       <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-teal-600" />
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-teal-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Salas de Reunião & Treinamento</h1>
+                <p className="text-muted-foreground mt-1">Clique em um horário disponível para reservar ou em um agendamento para ver os detalhes</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Sala de Treinamento</h1>
-              <p className="text-muted-foreground mt-1">Clique em um horário disponível para reservar ou em um agendamento para ver os detalhes</p>
+
+            {/* Seletor de Sala */}
+            <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-1.5 shadow-2xs">
+              <span className="text-xs font-semibold text-muted-foreground uppercase px-2">Sala:</span>
+              <div className="flex gap-1">
+                {salas.map((s) => (
+                  <Button
+                    key={s.id}
+                    variant={selectedSalaId === s.id ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setSelectedSalaId(s.id)}
+                    className={selectedSalaId === s.id ? "bg-teal-600 hover:bg-teal-700 text-white font-medium" : "text-foreground"}
+                  >
+                    {s.nome}
+                    <span className="ml-1.5 text-[11px] opacity-75">({s.capacidade}p)</span>
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
+
+          {salaAtiva && (
+            <div className="mb-6 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-xl p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-teal-700 text-white font-semibold">{salaAtiva.nome}</Badge>
+                <span className="text-xs text-teal-900 dark:text-teal-200 font-medium">Capacidade: {salaAtiva.capacidade} pessoas</span>
+              </div>
+              <span className="text-xs text-teal-700 dark:text-teal-300 italic hidden sm:inline">Visualizando agenda desta sala</span>
+            </div>
+          )}
 
           {success && (
             <Alert className="mb-6 bg-green-50 border-green-200">
@@ -233,9 +311,19 @@ export default function PortalSala() {
               {showForm && selectedSlot && (
                 <Card className="shadow-xl max-w-lg mx-auto">
                   <CardHeader className="border-b bg-teal-50 dark:bg-teal-950 flex flex-row items-center justify-between">
-                    <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
-                      {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
-                    </CardTitle>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
+                          {salaAtiva?.nome || "Sala"}
+                        </CardTitle>
+                        <Badge variant="outline" className="text-xs bg-white text-teal-800 border-teal-300">
+                          {salaAtiva?.capacidade || 10}p
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
+                        {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
+                      </p>
+                    </div>
                     <Button variant="ghost" size="icon" onClick={() => { setShowForm(false); setSelectedSlot(null); }}><X className="w-4 h-4" /></Button>
                   </CardHeader>
                   <form onSubmit={handleSubmit}>

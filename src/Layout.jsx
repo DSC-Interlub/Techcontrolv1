@@ -24,7 +24,8 @@ import {
   Building2,
   Megaphone,
   ShoppingCart,
-  FolderKanban
+  FolderKanban,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +53,11 @@ const visaoGeralItems = [
     title: "Painel de Máquinas",
     url: createPageUrl("Painel_Maquinas"),
     icon: Activity,
+  },
+  {
+    title: "Conformidade de TI",
+    url: createPageUrl("ConformidadeTI"),
+    icon: ShieldCheck,
   },
   {
     title: "Relatórios & BI",

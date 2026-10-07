@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, Laptop, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Laptop, Search, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,33 @@ export default function Notebooks_Externos() {
       setEditingEquipamento(null);
     },
   });
+
+  const handleConfirmarDevolucao = async (equipamento) => {
+    if (!confirm(`Confirmar devolução do notebook ${equipamento.marca} ${equipamento.modelo} (${equipamento.etiqueta_interna || 'sem etiqueta'}) de ${equipamento.usuario_atual || 'usuário atual'}? O equipamento retornará ao estoque como "Disponível".`)) {
+      return;
+    }
+
+    const usuariosAnteriores = [...(equipamento.usuarios_anteriores || [])];
+    if (equipamento.usuario_atual) {
+      usuariosAnteriores.push({
+        nome: equipamento.usuario_atual,
+        data_inicio: (equipamento.usuario_desde && String(equipamento.usuario_desde).trim()) || (equipamento.data_aquisicao && String(equipamento.data_aquisicao).trim()) || null,
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+    }
+
+    updateMutation.mutate({
+      id: equipamento.id,
+      data: {
+        usuario_atual: "",
+        colaborador_id: null,
+        usuario_desde: null,
+        uf: "",
+        status: "Disponível",
+        usuarios_anteriores: usuariosAnteriores
+      }
+    });
+  };
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Notebooks_Externos.delete(id),
@@ -192,6 +219,7 @@ export default function Notebooks_Externos() {
                     <TableHead>Usuário Atual</TableHead>
                     <TableHead>UF</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Antivírus</TableHead>
                     <TableHead>Condição</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -199,13 +227,13 @@ export default function Notebooks_Externos() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         Carregando...
                       </TableCell>
                     </TableRow>
                   ) : filteredEquipamentos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                         Nenhum equipamento encontrado
                       </TableCell>
                     </TableRow>
@@ -233,11 +261,25 @@ export default function Notebooks_Externos() {
                             equipamento.status === "Disponível" ? "bg-green-100 text-green-800" :
                             equipamento.status === "Reservado" ? "bg-purple-100 text-purple-800" :
                             equipamento.status === "Em uso" ? "bg-blue-100 text-blue-800" :
+                            equipamento.status === "Aguardando Devolução" ? "bg-amber-100 text-amber-800 border-amber-300" :
                             equipamento.status === "Danificado" ? "bg-red-100 text-red-800" :
                             "bg-orange-100 text-orange-800"
                           }>
                             {equipamento.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {equipamento.antivirus === "Sim" ? (
+                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
+                              {equipamento.antivirus_nome || "Sim (ESET)"}
+                            </span>
+                          ) : equipamento.antivirus === "Não" ? (
+                            <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-xs">
+                              Não
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">{equipamento.antivirus || "—"}</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {equipamento.condicao && (
@@ -252,7 +294,21 @@ export default function Notebooks_Externos() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1">
+                            {(equipamento.status === "Aguardando Devolução" || equipamento.usuario_atual) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-purple-700 hover:bg-purple-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfirmarDevolucao(equipamento);
+                                }}
+                                title="Confirmar Devolução de Equipamento (Retornar ao Estoque)"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"

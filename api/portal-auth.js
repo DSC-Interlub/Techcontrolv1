@@ -33,7 +33,8 @@ export default async function handler(req, res) {
       .from('colaboradores')
       .select('*')
       .eq('email', email.trim().toLowerCase())
-      .eq('status', 'Ativo');
+      .eq('status', 'Ativo')
+      .neq('acesso_portal_bloqueado', true);
 
     if (error) {
       console.error('[portal-auth] Supabase error:', error);

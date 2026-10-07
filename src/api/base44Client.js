@@ -30,7 +30,9 @@ const tableMap = {
   ProjetosInternos: 'projetos_internos',
   ProjetosChat: 'projetos_chat',
   ChamadosFacilities: 'chamados_facilities',
-  Chamados_Facilities: 'chamados_facilities'
+  Chamados_Facilities: 'chamados_facilities',
+  Salas: 'salas',
+  ConformidadeEquipamentos: 'vw_conformidade_equipamentos'
 };
 
 const sanitizeData = (obj) => {

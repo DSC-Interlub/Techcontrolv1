@@ -52,6 +52,7 @@ const RequisicaoCompras = lazy(() => import('./pages/RequisicaoCompras'));
 const ChamadosFacilities = lazy(() => import('./pages/ChamadosFacilities'));
 const CentrosCusto = lazy(() => import('./pages/CentrosCusto'));
 const Painel_Maquinas = lazy(() => import('./pages/Painel_Maquinas'));
+const ConformidadeTI = lazy(() => import('./pages/ConformidadeTI'));
 
 export const PAGES = {
     "Avaliacoes_Equipamentos": avaliacoesEquipamentos,
@@ -95,6 +96,7 @@ export const PAGES = {
     "ChamadosFacilities": ChamadosFacilities,
     "CentrosCusto": CentrosCusto,
     "Painel_Maquinas": Painel_Maquinas,
+    "ConformidadeTI": ConformidadeTI,
 }
 
 export const pagesConfig = {

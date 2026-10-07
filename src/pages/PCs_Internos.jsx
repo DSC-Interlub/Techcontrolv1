@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Plus, Pencil, Trash2, Monitor, Search, Users, List, UserPlus, UserMinus,
   Laptop, Cpu, ShieldAlert, AlertTriangle, RefreshCw, Box, CheckCircle2,
-  Building2, LayoutGrid, SlidersHorizontal, ArrowRightLeft, FileSpreadsheet, ChevronDown, Filter
+  Building2, LayoutGrid, SlidersHorizontal, ArrowRightLeft, FileSpreadsheet, ChevronDown, Filter, RotateCcw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -188,6 +188,33 @@ export default function PCs_Internos() {
     if (confirm("Tem certeza que deseja excluir este equipamento?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleConfirmarDevolucao = async (equipment) => {
+    if (!confirm(`Confirmar devolução do equipamento ${equipment.marca} ${equipment.modelo} (${equipment.etiqueta_interna || 'sem etiqueta'}) de ${equipment.usuario_atual || 'usuário atual'}? O equipamento retornará ao estoque como "Disponível".`)) {
+      return;
+    }
+
+    const usuariosAnteriores = [...(equipment.usuarios_anteriores || [])];
+    if (equipment.usuario_atual) {
+      usuariosAnteriores.push({
+        nome: equipment.usuario_atual,
+        data_inicio: (equipment.usuario_desde && String(equipment.usuario_desde).trim()) || (equipment.data_aquisicao && String(equipment.data_aquisicao).trim()) || null,
+        data_fim: new Date().toISOString().split('T')[0]
+      });
+    }
+
+    updateMutation.mutate({
+      id: equipment.id,
+      data: {
+        usuario_atual: "",
+        colaborador_id: null,
+        usuario_desde: null,
+        area: "",
+        status: "Disponível",
+        usuarios_anteriores: usuariosAnteriores
+      }
+    });
   };
 
   const handleTransferEquipment = (equipment, currentUser) => {
@@ -783,6 +810,7 @@ export default function PCs_Internos() {
                             <TableHead>Marca / Modelo</TableHead>
                             <TableHead>Etiqueta / Serial</TableHead>
                             <TableHead>AnyDesk (Remoto)</TableHead>
+                            <TableHead>Antivírus</TableHead>
                             <TableHead>Última Formatação</TableHead>
                             <TableHead>Alertas de Atenção</TableHead>
                             <TableHead>Status</TableHead>
@@ -823,6 +851,19 @@ export default function PCs_Internos() {
                                   )}
                                 </TableCell>
                                 <TableCell>
+                                  {eq.antivirus === "Sim" ? (
+                                    <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                                      {eq.antivirus_nome || "Sim (ESET)"}
+                                    </span>
+                                  ) : eq.antivirus === "Não" ? (
+                                    <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
+                                      Não
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">{eq.antivirus || "—"}</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
                                   <span className="text-slate-600 font-medium text-[11px]">
                                     {formatarDataSemFuso(dataFormat)}
                                   </span>
@@ -844,6 +885,7 @@ export default function PCs_Internos() {
                                   <Badge className={
                                     eq.status === "Disponível" ? "bg-emerald-100 text-emerald-800" :
                                     eq.status === "Em uso" ? "bg-blue-100 text-blue-800" :
+                                    eq.status === "Aguardando Devolução" ? "bg-purple-100 text-purple-800 border border-purple-300 font-semibold" :
                                     "bg-amber-100 text-amber-800"
                                   }>
                                     {eq.status}
@@ -851,6 +893,17 @@ export default function PCs_Internos() {
                                 </TableCell>
                                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex justify-end gap-1">
+                                    {(eq.status === "Aguardando Devolução" || eq.usuario_atual) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-purple-700 hover:bg-purple-50"
+                                        onClick={() => handleConfirmarDevolucao(eq)}
+                                        title="Confirmar Devolução de Equipamento (Retornar ao Estoque)"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                      </Button>
+                                    )}
                                     {eq.usuario_atual && (
                                       <Button
                                         variant="ghost"
@@ -980,6 +1033,17 @@ export default function PCs_Internos() {
                           </TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
+                              {(eq.status === "Aguardando Devolução" || eq.usuario_atual) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-purple-700 hover:bg-purple-50"
+                                  onClick={() => handleConfirmarDevolucao(eq)}
+                                  title="Confirmar Devolução de Equipamento (Retornar ao Estoque)"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                               {eq.usuario_atual && (
                                 <Button
                                   variant="ghost"
