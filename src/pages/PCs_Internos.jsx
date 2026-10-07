@@ -73,9 +73,13 @@ function getAttentionAlerts(eq) {
     alerts.push({ key: "manutencao", label: "Em Manutenção", color: "bg-amber-100 text-amber-800 border-amber-200" });
   }
 
-  // 2. Antivírus
-  if (antivirusStr.includes("desatualizado") || antivirusStr.includes("vencido") || antivirusStr.includes("inativo")) {
-    alerts.push({ key: "antivirus", label: "Antivírus Desatualizado", color: "bg-amber-100 text-amber-900 border-amber-200" });
+  // 2. Antivírus (ESET é o antivírus corporativo oficial; Monitores não possuem SO/antivírus)
+  const isMonitor = (eq.tipo || "").toLowerCase().includes("monitor") || (eq.modelo || "").toLowerCase().includes("monitor");
+  const hasEset = (eq.antivirus_nome || "").toLowerCase().includes("eset") || eq.antivirus === "Sim";
+  if (!isMonitor && !hasEset) {
+    if (antivirusStr.includes("desatualizado") || antivirusStr.includes("vencido") || antivirusStr.includes("inativo") || eq.antivirus === "Não") {
+      alerts.push({ key: "antivirus", label: "Antivírus Inativo ou Ausente", color: "bg-rose-100 text-rose-900 border-rose-200" });
+    }
   }
 
   // 3. Formatação Antiga (> 365 dias) ou Pendente
@@ -449,7 +453,7 @@ export default function PCs_Internos() {
       "Tipo de Armazenamento (SSD/HD)": ultimaAvaliacao?.tipo_armazenamento || '—',
       "Espaço em Disco": ultimaAvaliacao?.espaco_disco || '—',
       "Office": eq.office || '—',
-      "Antivírus": eq.antivirus || ultimaAvaliacao?.antivirus || '—',
+      "Antivírus": (eq.antivirus === "Sim" || (eq.antivirus_nome || '').toLowerCase().includes("eset")) ? "Ativo (ESET)" : (eq.antivirus || (ultimaAvaliacao?.antivirus && !ultimaAvaliacao.antivirus.includes("Inativo") ? ultimaAvaliacao.antivirus : 'Não')),
       "Condição / Desempenho": eq.condicao || ultimaAvaliacao?.desempenho || '—',
       "Última Formatação": dataFormatacao ? formatarDataSemFuso(dataFormatacao) : 'Não registrada',
       "Histórico de Formatações": histFormat,
@@ -851,7 +855,9 @@ export default function PCs_Internos() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  {eq.antivirus === "Sim" ? (
+                                  {(eq.tipo || '').toLowerCase().includes('monitor') ? (
+                                    <span className="text-slate-400 italic text-[11px]">N/A</span>
+                                  ) : eq.antivirus === "Sim" || (eq.antivirus_nome || '').toLowerCase().includes('eset') ? (
                                     <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
                                       {eq.antivirus_nome || "Sim (ESET)"}
                                     </span>

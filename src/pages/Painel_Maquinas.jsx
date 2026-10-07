@@ -431,7 +431,8 @@ export default function Painel_Maquinas() {
         const anydeskId = extrairAnyDesk(p) || extrairAnyDesk(ultimaEval);
         const memoriaRam = p.memoria_ram || ultimaEval?.memoria_ram || "";
         const versaoWindows = p.versao_windows || ultimaEval?.versao_windows || "";
-        const antivirusVal = p.antivirus || ultimaEval?.antivirus || "";
+        const hasEsetP = (p.antivirus_nome || '').toLowerCase().includes('eset') || p.antivirus === 'Sim';
+        const antivirusVal = hasEsetP ? 'Ativo (ESET)' : (p.antivirus || (ultimaEval?.antivirus && !ultimaEval.antivirus.includes('Inativo') ? ultimaEval.antivirus : 'Não'));
 
         lista.push({
           id: p.id,
@@ -498,7 +499,8 @@ export default function Painel_Maquinas() {
       const anydeskId = extrairAnyDesk(n) || extrairAnyDesk(ultimaEval);
       const memoriaRam = n.memoria_ram || ultimaEval?.memoria_ram || "";
       const versaoWindows = n.versao_windows || ultimaEval?.versao_windows || "";
-      const antivirusVal = n.antivirus || ultimaEval?.antivirus || "";
+      const hasEsetN = (n.antivirus_nome || '').toLowerCase().includes('eset') || n.antivirus === 'Sim';
+      const antivirusVal = hasEsetN ? 'Ativo (ESET)' : (n.antivirus || (ultimaEval?.antivirus && !ultimaEval.antivirus.includes('Inativo') ? ultimaEval.antivirus : 'Não'));
 
       lista.push({
         id: n.id,
@@ -1578,7 +1580,17 @@ export default function Painel_Maquinas() {
                             </div>
                             <div>
                               <span className="text-[9px] font-bold text-slate-400 uppercase block">Antivírus</span>
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{d.evalItem.antivirus || "N/I"}</span>
+                              {(() => {
+                                const hasEset = (d.equipamento?.antivirus_nome || '').toLowerCase().includes('eset') || 
+                                                d.equipamento?.antivirus === 'Sim' || 
+                                                (d.evalItem.antivirus || '').toLowerCase().includes('eset');
+                                const avTexto = hasEset ? 'Ativo (ESET)' : (d.evalItem.antivirus || "N/I");
+                                return (
+                                  <span className={`font-semibold ${hasEset ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                    {avTexto}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
 

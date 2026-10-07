@@ -37,6 +37,83 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
     return s;
   };
 
+  // Reconciliação inteligente do nome do colaborador da planilha contra o cadastro oficial
+  const reconciliarColaborador = (nomeRaw, listaColaboradores = []) => {
+    if (!nomeRaw || typeof nomeRaw !== 'string') return null;
+    const clean = nomeRaw.trim();
+    if (!clean || ['não', 'nao', 'none', 'disponível', 'disponivel', 'livre', 'estoque'].includes(clean.toLowerCase())) {
+      return null;
+    }
+
+    if (clean.toLowerCase().startsWith('compartilhado')) {
+      const parts = clean.split(/[-—–]/);
+      if (parts.length > 1) {
+        return {
+          tipo: 'compartilhado',
+          nome_formatado: `Compartilhado — ${parts.slice(1).join(' ').trim()}`,
+          colaborador: null
+        };
+      }
+      return { tipo: 'compartilhado', nome_formatado: clean, colaborador: null };
+    }
+
+    // Remove prefixos conhecidos de cargos e vínculos
+    const prefixos = [
+      /^(aprendiz|jovem aprendiz)\s+/i,
+      /^(estagiário|estagiario)\s+/i,
+      /^(trainee)\s+/i,
+      /^(assistente|analista|auxiliar|coordenador|gerente|diretor)\s+/i
+    ];
+    let nomeSemPrefixo = clean;
+    for (const p of prefixos) {
+      nomeSemPrefixo = nomeSemPrefixo.replace(p, '').trim();
+    }
+
+    const norm = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const normNome = norm(nomeSemPrefixo);
+    const normOriginal = norm(clean);
+
+    // 1. Busca exata com nome sem prefixo
+    let match = listaColaboradores.find(c => norm(c.nome_completo) === normNome);
+    // 2. Busca exata com nome original
+    if (!match) match = listaColaboradores.find(c => norm(c.nome_completo) === normOriginal);
+    // 3. Substring: nome do colaborador contido ou contém o nome da planilha
+    if (!match) {
+      match = listaColaboradores.find(c => {
+        const cNorm = norm(c.nome_completo);
+        return (cNorm.length > 5 && normNome.includes(cNorm)) || (normNome.length > 5 && cNorm.includes(normNome));
+      });
+    }
+    // 4. Token match: primeiro e último nome
+    if (!match) {
+      const tokens = normNome.split(/\s+/).filter(Boolean);
+      if (tokens.length >= 2) {
+        const primeiro = tokens[0];
+        const ultimo = tokens[tokens.length - 1];
+        match = listaColaboradores.find(c => {
+          const cTokens = norm(c.nome_completo).split(/\s+/).filter(Boolean);
+          return cTokens.length >= 2 && cTokens[0] === primeiro && cTokens[cTokens.length - 1] === ultimo;
+        });
+      }
+    }
+
+    if (match) {
+      return {
+        tipo: 'colaborador',
+        nome_formatado: match.nome_completo,
+        colaborador: match,
+        foiReconciliado: match.nome_completo.toLowerCase() !== clean.toLowerCase()
+      };
+    }
+
+    return {
+      tipo: 'avulso',
+      nome_formatado: nomeSemPrefixo || clean,
+      colaborador: null,
+      foiReconciliado: false
+    };
+  };
+
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files[0];
     if (!uploadedFile) return;
@@ -160,30 +237,40 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
             let avNome = null;
             if (antivirusPlanilha) {
               const lower = antivirusPlanilha.toLowerCase();
-              if (lower.includes("sim") || lower.includes("eset") || lower.includes("kaspersky") || lower.includes("defender")) {
+              if (lower.includes("sim") || lower.includes("eset") || lower.includes("kaspersky") || lower.includes("defender") || lower === "s") {
                 avNormalizado = "Sim";
                 avNome = antivirusPlanilha.length > 3 ? antivirusPlanilha : "ESET";
-              } else if (lower.includes("não") || lower.includes("nao")) {
+              } else if (lower.includes("não") || lower.includes("nao") || lower === "n") {
                 avNormalizado = "Não";
+                avNome = null;
               }
             }
 
-            // Descobrir se o usuário na planilha corresponde a um colaborador cadastrado
+            // Reconciliação inteligente do colaborador/setor
+            const rec = reconciliarColaborador(colabPlanilha, colaboradores);
             let novoColaboradorId = eqExistente.colaborador_id;
             let novoUsuarioAtual = eqExistente.usuario_atual;
-            if (colabPlanilha && colabPlanilha.toLowerCase() !== "disponível" && colabPlanilha.toLowerCase() !== "disponivel") {
-              novoUsuarioAtual = colabPlanilha;
-              const colabObj = colabMap.get(colabPlanilha.toLowerCase());
-              if (colabObj) {
-                novoColaboradorId = colabObj.id;
+
+            if (rec) {
+              if (rec.tipo === 'colaborador') {
+                novoUsuarioAtual = rec.nome_formatado;
+                novoColaboradorId = rec.colaborador.id;
+              } else if (rec.tipo === 'compartilhado') {
+                novoUsuarioAtual = rec.nome_formatado;
+                novoColaboradorId = null;
+              } else if (rec.tipo === 'avulso') {
+                novoUsuarioAtual = rec.nome_formatado;
               }
+            } else if (colabPlanilha && (colabPlanilha.toLowerCase().includes("disponível") || colabPlanilha.toLowerCase().includes("disponivel"))) {
+              novoUsuarioAtual = "";
+              novoColaboradorId = null;
             }
 
             const mudouAntivirus = avNormalizado && avNormalizado !== eqExistente.antivirus;
             const mudouNomeAv = avNome && avNome !== eqExistente.antivirus_nome;
             const mudouDataFormat = dataFormatFormatada && dataFormatFormatada !== eqExistente.data_formatacao;
             const mudouAnydesk = anydeskPlanilha && anydeskPlanilha !== (eqExistente.anydesk_id || "");
-            const mudouUsuario = colabPlanilha && colabPlanilha !== (eqExistente.usuario_atual || "") && !colabPlanilha.toLowerCase().includes("disponível");
+            const mudouUsuario = novoUsuarioAtual !== (eqExistente.usuario_atual || "");
 
             rowsMapeadas.push({
               idx,
@@ -195,6 +282,7 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
               colabAtual,
               colabPlanilha,
               divergenteColab,
+              reconciliacao: rec,
               // Valores atuais
               antivirusAtual: eqExistente.antivirus,
               antivirusNomeAtual: eqExistente.antivirus_nome,
@@ -245,10 +333,10 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
           anydesk_id: row.novoAnydesk || null,
         };
 
-        if (row.novoUsuarioAtual) {
+        if (row.novoUsuarioAtual !== undefined) {
           payload.usuario_atual = row.novoUsuarioAtual;
         }
-        if (row.novoColaboradorId) {
+        if (row.novoColaboradorId !== undefined) {
           payload.colaborador_id = row.novoColaboradorId;
         }
 
@@ -261,6 +349,28 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
           console.error(`Erro ao atualizar ${row.etiqueta}:`, error);
         } else {
           atualizados++;
+
+          // Se a máquina possui ESET ou Antivírus Sim, sincroniza a tabela de avaliações e conclui pendências automáticas
+          const isEsetAtivo = row.novoAntivirus === 'Sim' || (row.novoAntivirusNome || '').toLowerCase().includes('eset');
+          if (isEsetAtivo) {
+            try {
+              // 1. Atualiza avaliações para 'Ativo (ESET)'
+              await supabase
+                .from('avaliacoes')
+                .update({ antivirus: 'Ativo (ESET)' })
+                .eq('equipamento_id', row.id);
+
+              // 2. Conclui tarefas de antivírus que estavam pendentes
+              await supabase
+                .from('tarefas_manutencao_equipamento')
+                .update({ status: 'Concluída' })
+                .eq('equipamento_id', row.id)
+                .ilike('descricao', '%antiv%')
+                .eq('status', 'Pendente');
+            } catch (errSync) {
+              console.warn(`Aviso ao sincronizar avaliações/tarefas de ${row.etiqueta}:`, errSync);
+            }
+          }
         }
       }
 
@@ -275,6 +385,8 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
       queryClient.invalidateQueries({ queryKey: ['pcs_internos_import'] });
       queryClient.invalidateQueries({ queryKey: ['notebooks_externos'] });
       queryClient.invalidateQueries({ queryKey: ['notebooks_externos_import'] });
+      queryClient.invalidateQueries({ queryKey: ['portal_avaliacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['tarefas_manutencao'] });
 
       toast({
         title: "Importação concluída!",
@@ -372,12 +484,27 @@ export default function ModalImportacaoEquipamentos({ open, onClose, pcs = [], n
                       <TableCell className="font-mono font-bold text-slate-900">{r.etiqueta}</TableCell>
                       <TableCell>{r.modelo}</TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium text-slate-900">{r.colabPlanilha || r.colabAtual || "—"}</p>
-                          {r.divergenteColab && (
-                            <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-800 border-amber-300">
-                              Diverge: sistema tem {r.colabAtual}
+                        <div className="space-y-1">
+                          <p className="font-semibold text-slate-900">{r.novoUsuarioAtual || r.colabPlanilha || "Estoque / Livre"}</p>
+                          {r.reconciliacao?.foiReconciliado && (
+                            <Badge variant="outline" className="text-[9px] bg-indigo-50 text-indigo-700 border-indigo-200 block w-fit">
+                              Reconciliado de "{r.colabPlanilha}"
                             </Badge>
+                          )}
+                          {!r.reconciliacao?.foiReconciliado && r.reconciliacao?.tipo === 'colaborador' && (
+                            <Badge variant="outline" className="text-[9px] bg-emerald-50 text-emerald-700 border-emerald-200 block w-fit">
+                              Colaborador Oficial
+                            </Badge>
+                          )}
+                          {r.reconciliacao?.tipo === 'compartilhado' && (
+                            <Badge variant="outline" className="text-[9px] bg-slate-100 text-slate-700 border-slate-200 block w-fit">
+                              Setor Compartilhado
+                            </Badge>
+                          )}
+                          {r.colabAtual && r.novoUsuarioAtual !== r.colabAtual && (
+                            <span className="text-[10px] text-slate-400 block">
+                              Anterior: {r.colabAtual}
+                            </span>
                           )}
                         </div>
                       </TableCell>

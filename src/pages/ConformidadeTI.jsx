@@ -49,7 +49,7 @@ export default function ConformidadeTI() {
     // Filtramos apenas máquinas com sistema operacional (Desktop, Notebook) para antivírus e formatação
     const maquinasSO = equipamentos.filter(e => e.tipo === "Desktop" || e.tipo === "Notebook");
 
-    const semAntivirus = maquinasSO.filter(e => e.antivirus !== "Sim").length;
+    const semAntivirus = maquinasSO.filter(e => e.antivirus !== "Sim" && !(e.antivirus_nome || "").toLowerCase().includes("eset")).length;
     const formatacaoAtrasada = maquinasSO.filter(e => e.status_formatacao === "atrasado" || e.status_formatacao === "sem_registro").length;
     const formatacaoAtencao = maquinasSO.filter(e => e.status_formatacao === "atencao").length;
     const vidaUtilVencida = equipamentos.filter(e => e.status_vida_util === "atrasado").length;
@@ -78,9 +78,10 @@ export default function ConformidadeTI() {
 
       const matchTipo = filtroTipo === "todos" || eq.tipo === filtroTipo;
       const matchStatus = filtroStatus === "todos" || eq.status === filtroStatus;
+      const hasEsetEq = eq.antivirus === "Sim" || (eq.antivirus_nome || "").toLowerCase().includes("eset");
       const matchAntivirus = filtroAntivirus === "todos" || 
-        (filtroAntivirus === "Sim" && eq.antivirus === "Sim") ||
-        (filtroAntivirus === "Nao" && eq.antivirus !== "Sim");
+        (filtroAntivirus === "Sim" && hasEsetEq) ||
+        (filtroAntivirus === "Nao" && !hasEsetEq);
       const matchFormatacao = filtroFormatacao === "todos" || eq.status_formatacao === filtroFormatacao;
       const matchVidaUtil = filtroVidaUtil === "todos" || eq.status_vida_util === filtroVidaUtil;
 
@@ -319,7 +320,7 @@ export default function ConformidadeTI() {
                           <TableCell>
                             {eq.tipo === "Monitor" ? (
                               <span className="text-slate-400 italic">N/A</span>
-                            ) : eq.antivirus === "Sim" ? (
+                            ) : eq.antivirus === "Sim" || (eq.antivirus_nome || "").toLowerCase().includes("eset") ? (
                               <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-300">
                                 {eq.antivirus_nome || "Sim (ESET)"}
                               </Badge>

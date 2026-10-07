@@ -195,8 +195,9 @@ export default function AvaliacoesEquipamentos() {
     }
     
     // Sem antivírus
-    if (avaliacao.antivirus?.toLowerCase().includes('não') || 
-        avaliacao.antivirus?.toLowerCase().includes('sem')) {
+    const avLower = (avaliacao.antivirus || '').toLowerCase();
+    const isEsetAtivo = avLower.includes('eset') || avLower.includes('ativo') || avLower === 'sim';
+    if (!isEsetAtivo && (avLower.includes('não') || avLower.includes('sem') || avLower.includes('inativo'))) {
       alerts.push("Sem antivírus");
     }
     

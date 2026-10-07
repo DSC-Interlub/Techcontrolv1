@@ -90,12 +90,13 @@ export function calcularPontuacaoEquipamento(dados, dataAquisicao) {
         }
       }
     } else {
-      if (avVal === "Sim, está ativo" || avVal === "Sim") pontos += 0;
+      if (avVal === "Sim, está ativo" || avVal === "Sim" || avVal.toLowerCase().includes("eset") || avVal.toLowerCase().includes("ativo")) pontos += 0;
       else if (avVal === "Aparece aviso de desativado" || avVal === "Aviso de desativado") pontos += 5;
       else if (avVal.startsWith("Inativo") || avVal === "Não tem antivírus" || avVal === "Não") pontos += 10;
     }
   } else {
-    if (dados.antivirus === "Sim, está ativo" || dados.antivirus === "Sim") pontos += 0;
+    const rawAv = (dados.antivirus || "").toLowerCase();
+    if (dados.antivirus === "Sim, está ativo" || dados.antivirus === "Sim" || rawAv.includes("eset") || rawAv.includes("ativo")) pontos += 0;
     else if (dados.antivirus === "Aparece aviso de desativado" || dados.antivirus === "Aviso de desativado") pontos += 5;
     else if (dados.antivirus === "Não tem antivírus" || dados.antivirus === "Não") pontos += 10;
   }
@@ -229,7 +230,13 @@ export async function gerarTarefasManutencao(avaliacao) {
 
   // 5. Antivírus Inativo ou Faltando
   const avVal = avaliacao.antivirus;
-  if (typeof avVal === 'string' && (avVal.toLowerCase().includes("inativo") || avVal.toLowerCase().includes("não") || avVal.toLowerCase().includes("aviso"))) {
+  const isEsetOuAtivo = typeof avVal === 'string' && (
+    avVal.toLowerCase().includes("eset") || 
+    avVal.toLowerCase().includes("ativo") || 
+    avVal === "Sim" || 
+    avVal === "Sim, está ativo"
+  );
+  if (!isEsetOuAtivo && typeof avVal === 'string' && (avVal.toLowerCase().includes("inativo") || avVal.toLowerCase().includes("não") || avVal.toLowerCase().includes("aviso"))) {
     tarefasASeremCriadas.push({
       descricao: "Verificar e solicitar instalação/ativação do antivírus corporativo via filial do México",
       origem: "Regra automática"
