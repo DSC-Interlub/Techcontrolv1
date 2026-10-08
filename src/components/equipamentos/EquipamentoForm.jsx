@@ -480,16 +480,16 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
             </div>
           )}
 
-          {formData.tipo !== "Monitor" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Data de Aquisição</Label>
-                <Input
-                  type="date"
-                  value={formData.data_aquisicao || ""}
-                  onChange={(e) => handleChange("data_aquisicao", e.target.value)}
-                />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Data de Aquisição</Label>
+              <Input
+                type="date"
+                value={formData.data_aquisicao || ""}
+                onChange={(e) => handleChange("data_aquisicao", e.target.value)}
+              />
+            </div>
+            {formData.tipo !== "Monitor" ? (
               <div>
                 <Label>Última Formatação (Data)</Label>
                 <Input
@@ -498,8 +498,8 @@ export default function EquipamentoForm({ equipamento, onSubmit, onCancel, entit
                   onChange={(e) => handleChange("data_formatacao", e.target.value)}
                 />
               </div>
-            </div>
-          )}
+            ) : <div />}
+          </div>
 
           {formData.tipo !== "Monitor" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

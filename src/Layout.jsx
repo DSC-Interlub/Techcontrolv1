@@ -55,11 +55,6 @@ const visaoGeralItems = [
     icon: Activity,
   },
   {
-    title: "Conformidade de TI",
-    url: createPageUrl("ConformidadeTI"),
-    icon: ShieldCheck,
-  },
-  {
     title: "Relatórios & BI",
     url: createPageUrl("Resumo"),
     icon: FileSpreadsheet,

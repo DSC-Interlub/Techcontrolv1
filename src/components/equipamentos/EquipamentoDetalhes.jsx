@@ -237,14 +237,64 @@ export default function EquipamentoDetalhes({ equipamento, onClose }) {
             </div>
           </div>
 
-          {equipamento.tipo !== "Monitor" && (
+          {/* Indicadores de Formatação (30 meses) e Vida Útil (5 anos) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            {equipamento.tipo !== "Monitor" ? (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Última Formatação (Ciclo 30m)</p>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {formatarDataSemFuso(equipamento.data_formatacao || (Array.isArray(equipamento.historico_formatacoes) && equipamento.historico_formatacoes[0]?.data_formatacao)) || "Não registrada"}
+                </p>
+                {(() => {
+                  const dataFormat = equipamento.data_formatacao || (Array.isArray(equipamento.historico_formatacoes) && equipamento.historico_formatacoes[0]?.data_formatacao);
+                  if (!dataFormat) {
+                    return <Badge className="bg-rose-100 text-rose-800 text-[10px] mt-1 border-rose-300">Sem registro de formatação</Badge>;
+                  }
+                  const dt = new Date(dataFormat);
+                  if (isNaN(dt.getTime())) return null;
+                  const target = new Date(dt);
+                  target.setMonth(target.getMonth() + 30);
+                  const diasRestantes = Math.round((target - new Date()) / (1000 * 60 * 60 * 24));
+                  if (diasRestantes < 0) {
+                    return <Badge className="bg-red-100 text-red-800 text-[10px] mt-1 border-red-300 font-bold">Vencida há {Math.abs(diasRestantes)} dias</Badge>;
+                  }
+                  if (diasRestantes <= 60) {
+                    return <Badge className="bg-amber-100 text-amber-800 text-[10px] mt-1 border-amber-300 font-bold">Vence em {diasRestantes} dias</Badge>;
+                  }
+                  return <Badge className="bg-emerald-100 text-emerald-800 text-[10px] mt-1">Em dia ({diasRestantes} dias restantes)</Badge>;
+                })()}
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Formatação Periódica</p>
+                <p className="text-xs text-slate-400 italic mt-1">Não se aplica a monitores</p>
+              </div>
+            )}
+
             <div>
-              <p className="text-sm text-gray-500">Última Formatação</p>
-              <p className="font-medium text-slate-800">
-                {formatarDataSemFuso(equipamento.data_formatacao || (Array.isArray(equipamento.historico_formatacoes) && equipamento.historico_formatacoes[0]?.data_formatacao)) || "Não registrada"}
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vida Útil (Ciclo 5 anos)</p>
+              <p className="font-bold text-slate-900 mt-0.5">
+                {formatarDataSemFuso(equipamento.data_aquisicao) || "Sem aquisição"}
               </p>
+              {(() => {
+                if (!equipamento.data_aquisicao) {
+                  return <Badge className="bg-slate-100 text-slate-600 text-[10px] mt-1">Sem registro de aquisição</Badge>;
+                }
+                const dt = new Date(equipamento.data_aquisicao);
+                if (isNaN(dt.getTime())) return null;
+                const target = new Date(dt);
+                target.setFullYear(target.getFullYear() + 5);
+                const diasRestantes = Math.round((target - new Date()) / (1000 * 60 * 60 * 24));
+                if (diasRestantes < 0) {
+                  return <Badge className="bg-purple-100 text-purple-800 text-[10px] mt-1 border-purple-300 font-bold">Vencida há {Math.abs(diasRestantes)} dias</Badge>;
+                }
+                if (diasRestantes <= 90) {
+                  return <Badge className="bg-amber-100 text-amber-800 text-[10px] mt-1 border-amber-300 font-bold">Vence em {diasRestantes} dias</Badge>;
+                }
+                return <Badge className="bg-emerald-100 text-emerald-800 text-[10px] mt-1">OK ({diasRestantes} dias restantes)</Badge>;
+              })()}
             </div>
-          )}
+          </div>
 
           {/* BLOCO DE DADOS TÉCNICOS & AVALIAÇÃO DA MÁQUINA */}
           <div className="pt-4 border-t space-y-3">

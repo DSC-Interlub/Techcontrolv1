@@ -60,6 +60,100 @@ function getTypeIcon(tipo) {
   return <Cpu className="w-4 h-4 text-emerald-600" />;
 }
 
+export function calcFormatacaoInfo(eq) {
+  const isMonitor = (eq.tipo || "").toLowerCase().includes("monitor") || (eq.modelo || "").toLowerCase().includes("monitor");
+  if (isMonitor) {
+    return { status: "nao_se_aplica", label: "Não se aplica", badgeClass: "text-slate-400 italic", diasRestantes: null, data: null };
+  }
+
+  const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao) || null;
+  if (!dataFormat) {
+    return { status: "sem_registro", label: "Sem registro", badgeClass: "bg-rose-100 text-rose-800 border-rose-300 font-bold", diasRestantes: null, data: null };
+  }
+
+  const dt = new Date(dataFormat);
+  if (isNaN(dt.getTime())) {
+    return { status: "sem_registro", label: "Data inválida", badgeClass: "bg-rose-100 text-rose-800 border-rose-300", diasRestantes: null, data: null };
+  }
+
+  const proxima = new Date(dt);
+  proxima.setMonth(proxima.getMonth() + 30);
+  const diffDays = Math.round((proxima - new Date()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      status: "atrasado",
+      label: `Vencida há ${Math.abs(diffDays)}d`,
+      badgeClass: "bg-red-100 text-red-800 border-red-300 font-bold",
+      diasRestantes: diffDays,
+      data: dataFormat,
+      proximaData: proxima.toISOString().split("T")[0]
+    };
+  }
+  if (diffDays <= 60) {
+    return {
+      status: "atencao",
+      label: `Vence em ${diffDays}d`,
+      badgeClass: "bg-amber-100 text-amber-800 border-amber-300 font-bold",
+      diasRestantes: diffDays,
+      data: dataFormat,
+      proximaData: proxima.toISOString().split("T")[0]
+    };
+  }
+  return {
+    status: "ok",
+    label: `Em dia (${diffDays}d)`,
+    badgeClass: "bg-emerald-100 text-emerald-800",
+    diasRestantes: diffDays,
+    data: dataFormat,
+    proximaData: proxima.toISOString().split("T")[0]
+  };
+}
+
+export function calcVidaUtilInfo(eq) {
+  if (!eq.data_aquisicao) {
+    return { status: "sem_registro", label: "Sem aquisição", badgeClass: "bg-slate-100 text-slate-600", diasRestantes: null, data: null };
+  }
+
+  const dt = new Date(eq.data_aquisicao);
+  if (isNaN(dt.getTime())) {
+    return { status: "sem_registro", label: "Data inválida", badgeClass: "bg-slate-100 text-slate-600", diasRestantes: null, data: null };
+  }
+
+  const fimVida = new Date(dt);
+  fimVida.setFullYear(fimVida.getFullYear() + 5);
+  const diffDays = Math.round((fimVida - new Date()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      status: "atrasado",
+      label: `Vencida há ${Math.abs(diffDays)}d`,
+      badgeClass: "bg-purple-100 text-purple-800 border-purple-300 font-bold",
+      diasRestantes: diffDays,
+      data: eq.data_aquisicao,
+      fimVidaData: fimVida.toISOString().split("T")[0]
+    };
+  }
+  if (diffDays <= 90) {
+    return {
+      status: "atencao",
+      label: `Vence em ${diffDays}d`,
+      badgeClass: "bg-amber-100 text-amber-800 border-amber-300 font-bold",
+      diasRestantes: diffDays,
+      data: eq.data_aquisicao,
+      fimVidaData: fimVida.toISOString().split("T")[0]
+    };
+  }
+  return {
+    status: "ok",
+    label: `OK (${diffDays}d rest.)`,
+    badgeClass: "bg-emerald-100 text-emerald-800",
+    diasRestantes: diffDays,
+    data: eq.data_aquisicao,
+    fimVidaData: fimVida.toISOString().split("T")[0]
+  };
+}
+
 function getAttentionAlerts(eq) {
   const alerts = [];
   const statusStr = (eq.status || "").toLowerCase();
@@ -73,22 +167,31 @@ function getAttentionAlerts(eq) {
     alerts.push({ key: "manutencao", label: "Em Manutenção", color: "bg-amber-100 text-amber-800 border-amber-200" });
   }
 
-  // 2. Antivírus (ESET é o antivírus corporativo oficial; Monitores não possuem SO/antivírus)
+  // 2. Antivírus (ESET é o oficial; Monitores não possuem SO)
   const isMonitor = (eq.tipo || "").toLowerCase().includes("monitor") || (eq.modelo || "").toLowerCase().includes("monitor");
   const hasEset = (eq.antivirus_nome || "").toLowerCase().includes("eset") || eq.antivirus === "Sim";
   if (!isMonitor && !hasEset) {
     if (antivirusStr.includes("desatualizado") || antivirusStr.includes("vencido") || antivirusStr.includes("inativo") || eq.antivirus === "Não") {
-      alerts.push({ key: "antivirus", label: "Antivírus Inativo ou Ausente", color: "bg-rose-100 text-rose-900 border-rose-200" });
+      alerts.push({ key: "antivirus", label: "Sem Antivírus", color: "bg-rose-100 text-rose-900 border-rose-200" });
     }
   }
 
-  // 3. Formatação Antiga (> 365 dias) ou Pendente
-  const dataFormat = eq.data_formatacao || (eq.historico_formatacoes?.length > 0 ? eq.historico_formatacoes[0].data_formatacao : null);
-  if (dataFormat) {
-    const diffDays = (new Date() - new Date(dataFormat)) / (1000 * 60 * 60 * 24);
-    if (diffDays > 365) {
-      alerts.push({ key: "formatacao", label: "Formatação > 1 ano", color: "bg-orange-100 text-orange-900 border-orange-200" });
-    }
+  // 3. Formatação Periódica (30 meses)
+  const fmt = calcFormatacaoInfo(eq);
+  if (fmt.status === "atrasado") {
+    alerts.push({ key: "formatacao_vencida", label: `Formatação Vencida (${Math.abs(fmt.diasRestantes)}d)`, color: "bg-red-100 text-red-800 border-red-300 font-bold" });
+  } else if (fmt.status === "atencao") {
+    alerts.push({ key: "formatacao_breve", label: `Formatar em Breve (${fmt.diasRestantes}d)`, color: "bg-amber-100 text-amber-800 border-amber-300 font-bold" });
+  } else if (fmt.status === "sem_registro") {
+    alerts.push({ key: "formatacao_sem_reg", label: "Formatação Não Registrada", color: "bg-orange-100 text-orange-900 border-orange-200" });
+  }
+
+  // 4. Vida Útil (5 anos)
+  const vu = calcVidaUtilInfo(eq);
+  if (vu.status === "atrasado") {
+    alerts.push({ key: "vida_util_vencida", label: `Vida Útil Vencida (${Math.abs(vu.diasRestantes)}d)`, color: "bg-purple-100 text-purple-800 border-purple-300 font-bold" });
+  } else if (vu.status === "atencao") {
+    alerts.push({ key: "vida_util_breve", label: `Vida Útil a Vencer (${vu.diasRestantes}d)`, color: "bg-amber-100 text-amber-800 border-amber-300 font-bold" });
   }
 
   return alerts;
@@ -106,6 +209,9 @@ export default function PCs_Internos() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTipo, setFilterTipo] = useState("all");
   const [filterArea, setFilterArea] = useState("all");
+  const [filterFormatacao, setFilterFormatacao] = useState("all");
+  const [filterVidaUtil, setFilterVidaUtil] = useState("all");
+  const [filterAntivirus, setFilterAntivirus] = useState("all");
 
   // Modais
   const [showForm, setShowForm] = useState(false);
@@ -327,6 +433,7 @@ export default function PCs_Internos() {
         (filterStatus === "em_uso" && eq.status === "Em uso") ||
         (filterStatus === "disponivel" && (eq.status === "Disponível" || !eq.usuario_atual)) ||
         (filterStatus === "manutencao" && eq.status === "Manutenção") ||
+        (filterStatus === "aguardando_devolucao" && eq.status === "Aguardando Devolução") ||
         (filterStatus === "danificado" && (eq.condicao === "Com Problema" || eq.status === "Danificado"));
 
       // Tipo
@@ -335,9 +442,35 @@ export default function PCs_Internos() {
       // Área
       const matchArea = filterArea === "all" || eq.area === filterArea;
 
-      return matchSearch && matchStatus && matchTipo && matchArea;
+      // Antivírus
+      const isMonitor = (eq.tipo || "").toLowerCase().includes("monitor") || (eq.modelo || "").toLowerCase().includes("monitor");
+      const hasEsetEq = eq.antivirus === "Sim" || (eq.antivirus_nome || "").toLowerCase().includes("eset");
+      const matchAntivirus =
+        filterAntivirus === "all" ||
+        (filterAntivirus === "com_antivirus" && hasEsetEq) ||
+        (filterAntivirus === "sem_antivirus" && !isMonitor && !hasEsetEq);
+
+      // Formatação (30 meses)
+      const fmt = calcFormatacaoInfo(eq);
+      const matchFormatacao =
+        filterFormatacao === "all" ||
+        (filterFormatacao === "ok" && fmt.status === "ok") ||
+        (filterFormatacao === "atencao" && fmt.status === "atencao") ||
+        (filterFormatacao === "atrasado" && fmt.status === "atrasado") ||
+        (filterFormatacao === "sem_registro" && fmt.status === "sem_registro");
+
+      // Vida Útil (5 anos)
+      const vu = calcVidaUtilInfo(eq);
+      const matchVidaUtil =
+        filterVidaUtil === "all" ||
+        (filterVidaUtil === "ok" && vu.status === "ok") ||
+        (filterVidaUtil === "atencao" && vu.status === "atencao") ||
+        (filterVidaUtil === "atrasado" && vu.status === "atrasado") ||
+        (filterVidaUtil === "sem_registro" && vu.status === "sem_registro");
+
+      return matchSearch && matchStatus && matchTipo && matchArea && matchAntivirus && matchFormatacao && matchVidaUtil;
     });
-  }, [equipamentos, searchTerm, filterStatus, filterTipo, filterArea]);
+  }, [equipamentos, searchTerm, filterStatus, filterTipo, filterArea, filterAntivirus, filterFormatacao, filterVidaUtil]);
 
   // Agrupamento por Usuário
   const userGroups = useMemo(() => {
@@ -390,11 +523,28 @@ export default function PCs_Internos() {
 
   // KPIs
   const stats = useMemo(() => {
+    const computadores = equipamentos.filter(e => {
+      const t = (e.tipo || "").toLowerCase();
+      return !t.includes("monitor");
+    });
+
+    const formatacaoAtrasada = computadores.filter(e => calcFormatacaoInfo(e).status === "atrasado" || calcFormatacaoInfo(e).status === "sem_registro").length;
+    const formatacaoAtencao = computadores.filter(e => calcFormatacaoInfo(e).status === "atencao").length;
+    const vidaUtilVencida = equipamentos.filter(e => calcVidaUtilInfo(e).status === "atrasado").length;
+    const vidaUtilAtencao = equipamentos.filter(e => calcVidaUtilInfo(e).status === "atencao").length;
+    const semAntivirus = computadores.filter(e => e.antivirus !== "Sim" && !(e.antivirus_nome || "").toLowerCase().includes("eset")).length;
+
     return {
       total: equipamentos.length,
       emUso: equipamentos.filter(e => e.status === "Em uso" && e.usuario_atual).length,
       disponiveis: equipamentos.filter(e => e.status === "Disponível" || !e.usuario_atual).length,
       manutencaoEProblema: equipamentos.filter(e => e.status === "Manutenção" || e.condicao === "Com Problema" || e.condicao === "Danificado").length,
+      totalComputadores: computadores.length,
+      semAntivirus,
+      formatacaoAtrasada,
+      formatacaoAtencao,
+      vidaUtilVencida,
+      vidaUtilAtencao,
     };
   }, [equipamentos]);
 
@@ -601,12 +751,13 @@ export default function PCs_Internos() {
         </div>
 
         {/* ── 1. CARTÕES DE RESUMO KPI NO TOPO ────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
           <Card className="border-slate-200 bg-white shadow-2xs rounded-2xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Equipamentos</p>
                 <p className="text-2xl font-extrabold text-slate-900 mt-1">{stats.total}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{stats.emUso} em uso • {stats.disponiveis} livres</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
                 <Monitor className="w-5 h-5" />
@@ -614,38 +765,72 @@ export default function PCs_Internos() {
             </CardContent>
           </Card>
 
-          <Card className="border-blue-200 bg-blue-50/40 shadow-2xs rounded-2xl">
+          {/* Formatação Vencida (> 30 meses ou sem registro) */}
+          <Card className="border-red-200 bg-red-50/40 shadow-2xs rounded-2xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Em Uso</p>
-                <p className="text-2xl font-extrabold text-blue-700 mt-1">{stats.emUso}</p>
+                <p className="text-xs font-semibold text-red-800 uppercase tracking-wider">Formatação Vencida</p>
+                <p className="text-2xl font-extrabold text-red-700 mt-1">{stats.formatacaoAtrasada}</p>
+                <p className="text-[10px] text-red-600 mt-0.5">&gt; 30m ou sem registro</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700">
-                <CheckCircle2 className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-700">
+                <AlertTriangle className="w-5 h-5" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-200 bg-emerald-50/40 shadow-2xs rounded-2xl">
+          {/* Formatar em Breve (≤ 60 dias) */}
+          <Card className="border-amber-200 bg-amber-50/40 shadow-2xs rounded-2xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Disponíveis / Estoque</p>
-                <p className="text-2xl font-extrabold text-emerald-700 mt-1">{stats.disponiveis}</p>
+                <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Formatar em Breve</p>
+                <p className="text-2xl font-extrabold text-amber-700 mt-1">{stats.formatacaoAtencao}</p>
+                <p className="text-[10px] text-amber-600 mt-0.5">Vence em até 60 dias</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Vida Útil Vencida (> 5 anos) */}
+          <Card className="border-purple-200 bg-purple-50/40 shadow-2xs rounded-2xl">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-purple-800 uppercase tracking-wider">Vida Útil Vencida</p>
+                <p className="text-2xl font-extrabold text-purple-700 mt-1">{stats.vidaUtilVencida}</p>
+                <p className="text-[10px] text-purple-600 mt-0.5">&gt; 5 anos de aquisição</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
                 <Box className="w-5 h-5" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-amber-200 bg-amber-50/40 shadow-2xs rounded-2xl">
+          {/* Vida Útil a Vencer (≤ 90 dias) */}
+          <Card className="border-violet-200 bg-violet-50/40 shadow-2xs rounded-2xl">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Manutenção / Atenção</p>
-                <p className="text-2xl font-extrabold text-amber-800 mt-1">{stats.manutencaoEProblema}</p>
+                <p className="text-xs font-semibold text-violet-800 uppercase tracking-wider">Vida Útil Próxima</p>
+                <p className="text-2xl font-extrabold text-violet-700 mt-1">{stats.vidaUtilAtencao}</p>
+                <p className="text-[10px] text-violet-600 mt-0.5">Vence em até 90 dias</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
-                <AlertTriangle className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-violet-700">
+                <Cpu className="w-5 h-5" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sem Antivírus Corporativo */}
+          <Card className="border-rose-200 bg-rose-50/40 shadow-2xs rounded-2xl">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-rose-800 uppercase tracking-wider">Sem Antivírus</p>
+                <p className="text-2xl font-extrabold text-rose-700 mt-1">{stats.semAntivirus}</p>
+                <p className="text-[10px] text-rose-600 mt-0.5">de {stats.totalComputadores} computadores</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-700">
+                <ShieldAlert className="w-5 h-5" />
               </div>
             </CardContent>
           </Card>
@@ -708,16 +893,43 @@ export default function PCs_Internos() {
                 </SelectContent>
               </Select>
 
-              {/* Filtro Área */}
-              <Select value={filterArea} onValueChange={setFilterArea}>
-                <SelectTrigger className="h-10 text-xs rounded-xl w-40 border-slate-200">
-                  <SelectValue placeholder="Área / Depto" />
+              {/* Filtro Antivírus */}
+              <Select value={filterAntivirus} onValueChange={setFilterAntivirus}>
+                <SelectTrigger className="h-10 text-xs rounded-xl w-36 border-slate-200">
+                  <SelectValue placeholder="Antivírus" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className="text-xs">Todas as Áreas</SelectItem>
-                  {areasList.map(area => (
-                    <SelectItem key={area} value={area} className="text-xs">{area}</SelectItem>
-                  ))}
+                  <SelectItem value="all" className="text-xs">Todos Antivírus</SelectItem>
+                  <SelectItem value="com_antivirus" className="text-xs">Com Antivírus (ESET)</SelectItem>
+                  <SelectItem value="sem_antivirus" className="text-xs">Sem Antivírus</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Filtro Formatação */}
+              <Select value={filterFormatacao} onValueChange={setFilterFormatacao}>
+                <SelectTrigger className="h-10 text-xs rounded-xl w-36 border-slate-200">
+                  <SelectValue placeholder="Formatação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">Todas Formatações</SelectItem>
+                  <SelectItem value="ok" className="text-xs">Em dia (OK)</SelectItem>
+                  <SelectItem value="atencao" className="text-xs">Atenção (≤ 60d)</SelectItem>
+                  <SelectItem value="atrasado" className="text-xs">Vencida (&gt; 30m)</SelectItem>
+                  <SelectItem value="sem_registro" className="text-xs">Sem Registro</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Filtro Vida Útil */}
+              <Select value={filterVidaUtil} onValueChange={setFilterVidaUtil}>
+                <SelectTrigger className="h-10 text-xs rounded-xl w-36 border-slate-200">
+                  <SelectValue placeholder="Vida Útil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">Toda Vida Útil</SelectItem>
+                  <SelectItem value="ok" className="text-xs">Em dia (&lt; 5 anos)</SelectItem>
+                  <SelectItem value="atencao" className="text-xs">Atenção (≤ 90d)</SelectItem>
+                  <SelectItem value="atrasado" className="text-xs">Vencida (&gt; 5 anos)</SelectItem>
+                  <SelectItem value="sem_registro" className="text-xs">Sem Aquisição</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -815,7 +1027,8 @@ export default function PCs_Internos() {
                             <TableHead>Etiqueta / Serial</TableHead>
                             <TableHead>AnyDesk (Remoto)</TableHead>
                             <TableHead>Antivírus</TableHead>
-                            <TableHead>Última Formatação</TableHead>
+                            <TableHead>Última Formatação (30m)</TableHead>
+                            <TableHead>Vida Útil (5 anos)</TableHead>
                             <TableHead>Alertas de Atenção</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Ações</TableHead>
@@ -825,7 +1038,8 @@ export default function PCs_Internos() {
                           {group.items.map((eq) => {
                             const alerts = getAttentionAlerts(eq);
                             const anydeskVal = extrairAnyDesk(eq);
-                            const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
+                            const fmtInfo = calcFormatacaoInfo(eq);
+                            const vuInfo = calcVidaUtilInfo(eq);
 
                             return (
                               <TableRow
@@ -870,9 +1084,32 @@ export default function PCs_Internos() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <span className="text-slate-600 font-medium text-[11px]">
-                                    {formatarDataSemFuso(dataFormat)}
-                                  </span>
+                                  {fmtInfo.status === "nao_se_aplica" ? (
+                                    <span className="text-slate-400 italic text-[11px]">N/A</span>
+                                  ) : (
+                                    <div>
+                                      <p className="font-medium text-slate-800 text-[11px]">
+                                        {fmtInfo.data ? formatarDataSemFuso(fmtInfo.data) : "Não registrada"}
+                                      </p>
+                                      <div className="mt-0.5">
+                                        <Badge className={`text-[10px] ${fmtInfo.badgeClass}`}>
+                                          {fmtInfo.label}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium text-slate-800 text-[11px]">
+                                      {vuInfo.data ? formatarDataSemFuso(vuInfo.data) : "Sem aquisição"}
+                                    </p>
+                                    <div className="mt-0.5">
+                                      <Badge className={`text-[10px] ${vuInfo.badgeClass}`}>
+                                        {vuInfo.label}
+                                      </Badge>
+                                    </div>
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   {alerts.length > 0 ? (
@@ -964,7 +1201,8 @@ export default function PCs_Internos() {
                       <TableHead>Marca / Modelo</TableHead>
                       <TableHead>Etiqueta / Serial</TableHead>
                       <TableHead>AnyDesk (Remoto)</TableHead>
-                      <TableHead>Última Formatação</TableHead>
+                      <TableHead>Última Formatação (30m)</TableHead>
+                      <TableHead>Vida Útil (5 anos)</TableHead>
                       <TableHead>Usuário & Área</TableHead>
                       <TableHead>Indicadores de Atenção</TableHead>
                       <TableHead>Status</TableHead>
@@ -975,7 +1213,8 @@ export default function PCs_Internos() {
                     {filteredEquipamentos.map((eq) => {
                       const alerts = getAttentionAlerts(eq);
                       const anydeskVal = extrairAnyDesk(eq);
-                      const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
+                      const fmtInfo = calcFormatacaoInfo(eq);
+                      const vuInfo = calcVidaUtilInfo(eq);
 
                       return (
                         <TableRow
@@ -1005,9 +1244,32 @@ export default function PCs_Internos() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <span className="text-slate-600 font-medium text-[11px]">
-                              {formatarDataSemFuso(dataFormat)}
-                            </span>
+                            {fmtInfo.status === "nao_se_aplica" ? (
+                              <span className="text-slate-400 italic text-[11px]">N/A</span>
+                            ) : (
+                              <div>
+                                <p className="font-medium text-slate-800 text-[11px]">
+                                  {fmtInfo.data ? formatarDataSemFuso(fmtInfo.data) : "Não registrada"}
+                                </p>
+                                <div className="mt-0.5">
+                                  <Badge className={`text-[10px] ${fmtInfo.badgeClass}`}>
+                                    {fmtInfo.label}
+                                  </Badge>
+                                </div>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-slate-800 text-[11px]">
+                                {vuInfo.data ? formatarDataSemFuso(vuInfo.data) : "Sem aquisição"}
+                              </p>
+                              <div className="mt-0.5">
+                                <Badge className={`text-[10px] ${vuInfo.badgeClass}`}>
+                                  {vuInfo.label}
+                                </Badge>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div>
@@ -1133,7 +1395,8 @@ export default function PCs_Internos() {
                           </div>
                           {(() => {
                             const anydeskVal = extrairAnyDesk(eq);
-                            const dataFormat = eq.data_formatacao || (Array.isArray(eq.historico_formatacoes) && eq.historico_formatacoes[0]?.data_formatacao);
+                            const fmtInfo = calcFormatacaoInfo(eq);
+                            const vuInfo = calcVidaUtilInfo(eq);
                             return (
                               <>
                                 {anydeskVal && (
@@ -1142,9 +1405,19 @@ export default function PCs_Internos() {
                                     <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-1 rounded">{anydeskVal}</span>
                                   </div>
                                 )}
+                                {fmtInfo.status !== "nao_se_aplica" && (
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="text-slate-400">Formatação:</span>
+                                    <Badge className={`text-[9px] px-1.5 py-0 h-4 ${fmtInfo.badgeClass}`}>
+                                      {fmtInfo.label}
+                                    </Badge>
+                                  </div>
+                                )}
                                 <div className="flex items-center justify-between text-[10px]">
-                                  <span className="text-slate-400">Formatação:</span>
-                                  <span className="text-slate-600 font-medium">{formatarDataSemFuso(dataFormat)}</span>
+                                  <span className="text-slate-400">Vida Útil:</span>
+                                  <Badge className={`text-[9px] px-1.5 py-0 h-4 ${vuInfo.badgeClass}`}>
+                                    {vuInfo.label}
+                                  </Badge>
                                 </div>
                               </>
                             );
