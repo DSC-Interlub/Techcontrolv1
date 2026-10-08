@@ -578,6 +578,10 @@ export default function PCs_Internos() {
       soVal = ultimaAvaliacao.versao_windows.split('|')[0].trim();
     }
 
+    const fmtInfo = calcFormatacaoInfo(eq);
+    const vuInfo = calcVidaUtilInfo(eq);
+    const isMonitor = (eq.tipo || '').toLowerCase().includes('monitor');
+
     return {
       "Tipo": eq.tipo || '—',
       "Etiqueta Interna": eq.etiqueta_interna || '—',
@@ -589,6 +593,9 @@ export default function PCs_Internos() {
       "Valor (R$)": eq.valor != null && !isNaN(Number(eq.valor)) ? Number(eq.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—',
       "Data de Aquisição": eq.data_aquisicao ? formatarDataSemFuso(eq.data_aquisicao) : '—',
       "Tempo de Uso": calcTempoUso(eq.data_aquisicao) || eq.tempo_uso || '—',
+      "Vida Útil (5 anos) - Status": vuInfo.label,
+      "Vida Útil - Vencimento (5 anos)": vuInfo.fimVidaData ? formatarDataSemFuso(vuInfo.fimVidaData) : '—',
+      "Vida Útil - Tempo Restante/Vencido": vuInfo.diasRestantes != null ? (vuInfo.diasRestantes >= 0 ? `${vuInfo.diasRestantes} dias restantes` : `Vencida há ${Math.abs(vuInfo.diasRestantes)} dias`) : '—',
       "Status": eq.status || 'Disponível',
       "Modo de Atribuição": modoAtribuicao,
       "Usuário / Responsável Atual": eq.usuario_atual || (isCompartilhado ? `Compartilhado — ${eq.area}` : 'Estoque / Sem Usuário'),
@@ -603,9 +610,12 @@ export default function PCs_Internos() {
       "Tipo de Armazenamento (SSD/HD)": ultimaAvaliacao?.tipo_armazenamento || '—',
       "Espaço em Disco": ultimaAvaliacao?.espaco_disco || '—',
       "Office": eq.office || '—',
-      "Antivírus": (eq.antivirus === "Sim" || (eq.antivirus_nome || '').toLowerCase().includes("eset")) ? "Ativo (ESET)" : (eq.antivirus || (ultimaAvaliacao?.antivirus && !ultimaAvaliacao.antivirus.includes("Inativo") ? ultimaAvaliacao.antivirus : 'Não')),
+      "Antivírus": isMonitor ? 'N/A' : ((eq.antivirus === "Sim" || (eq.antivirus_nome || '').toLowerCase().includes("eset")) ? "Ativo (ESET)" : (eq.antivirus || (ultimaAvaliacao?.antivirus && !ultimaAvaliacao.antivirus.includes("Inativo") ? ultimaAvaliacao.antivirus : 'Não'))),
       "Condição / Desempenho": eq.condicao || ultimaAvaliacao?.desempenho || '—',
-      "Última Formatação": dataFormatacao ? formatarDataSemFuso(dataFormatacao) : 'Não registrada',
+      "Última Formatação (Data)": dataFormatacao ? formatarDataSemFuso(dataFormatacao) : (isMonitor ? 'N/A' : 'Não registrada'),
+      "Formatação (Ciclo 30m) - Status": fmtInfo.status === 'nao_se_aplica' ? 'N/A (Monitor)' : fmtInfo.label,
+      "Próxima Formatação - Vencimento (30m)": fmtInfo.proximaData ? formatarDataSemFuso(fmtInfo.proximaData) : (isMonitor ? 'N/A' : '—'),
+      "Formatação - Tempo Restante/Vencido": fmtInfo.diasRestantes != null ? (fmtInfo.diasRestantes >= 0 ? `${fmtInfo.diasRestantes} dias restantes` : `Vencida há ${Math.abs(fmtInfo.diasRestantes)} dias`) : (isMonitor ? 'N/A' : '—'),
       "Histórico de Formatações": histFormat,
       "Histórico de Usuários Anteriores": histUsuarios,
       "Avaliação Técnica - Data": ultimaAvaliacao?.data_avaliacao ? formatarDataSemFuso(ultimaAvaliacao.data_avaliacao) : 'Não avaliada',
@@ -633,16 +643,27 @@ export default function PCs_Internos() {
     const monitoresDados = listaParaExportar.filter(e => (e.tipo || '').toLowerCase().includes('monitor')).map(mapEquipamentoParaExcel);
 
     // Resumo por Usuário
-    const resumoDados = userGroups.map(g => ({
-      "Usuário / Setor": g.usuario,
-      "Área / Departamento": g.area,
-      "Cargo": g.cargo,
-      "Total Desktops": g.desktops.length,
-      "Total Notebooks": g.notebooks.length,
-      "Total Monitores": g.monitores.length,
-      "Outros Equipamentos": g.outros.length,
-      "Total Geral": g.items.length
-    }));
+    const resumoDados = userGroups.map(g => {
+      const pcsGrupo = g.items.filter(e => !(e.tipo || '').toLowerCase().includes('monitor'));
+      const formatacoesPendentes = pcsGrupo.filter(e => {
+        const s = calcFormatacaoInfo(e).status;
+        return s === 'atrasado' || s === 'sem_registro';
+      }).length;
+      const vidaUtilVencida = g.items.filter(e => calcVidaUtilInfo(e).status === 'atrasado').length;
+
+      return {
+        "Usuário / Setor": g.usuario,
+        "Área / Departamento": g.area,
+        "Cargo": g.cargo,
+        "Total Desktops": g.desktops.length,
+        "Total Notebooks": g.notebooks.length,
+        "Total Monitores": g.monitores.length,
+        "Outros Equipamentos": g.outros.length,
+        "Total Geral": g.items.length,
+        "Formatações Vencidas / Pendentes": formatacoesPendentes,
+        "Vida Útil Vencida (> 5 anos)": vidaUtilVencida
+      };
+    });
 
     const wb = XLSX.utils.book_new();
 
