@@ -15,6 +15,8 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
     material: requisicao.material || "",
     cor: requisicao.cor || "",
     quantidade: requisicao.quantidade || 1,
+    unidade_medida: requisicao.unidade_medida || "",
+    data_necessidade: requisicao.data_necessidade || "",
     centro_custo_codigo: requisicao.centro_custo_codigo || "",
     centro_custo_nome: requisicao.centro_custo_nome || "",
     valor_unitario_minimo: requisicao.valor_unitario_minimo || "",
@@ -101,20 +103,31 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label>Quantidade <span className="text-red-500">*</span></Label>
                 <Input required type="number" min="1" className="mt-1" value={formData.quantidade} onChange={e => set('quantidade', Number(e.target.value))} />
               </div>
               <div>
-                <Label>Urgência</Label>
-                <Select value={formData.urgencia} onValueChange={v => set('urgencia', v)}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Baixa", "Média", "Alta", "Urgente"].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Unidade de Medida</Label>
+                <Input className="mt-1" placeholder="Ex: un, pc, pct, cx, L, Kg" value={formData.unidade_medida} onChange={e => set('unidade_medida', e.target.value)} />
+                <p className="text-[11px] text-muted-foreground mt-1">Texto livre (ex: un, pc, pct, cx, L, Kg)</p>
               </div>
+              <div>
+                <Label>Data da Necessidade</Label>
+                <Input type="date" className="mt-1" value={formData.data_necessidade} onChange={e => set('data_necessidade', e.target.value)} />
+                <p className="text-[11px] text-muted-foreground mt-1">Data limite que você precisa do item</p>
+              </div>
+            </div>
+
+            <div>
+              <Label>Urgência</Label>
+              <Select value={formData.urgencia} onValueChange={v => set('urgencia', v)}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Baixa", "Média", "Alta", "Urgente"].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

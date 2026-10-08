@@ -285,7 +285,8 @@ function ListaRequisicoes({ lista, isLoading, onSelect }) {
             </div>
             <p className="font-medium text-foreground truncate">{r.item}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {r.colaborador_nome} · {r.colaborador_area} · Qtd: {r.quantidade}
+              {r.colaborador_nome} · {r.colaborador_area} · Qtd: {r.quantidade} {r.unidade_medida || 'un'}
+              {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
               {r.centro_custo_nome ? ` · CC: ${r.centro_custo_codigo}` : ""}
               {r.valor_minimo && r.valor_maximo
                 ? ` · Total: R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}`

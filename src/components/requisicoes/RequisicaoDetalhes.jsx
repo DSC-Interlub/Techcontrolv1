@@ -163,17 +163,34 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
           </div>
         )}
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-muted-foreground text-xs">Quantidade & Unidade</p>
+            <p className="font-medium">
+              {requisicao.quantidade} {requisicao.unidade_medida ? <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">{requisicao.unidade_medida}</span> : 'un'}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Data da Necessidade</p>
+            <p className="font-medium text-foreground">
+              {requisicao.data_necessidade ? (
+                <span className="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 inline-block">
+                  📅 {new Date(requisicao.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}
+                </span>
+              ) : (
+                <span className="text-muted-foreground italic">Não informada</span>
+              )}
+            </p>
+          </div>
+        </div>
+
         {requisicao.centro_custo_nome && (
-          <div className="grid grid-cols-2 gap-3">
-            <div><p className="text-muted-foreground text-xs">Centro de Custo</p><p className="font-medium">{requisicao.centro_custo_codigo} — {requisicao.centro_custo_nome}</p></div>
-            <div><p className="text-muted-foreground text-xs">Quantidade</p><p className="font-medium">{requisicao.quantidade}</p></div>
+          <div>
+            <p className="text-muted-foreground text-xs">Centro de Custo</p>
+            <p className="font-medium">{requisicao.centro_custo_codigo} — {requisicao.centro_custo_nome}</p>
           </div>
         )}
-        {!requisicao.centro_custo_nome && (
-          <div className="grid grid-cols-2 gap-3">
-            <div><p className="text-muted-foreground text-xs">Quantidade</p><p className="font-medium">{requisicao.quantidade}</p></div>
-          </div>
-        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div><p className="text-muted-foreground text-xs">Valor Unitário Estimado</p><p className="font-medium">{valorRangeUnit || "Não informado"}</p></div>
           <div><p className="text-muted-foreground text-xs">Valor Total Estimado</p><p className="font-medium">{valorRangeTotal || "Não informado"}</p></div>

@@ -123,6 +123,8 @@ export default async function handler(req, res) {
               <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
                 <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
                 <p><strong>Item:</strong> ${req_data.item}</p>
+                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
                 <p><strong>Devolutiva:</strong> ${comentario || 'Sem comentário adicional.'}</p>
               </div>
               ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
@@ -205,7 +207,8 @@ export default async function handler(req, res) {
             <p style="margin:4px 0;"><strong>Item / Produto:</strong> ${req_data.item}</p>
             ${req_data.material ? `<p style="margin:4px 0;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
             ${req_data.cor ? `<p style="margin:4px 0;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-            <p style="margin:4px 0;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            <p style="margin:4px 0;"><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+            ${req_data.data_necessidade ? `<p style="margin:4px 0;"><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
             ${req_data.centro_custo_nome ? `<p style="margin:4px 0;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
             <p style="margin:4px 0;"><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
             <p style="margin:4px 0;"><strong>Urgência:</strong> ${req_data.urgencia}</p>
@@ -349,7 +352,8 @@ export default async function handler(req, res) {
             <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Item / Produto:</strong> ${req_data.item}</p>
             ${req_data.material ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Material:</strong> ${req_data.material}</p>` : ''}
             ${req_data.cor ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+            ${req_data.data_necessidade ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
             ${req_data.centro_custo_nome ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
             <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Justificativa Original:</strong> ${req_data.justificativa}</p>
           </div>
@@ -395,7 +399,8 @@ export default async function handler(req, res) {
       if (!req_data) return res.status(404).json({ error: 'Requisição não encontrada' });
 
       const {
-        item, material, cor, quantidade, centro_custo_codigo, centro_custo_nome,
+        item, material, cor, quantidade, unidade_medida, data_necessidade,
+        centro_custo_codigo, centro_custo_nome,
         valor_unitario_minimo, valor_unitario_maximo,
         valor_minimo, valor_maximo,
         justificativa, urgencia, fornecedor_sugerido
@@ -406,7 +411,10 @@ export default async function handler(req, res) {
       const { error: editError } = await supabase
         .from('requisicao_compras')
         .update({
-          item, material, cor, quantidade, centro_custo_codigo, centro_custo_nome,
+          item, material, cor, quantidade,
+          unidade_medida: unidade_medida || null,
+          data_necessidade: data_necessidade || null,
+          centro_custo_codigo, centro_custo_nome,
           valor_unitario_minimo, valor_unitario_maximo,
           valor_minimo, valor_maximo,
           justificativa, urgencia, fornecedor_sugerido,
@@ -512,7 +520,8 @@ export default async function handler(req, res) {
                   <p><strong>Item:</strong> ${req_data.item}</p>
                   ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
                   ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-                  <p><strong>Quantidade:</strong> ${req_data.quantidade}</p>
+                  <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                  ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
                   <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
                   <p><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
                   ${req_data.aprovador_comentario ? `<p><strong>Obs. Gestor:</strong> ${req_data.aprovador_comentario}</p>` : ''}
@@ -624,6 +633,8 @@ export default async function handler(req, res) {
                 <p>A requisição <strong>${req_data.numero_requisicao}</strong> teve a cotação aprovada definitivamente pelo diretor.</p>
                 <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
                   <p><strong>Item:</strong> ${req_data.item}</p>
+                  <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                  ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
                   <p><strong>Valor Cotado:</strong> R$ ${Number(req_data.cotacao_valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   <p><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
                   <p><strong>Comprador Responsável:</strong> ${req_data.cotacao_comprador_nome || '-'}</p>
@@ -669,7 +680,12 @@ export default async function handler(req, res) {
                 <h2 style="margin:0;">❌ Requisição Reprovada</h2>
               </div>
               <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi reprovada na avaliação da cotação pelo diretor.</p>
-              <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Item:</strong> ${req_data.item}</p>
+                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+                <p><strong>Motivo:</strong> ${comentario || 'Sem motivo adicional.'}</p>
+              </div>
               ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
             </div>`
           );

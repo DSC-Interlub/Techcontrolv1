@@ -173,12 +173,16 @@ export default async function handler(req, res) {
 
       const {
         aprovador_email, aprovador_nome, numero_requisicao, colaborador_nome,
-        colaborador_email, item, urgencia, justificativa,
+        colaborador_email, item, quantidade, unidade_medida, data_necessidade,
+        urgencia, justificativa,
         valor_minimo, valor_maximo, valor_unitario_minimo, valor_unitario_maximo,
         centro_custo_nome
       } = req_data;
 
       if (!aprovador_email) return res.status(400).json({ error: 'E-mail do aprovador não cadastrado' });
+
+      const qtdTexto = `${quantidade || 1} ${unidade_medida || 'un'}`;
+      const dataNecFormatada = data_necessidade ? new Date(data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR') : null;
 
       const valorRangeTotal = valor_minimo && valor_maximo
         ? `R$ ${Number(valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_maximo).toLocaleString('pt-BR')}`
@@ -199,6 +203,8 @@ export default async function handler(req, res) {
             <p><strong>Número:</strong> ${numero_requisicao}</p>
             <p><strong>Solicitante:</strong> ${colaborador_nome}</p>
             <p><strong>Item:</strong> ${item}</p>
+            <p><strong>Quantidade:</strong> ${qtdTexto}</p>
+            ${dataNecFormatada ? `<p><strong>Data da Necessidade:</strong> 📅 ${dataNecFormatada}</p>` : ''}
             ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
             ${justificativa ? `<p><strong>Justificativa:</strong> ${justificativa}</p>` : ''}
             ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
@@ -221,6 +227,8 @@ export default async function handler(req, res) {
           <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
             <p><strong>Número:</strong> ${numero_requisicao}</p>
             <p><strong>Item:</strong> ${item}</p>
+            <p><strong>Quantidade:</strong> ${qtdTexto}</p>
+            ${dataNecFormatada ? `<p><strong>Data da Necessidade:</strong> 📅 ${dataNecFormatada}</p>` : ''}
             ${urgencia ? `<p><strong>Urgência:</strong> ${urgencia}</p>` : ''}
             ${centro_custo_nome ? `<p><strong>Centro de Custo:</strong> ${centro_custo_nome}</p>` : ''}
             ${valorRangeUnit ? `<p><strong>Valor Unitário:</strong> ${valorRangeUnit}</p>` : ''}

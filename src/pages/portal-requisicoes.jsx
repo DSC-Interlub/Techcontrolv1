@@ -349,7 +349,8 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante 
             <p className="font-medium text-foreground truncate">{r.item}</p>
             <p className="text-xs text-muted-foreground">
               {exibirSolicitante ? `${r.colaborador_nome} (${r.colaborador_area}) · ` : ""}
-              Qtd: {r.quantidade}
+              Qtd: {r.quantidade} {r.unidade_medida || 'un'}
+              {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
               {r.material ? ` · Material: ${r.material}` : ""}
               {r.cor ? ` · Cor: ${r.cor}` : ""}
               {r.centro_custo_nome ? ` · CC: ${r.centro_custo_codigo}` : ""}

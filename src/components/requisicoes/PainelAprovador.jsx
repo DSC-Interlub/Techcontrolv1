@@ -154,7 +154,8 @@ export default function PainelAprovador({ colaboradorFull }) {
                     </div>
                     <p className="font-medium text-foreground truncate">{r.item}</p>
                     <p className="text-xs text-muted-foreground">
-                      Solicitante: <strong>{r.colaborador_nome}</strong> ({r.colaborador_area}) · Qtd: {r.quantidade}
+                      Solicitante: <strong>{r.colaborador_nome}</strong> ({r.colaborador_area}) · Qtd: {r.quantidade} {r.unidade_medida || 'un'}
+                      {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
                       {r.material ? ` · Mat: ${r.material}` : ""}
                       {r.cor ? ` · Cor: ${r.cor}` : ""}
                     </p>
@@ -196,7 +197,8 @@ export default function PainelAprovador({ colaboradorFull }) {
                     </div>
                     <p className="font-medium text-foreground truncate">{r.item}</p>
                     <p className="text-xs text-muted-foreground">
-                      Solicitante: <strong>{r.colaborador_nome}</strong> ({r.colaborador_area}) · Qtd: {r.quantidade}
+                      Solicitante: <strong>{r.colaborador_nome}</strong> ({r.colaborador_area}) · Qtd: {r.quantidade} {r.unidade_medida || 'un'}
+                      {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
                       {r.cotacao_valor ? ` · Cotação: R$ ${Number(r.cotacao_valor).toLocaleString('pt-BR')}` : ""}
                     </p>
                   </div>
