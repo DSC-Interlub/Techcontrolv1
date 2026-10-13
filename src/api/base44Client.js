@@ -375,7 +375,8 @@ export const base44 = {
         'enviarDespedida',
         'sendEmailFacilitiesCreated',
         'sendEmailFacilitiesStarted',
-        'sendEmailFacilitiesClosed'
+        'sendEmailFacilitiesClosed',
+        'sendEmailCoffeeBreakRequested'
       ];
 
       if (unifiedNotifications.includes(name)) {

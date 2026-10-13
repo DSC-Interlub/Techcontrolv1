@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   Users, CheckCircle, AlertCircle, Loader2, CalendarDays, ChevronLeft,
-  ChevronRight, X, User, Mail, Briefcase, Clock, FileText, Trash2, Eye, Info
+  ChevronRight, X, User, Mail, Briefcase, Clock, FileText, Trash2, Eye, Info, Coffee
 } from "lucide-react";
 import { format, addDays, startOfWeek, isSameDay, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,7 +46,15 @@ export default function PortalSala() {
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ hora_fim: "", motivo: "", num_participantes: "", observacoes: "" });
+  const [formData, setFormData] = useState({
+    hora_fim: "",
+    motivo: "",
+    num_participantes: "",
+    observacoes: "",
+    precisa_coffee_break: false,
+    qtd_pessoas_coffee: "",
+    coffee_break_observacoes: "",
+  });
   const [success, setSuccess] = useState(false);
   const [conflictError, setConflictError] = useState(false);
   const [reservaDetalhes, setReservaDetalhes] = useState(null);
@@ -79,13 +87,40 @@ export default function PortalSala() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ReservasSala.create(data),
+    mutationFn: async (dados) => {
+      const novaReserva = await base44.entities.ReservasSala.create(dados);
+      if (novaReserva && dados.precisa_coffee_break) {
+        try {
+          await base44.functions.invoke('sendEmailCoffeeBreakRequested', {
+            ...novaReserva,
+            sala_nome: salaAtiva?.nome || "Sala de Treinamento",
+          });
+        } catch (mailErr) {
+          console.error("Erro ao enviar e-mail de coffee break para CCH:", mailErr);
+        }
+      }
+      return novaReserva;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portal_sala_reservas'] });
       setSuccess(true);
       setShowForm(false);
       setSelectedSlot(null);
-      setFormData({ hora_fim: "", motivo: "", num_participantes: "", observacoes: "" });
+      setFormData({
+        hora_fim: "",
+        motivo: "",
+        num_participantes: "",
+        observacoes: "",
+        precisa_coffee_break: false,
+        qtd_pessoas_coffee: "",
+        coffee_break_observacoes: "",
+      });
+      toast({
+        title: "Reserva realizada com sucesso!",
+        description: formData.precisa_coffee_break
+          ? "Sua reserva e a solicitação de coffee break foram registradas e encaminhadas à área de CCH."
+          : "Sua reserva foi agendada na sala de treinamento.",
+      });
       setTimeout(() => setSuccess(false), 5000);
     },
     onError: () => setConflictError(true),
@@ -158,7 +193,15 @@ export default function PortalSala() {
     if (isSlotPassado(data, hora)) return;
     setSelectedSlot({ data, hora_inicio: hora });
     const idx = HORARIOS.indexOf(hora);
-    setFormData(prev => ({ ...prev, hora_fim: HORARIOS[idx + 2] || HORARIOS[idx + 1] || hora }));
+    setFormData({
+      hora_fim: HORARIOS[idx + 2] || HORARIOS[idx + 1] || hora,
+      motivo: "",
+      num_participantes: "",
+      observacoes: "",
+      precisa_coffee_break: false,
+      qtd_pessoas_coffee: "",
+      coffee_break_observacoes: "",
+    });
     setShowForm(true);
     setConflictError(false);
     setReservaDetalhes(null);
@@ -171,6 +214,39 @@ export default function PortalSala() {
       setConflictError(true); 
       return; 
     }
+
+    const slotDateTime = new Date(`${dataStr}T${selectedSlot.hora_inicio}`);
+    const diffHoras = (slotDateTime.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+    const isSalaTreinamento = (salaAtiva?.nome || "").toLowerCase().includes("treinamento");
+    const atende24Horas = diffHoras >= 24;
+
+    if (formData.precisa_coffee_break) {
+      if (!isSalaTreinamento) {
+        toast({
+          variant: "destructive",
+          title: "Coffee Break não permitido",
+          description: "Solicitações de coffee break são exclusivas para a Sala de Treinamento.",
+        });
+        return;
+      }
+      if (!atende24Horas) {
+        toast({
+          variant: "destructive",
+          title: "Antecedência mínima de 24h",
+          description: "Solicitações de coffee break devem ser feitas com no mínimo 24 horas de antecedência.",
+        });
+        return;
+      }
+      if (!formData.qtd_pessoas_coffee || Number(formData.qtd_pessoas_coffee) < 1) {
+        toast({
+          variant: "destructive",
+          title: "Quantidade de pessoas obrigatória",
+          description: "Informe a quantidade de pessoas para o coffee break.",
+        });
+        return;
+      }
+    }
+
     createMutation.mutate({
       solicitante_nome: colaborador.nome_completo,
       solicitante_email: colaborador.email,
@@ -178,8 +254,13 @@ export default function PortalSala() {
       sala_id: selectedSalaId,
       data: dataStr,
       hora_inicio: selectedSlot.hora_inicio,
-      ...formData,
+      hora_fim: formData.hora_fim,
+      motivo: formData.motivo,
+      observacoes: formData.observacoes,
       num_participantes: formData.num_participantes ? Number(formData.num_participantes) : undefined,
+      precisa_coffee_break: !!formData.precisa_coffee_break,
+      qtd_pessoas_coffee: formData.precisa_coffee_break ? Number(formData.qtd_pessoas_coffee) : null,
+      coffee_break_observacoes: formData.precisa_coffee_break ? (formData.coffee_break_observacoes || "") : null,
       status: "Confirmada",
     });
   };
@@ -287,7 +368,10 @@ export default function PortalSala() {
                             >
                               {reserva && hora === reserva.hora_inicio && (
                                 <div className="bg-teal-600 hover:bg-teal-700 transition-colors text-white rounded px-1.5 py-0.5 text-xs font-medium truncate flex items-center justify-between shadow-xs">
-                                  <span className="truncate">{reserva.solicitante_nome.split(' ')[0]}</span>
+                                  <span className="truncate flex items-center gap-1">
+                                    {reserva.precisa_coffee_break && <span title={`Coffee Break (${reserva.qtd_pessoas_coffee || ''} pessoas)`}>☕</span>}
+                                    {reserva.solicitante_nome.split(' ')[0]}
+                                  </span>
                                   <span className="text-teal-200 ml-1 flex-shrink-0 text-[10px]">até {reserva.hora_fim}</span>
                                 </div>
                               )}
@@ -306,49 +390,124 @@ export default function PortalSala() {
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-muted border-2 border-border" />Passado</div>
               </div>
 
-              {showForm && selectedSlot && (
-                <Card className="shadow-xl max-w-lg mx-auto">
-                  <CardHeader className="border-b bg-teal-50 dark:bg-teal-950 flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
-                        {salaAtiva?.nome || "Sala"}
-                      </CardTitle>
-                      <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
-                        {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => { setShowForm(false); setSelectedSlot(null); }}><X className="w-4 h-4" /></Button>
-                  </CardHeader>
-                  <form onSubmit={handleSubmit}>
-                    <CardContent className="pt-5 space-y-4">
-                      {conflictError && (
-                        <Alert className="bg-red-50 border-red-200">
-                          <AlertCircle className="w-4 h-4 text-red-600" />
-                          <AlertDescription className="text-red-800">Conflito de horário! Escolha outro período.</AlertDescription>
-                        </Alert>
-                      )}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div><Label>Início</Label><Input disabled value={selectedSlot.hora_inicio} className="bg-gray-50 dark:bg-gray-800" /></div>
-                        <div>
-                          <Label>Término *</Label>
-                          <select required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                            value={formData.hora_fim} onChange={(e) => setFormData({ ...formData, hora_fim: e.target.value })}>
-                            {HORARIOS.filter(h => h > selectedSlot.hora_inicio).map(h => <option key={h} value={h}>{h}</option>)}
-                          </select>
-                        </div>
+              {showForm && selectedSlot && (() => {
+                const slotDataStr = format(selectedSlot.data, 'yyyy-MM-dd');
+                const slotDateTime = new Date(`${slotDataStr}T${selectedSlot.hora_inicio}`);
+                const diffHoras = (slotDateTime.getTime() - new Date().getTime()) / (1000 * 60 * 60);
+                const isSalaTreinamento = (salaAtiva?.nome || "").toLowerCase().includes("treinamento");
+                const atende24Horas = diffHoras >= 24;
+
+                return (
+                  <Card className="shadow-xl max-w-lg mx-auto">
+                    <CardHeader className="border-b bg-teal-50 dark:bg-teal-950 flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle className="text-teal-900 dark:text-teal-100 text-base">
+                          {salaAtiva?.nome || "Sala"}
+                        </CardTitle>
+                        <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
+                          {format(selectedSlot.data, "EEEE, dd/MM/yyyy", { locale: ptBR })} às {selectedSlot.hora_inicio}
+                        </p>
                       </div>
-                      <div><Label>Pauta / Motivo *</Label><Textarea required placeholder="Objetivo da reunião ou treinamento..." value={formData.motivo} onChange={e => setFormData({...formData, motivo: e.target.value})} rows={2} /></div>
-                      <div><Label>Observações</Label><Input placeholder="Projetor, coffee break, equipamentos, etc." value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} /></div>
-                    </CardContent>
-                    <div className="border-t p-5 flex justify-between">
-                      <Button type="button" variant="outline" onClick={() => { setShowForm(false); setSelectedSlot(null); }}>Cancelar</Button>
-                      <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={createMutation.isPending}>
-                        {createMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reservando...</> : "Confirmar Reserva"}
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
-              )}
+                      <Button variant="ghost" size="icon" onClick={() => { setShowForm(false); setSelectedSlot(null); }}><X className="w-4 h-4" /></Button>
+                    </CardHeader>
+                    <form onSubmit={handleSubmit}>
+                      <CardContent className="pt-5 space-y-4">
+                        {conflictError && (
+                          <Alert className="bg-red-50 border-red-200">
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                            <AlertDescription className="text-red-800">Conflito de horário! Escolha outro período.</AlertDescription>
+                          </Alert>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div><Label>Início</Label><Input disabled value={selectedSlot.hora_inicio} className="bg-gray-50 dark:bg-gray-800" /></div>
+                          <div>
+                            <Label>Término *</Label>
+                            <select required className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                              value={formData.hora_fim} onChange={(e) => setFormData({ ...formData, hora_fim: e.target.value })}>
+                              {HORARIOS.filter(h => h > selectedSlot.hora_inicio).map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div><Label>Pauta / Motivo *</Label><Textarea required placeholder="Objetivo da reunião ou treinamento..." value={formData.motivo} onChange={e => setFormData({...formData, motivo: e.target.value})} rows={2} /></div>
+                        <div><Label>Observações Gerais</Label><Input placeholder="Projetor, equipamentos, microfones, etc." value={formData.observacoes} onChange={e => setFormData({...formData, observacoes: e.target.value})} /></div>
+
+                        {/* Bloco de Coffee Break exclusivo da Sala de Treinamento */}
+                        {isSalaTreinamento && (
+                          <div className="border border-teal-200 dark:border-teal-800 rounded-xl p-3.5 bg-teal-50/60 dark:bg-teal-950/30 space-y-3">
+                            <div className="flex items-start gap-2.5">
+                              <input
+                                type="checkbox"
+                                id="coffee_break_check"
+                                disabled={!atende24Horas}
+                                checked={formData.precisa_coffee_break && atende24Horas}
+                                onChange={(e) => setFormData({ ...formData, precisa_coffee_break: e.target.checked })}
+                                className="h-4 w-4 rounded border-teal-300 text-teal-600 focus:ring-teal-500 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
+                              />
+                              <div className="flex-1 space-y-0.5">
+                                <Label
+                                  htmlFor="coffee_break_check"
+                                  className={`font-semibold text-xs sm:text-sm flex items-center gap-1.5 ${
+                                    atende24Horas ? 'cursor-pointer text-teal-950 dark:text-teal-100' : 'cursor-not-allowed text-muted-foreground'
+                                  }`}
+                                >
+                                  <Coffee className="w-4 h-4 text-teal-600" />
+                                  Solicitar Coffee Break (Área de CCH)
+                                </Label>
+                                {atende24Horas ? (
+                                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                    A área de CCH (dp@, dho@ e rh-brasil@) receberá automaticamente uma notificação com as informações desta reserva.
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+                                    ⚠️ O coffee break requer antecedência mínima de 24 horas para programação.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {formData.precisa_coffee_break && atende24Horas && (
+                              <div className="pt-2 border-t border-teal-200/70 dark:border-teal-800/70 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <Label className="text-xs font-semibold text-teal-950 dark:text-teal-100">
+                                    Qtd. de Pessoas *
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max={salaAtiva?.capacidade || 50}
+                                    required
+                                    placeholder="Ex: 15"
+                                    value={formData.qtd_pessoas_coffee}
+                                    onChange={(e) => setFormData({ ...formData, qtd_pessoas_coffee: e.target.value })}
+                                    className="mt-1 h-9 bg-white dark:bg-card text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs font-semibold text-teal-950 dark:text-teal-100">
+                                    Observações do Coffee Break
+                                  </Label>
+                                  <Input
+                                    placeholder="Horário do intervalo, restrições..."
+                                    value={formData.coffee_break_observacoes}
+                                    onChange={(e) => setFormData({ ...formData, coffee_break_observacoes: e.target.value })}
+                                    className="mt-1 h-9 bg-white dark:bg-card text-sm"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                      <div className="border-t p-5 flex justify-between">
+                        <Button type="button" variant="outline" onClick={() => { setShowForm(false); setSelectedSlot(null); }}>Cancelar</Button>
+                        <Button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={createMutation.isPending}>
+                          {createMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reservando...</> : "Confirmar Reserva"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Card>
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="minhas">
@@ -371,7 +530,14 @@ export default function PortalSala() {
                         <TableRow key={r.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => setReservaDetalhes(r)}>
                           <TableCell className="font-medium">{r.data}</TableCell>
                           <TableCell>{r.hora_inicio} – {r.hora_fim}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{r.motivo || "—"}</TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <div className="truncate font-medium">{r.motivo || "—"}</div>
+                            {r.precisa_coffee_break && (
+                              <Badge variant="outline" className="mt-1 bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700 text-[10px] flex items-center gap-1 w-fit">
+                                ☕ Coffee ({r.qtd_pessoas_coffee || 0} pess.)
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell><Badge className={statusColors[r.status] || "bg-blue-100 text-blue-800"}>{r.status}</Badge></TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-2">
@@ -430,6 +596,28 @@ export default function PortalSala() {
                         {reservaDetalhes.status}
                       </Badge>
                     </div>
+
+                    {/* Destaque Coffee Break */}
+                    {reservaDetalhes.precisa_coffee_break && (
+                      <div className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-sm">
+                            <span className="text-base">☕</span> Solicitação de Coffee Break (CCH)
+                          </div>
+                          <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs">
+                            {reservaDetalhes.qtd_pessoas_coffee || reservaDetalhes.num_participantes || 0} {(reservaDetalhes.qtd_pessoas_coffee || 0) === 1 ? 'pessoa' : 'pessoas'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                          Área notificada: <strong>dp@interlub.com</strong>, <strong>dho@interlub.com</strong>, <strong>rh-brasil@interlub.com</strong>
+                        </p>
+                        {reservaDetalhes.coffee_break_observacoes && (
+                          <div className="mt-2 bg-white/80 dark:bg-card/80 p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/50 text-xs text-amber-950 dark:text-amber-100">
+                            <strong>Observações do Coffee:</strong> {reservaDetalhes.coffee_break_observacoes}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Grid de Informações */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-gray-50/70 dark:bg-muted/30 p-4 border rounded-xl">
