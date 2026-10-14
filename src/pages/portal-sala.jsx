@@ -451,11 +451,11 @@ export default function PortalSala() {
                                   }`}
                                 >
                                   <Coffee className="w-4 h-4 text-teal-600" />
-                                  Solicitar Coffee Break (Área de CCH)
+                                  Solicitar Coffee Break (Conexão Humana - DP/RH/DHO)
                                 </Label>
                                 {atende24Horas ? (
                                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                    A área de CCH (dp@, dho@ e rh-brasil@) receberá automaticamente uma notificação com as informações desta reserva.
+                                    A equipe de Conexão Humana (DP/RH/DHO) receberá automaticamente uma notificação com as informações desta reserva.
                                   </p>
                                 ) : (
                                   <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
@@ -602,14 +602,14 @@ export default function PortalSala() {
                       <div className="bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl p-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold text-sm">
-                            <span className="text-base">☕</span> Solicitação de Coffee Break (CCH)
+                            <span className="text-base">☕</span> Solicitação de Coffee Break (Conexão Humana)
                           </div>
                           <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs">
                             {reservaDetalhes.qtd_pessoas_coffee || reservaDetalhes.num_participantes || 0} {(reservaDetalhes.qtd_pessoas_coffee || 0) === 1 ? 'pessoa' : 'pessoas'}
                           </Badge>
                         </div>
                         <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                          Área notificada: <strong>dp@interlub.com</strong>, <strong>dho@interlub.com</strong>, <strong>rh-brasil@interlub.com</strong>
+                          Área notificada: <strong>Conexão Humana (DP/RH/DHO)</strong>
                         </p>
                         {reservaDetalhes.coffee_break_observacoes && (
                           <div className="mt-2 bg-white/80 dark:bg-card/80 p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/50 text-xs text-amber-950 dark:text-amber-100">

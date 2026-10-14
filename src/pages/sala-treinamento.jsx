@@ -464,10 +464,10 @@ export default function SalaTreinamento() {
                   {reservaDetalhes.precisa_coffee_break && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs space-y-1 text-amber-900">
                       <div className="flex items-center justify-between font-semibold">
-                        <span>☕ Solicitação de Coffee Break (CCH)</span>
+                        <span>☕ Solicitação de Coffee Break (Conexão Humana)</span>
                         <Badge className="bg-amber-600 text-white">{reservaDetalhes.qtd_pessoas_coffee || 0} pess.</Badge>
                       </div>
-                      <p className="text-[11px] text-amber-800">CCH Notificado (dp@, dho@, rh-brasil@)</p>
+                      <p className="text-[11px] text-amber-800">Área notificada: Conexão Humana (DP/RH/DHO)</p>
                       {reservaDetalhes.coffee_break_observacoes && (
                         <p className="text-gray-700 italic">Obs: {reservaDetalhes.coffee_break_observacoes}</p>
                       )}
@@ -597,11 +597,11 @@ export default function SalaTreinamento() {
                                 }`}
                               >
                                 <Coffee className="w-4 h-4 text-teal-600" />
-                                Solicitar Coffee Break (Área de CCH)
+                                Solicitar Coffee Break (Conexão Humana - DP/RH/DHO)
                               </Label>
                               {atende24Horas ? (
                                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                  A equipe de CCH (dp@, dho@ e rh-brasil@) receberá uma notificação automática por e-mail com os dados desta reserva.
+                                  A equipe de Conexão Humana (DP/RH/DHO) receberá uma notificação automática por e-mail com os dados desta reserva.
                                 </p>
                               ) : (
                                 <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
@@ -916,14 +916,14 @@ export default function SalaTreinamento() {
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2 text-amber-950">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 font-semibold text-sm text-amber-900">
-                        <span className="text-base">☕</span> Solicitação de Coffee Break (CCH)
+                        <span className="text-base">☕</span> Solicitação de Coffee Break (Conexão Humana)
                       </div>
                       <Badge className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs">
                         {reservaDetalhes.qtd_pessoas_coffee || reservaDetalhes.num_participantes || 0} {(reservaDetalhes.qtd_pessoas_coffee || 0) === 1 ? 'pessoa' : 'pessoas'}
                       </Badge>
                     </div>
                     <p className="text-xs text-amber-800 leading-relaxed">
-                      Área notificada: <strong>dp@interlub.com</strong>, <strong>dho@interlub.com</strong>, <strong>rh-brasil@interlub.com</strong>
+                      Área notificada: <strong>Conexão Humana (DP/RH/DHO)</strong>
                     </p>
                     {reservaDetalhes.coffee_break_observacoes && (
                       <div className="mt-2 bg-white/80 p-2.5 rounded-lg border border-amber-100 text-xs text-amber-950">

@@ -431,7 +431,47 @@ export default async function handler(req, res) {
     // ─────────────────────────────────────────────────────────────────────────────
     if (type === 'sendEmailCoffeeBreakRequested') {
       const reserva = data || {};
-      const destinatarios = ['dp@interlub.com', 'dho@interlub.com', 'rh-brasil@interlub.com'];
+
+      // Busca dinâmica de colaboradores vinculados à flag 'eh_conexao_humana' ou setores Conexão Humana (DP/RH/DHO)
+      const { data: colabsConexao } = await supabase
+        .from('colaboradores')
+        .select('email, area, eh_conexao_humana, permissoes_comunicados, status')
+        .eq('status', 'Ativo');
+
+      const emailsSetores = (colabsConexao || [])
+        .filter(c => {
+          if (!c.email) return false;
+          // 1. Flag de Conexão Humana (DP/RH) explicitamente ativada
+          if (c.eh_conexao_humana === true) return true;
+          // 2. Permissão de Conexão Humana cadastrada
+          if (Array.isArray(c.permissoes_comunicados) && c.permissoes_comunicados.includes('conexao_humana')) return true;
+          // 3. Setor / Área pertencente a DP, RH, DHO ou Conexão Humana
+          if (c.area) {
+            const areaNorm = c.area.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (
+              areaNorm.includes('conexao humana') ||
+              areaNorm.includes('dp') ||
+              areaNorm.includes('rh') ||
+              areaNorm.includes('dho') ||
+              areaNorm.includes('departamento pessoal') ||
+              areaNorm.includes('recursos humanos')
+            ) {
+              return true;
+            }
+          }
+          return false;
+        })
+        .map(c => c.email.trim().toLowerCase())
+        .filter(Boolean);
+
+      // Remove duplicatas
+      let destinatarios = [...new Set(emailsSetores)];
+
+      // Fallback seguro caso nenhum colaborador esteja com a flag no momento
+      if (destinatarios.length === 0) {
+        destinatarios = ['dp@interlub.com', 'dho@interlub.com', 'rh-brasil@interlub.com'];
+      }
+
       const dataFormatada = reserva.data ? reserva.data.split('-').reverse().join('/') : '';
       const assunto = `☕ Solicitação de Coffee Break — Sala de Treinamento (${dataFormatada} às ${reserva.hora_inicio || ''}) — ${reserva.solicitante_nome || ''}`;
 
@@ -441,7 +481,7 @@ export default async function handler(req, res) {
         html: htmlCoffeeBreakRequested(reserva)
       });
 
-      return res.status(200).json({ success: true });
+      return res.status(200).json({ success: true, destinatarios });
     }
 
     return res.status(400).json({ error: 'Tipo de notificação inválido' });
