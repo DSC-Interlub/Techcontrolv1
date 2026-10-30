@@ -192,11 +192,13 @@ export default async function handler(req, res) {
 
       const valorRangeTotal = valor_minimo && valor_maximo
         ? `R$ ${Number(valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_maximo).toLocaleString('pt-BR')}`
-        : valor_minimo ? `A partir de R$ ${Number(valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
+        : valor_minimo ? `A partir de R$ ${Number(valor_minimo).toLocaleString('pt-BR')}`
+        : valor_maximo ? `Até R$ ${Number(valor_maximo).toLocaleString('pt-BR')}` : 'Não informado';
 
       const valorRangeUnit = valor_unitario_minimo && valor_unitario_maximo
         ? `R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(valor_unitario_maximo).toLocaleString('pt-BR')}`
-        : valor_unitario_minimo ? `A partir de R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
+        : valor_unitario_minimo ? `A partir de R$ ${Number(valor_unitario_minimo).toLocaleString('pt-BR')}`
+        : valor_unitario_maximo ? `Até R$ ${Number(valor_unitario_maximo).toLocaleString('pt-BR')}` : null;
 
       const htmlAprovador = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">

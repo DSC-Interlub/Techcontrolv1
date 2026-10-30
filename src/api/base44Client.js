@@ -49,7 +49,12 @@ const sanitizeData = (obj) => {
                           key.endsWith('_desligamento') || 
                           key.endsWith('_date') || 
                           key === 'data';
-      if (isUuidField || isDateField) {
+      const isNumericField = key.startsWith('valor_') || 
+                             key.endsWith('_valor') || 
+                             key === 'valor' || 
+                             key === 'preco' || 
+                             key.includes('valor_');
+      if (isUuidField || isDateField || isNumericField) {
         cleaned[key] = null;
         continue;
       }

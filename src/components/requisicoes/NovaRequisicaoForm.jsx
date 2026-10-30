@@ -72,8 +72,24 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
       const finalAprovadorEmail = aprovador?.email || colaborador.responsavel_email || '';
       const finalAprovadorNome = aprovador?.nome_completo || colaborador.responsavel_nome || '';
 
-      const requisicao = await base44.entities.RequisicaoCompras.create({
+      const parseNullableNumber = (val) => {
+        if (val === "" || val === null || val === undefined) return null;
+        const num = Number(val);
+        return isNaN(num) ? null : num;
+      };
+
+      const requisicaoPayload = {
         ...data,
+        quantidade: Number(data.quantidade) || 1,
+        unidade_medida: data.unidade_medida?.trim() || null,
+        data_necessidade: data.data_necessidade || null,
+        material: data.material?.trim() || null,
+        cor: data.cor?.trim() || null,
+        fornecedor_sugerido: data.fornecedor_sugerido?.trim() || null,
+        valor_unitario_minimo: parseNullableNumber(data.valor_unitario_minimo),
+        valor_unitario_maximo: parseNullableNumber(data.valor_unitario_maximo),
+        valor_minimo: parseNullableNumber(data.valor_minimo),
+        valor_maximo: parseNullableNumber(data.valor_maximo),
         numero_requisicao: numeroRequisicao,
         colaborador_id: colaborador.id,
         colaborador_nome: colaborador.nome_completo,
@@ -92,7 +108,9 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           numero_requisicao: numeroRequisicao,
           anexos: anexos || []
         }],
-      });
+      };
+
+      const requisicao = await base44.entities.RequisicaoCompras.create(requisicaoPayload);
 
       // Notifica aprovador por e-mail
       if (finalAprovadorEmail) {
@@ -104,17 +122,17 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           numero: numeroRequisicao,
           colaborador_nome: colaborador.nome_completo,
           colaborador_email: colaborador.email,
-          item: data.item,
-          quantidade: data.quantidade,
-          unidade_medida: data.unidade_medida,
-          data_necessidade: data.data_necessidade,
-          urgencia: data.urgencia,
-          justificativa: data.justificativa,
-          valor_minimo: data.valor_minimo,
-          valor_maximo: data.valor_maximo,
-          valor_unitario_minimo: data.valor_unitario_minimo,
-          valor_unitario_maximo: data.valor_unitario_maximo,
-          centro_custo_nome: data.centro_custo_nome,
+          item: requisicaoPayload.item,
+          quantidade: requisicaoPayload.quantidade,
+          unidade_medida: requisicaoPayload.unidade_medida,
+          data_necessidade: requisicaoPayload.data_necessidade,
+          urgencia: requisicaoPayload.urgencia,
+          justificativa: requisicaoPayload.justificativa,
+          valor_minimo: requisicaoPayload.valor_minimo,
+          valor_maximo: requisicaoPayload.valor_maximo,
+          valor_unitario_minimo: requisicaoPayload.valor_unitario_minimo,
+          valor_unitario_maximo: requisicaoPayload.valor_unitario_maximo,
+          centro_custo_nome: requisicaoPayload.centro_custo_nome,
         }).catch((err) => { console.error('Erro ao notificar aprovador:', err); });
       }
 
@@ -130,6 +148,46 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
   });
 
   const set = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+
+  const handleQuantidadeChange = (qtd) => {
+    const qtdNum = Number(qtd);
+    setFormData(prev => {
+      const next = { ...prev, quantidade: qtdNum };
+      if (prev.valor_unitario_minimo && !isNaN(Number(prev.valor_unitario_minimo))) {
+        next.valor_minimo = (Number(prev.valor_unitario_minimo) * (qtdNum || 1)).toFixed(2);
+      }
+      if (prev.valor_unitario_maximo && !isNaN(Number(prev.valor_unitario_maximo))) {
+        next.valor_maximo = (Number(prev.valor_unitario_maximo) * (qtdNum || 1)).toFixed(2);
+      }
+      return next;
+    });
+  };
+
+  const handleUnitMinChange = (val) => {
+    setFormData(prev => {
+      const next = { ...prev, valor_unitario_minimo: val };
+      if (val !== "" && !isNaN(Number(val))) {
+        const qtd = Number(prev.quantidade) || 1;
+        next.valor_minimo = (Number(val) * qtd).toFixed(2);
+      } else if (val === "") {
+        next.valor_minimo = "";
+      }
+      return next;
+    });
+  };
+
+  const handleUnitMaxChange = (val) => {
+    setFormData(prev => {
+      const next = { ...prev, valor_unitario_maximo: val };
+      if (val !== "" && !isNaN(Number(val))) {
+        const qtd = Number(prev.quantidade) || 1;
+        next.valor_maximo = (Number(val) * qtd).toFixed(2);
+      } else if (val === "") {
+        next.valor_maximo = "";
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -222,7 +280,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                   min="1"
                   className="mt-1"
                   value={formData.quantidade}
-                  onChange={e => set('quantidade', Number(e.target.value))}
+                  onChange={e => handleQuantidadeChange(e.target.value)}
                 />
               </div>
               <div>
@@ -278,8 +336,8 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
             </div>
 
             <div>
-              <Label>Valor Unitário Estimado</Label>
-              <p className="text-xs text-muted-foreground mb-2">Valor de uma unidade do item (range mín–máx)</p>
+              <Label>Valor Unitário Estimado (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor de uma unidade do item (range mín–máx) — preenchimento opcional</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
@@ -290,7 +348,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                     className="mt-1 pl-9"
                     placeholder="Mín. unit."
                     value={formData.valor_unitario_minimo}
-                    onChange={e => set('valor_unitario_minimo', e.target.value)}
+                    onChange={e => handleUnitMinChange(e.target.value)}
                   />
                 </div>
                 <div className="relative">
@@ -302,15 +360,15 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
                     className="mt-1 pl-9"
                     placeholder="Máx. unit."
                     value={formData.valor_unitario_maximo}
-                    onChange={e => set('valor_unitario_maximo', e.target.value)}
+                    onChange={e => handleUnitMaxChange(e.target.value)}
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <Label>Valor Total Estimado</Label>
-              <p className="text-xs text-muted-foreground mb-2">Valor total da compra = valor unitário × quantidade (range mín–máx)</p>
+              <Label>Valor Total Estimado (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor total da compra (range mín–máx) — preenchimento opcional</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>

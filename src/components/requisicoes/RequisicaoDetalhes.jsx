@@ -116,11 +116,13 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
 
   const valorRangeUnit = requisicao.valor_unitario_minimo && requisicao.valor_unitario_maximo
     ? `R$ ${Number(requisicao.valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(requisicao.valor_unitario_maximo).toLocaleString('pt-BR')}`
-    : requisicao.valor_unitario_minimo ? `A partir de R$ ${Number(requisicao.valor_unitario_minimo).toLocaleString('pt-BR')}` : null;
+    : requisicao.valor_unitario_minimo ? `A partir de R$ ${Number(requisicao.valor_unitario_minimo).toLocaleString('pt-BR')}`
+    : requisicao.valor_unitario_maximo ? `Até R$ ${Number(requisicao.valor_unitario_maximo).toLocaleString('pt-BR')}` : null;
 
   const valorRangeTotal = requisicao.valor_minimo && requisicao.valor_maximo
     ? `R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(requisicao.valor_maximo).toLocaleString('pt-BR')}`
-    : requisicao.valor_minimo ? `A partir de R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')}` : null;
+    : requisicao.valor_minimo ? `A partir de R$ ${Number(requisicao.valor_minimo).toLocaleString('pt-BR')}`
+    : requisicao.valor_maximo ? `Até R$ ${Number(requisicao.valor_maximo).toLocaleString('pt-BR')}` : null;
 
   if (editando) {
     return (

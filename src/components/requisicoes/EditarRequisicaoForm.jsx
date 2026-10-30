@@ -36,13 +36,33 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
     queryFn: () => base44.entities.CentrosCusto.filter({ ativo: true }),
   });
 
+  const parseNullableNumber = (val) => {
+    if (val === "" || val === null || val === undefined) return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  };
+
   const editMutation = useMutation({
     mutationFn: async (data) => {
+      const payload = {
+        ...data,
+        quantidade: Number(data.quantidade) || 1,
+        unidade_medida: data.unidade_medida?.trim() || null,
+        data_necessidade: data.data_necessidade || null,
+        material: data.material?.trim() || null,
+        cor: data.cor?.trim() || null,
+        fornecedor_sugerido: data.fornecedor_sugerido?.trim() || null,
+        valor_unitario_minimo: parseNullableNumber(data.valor_unitario_minimo),
+        valor_unitario_maximo: parseNullableNumber(data.valor_unitario_maximo),
+        valor_minimo: parseNullableNumber(data.valor_minimo),
+        valor_maximo: parseNullableNumber(data.valor_maximo),
+        anexos,
+      };
+
       const res = await base44.functions.invoke('requisicaoComprasAction', {
         action: 'requisicao_editar',
         requisicao_id: requisicao.id,
-        ...data,
-        anexos,
+        ...payload,
       });
       return res;
     },
@@ -50,6 +70,46 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
   });
 
   const set = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
+
+  const handleQuantidadeChange = (qtd) => {
+    const qtdNum = Number(qtd);
+    setFormData(prev => {
+      const next = { ...prev, quantidade: qtdNum };
+      if (prev.valor_unitario_minimo && !isNaN(Number(prev.valor_unitario_minimo))) {
+        next.valor_minimo = (Number(prev.valor_unitario_minimo) * (qtdNum || 1)).toFixed(2);
+      }
+      if (prev.valor_unitario_maximo && !isNaN(Number(prev.valor_unitario_maximo))) {
+        next.valor_maximo = (Number(prev.valor_unitario_maximo) * (qtdNum || 1)).toFixed(2);
+      }
+      return next;
+    });
+  };
+
+  const handleUnitMinChange = (val) => {
+    setFormData(prev => {
+      const next = { ...prev, valor_unitario_minimo: val };
+      if (val !== "" && !isNaN(Number(val))) {
+        const qtd = Number(prev.quantidade) || 1;
+        next.valor_minimo = (Number(val) * qtd).toFixed(2);
+      } else if (val === "") {
+        next.valor_minimo = "";
+      }
+      return next;
+    });
+  };
+
+  const handleUnitMaxChange = (val) => {
+    setFormData(prev => {
+      const next = { ...prev, valor_unitario_maximo: val };
+      if (val !== "" && !isNaN(Number(val))) {
+        const qtd = Number(prev.quantidade) || 1;
+        next.valor_maximo = (Number(val) * qtd).toFixed(2);
+      } else if (val === "") {
+        next.valor_maximo = "";
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -106,7 +166,7 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <Label>Quantidade <span className="text-red-500">*</span></Label>
-                <Input required type="number" min="1" className="mt-1" value={formData.quantidade} onChange={e => set('quantidade', Number(e.target.value))} />
+                <Input required type="number" min="1" className="mt-1" value={formData.quantidade} onChange={e => handleQuantidadeChange(e.target.value)} />
               </div>
               <div>
                 <Label>Unidade de Medida</Label>
@@ -150,23 +210,23 @@ export default function EditarRequisicaoForm({ requisicao, onCancel, onSuccess }
             </div>
 
             <div>
-              <Label>Valor Unitário Estimado</Label>
-              <p className="text-xs text-muted-foreground mb-2">Valor de uma unidade do item (range mín–máx)</p>
+              <Label>Valor Unitário Estimado (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor de uma unidade do item (range mín–máx) — preenchimento opcional</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                  <Input type="number" min="0" step="0.01" className="mt-1 pl-9" placeholder="Mín. unit." value={formData.valor_unitario_minimo} onChange={e => set('valor_unitario_minimo', e.target.value)} />
+                  <Input type="number" min="0" step="0.01" className="mt-1 pl-9" placeholder="Mín. unit." value={formData.valor_unitario_minimo} onChange={e => handleUnitMinChange(e.target.value)} />
                 </div>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                  <Input type="number" min="0" step="0.01" className="mt-1 pl-9" placeholder="Máx. unit." value={formData.valor_unitario_maximo} onChange={e => set('valor_unitario_maximo', e.target.value)} />
+                  <Input type="number" min="0" step="0.01" className="mt-1 pl-9" placeholder="Máx. unit." value={formData.valor_unitario_maximo} onChange={e => handleUnitMaxChange(e.target.value)} />
                 </div>
               </div>
             </div>
 
             <div>
-              <Label>Valor Total Estimado</Label>
-              <p className="text-xs text-muted-foreground mb-2">Valor total da compra (range mín–máx)</p>
+              <Label>Valor Total Estimado (opcional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">Valor total da compra (range mín–máx) — preenchimento opcional</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>

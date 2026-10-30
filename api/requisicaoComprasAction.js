@@ -181,7 +181,13 @@ export default async function handler(req, res) {
 
       const valorRangeTotal = req_data.valor_minimo && req_data.valor_maximo
         ? `R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_maximo).toLocaleString('pt-BR')}`
-        : req_data.valor_minimo ? `A partir de R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')}` : 'Não informado';
+        : req_data.valor_minimo ? `A partir de R$ ${Number(req_data.valor_minimo).toLocaleString('pt-BR')}`
+        : req_data.valor_maximo ? `Até R$ ${Number(req_data.valor_maximo).toLocaleString('pt-BR')}` : 'Não informado';
+
+      const valorRangeUnit = req_data.valor_unitario_minimo && req_data.valor_unitario_maximo
+        ? `R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')} – R$ ${Number(req_data.valor_unitario_maximo).toLocaleString('pt-BR')}`
+        : req_data.valor_unitario_minimo ? `A partir de R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')}`
+        : req_data.valor_unitario_maximo ? `Até R$ ${Number(req_data.valor_unitario_maximo).toLocaleString('pt-BR')}` : null;
 
       await sendEmail(
         diretorEmail,
@@ -210,6 +216,7 @@ export default async function handler(req, res) {
             <p style="margin:4px 0;"><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
             ${req_data.data_necessidade ? `<p style="margin:4px 0;"><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
             ${req_data.centro_custo_nome ? `<p style="margin:4px 0;"><strong>Centro de Custo:</strong> ${req_data.centro_custo_codigo} — ${req_data.centro_custo_nome}</p>` : ''}
+            ${valorRangeUnit ? `<p style="margin:4px 0;"><strong>Valor Unitário Estimado:</strong> ${valorRangeUnit}</p>` : ''}
             <p style="margin:4px 0;"><strong>Valor Total Estimado:</strong> ${valorRangeTotal}</p>
             <p style="margin:4px 0;"><strong>Urgência:</strong> ${req_data.urgencia}</p>
             ${req_data.fornecedor_sugerido ? `<p style="margin:4px 0;"><strong>Fornecedor Sugerido:</strong> ${req_data.fornecedor_sugerido}</p>` : ''}
@@ -406,18 +413,32 @@ export default async function handler(req, res) {
         justificativa, urgencia, fornecedor_sugerido
       } = body;
 
+      const parseNullableNumber = (val) => {
+        if (val === "" || val === null || val === undefined) return null;
+        const num = Number(val);
+        return isNaN(num) ? null : num;
+      };
+
       const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, anexos);
 
       const { error: editError } = await supabase
         .from('requisicao_compras')
         .update({
-          item, material, cor, quantidade,
-          unidade_medida: unidade_medida || null,
+          item: item?.trim(),
+          material: material?.trim() || null,
+          cor: cor?.trim() || null,
+          quantidade: Number(quantidade) || 1,
+          unidade_medida: unidade_medida?.trim() || null,
           data_necessidade: data_necessidade || null,
-          centro_custo_codigo, centro_custo_nome,
-          valor_unitario_minimo, valor_unitario_maximo,
-          valor_minimo, valor_maximo,
-          justificativa, urgencia, fornecedor_sugerido,
+          centro_custo_codigo,
+          centro_custo_nome,
+          valor_unitario_minimo: parseNullableNumber(valor_unitario_minimo),
+          valor_unitario_maximo: parseNullableNumber(valor_unitario_maximo),
+          valor_minimo: parseNullableNumber(valor_minimo),
+          valor_maximo: parseNullableNumber(valor_maximo),
+          justificativa: justificativa?.trim(),
+          urgencia: urgencia || 'Média',
+          fornecedor_sugerido: fornecedor_sugerido?.trim() || null,
           anexos: todosAnexosConsolidados,
           status: 'Aguardando Aprovador',
           aprovador_comentario: '',
