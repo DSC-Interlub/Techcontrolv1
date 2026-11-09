@@ -136,7 +136,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
       }
 
-      // Aprovar: verificar se o próprio aprovador já é o Diretor Geral
+      // Valida que o e-mail do diretor está configurado
       const { data: configRecord } = await supabase
         .from('configuracoes')
         .select('valor')
@@ -151,95 +151,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const isAprovadorDiretor = (
-        (aprovador_email && diretorEmail && aprovador_email.toLowerCase().trim() === diretorEmail.toLowerCase().trim()) ||
-        req_data.aprovador_email?.toLowerCase().trim() === diretorEmail?.toLowerCase().trim() ||
-        req_data.aprovador_nome?.toLowerCase().includes('valter')
-      );
-
-      // SE O APROVADOR JÁ É O DIRETOR:
-      // A aprovação do Diretor já foi concedida aqui, não precisa pedir duas vezes.
-      // Avança diretamente para 'Aguardando Cotação' e notifica os compradores!
-      if (isAprovadorDiretor) {
-        const { error: updDirectError } = await supabase
-          .from('requisicao_compras')
-          .update({
-            status: 'Aguardando Cotação',
-            aprovador_comentario: comentario || '',
-            aprovador_data: new Date().toISOString(),
-            diretor_comentario: comentario || '',
-            diretor_data: new Date().toISOString(),
-            token_aprovacao: '',
-            anexos: todosAnexosConsolidados,
-            historico: [...(req_data.historico || []), {
-              data_hora: new Date().toISOString(),
-              tipo: 'aprovacao_diretor_1',
-              descricao: `Aprovado pelo responsável e Diretor (${req_data.aprovador_nome || 'Valter Alves Torres'}). Liberado diretamente para cotação com o setor de compras. ${comentario ? 'Obs: ' + comentario : ''}`,
-              usuario: req_data.aprovador_nome || 'Valter Alves Torres',
-              numero_requisicao: req_data.numero_requisicao,
-              anexos: anexos || []
-            }],
-          })
-          .eq('id', requisicao_id);
-
-        if (updDirectError) throw updDirectError;
-
-        // Notifica compradores
-        const { data: compradores } = await supabase
-          .from('colaboradores')
-          .select('email, nome_completo')
-          .eq('eh_comprador', true);
-
-        const emailsCompradores = (compradores || []).map(c => c.email).filter(Boolean);
-
-        for (const buyerEmail of emailsCompradores) {
-          await sendEmail(
-            buyerEmail,
-            `🛒 Nova Requisição Liberada para Cotação — ${req_data.numero_requisicao}`,
-            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-              <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-                <h2 style="margin:0;">🛒 Requisição Liberada para Cotação</h2>
-              </div>
-              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi autorizada pelo Diretor (${req_data.aprovador_nome}) e aguarda elaboração de cotação.</p>
-              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-                <p><strong>Item:</strong> ${req_data.item}</p>
-                ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
-                ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
-                ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
-                <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-                <p><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
-                ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
-              </div>
-              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos para Elaboração da Cotação:')}
-              <div style="text-align:center;margin-top:24px;">
-                <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
-              </div>
-            </div>`
-          );
-        }
-
-        if (req_data.colaborador_email) {
-          await sendEmail(
-            req_data.colaborador_email,
-            `⏳ Requisição ${req_data.numero_requisicao} — Liberada para Cotação`,
-            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-              <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-                <h2 style="margin:0;">⏳ Em Cotação com Compras</h2>
-              </div>
-              <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
-              <p>Sua requisição foi autorizada pelo Diretor (${req_data.aprovador_nome}) e está sendo cotada pelo setor de compras.</p>
-              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
-            </div>`
-          );
-        }
-
-        return res.status(200).json({ success: true, action: 'liberado_cotacao_direta', numero_requisicao: req_data.numero_requisicao });
-      }
-
-      // Se o aprovador NÃO é o diretor (ex: outro gestor), segue o fluxo de enviar para a 1ª aprovação do diretor
-
-      // Gera UUID para token de aprovação do diretor
+      // Gera UUID para token de aprovação do diretor (1ª fase: liberação para cotação)
       const token_dir = crypto.randomUUID().replace(/-/g, '');
 
       const { error: updError2 } = await supabase
