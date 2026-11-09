@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag, Search, ListFilter } from "lucide-react";
+import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag, Search, ListFilter, ShieldCheck } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import NovaRequisicaoForm from "../components/requisicoes/NovaRequisicaoForm";
@@ -83,27 +83,37 @@ export default function PortalRequisicoes() {
   const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
   const temReqsComoAprovador = requisicoes.some(r => r.aprovador_id === colaboradorFull?.id);
 
-  const isAprovador = isGestorDeAlguem || temReqsComoAprovador || !!(
+  const isDiretor = !!(
+    colaboradorFull?.email?.toLowerCase() === 'vtorres@interlub.com' ||
+    colaboradorFull?.area?.toLowerCase() === 'diretoria' ||
+    colaboradorFull?.cargo?.toLowerCase().includes('diretor')
+  );
+
+  const isAprovador = isGestorDeAlguem || temReqsComoAprovador || isDiretor || !!(
     colaboradorFull?.is_aprovador ||
     colaboradorFull?.cargo?.toLowerCase().includes('aprovador') ||
     colaboradorFull?.cargo?.toLowerCase().includes('gerente') ||
     colaboradorFull?.cargo?.toLowerCase().includes('coordenador') ||
-    colaboradorFull?.cargo?.toLowerCase().includes('diretor') ||
     colaboradorFull?.cargo?.toLowerCase().includes('supervisor')
   );
 
   const minhasRequisicoes = requisicoes.filter(r => r.colaborador_id === colaboradorFull?.id);
   const reqsAprovador = isAprovador ? requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id) : [];
 
-  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador
+  // Se o colaborador é diretor, ele tem visibilidade de todas as requisições que necessitam de aprovação da diretoria
+  const requisicoesPendentesDiretor = isDiretor
+    ? requisicoes.filter(r => r.status === 'Aguardando Diretor' || r.status === 'Aguardando Aprovação Final')
+    : [];
+
+  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador + aprovações de diretoria
   const todasRelacionadas = Array.from(
-    new Map([...minhasRequisicoes, ...reqsAprovador].map(r => [r.id, r])).values()
+    new Map([...minhasRequisicoes, ...reqsAprovador, ...(isDiretor ? requisicoes : [])].map(r => [r.id, r])).values()
   );
 
   // isComprador: lê do campo eh_comprador do colaborador ou área/cargo de compras
   const isComprador = !!(colaboradorFull?.eh_comprador || colaboradorFull?.area?.toLowerCase().includes('compras'));
 
-  // Requisições pendentes de aprovação atribuídas a este usuário
+  // Requisições pendentes de aprovação atribuídas a este usuário (como gestor direto)
   const requisicoesPendentesAprovador = requisicoes.filter(r =>
     r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
   );
@@ -196,6 +206,19 @@ export default function PortalRequisicoes() {
             </div>
           )}
 
+          {/* Aviso para Diretor */}
+          {isDiretor && requisicoesPendentesDiretor.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                <div>
+                  <p className="font-semibold text-blue-900">Há {requisicoesPendentesDiretor.length} requisição(ões) aguardando sua autorização como Diretor</p>
+                  <p className="text-sm text-blue-700">Acesse a aba "Aprovações da Diretoria" para liberar cotações ou autorizar compras finais.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Aviso para comprador */}
           {isComprador && requisicoesPendentesCotacao.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
@@ -207,12 +230,20 @@ export default function PortalRequisicoes() {
             </div>
           )}
 
-          <Tabs defaultValue="minhas">
+          <Tabs defaultValue={isDiretor && requisicoesPendentesDiretor.length > 0 ? "diretoria" : (isAprovador && requisicoesPendentesAprovador.length > 0 ? "aprovador" : "minhas")}>
             <div className="overflow-x-auto mb-4">
               <TabsList className="flex w-max min-w-full gap-1 p-1 bg-muted rounded-lg">
                 <TabsTrigger value="minhas" className="text-xs px-3 py-1.5">Minhas ({minhasRequisicoes.length})</TabsTrigger>
                 <TabsTrigger value="pendentes" className="text-xs px-3 py-1.5">Em Andamento ({pendentes.length})</TabsTrigger>
                 <TabsTrigger value="historico" className="text-xs px-3 py-1.5">Histórico ({aprovadas.length + reprovadas.length})</TabsTrigger>
+                {isDiretor && (
+                  <TabsTrigger value="diretoria" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-blue-700">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />Aprovações da Diretoria
+                    {requisicoesPendentesDiretor.length > 0 && (
+                      <span className="ml-1 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 animate-pulse">{requisicoesPendentesDiretor.length}</span>
+                    )}
+                  </TabsTrigger>
+                )}
                 {isAprovador && (
                   <TabsTrigger value="aprovador" className="text-xs px-3 py-1.5 relative flex items-center gap-1">
                     <UserCheck className="w-3.5 h-3.5" />Painel Aprovador
@@ -246,6 +277,26 @@ export default function PortalRequisicoes() {
             <TabsContent value="historico">
               <RequisicaoLista lista={[...aprovadas, ...reprovadas]} isLoading={isLoading} onSelect={setSelectedReq} empty="Nenhuma requisição concluída." />
             </TabsContent>
+            {isDiretor && (
+              <TabsContent value="diretoria">
+                <div className="space-y-4">
+                  <div className="bg-slate-50 p-4 rounded-lg border flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">Painel de Decisões da Diretoria</h3>
+                      <p className="text-xs text-slate-500">Requisições que aguardam sua 1ª aprovação (liberação para cotação) ou aprovação final (valores cotados).</p>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-xs">{requisicoesPendentesDiretor.length} pendente(s)</Badge>
+                  </div>
+                  <RequisicaoLista
+                    lista={requisicoesPendentesDiretor}
+                    isLoading={isLoading}
+                    onSelect={setSelectedReq}
+                    empty="Nenhuma requisição aguardando decisão da Diretoria no momento."
+                    exibirSolicitante={true}
+                  />
+                </div>
+              </TabsContent>
+            )}
             {isAprovador && (
               <TabsContent value="aprovador">
                 <PainelAprovador colaboradorFull={colaboradorFull} />
@@ -316,7 +367,7 @@ export default function PortalRequisicoes() {
             <RequisicaoDetalhes
               requisicao={selectedReq}
               colaboradorAtual={colaboradorFull}
-              isAdmin={false}
+              isAdmin={isDiretor}
               onAcao={() => {
                 queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
                 queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });

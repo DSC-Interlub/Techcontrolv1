@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Clock, CheckCircle, XCircle, Users, ChevronRight, Loader2, ShoppingBag, ArrowRight } from "lucide-react";
+import { Clock, CheckCircle, XCircle, Users, ChevronRight, Loader2, ShoppingBag, ArrowRight, ShieldCheck } from "lucide-react";
 import RequisicaoDetalhes from "./RequisicaoDetalhes";
 
 const statusColors = {
@@ -51,8 +51,17 @@ export default function PainelAprovador({ colaboradorFull }) {
     refetchInterval: 5000,
   });
 
+  const isDiretor = !!(
+    colaboradorFull?.email?.toLowerCase() === 'vtorres@interlub.com' ||
+    colaboradorFull?.area?.toLowerCase() === 'diretoria' ||
+    colaboradorFull?.cargo?.toLowerCase()?.includes('diretor')
+  );
+
   const minhasReqs = requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id);
   const pendentesAprovacao = minhasReqs.filter(r => r.status === "Aguardando Aprovador");
+  const pendentesDiretoria = isDiretor
+    ? requisicoes.filter(r => r.status === "Aguardando Diretor" || r.status === "Aguardando Aprovação Final")
+    : [];
   const emAndamento = minhasReqs.filter(r =>
     ["Aguardando Diretor", "Aguardando Cotação", "Aguardando Aprovação Final"].includes(r.status)
   );
@@ -68,7 +77,16 @@ export default function PainelAprovador({ colaboradorFull }) {
   return (
     <div>
       {/* Indicadores */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className={`grid grid-cols-2 ${isDiretor ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 mb-6`}>
+        {isDiretor && (
+          <Card className={pendentesDiretoria.length > 0 ? "border-purple-300 bg-purple-50" : ""}>
+            <CardContent className="pt-4 pb-4 text-center">
+              <ShieldCheck className={`w-5 h-5 mx-auto mb-1 ${pendentesDiretoria.length > 0 ? "text-purple-600 animate-pulse" : "text-muted-foreground"}`} />
+              <p className={`text-2xl font-bold ${pendentesDiretoria.length > 0 ? "text-purple-700" : "text-foreground"}`}>{pendentesDiretoria.length}</p>
+              <p className="text-xs font-medium text-muted-foreground">Aprovações Diretoria</p>
+            </CardContent>
+          </Card>
+        )}
         <Card className={pendentesAprovacao.length > 0 ? "border-amber-300 bg-amber-50" : ""}>
           <CardContent className="pt-4 pb-4 text-center">
             <Clock className={`w-5 h-5 mx-auto mb-1 ${pendentesAprovacao.length > 0 ? "text-amber-600 animate-pulse" : "text-muted-foreground"}`} />
@@ -102,8 +120,9 @@ export default function PainelAprovador({ colaboradorFull }) {
       {/* Sub-abas */}
       <div className="flex flex-wrap gap-1 border-b mb-4">
         {[
-          { key: "pendentes", label: `Aguardando Aprovação (${pendentesAprovacao.length})` },
-          { key: "emandamento", label: `Em Andamento (${emAndamento.length})` },
+          ...(isDiretor ? [{ key: "diretoria", label: `Aprovações Diretoria (${pendentesDiretoria.length})`, count: pendentesDiretoria.length, badgeColor: "bg-purple-600" }] : []),
+          { key: "pendentes", label: `Aguardando Aprovação (${pendentesAprovacao.length})`, count: pendentesAprovacao.length, badgeColor: "bg-amber-500" },
+          { key: "emandamento", label: `Em Andamento (${emAndamento.length})`, count: emAndamento.length, badgeColor: "bg-blue-600" },
           { key: "historico", label: `Concluídas / Histórico (${historicoConcluidas.length})` },
           { key: "colaboradores", label: `Meus Colaboradores (${colaboradores.length})` },
         ].map(aba => (
@@ -112,22 +131,64 @@ export default function PainelAprovador({ colaboradorFull }) {
             onClick={() => setAbaAtiva(aba.key)}
             className={`px-4 py-2 text-xs md:text-sm font-medium border-b-2 transition-colors ${
               abaAtiva === aba.key
-                ? "border-emerald-600 text-emerald-700 font-semibold"
+                ? (aba.key === "diretoria" ? "border-purple-600 text-purple-700 font-semibold" : "border-emerald-600 text-emerald-700 font-semibold")
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {aba.label}
-            {aba.key === "pendentes" && pendentesAprovacao.length > 0 && (
-              <span className="ml-1.5 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendentesAprovacao.length}</span>
-            )}
-            {aba.key === "emandamento" && emAndamento.length > 0 && (
-              <span className="ml-1.5 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5">{emAndamento.length}</span>
+            {aba.count > 0 && (
+              <span className={`ml-1.5 ${aba.badgeColor || "bg-amber-500"} text-white text-xs rounded-full px-1.5 py-0.5`}>
+                {aba.count}
+              </span>
             )}
           </button>
         ))}
       </div>
 
       {/* Conteúdo das abas */}
+      {abaAtiva === "diretoria" && isDiretor && (
+        <div>
+          {loadingReqs ? (
+            <p className="text-center py-8 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Carregando...</p>
+          ) : pendentesDiretoria.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 border rounded-lg p-6">
+              <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+              <p className="font-semibold text-slate-800">Diretoria em dia!</p>
+              <p className="text-xs text-slate-500 mt-1">Nenhuma requisição aguardando decisão da Diretoria no momento.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {pendentesDiretoria.map(r => (
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-lg cursor-pointer hover:shadow-md transition-all"
+                  onClick={() => setSelectedReq(r)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">{r.numero_requisicao}</span>
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs font-semibold">
+                        {r.status === 'Aguardando Diretor' ? '1ª Aprovação Diretoria (Cotação)' : 'Aprovação Final da Diretoria'}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">{r.urgencia}</Badge>
+                    </div>
+                    <p className="font-medium text-foreground truncate">{r.item}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Solicitante: <strong>{r.colaborador_nome}</strong> ({r.colaborador_area}) · Qtd: {r.quantidade} {r.unidade_medida || 'un'}
+                      {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
+                      {r.cotacao_valor ? ` · Cotação: R$ ${Number(r.cotacao_valor).toLocaleString('pt-BR')}` : ""}
+                    </p>
+                  </div>
+                  <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1 text-xs ml-3 shrink-0">
+                    Decidir <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {abaAtiva === "pendentes" && (
         <div>
           {loadingReqs ? (
@@ -354,6 +415,7 @@ export default function PainelAprovador({ colaboradorFull }) {
             <RequisicaoDetalhes
               requisicao={selectedReq}
               colaboradorAtual={colaboradorFull}
+              isAdmin={isDiretor}
               onAcao={() => {
                 queryClient.invalidateQueries({ queryKey: ["painel_aprovador_reqs"] });
                 queryClient.invalidateQueries({ queryKey: ["portal_requisicoes"] });

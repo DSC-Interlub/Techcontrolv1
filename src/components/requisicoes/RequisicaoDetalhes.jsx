@@ -58,16 +58,23 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
     return Array.from(map.values());
   }, [requisicao]);
 
-  const isAprovador = colaboradorAtual?.id === requisicao.aprovador_id;
+  const isDiretor = !!(
+    isAdmin ||
+    colaboradorAtual?.email?.toLowerCase() === 'vtorres@interlub.com' ||
+    colaboradorAtual?.area?.toLowerCase() === 'diretoria' ||
+    colaboradorAtual?.cargo?.toLowerCase().includes('diretor')
+  );
+
+  const isAprovador = colaboradorAtual?.id === requisicao.aprovador_id || isDiretor;
   const isSolicitante = colaboradorAtual?.id === requisicao.colaborador_id;
   const isComprador = !!(colaboradorAtual?.eh_comprador || isAdmin);
 
-  const podeAtuarAprovador = isAprovador && requisicao.status === 'Aguardando Aprovador';
-  const podeAtuarDiretor = isAdmin && (requisicao.status === 'Aguardando Diretor' || requisicao.status === 'Aguardando Aprovação Final');
+  const podeAtuarAprovador = (colaboradorAtual?.id === requisicao.aprovador_id || isDiretor) && requisicao.status === 'Aguardando Aprovador';
+  const podeAtuarDiretor = (isAdmin || isDiretor) && (requisicao.status === 'Aguardando Diretor' || requisicao.status === 'Aguardando Aprovação Final');
   const podeAtuarComprador = isComprador && requisicao.status === 'Aguardando Cotação';
 
   // Solicitante ou admin podem editar se a requisição foi reprovada
-  const podeEditar = (isSolicitante || isAdmin) &&
+  const podeEditar = (isSolicitante || isAdmin || isDiretor) &&
     ['Reprovada pelo Aprovador', 'Reprovada pelo Diretor'].includes(requisicao.status);
 
   const acaoMutation = useMutation({
@@ -76,6 +83,7 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
         return base44.functions.invoke('requisicaoComprasAction', {
           action: tipo === 'aprovar' ? 'diretor_aprovar' : 'diretor_reprovar',
           token: requisicao.token_aprovacao,
+          requisicao_id: requisicao.id,
           comentario,
           anexos: acaoAnexos,
         });
