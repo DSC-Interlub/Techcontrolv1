@@ -31,6 +31,8 @@
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/cronDiario", "schedule": "0 13 * * *" }
+    { "path": "/api/cronDiario", "schedule": "0 13 * * *" },
+    { "path": "/api/cronDigestDiretor", "schedule": "0 12 * * 1-5" },
+    { "path": "/api/cronDigestDiretor", "schedule": "0 18 * * 1-5" }
   ]
 }
