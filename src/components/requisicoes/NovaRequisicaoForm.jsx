@@ -230,7 +230,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
 
       {colaborador?.responsavel_id && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
-          <strong>Aprovador responsável:</strong> {colaborador.responsavel_nome || aprovador?.nome_completo || 'Carregando...'}
+          <strong>Aprovador responsável:</strong> {colaborador.responsavel_nome || 'Diretoria Geral'}
         </div>
       )}
 

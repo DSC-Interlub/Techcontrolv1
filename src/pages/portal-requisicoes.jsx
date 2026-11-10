@@ -29,6 +29,8 @@ import NovaRequisicaoForm from "../components/requisicoes/NovaRequisicaoForm";
 import RequisicaoDetalhes from "../components/requisicoes/RequisicaoDetalhes";
 import IndicadoresRequisicao from "../components/requisicoes/IndicadoresRequisicao";
 import PainelAprovador from "../components/requisicoes/PainelAprovador";
+import PainelDiretoria from "../components/requisicoes/diretoria/PainelDiretoria";
+import { toast } from "@/components/ui/use-toast";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -60,6 +62,74 @@ export default function PortalRequisicoes() {
   const [buscaHistorico, setBuscaHistorico] = useState("");
   const [buscaComprador, setBuscaComprador] = useState("");
   const [filtroStatusComprador, setFiltroStatusComprador] = useState("todos");
+
+  // Estado para travar somente o card em processamento
+  const [pendingReqId, setPendingReqId] = useState(null);
+
+  // Mutations da Diretoria
+  const aprovarDiretorMutation = useMutation({
+    mutationFn: async ({ reqId, token, fase }) => {
+      setPendingReqId(reqId);
+      const res = await base44.functions.invoke("requisicaoComprasAction", {
+        action: "diretor_aprovar",
+        requisicao_id: reqId,
+        token: token || undefined,
+        comentario: "Autorizado pelo Diretor via Portal"
+      });
+      return { data: res.data, fase };
+    },
+    onSuccess: ({ fase }) => {
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
+      setPendingReqId(null);
+      const isFase1 = fase === "Aguardando Diretor";
+      toast({
+        title: isFase1 ? "Cotação autorizada" : "Compra autorizada",
+        description: isFase1
+          ? "O Compras já pode buscar fornecedores."
+          : "O Compras foi avisado."
+      });
+    },
+    onError: (err) => {
+      setPendingReqId(null);
+      toast({
+        variant: "destructive",
+        title: "Erro ao autorizar",
+        description: err.message || "Não foi possível autorizar a compra."
+      });
+    }
+  });
+
+  const reprovarDiretorMutation = useMutation({
+    mutationFn: async ({ reqId, token, motivo, solicitanteNome }) => {
+      setPendingReqId(reqId);
+      const res = await base44.functions.invoke("requisicaoComprasAction", {
+        action: "diretor_reprovar",
+        requisicao_id: reqId,
+        token: token || undefined,
+        comentario: motivo
+      });
+      return { data: res.data, solicitanteNome };
+    },
+    onSuccess: ({ solicitanteNome }) => {
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
+      setPendingReqId(null);
+      const primeiroNome = solicitanteNome ? solicitanteNome.split(" ")[0] : "O colaborador";
+      toast({
+        title: "Requisição recusada",
+        description: `${primeiroNome} foi avisado(a) com o seu motivo.`
+      });
+    },
+    onError: (err) => {
+      setPendingReqId(null);
+      toast({
+        variant: "destructive",
+        title: "Erro ao recusar",
+        description: err.message || "Não foi possível recusar a compra."
+      });
+    }
+  });
 
   useEffect(() => {
     if (!loading) requireAuth();
@@ -192,6 +262,36 @@ export default function PortalRequisicoes() {
             />
           </div>
         </div>
+      </PortalLayout>
+    );
+  }
+
+  // EXPERIÊNCIA DA DIRETORIA (Sr. Valter Alves Torres):
+  if (isDiretor && view !== "nova") {
+    return (
+      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
+        <PainelDiretoria
+          requisicoes={requisicoes}
+          isLoading={isLoading}
+          colaboradorFull={colaboradorFull}
+          onNovaRequisicao={() => setView("nova")}
+          onAprovar={(req) => {
+            aprovarDiretorMutation.mutate({
+              reqId: req.id,
+              token: req.token_aprovacao,
+              fase: req.status
+            });
+          }}
+          onRecusar={(req, motivo) => {
+            reprovarDiretorMutation.mutate({
+              reqId: req.id,
+              token: req.token_aprovacao,
+              motivo,
+              solicitanteNome: req.colaborador_nome
+            });
+          }}
+          pendingReqId={pendingReqId}
+        />
       </PortalLayout>
     );
   }
