@@ -9,25 +9,38 @@ import {
 } from "@/components/ui/toast";
 
 export function Toaster() {
-  const { toasts } = useToast();
+  const { toasts, dismiss } = useToast();
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, onOpenChange, ...props }) {
+    <ToastProvider swipeDirection="right" duration={5000}>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
+          <Toast
+            key={id}
+            {...props}
+            duration={props.duration || 5000}
+            onOpenChange={(open) => {
+              if (!open) dismiss(id);
+              props.onOpenChange?.(open);
+            }}
+          >
+            <div className="grid gap-1 flex-1 pr-5">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
                 <ToastDescription>{description}</ToastDescription>
               )}
             </div>
             {action}
-            <ToastClose />
+            <ToastClose
+              onClick={(e) => {
+                e.stopPropagation();
+                dismiss(id);
+              }}
+            />
           </Toast>
         );
       })}
       <ToastViewport />
     </ToastProvider>
   );
-} 
+}
