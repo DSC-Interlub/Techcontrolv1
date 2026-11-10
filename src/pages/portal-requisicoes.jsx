@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag, Search, ListFilter, ShieldCheck } from "lucide-react";
+import { ShoppingCart, Plus, Loader2, CheckCircle, Clock, XCircle, ChevronLeft, UserCheck, ShoppingBag, Search, ListFilter, ShieldCheck, ArrowRight } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
 import NovaRequisicaoForm from "../components/requisicoes/NovaRequisicaoForm";
