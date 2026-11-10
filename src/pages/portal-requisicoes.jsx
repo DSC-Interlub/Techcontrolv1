@@ -25,7 +25,8 @@ import {
   ShieldCheck, 
   ArrowRight,
   AlertTriangle,
-  FileText
+  FileText,
+  ExternalLink
 } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
