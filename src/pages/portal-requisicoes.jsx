@@ -320,149 +320,205 @@ export default function PortalRequisicoes() {
                     const valorCotado = Number(req.cotacao_valor) || 0;
                     const diferencaExcedente = valorEstimadoTeto > 0 && valorCotado > valorEstimadoTeto ? (valorCotado - valorEstimadoTeto) : 0;
 
-                    const totalAnexos = ((req.anexos || []).length) + ((req.cotacao_anexos || []).length);
+                    // Normaliza todos os orçamentos e documentos para exibição DIRETA no card
+                    const normalizarDocs = (list, prefixo) => {
+                      if (!Array.isArray(list)) return [];
+                      return list.map((a, idx) => {
+                        if (typeof a === 'string') {
+                          const fileName = a.split('/').pop()?.split('?')[0] || `${prefixo} ${idx + 1}`;
+                          return { nome: decodeURIComponent(fileName), url: a };
+                        }
+                        return {
+                          nome: a.file_name || a.nome || a.name || `${prefixo} ${idx + 1}`,
+                          url: a.file_url || a.url || '#'
+                        };
+                      }).filter(a => a.url && a.url !== '#');
+                    };
+
+                    const docsCotacao = normalizarDocs(req.cotacao_anexos, "Orçamento Compras");
+                    const docsIniciais = normalizarDocs(req.anexos, "Documento Anexo");
+                    const todosDocsDiretos = [...docsCotacao, ...docsIniciais];
 
                     return (
-                      <Card key={req.id} className="border-2 border-purple-200 bg-white hover:border-purple-400 transition-all shadow-sm rounded-2xl overflow-hidden">
-                        {/* Tarja de Alerta de Reenvio */}
+                      <div 
+                        key={req.id} 
+                        className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                      >
+                        {/* Aviso claro em caso de reenvio */}
                         {motivoRecusaAnterior && (
-                          <div className="bg-amber-100 border-b border-amber-300 px-5 py-3 flex items-start gap-3 text-amber-900 text-sm">
+                          <div className="bg-amber-100 border-b border-amber-300 px-6 py-3 flex items-start gap-3 text-amber-950">
                             <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                             <div>
-                              <p className="font-bold">⚠️ Item Reenviado pelo Colaborador após Ajustes</p>
-                              <p className="text-xs text-amber-800 mt-0.5">
-                                Motivo da sua recusa anterior: <em>"{motivoRecusaAnterior}"</em>
+                              <p className="font-bold text-sm">Item corrigido e reenviado pelo colaborador</p>
+                              <p className="text-xs text-amber-900 mt-0.5">
+                                Sua recusa anterior foi: <em>"{motivoRecusaAnterior}"</em>
                               </p>
                             </div>
                           </div>
                         )}
 
-                        <div className="p-6">
-                          {/* Cabeçalho do Card */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded">
+                        <div className="p-6 md:p-8 space-y-5">
+                          {/* 1. TOPO: Solicitante e Etapa Clara */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded">
                                 {req.numero_requisicao}
                               </span>
-                              {isFase1 ? (
-                                <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 font-bold px-3 py-1 text-xs">
-                                  🟢 1ª Etapa: Autorizar Procura de Preço (Cotação)
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-purple-100 text-purple-900 border-purple-300 font-bold px-3 py-1 text-xs">
-                                  ⚠️ 2ª Etapa: Preço Superou a Estimativa (Autorizar Valor)
-                                </Badge>
-                              )}
-                              <Badge variant="outline" className="text-xs font-semibold">
-                                Urgência: {req.urgencia}
-                              </Badge>
+                              <span className="text-sm font-semibold text-slate-600">
+                                Solicitado por: <strong className="text-slate-900">{req.colaborador_nome}</strong> ({req.colaborador_area || 'Geral'})
+                              </span>
                             </div>
-                            {req.data_necessidade && (
-                              <span className="text-xs text-slate-700 font-semibold bg-slate-50 px-2.5 py-1 rounded border">
-                                📅 Limite: {new Date(req.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}
+
+                            {isFase1 ? (
+                              <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-900 font-bold px-3 py-1 rounded-full text-xs">
+                                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                                Passo 1: Autorizar Início da Cotação
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-900 font-bold px-3 py-1 rounded-full text-xs">
+                                <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                                Passo 2: Cotação Superou Estimativa
                               </span>
                             )}
                           </div>
 
-                          {/* Nome do Item e Solicitante em Destaque */}
-                          <h2 className="text-xl md:text-2xl font-black text-slate-900 mb-2">
-                            {req.item}
-                          </h2>
-                          <p className="text-sm text-slate-600 mb-4">
-                            Pedido por: <strong className="text-slate-800">{req.colaborador_nome}</strong> ({req.colaborador_area || 'Geral'}) · Quantidade: <strong className="text-slate-800">{req.quantidade} {req.unidade_medida || 'un'}</strong>
-                            {req.material ? ` · Material: ${req.material}` : ''}
-                            {req.cor ? ` · Cor: ${req.cor}` : ''}
-                          </p>
-
-                          {/* Destaque Financeiro em Linguagem Humana */}
-                          {isFase2 ? (
-                            <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 mb-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div>
-                                  <p className="text-xs font-bold uppercase text-purple-700">Preço Cotado no Mercado</p>
-                                  <p className="text-2xl font-black text-purple-900">
-                                    R$ {valorCotado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                  </p>
-                                  <p className="text-xs text-slate-600 mt-0.5">Fornecedor: <strong>{req.cotacao_fornecedor}</strong></p>
-                                </div>
-                                {valorEstimadoTeto > 0 && (
-                                  <div>
-                                    <p className="text-xs font-bold uppercase text-slate-600">Estimativa Prévia Aprovada</p>
-                                    <p className="text-xl font-bold text-slate-700">
-                                      R$ {valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                    </p>
-                                    {diferencaExcedente > 0 && (
-                                      <p className="text-xs font-bold text-red-600 mt-0.5">
-                                        +R$ {diferencaExcedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} acima da estimativa
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="text-xs font-bold uppercase text-slate-600">Comprador Responsável</p>
-                                  <p className="text-sm font-semibold text-slate-800 mt-1">
-                                    {req.cotacao_comprador_nome || "Setor de Compras"}
-                                  </p>
-                                  {req.cotacao_comentario && (
-                                    <p className="text-xs italic text-slate-600 mt-1">
-                                      "{req.cotacao_comentario}"
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-slate-50 border rounded-xl p-3.5 mb-4 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <span className="font-semibold text-slate-800">Valor Estimado Previsto: </span>
-                                {valorEstimadoTeto > 0 ? (
-                                  <strong className="text-sm font-black text-slate-900">R$ {valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-                                ) : (
-                                  <span className="text-slate-500 italic">Não informado previamente</span>
-                                )}
-                              </div>
-                              <span className="text-emerald-700 font-semibold">
-                                💡 Se compras achar um preço até este valor, aprova automaticamente.
+                          {/* 2. ITEM PRINCIPAL E QUANTIDADE (Tipografia Ampla e Limpa) */}
+                          <div>
+                            <div className="flex items-start justify-between gap-4">
+                              <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+                                {req.quantidade}x {req.item}
+                              </h2>
+                              <span className="shrink-0 bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1 rounded-lg">
+                                Unidade: {req.unidade_medida || 'un'}
                               </span>
                             </div>
-                          )}
 
-                          {/* Justificativa da Compra */}
-                          {req.justificativa && (
-                            <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-700 mb-5 border">
-                              <p className="font-bold text-slate-800 mb-1">Motivo do Pedido:</p>
-                              <p className="italic">"{req.justificativa}"</p>
+                            {/* Justificativa clara */}
+                            {req.justificativa && (
+                              <div className="mt-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-slate-700">
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Para que serve esta compra:</p>
+                                <p className="text-sm md:text-base font-medium text-slate-900 italic">
+                                  "{req.justificativa}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. QUADRO FINANCEIRO DIRETO (1 só foco visual) */}
+                          {isFase1 ? (
+                            <div className="bg-emerald-50/80 border-2 border-emerald-200 rounded-xl p-4 md:p-5">
+                              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 mb-1">
+                                Valor Estimado para Autorização Prévia
+                              </p>
+                              <div className="flex flex-wrap items-baseline gap-2">
+                                <span className="text-2xl md:text-3xl font-black text-emerald-950">
+                                  {valorEstimadoTeto > 0 
+                                    ? `R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
+                                    : 'Sem valor estimado'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-emerald-800 font-medium mt-2">
+                                💡 Se a equipe de compras encontrar um preço igual ou menor que este valor, a compra será <strong>aprovada automaticamente</strong> sem te incomodar novamente.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="bg-purple-50/90 border-2 border-purple-200 rounded-xl p-4 md:p-5">
+                              <p className="text-xs font-bold uppercase tracking-wide text-purple-800 mb-1">
+                                Preço Encontrado pela Equipe de Compras
+                              </p>
+                              <div className="flex flex-wrap items-baseline gap-3">
+                                <span className="text-2xl md:text-3xl font-black text-purple-950">
+                                  R$ {valorCotado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                                {req.cotacao_fornecedor && (
+                                  <span className="text-sm font-bold text-purple-800 bg-purple-100 px-2.5 py-1 rounded">
+                                    Fornecedor: {req.cotacao_fornecedor}
+                                  </span>
+                                )}
+                              </div>
+
+                              {diferencaExcedente > 0 && (
+                                <p className="text-xs font-bold text-red-600 mt-2">
+                                  ⚠️ Ficou R$ {diferencaExcedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} acima da estimativa prévia aprovada (R$ {valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).
+                                </p>
+                              )}
+
+                              {req.cotacao_comentario && (
+                                <p className="text-xs text-slate-600 mt-2 italic bg-white/70 p-2 rounded border border-purple-100">
+                                  Observação do comprador: "{req.cotacao_comentario}"
+                                </p>
+                              )}
                             </div>
                           )}
 
-                          {/* Botões Grandes de Ação Executiva */}
-                          <div className="pt-3 border-t flex flex-wrap items-center justify-between gap-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-slate-600 hover:text-slate-900 text-xs gap-1.5"
-                              onClick={() => setSelectedReq(req)}
-                            >
-                              <FileText className="w-4 h-4 text-slate-500" />
-                              Ver Detalhes e Orçamentos ({totalAnexos})
-                            </Button>
+                          {/* 4. ORÇAMENTOS E DOCUMENTOS VISÍVEIS DIRETAMENTE (Sem botão escondido) */}
+                          <div className="pt-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
+                              <FileText className="w-4 h-4 text-purple-600" />
+                              Orçamentos & Documentos Comprobatórios:
+                            </p>
 
-                            <div className="flex items-center gap-3">
+                            {todosDocsDiretos.length === 0 && !req.cotacao_link ? (
+                              <p className="text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                Nenhum documento ou orçamento em anexo anexado.
+                              </p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2.5">
+                                {todosDocsDiretos.map((doc, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={doc.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm"
+                                  >
+                                    <FileText className="w-4 h-4 text-indigo-600" />
+                                    <span>{doc.nome}</span>
+                                    <ExternalLink className="w-3.5 h-3.5 text-indigo-500" />
+                                  </a>
+                                ))}
+
+                                {req.cotacao_link && (
+                                  <a
+                                    href={req.cotacao_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm"
+                                  >
+                                    <ExternalLink className="w-4 h-4 text-blue-600" />
+                                    <span>Ver Cotação / Loja Online ↗</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 5. AÇÕES DE DECISÃO: 2 BOTÕES GRANDES E CLAROS */}
+                          <div className="pt-4 border-t-2 border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReq(req)}
+                              className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline self-center sm:self-auto"
+                            >
+                              Ver ficha completa da requisição
+                            </button>
+
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                               <Button
                                 variant="outline"
-                                className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 font-bold px-5 py-2.5 text-sm h-11"
+                                className="border-2 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 font-bold px-6 h-14 text-sm rounded-xl"
                                 disabled={reprovarDiretorMutation.isPending || aprovarDiretorMutation.isPending}
                                 onClick={() => {
                                   setModalReprovar(req);
                                   setMotivoReprovacao("");
                                 }}
                               >
-                                <XCircle className="w-4 h-4 mr-1.5 text-red-600" />
-                                Recusar / Devolver
+                                <XCircle className="w-4 h-4 mr-2 text-red-600" />
+                                ❌ Recusar / Devolver Pedido
                               </Button>
 
                               <Button
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-7 py-2.5 text-sm h-11 shadow-md gap-2"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 h-14 text-base shadow-md hover:shadow-lg rounded-xl gap-2 transition-transform active:scale-95"
                                 disabled={aprovarDiretorMutation.isPending || reprovarDiretorMutation.isPending}
                                 onClick={() => {
                                   aprovarDiretorMutation.mutate({
@@ -472,17 +528,17 @@ export default function PortalRequisicoes() {
                                 }}
                               >
                                 {aprovarDiretorMutation.isPending ? (
-                                  <><Loader2 className="w-4 h-4 animate-spin" /> Autorizando...</>
+                                  <><Loader2 className="w-5 h-5 animate-spin" /> Autorizando...</>
                                 ) : isFase1 ? (
-                                  <><CheckCircle className="w-5 h-5" /> AUTORIZAR COTAÇÃO</>
+                                  <><CheckCircle className="w-5 h-5" /> ✅ AUTORIZAR COTAÇÃO</>
                                 ) : (
-                                  <><CheckCircle className="w-5 h-5" /> APROVAR COMPRA DEFINITIVA</>
+                                  <><CheckCircle className="w-5 h-5" /> ✅ AUTORIZAR COMPRA</>
                                 )}
                               </Button>
                             </div>
                           </div>
                         </div>
-                      </Card>
+                      </div>
                     );
                   })
                 )}

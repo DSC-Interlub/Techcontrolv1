@@ -73,14 +73,19 @@ export default async function handler(req, res) {
             Solicitante: <strong>${req.colaborador_nome}</strong> (${req.colaborador_area || 'Geral'}) · Quantidade: <strong>${qtdTexto}</strong>
           </p>
           ${isFase1 ? `
-            <p style="margin:0;font-size:12px;color:#64748b;">
-              Estimativa prevista: <strong>R$ ${valorEstimado > 0 ? valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'Não informada'}</strong>
+            <p style="margin:0 0 8px 0;font-size:13px;color:#64748b;">
+              Estimativa máxima prevista: <strong style="color:#0f172a;">R$ ${valorEstimado > 0 ? valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : 'Não informada'}</strong>
             </p>
           ` : `
-            <p style="margin:0;font-size:13px;color:#15803d;font-weight:bold;">
+            <p style="margin:0 0 8px 0;font-size:14px;color:#15803d;font-weight:bold;">
               Valor Cotado: R$ ${valorCotado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Fornecedor: ${req.cotacao_fornecedor || 'Fornecedor'})
             </p>
           `}
+          <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;">
+            <a href="https://www.techcontrol.site/portal-requisicoes" style="display:inline-block;background:#4338ca;color:#ffffff;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold;">
+              👉 Decidir sobre este pedido no TechControl
+            </a>
+          </div>
         </div>
       `;
     }).join('');
@@ -88,29 +93,43 @@ export default async function handler(req, res) {
     const htmlEmail = `
       <div style="font-family:sans-serif;max-width:620px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:14px;color:#1e293b;">
         <div style="background:#1e1b4b;color:white;padding:22px;border-radius:10px;margin-bottom:20px;">
-          <h2 style="margin:0;font-size:20px;font-weight:bold;">📋 TechControl — Resumo da Diretoria</h2>
+          <h2 style="margin:0;font-size:22px;font-weight:bold;">📋 TechControl — Diretoria</h2>
           <p style="margin:6px 0 0 0;font-size:14px;opacity:0.9;">Relatório de autorizações pendentes de compras</p>
         </div>
 
-        <p style="font-size:15px;margin:0 0 14px 0;">
+        <p style="font-size:16px;margin:0 0 14px 0;">
           Olá, <strong>Valter</strong>!
         </p>
-        <p style="font-size:14px;color:#475569;margin:0 0 18px 0;line-height:1.5;">
-          Você possui <strong>${totalPendencias} compra(s)</strong> aguardando sua autorização no sistema. Para facilitar o seu dia a dia, preparamos o resumo abaixo:
+        <p style="font-size:15px;color:#475569;margin:0 0 18px 0;line-height:1.5;">
+          Você possui <strong>${totalPendencias} compra(s)</strong> aguardando sua autorização no sistema. Clique no botão abaixo para abrir diretamente a sua tela:
         </p>
+
+        <!-- BOTÃO PRINCIPAL NO TOPO -->
+        <div style="text-align:center;margin:20px 0 24px 0;">
+          <a href="https://www.techcontrol.site/portal-requisicoes" style="display:block;background:#16a34a;color:white;padding:16px 24px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:17px;box-shadow:0 4px 6px rgba(0,0,0,0.12);">
+            👉 CLIQUE AQUI PARA ABRIR O SISTEMA E AUTORIZAR
+          </a>
+          <p style="margin:6px 0 0 0;font-size:12px;color:#64748b;">
+            Link direto: <a href="https://www.techcontrol.site/portal-requisicoes" style="color:#2563eb;text-decoration:underline;">https://www.techcontrol.site/portal-requisicoes</a>
+          </p>
+        </div>
 
         <div style="margin-bottom:24px;">
           ${itensHtml}
         </div>
 
-        <div style="text-align:center;margin:28px 0 20px 0;">
-          <a href="https://www.techcontrol.site/portal-requisicoes" style="display:inline-block;background:#16a34a;color:white;padding:16px 36px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-            👉 Abrir e Autorizar no TechControl
+        <!-- BOTÃO SECUNDÁRIO NO RODAPÉ -->
+        <div style="text-align:center;margin:28px 0 20px 0;padding-top:16px;border-top:1px solid #e2e8f0;">
+          <a href="https://www.techcontrol.site/portal-requisicoes" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+            👉 Acessar Portal de Requisições
           </a>
+          <p style="margin:8px 0 0 0;font-size:12px;color:#64748b;">
+            Ou copie e cole no seu navegador: https://www.techcontrol.site/portal-requisicoes
+          </p>
         </div>
 
-        <p style="text-align:center;font-size:12px;color:#94a3b8;margin:20px 0 0 0;">
-          Este e-mail é enviado apenas quando há compras pendentes de sua decisão (às 09h e 15h).
+        <p style="text-align:center;font-size:11px;color:#94a3b8;margin:20px 0 0 0;">
+          Este resumo automático é enviado apenas quando há compras pendentes de sua decisão (às 09h e 15h, de segunda a sexta).
         </p>
       </div>
     `;
