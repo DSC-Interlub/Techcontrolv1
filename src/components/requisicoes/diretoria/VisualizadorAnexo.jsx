@@ -1,5 +1,5 @@
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, FileText } from "lucide-react";
 
@@ -24,11 +24,9 @@ export default function VisualizadorAnexo({ anexo, requisicao, onClose }) {
               <DialogTitle className="text-base sm:text-lg font-semibold truncate" title={anexo.nome}>
                 {anexo.nome}
               </DialogTitle>
-              {requisicao && (
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {requisicao.numero_requisicao} · {requisicao.item}
-                </p>
-              )}
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
+                {requisicao ? `${requisicao.numero_requisicao} · ${requisicao.item}` : "Visualização de anexo"}
+              </DialogDescription>
             </div>
           </div>
         </DialogHeader>

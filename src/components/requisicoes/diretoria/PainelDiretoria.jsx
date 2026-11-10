@@ -57,13 +57,12 @@ export default function PainelDiretoria({
       const st = r.status;
       if (st === "Aguardando Diretor" || st === "Aguardando Aprovação Final") {
         decidir.push(r);
-      } else if (st === "Aguardando Cotação") {
+      } else if (st === "Aguardando Cotação" || st === "Aguardando Ajuste" || st === "Em Andamento") {
         andamento.push(r);
-      } else if (st === "Aprovada") {
+      } else if (st === "Aprovada" || st?.startsWith("Reprovada") || st === "Cancelada") {
         hist.push(r);
-      } else if (st?.startsWith("Reprovada")) {
-        // Se foi reprovada recentemente pode estar no andamento se o usuário considerar, ou no histórico
-        hist.push(r);
+      } else {
+        andamento.push(r);
       }
     });
 

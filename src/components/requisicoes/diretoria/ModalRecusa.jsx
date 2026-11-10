@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,10 +46,10 @@ export default function ModalRecusa({ requisicao, open, onClose, onConfirmar, is
           <DialogTitle className="text-lg font-semibold text-foreground">
             Recusar requisição
           </DialogTitle>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          <DialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
             <strong className="text-foreground">{requisicao.item}</strong> · pedido por {requisicao.colaborador_nome}.
             A pessoa recebe o motivo e pode corrigir e reenviar.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 pt-2">

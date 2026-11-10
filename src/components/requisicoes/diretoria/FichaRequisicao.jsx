@@ -3,7 +3,8 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  SheetDescription
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +70,9 @@ export default function FichaRequisicao({
           <SheetTitle className="text-xl font-semibold text-foreground leading-snug">
             {requisicao.item}
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Detalhes e histórico da requisição de compras
+          </SheetDescription>
         </div>
 
         {/* Corpo com rolagem */}
