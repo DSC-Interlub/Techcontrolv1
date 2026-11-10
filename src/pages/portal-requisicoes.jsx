@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   ShoppingCart, 
   Plus, 
@@ -21,12 +19,9 @@ import {
   UserCheck, 
   ShoppingBag, 
   Search, 
-  ListFilter, 
-  ShieldCheck, 
-  ArrowRight,
-  AlertTriangle,
-  FileText,
-  ExternalLink
+  ShieldCheck,
+  Paperclip,
+  AlertTriangle
 } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
@@ -36,23 +31,23 @@ import IndicadoresRequisicao from "../components/requisicoes/IndicadoresRequisic
 import PainelAprovador from "../components/requisicoes/PainelAprovador";
 
 const statusColors = {
-  "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
-  "Aguardando Diretor": "bg-blue-100 text-blue-800",
+  "Aguardando Aprovador": "bg-yellow-100 text-yellow-800 border-yellow-200",
+  "Aguardando Diretor": "bg-blue-100 text-blue-800 border-blue-200",
   "Aguardando Cotação": "bg-amber-100 text-amber-800 border-amber-300",
   "Aguardando Aprovação Final": "bg-purple-100 text-purple-800 border-purple-300",
-  "Aprovada": "bg-green-100 text-green-800",
-  "Reprovada pelo Aprovador": "bg-red-100 text-red-800",
-  "Reprovada pelo Diretor": "bg-red-100 text-red-800",
+  "Aprovada": "bg-emerald-100 text-emerald-800 border-emerald-200",
+  "Reprovada pelo Aprovador": "bg-red-100 text-red-800 border-red-200",
+  "Reprovada pelo Diretor": "bg-red-100 text-red-800 border-red-200",
 };
 
 const statusIcon = {
-  "Aguardando Aprovador": <Clock className="w-3 h-3" />,
-  "Aguardando Diretor": <Clock className="w-3 h-3" />,
-  "Aguardando Cotação": <ShoppingBag className="w-3 h-3" />,
-  "Aguardando Aprovação Final": <Clock className="w-3 h-3" />,
-  "Aprovada": <CheckCircle className="w-3 h-3" />,
-  "Reprovada pelo Aprovador": <XCircle className="w-3 h-3" />,
-  "Reprovada pelo Diretor": <XCircle className="w-3 h-3" />,
+  "Aguardando Aprovador": <Clock className="w-3.5 h-3.5 text-yellow-700" />,
+  "Aguardando Diretor": <Clock className="w-3.5 h-3.5 text-blue-700" />,
+  "Aguardando Cotação": <ShoppingBag className="w-3.5 h-3.5 text-amber-700" />,
+  "Aguardando Aprovação Final": <Clock className="w-3.5 h-3.5 text-purple-700" />,
+  "Aprovada": <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />,
+  "Reprovada pelo Aprovador": <XCircle className="w-3.5 h-3.5 text-red-700" />,
+  "Reprovada pelo Diretor": <XCircle className="w-3.5 h-3.5 text-red-700" />,
 };
 
 export default function PortalRequisicoes() {
@@ -61,50 +56,10 @@ export default function PortalRequisicoes() {
   const [view, setView] = useState("lista"); // "lista" | "nova"
   const [selectedReq, setSelectedReq] = useState(null);
 
-  // Filtros da visão geral do comprador
+  // Filtros de busca no histórico e visão do comprador
+  const [buscaHistorico, setBuscaHistorico] = useState("");
   const [buscaComprador, setBuscaComprador] = useState("");
   const [filtroStatusComprador, setFiltroStatusComprador] = useState("todos");
-
-  // Estados e mutations exclusivas para o Diretor Geral
-  const [modalReprovar, setModalReprovar] = useState(null);
-  const [motivoReprovacao, setMotivoReprovacao] = useState("");
-  const [abaDiretor, setAbaDiretor] = useState("pendentes");
-
-  const aprovarDiretorMutation = useMutation({
-    mutationFn: async ({ reqId, token }) => {
-      const res = await base44.functions.invoke("requisicaoComprasAction", {
-        action: "diretor_aprovar",
-        requisicao_id: reqId,
-        token: token || undefined,
-        comentario: "Autorizado pelo Diretor via Portal"
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
-      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
-      setSelectedReq(null);
-    }
-  });
-
-  const reprovarDiretorMutation = useMutation({
-    mutationFn: async ({ reqId, token, motivo }) => {
-      const res = await base44.functions.invoke("requisicaoComprasAction", {
-        action: "diretor_reprovar",
-        requisicao_id: reqId,
-        token: token || undefined,
-        comentario: motivo
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
-      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
-      setModalReprovar(null);
-      setMotivoReprovacao("");
-      setSelectedReq(null);
-    }
-  });
 
   useEffect(() => {
     if (!loading) requireAuth();
@@ -139,15 +94,16 @@ export default function PortalRequisicoes() {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
 
-  // É aprovador se é gestor de alguém, se tem requisições onde é aprovador_id ou se possui cargo/flag de aprovador/gestão
-  const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
-  const temReqsComoAprovador = requisicoes.some(r => r.aprovador_id === colaboradorFull?.id);
-
+  // Identificação do perfil Diretor
   const isDiretor = !!(
     colaboradorFull?.email?.toLowerCase() === 'vtorres@interlub.com' ||
     colaboradorFull?.area?.toLowerCase() === 'diretoria' ||
     colaboradorFull?.cargo?.toLowerCase().includes('diretor')
   );
+
+  // Gestor comum (quando não for o diretor)
+  const isGestorDeAlguem = todosColaboradores.some(c => c.responsavel_id === colaboradorFull?.id);
+  const temReqsComoAprovador = requisicoes.some(r => r.aprovador_id === colaboradorFull?.id);
 
   const isAprovador = isGestorDeAlguem || temReqsComoAprovador || isDiretor || !!(
     colaboradorFull?.is_aprovador ||
@@ -165,7 +121,7 @@ export default function PortalRequisicoes() {
     ? requisicoes.filter(r => r.status === 'Aguardando Diretor' || r.status === 'Aguardando Aprovação Final')
     : [];
 
-  // Junta minhas requisições + requisições sob minha responsabilidade como aprovador + aprovações de diretoria
+  // Junta minhas requisições + sob responsabilidade como aprovador + aprovações de diretoria
   const todasRelacionadas = Array.from(
     new Map([...minhasRequisicoes, ...reqsAprovador, ...(isDiretor ? requisicoes : [])].map(r => [r.id, r])).values()
   );
@@ -188,6 +144,19 @@ export default function PortalRequisicoes() {
   );
   const aprovadas = todasRelacionadas.filter(r => r.status === 'Aprovada');
   const reprovadas = todasRelacionadas.filter(r => r.status?.startsWith('Reprovada'));
+
+  // Lista do Histórico filtrada por busca
+  const listaHistoricoFiltrada = [...aprovadas, ...reprovadas].filter(r => {
+    if (!buscaHistorico.trim()) return true;
+    const q = buscaHistorico.toLowerCase();
+    return (
+      r.item?.toLowerCase().includes(q) ||
+      r.numero_requisicao?.toLowerCase().includes(q) ||
+      r.colaborador_nome?.toLowerCase().includes(q) ||
+      r.colaborador_area?.toLowerCase().includes(q) ||
+      r.cotacao_fornecedor?.toLowerCase().includes(q)
+    );
+  });
 
   // Lista filtrada para a visão completa do comprador
   const requisicoesCompradorFiltradas = requisicoes.filter(r => {
@@ -227,413 +196,20 @@ export default function PortalRequisicoes() {
     );
   }
 
-  // SE FOR O DIRETOR (VALTER ALVES TORRES / DIRETORIA):
-  // Exibe DIRETAMENTE a experiência executiva simplificada com apenas 2 abas limpas.
-  if (isDiretor && view !== "nova") {
-    return (
-      <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
-        <div className="p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Topo Executivo Limpo */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 bg-white p-5 rounded-2xl border-2 border-purple-200 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center text-white shadow">
-                  <ShieldCheck className="w-7 h-7" />
-                </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
-                    Painel da Diretoria — Compras
-                  </h1>
-                  <p className="text-sm font-medium text-slate-500">
-                    Olá, {colaboradorFull?.nome_completo || "Valter"}. Aqui estão as compras que dependem da sua decisão.
-                  </p>
-                </div>
-              </div>
-              <Button onClick={() => setView("nova")} className="bg-purple-600 hover:bg-purple-700 text-white font-bold gap-2 text-xs">
-                <Plus className="w-4 h-4" />
-                Fazer uma Solicitação
-              </Button>
-            </div>
+  // Aba padrão inicial inteligente
+  const tabPadrao = isDiretor && requisicoesPendentesDiretor.length > 0
+    ? "diretoria"
+    : (isAprovador && !isDiretor && requisicoesPendentesAprovador.length > 0)
+    ? "aprovador"
+    : isDiretor
+    ? "diretoria"
+    : "minhas";
 
-            {/* Abas Executivas: Apenas 2 Abas Claras */}
-            <div className="flex gap-2 border-b-2 border-slate-200 mb-6 pb-1">
-              <button
-                onClick={() => setAbaDiretor("pendentes")}
-                className={`flex items-center gap-2 px-5 py-3 rounded-t-xl font-bold text-sm md:text-base transition-all ${
-                  abaDiretor === "pendentes"
-                    ? "bg-purple-600 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <Clock className="w-4 h-4" />
-                Aguardando Minha Decisão
-                {requisicoesPendentesDiretor.length > 0 && (
-                  <span className={`px-2 py-0.5 text-xs rounded-full font-black ${
-                    abaDiretor === "pendentes" ? "bg-white text-purple-700" : "bg-purple-600 text-white"
-                  }`}>
-                    {requisicoesPendentesDiretor.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setAbaDiretor("concluidas")}
-                className={`flex items-center gap-2 px-5 py-3 rounded-t-xl font-bold text-sm md:text-base transition-all ${
-                  abaDiretor === "concluidas"
-                    ? "bg-purple-600 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <CheckCircle className="w-4 h-4" />
-                Compras Concluídas / Histórico ({aprovadas.length + reprovadas.length})
-              </button>
-            </div>
-
-            {/* Conteúdo da Aba Pendentes */}
-            {abaDiretor === "pendentes" ? (
-              <div className="space-y-4">
-                {isLoading ? (
-                  <div className="text-center py-12 bg-white rounded-2xl border p-6">
-                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin mx-auto mb-2" />
-                    <p className="text-slate-600 font-semibold text-sm">Carregando compras...</p>
-                  </div>
-                ) : requisicoesPendentesDiretor.length === 0 ? (
-                  <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-                    <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-slate-800">Tudo em dia, Valter!</h3>
-                    <p className="text-slate-500 text-sm mt-1 max-w-md mx-auto">
-                      Você não possui nenhuma compra aguardando sua autorização no momento.
-                    </p>
-                  </div>
-                ) : (
-                  requisicoesPendentesDiretor.map((req) => {
-                    const isFase1 = req.status === "Aguardando Diretor";
-                    const isFase2 = req.status === "Aguardando Aprovação Final";
-
-                    // Verifica se foi reenviado após reprovação anterior
-                    const ultimoReenvio = (req.historico || []).slice().reverse().find(h => h.tipo === 'reenvio_apos_ajuste');
-                    const motivoRecusaAnterior = ultimoReenvio?.motivo_anterior || null;
-
-                    const qtdReq = Number(req.quantidade) || 1;
-                    const valorMaximoEstimado = Number(req.valor_maximo) || 0;
-                    const valorUnitarioMaxEstimado = Number(req.valor_unitario_maximo) || 0;
-                    const valorEstimadoTeto = valorMaximoEstimado > 0 ? valorMaximoEstimado : (valorUnitarioMaxEstimado > 0 ? valorUnitarioMaxEstimado * qtdReq : 0);
-                    const valorCotado = Number(req.cotacao_valor) || 0;
-                    const diferencaExcedente = valorEstimadoTeto > 0 && valorCotado > valorEstimadoTeto ? (valorCotado - valorEstimadoTeto) : 0;
-
-                    // Normaliza todos os orçamentos e documentos para exibição DIRETA no card
-                    const normalizarDocs = (list, prefixo) => {
-                      if (!Array.isArray(list)) return [];
-                      return list.map((a, idx) => {
-                        if (typeof a === 'string') {
-                          const fileName = a.split('/').pop()?.split('?')[0] || `${prefixo} ${idx + 1}`;
-                          return { nome: decodeURIComponent(fileName), url: a };
-                        }
-                        return {
-                          nome: a.file_name || a.nome || a.name || `${prefixo} ${idx + 1}`,
-                          url: a.file_url || a.url || '#'
-                        };
-                      }).filter(a => a.url && a.url !== '#');
-                    };
-
-                    const docsCotacao = normalizarDocs(req.cotacao_anexos, "Orçamento Compras");
-                    const docsIniciais = normalizarDocs(req.anexos, "Documento Anexo");
-                    const todosDocsDiretos = [...docsCotacao, ...docsIniciais];
-
-                    return (
-                      <div 
-                        key={req.id} 
-                        className="bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-                      >
-                        {/* Aviso claro em caso de reenvio */}
-                        {motivoRecusaAnterior && (
-                          <div className="bg-amber-100 border-b border-amber-300 px-6 py-3 flex items-start gap-3 text-amber-950">
-                            <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-bold text-sm">Item corrigido e reenviado pelo colaborador</p>
-                              <p className="text-xs text-amber-900 mt-0.5">
-                                Sua recusa anterior foi: <em>"{motivoRecusaAnterior}"</em>
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="p-6 md:p-8 space-y-5">
-                          {/* 1. TOPO: Solicitante e Etapa Clara */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded">
-                                {req.numero_requisicao}
-                              </span>
-                              <span className="text-sm font-semibold text-slate-600">
-                                Solicitado por: <strong className="text-slate-900">{req.colaborador_nome}</strong> ({req.colaborador_area || 'Geral'})
-                              </span>
-                            </div>
-
-                            {isFase1 ? (
-                              <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-900 font-bold px-3 py-1 rounded-full text-xs">
-                                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                                Passo 1: Autorizar Início da Cotação
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-900 font-bold px-3 py-1 rounded-full text-xs">
-                                <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-                                Passo 2: Cotação Superou Estimativa
-                              </span>
-                            )}
-                          </div>
-
-                          {/* 2. ITEM PRINCIPAL E QUANTIDADE (Tipografia Ampla e Limpa) */}
-                          <div>
-                            <div className="flex items-start justify-between gap-4">
-                              <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
-                                {req.quantidade}x {req.item}
-                              </h2>
-                              <span className="shrink-0 bg-slate-100 text-slate-800 font-bold text-xs px-3 py-1 rounded-lg">
-                                Unidade: {req.unidade_medida || 'un'}
-                              </span>
-                            </div>
-
-                            {/* Justificativa clara */}
-                            {req.justificativa && (
-                              <div className="mt-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 text-slate-700">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Para que serve esta compra:</p>
-                                <p className="text-sm md:text-base font-medium text-slate-900 italic">
-                                  "{req.justificativa}"
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 3. QUADRO FINANCEIRO DIRETO (1 só foco visual) */}
-                          {isFase1 ? (
-                            <div className="bg-emerald-50/80 border-2 border-emerald-200 rounded-xl p-4 md:p-5">
-                              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 mb-1">
-                                Valor Estimado para Autorização Prévia
-                              </p>
-                              <div className="flex flex-wrap items-baseline gap-2">
-                                <span className="text-2xl md:text-3xl font-black text-emerald-950">
-                                  {valorEstimadoTeto > 0 
-                                    ? `R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` 
-                                    : 'Sem valor estimado'}
-                                </span>
-                              </div>
-                              <p className="text-xs text-emerald-800 font-medium mt-2">
-                                💡 Se a equipe de compras encontrar um preço igual ou menor que este valor, a compra será <strong>aprovada automaticamente</strong> sem te incomodar novamente.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="bg-purple-50/90 border-2 border-purple-200 rounded-xl p-4 md:p-5">
-                              <p className="text-xs font-bold uppercase tracking-wide text-purple-800 mb-1">
-                                Preço Encontrado pela Equipe de Compras
-                              </p>
-                              <div className="flex flex-wrap items-baseline gap-3">
-                                <span className="text-2xl md:text-3xl font-black text-purple-950">
-                                  R$ {valorCotado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                                {req.cotacao_fornecedor && (
-                                  <span className="text-sm font-bold text-purple-800 bg-purple-100 px-2.5 py-1 rounded">
-                                    Fornecedor: {req.cotacao_fornecedor}
-                                  </span>
-                                )}
-                              </div>
-
-                              {diferencaExcedente > 0 && (
-                                <p className="text-xs font-bold text-red-600 mt-2">
-                                  ⚠️ Ficou R$ {diferencaExcedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} acima da estimativa prévia aprovada (R$ {valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).
-                                </p>
-                              )}
-
-                              {req.cotacao_comentario && (
-                                <p className="text-xs text-slate-600 mt-2 italic bg-white/70 p-2 rounded border border-purple-100">
-                                  Observação do comprador: "{req.cotacao_comentario}"
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* 4. ORÇAMENTOS E DOCUMENTOS VISÍVEIS DIRETAMENTE (Sem botão escondido) */}
-                          <div className="pt-2">
-                            <p className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-                              <FileText className="w-4 h-4 text-purple-600" />
-                              Orçamentos & Documentos Comprobatórios:
-                            </p>
-
-                            {todosDocsDiretos.length === 0 && !req.cotacao_link ? (
-                              <p className="text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                                Nenhum documento ou orçamento em anexo anexado.
-                              </p>
-                            ) : (
-                              <div className="flex flex-wrap gap-2.5">
-                                {todosDocsDiretos.map((doc, idx) => (
-                                  <a
-                                    key={idx}
-                                    href={doc.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm"
-                                  >
-                                    <FileText className="w-4 h-4 text-indigo-600" />
-                                    <span>{doc.nome}</span>
-                                    <ExternalLink className="w-3.5 h-3.5 text-indigo-500" />
-                                  </a>
-                                ))}
-
-                                {req.cotacao_link && (
-                                  <a
-                                    href={req.cotacao_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm"
-                                  >
-                                    <ExternalLink className="w-4 h-4 text-blue-600" />
-                                    <span>Ver Cotação / Loja Online ↗</span>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 5. AÇÕES DE DECISÃO: 2 BOTÕES GRANDES E CLAROS */}
-                          <div className="pt-4 border-t-2 border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedReq(req)}
-                              className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline self-center sm:self-auto"
-                            >
-                              Ver ficha completa da requisição
-                            </button>
-
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                              <Button
-                                variant="outline"
-                                className="border-2 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 font-bold px-6 h-14 text-sm rounded-xl"
-                                disabled={reprovarDiretorMutation.isPending || aprovarDiretorMutation.isPending}
-                                onClick={() => {
-                                  setModalReprovar(req);
-                                  setMotivoReprovacao("");
-                                }}
-                              >
-                                <XCircle className="w-4 h-4 mr-2 text-red-600" />
-                                ❌ Recusar / Devolver Pedido
-                              </Button>
-
-                              <Button
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 h-14 text-base shadow-md hover:shadow-lg rounded-xl gap-2 transition-transform active:scale-95"
-                                disabled={aprovarDiretorMutation.isPending || reprovarDiretorMutation.isPending}
-                                onClick={() => {
-                                  aprovarDiretorMutation.mutate({
-                                    reqId: req.id,
-                                    token: req.token_aprovacao
-                                  });
-                                }}
-                              >
-                                {aprovarDiretorMutation.isPending ? (
-                                  <><Loader2 className="w-5 h-5 animate-spin" /> Autorizando...</>
-                                ) : isFase1 ? (
-                                  <><CheckCircle className="w-5 h-5" /> ✅ AUTORIZAR COTAÇÃO</>
-                                ) : (
-                                  <><CheckCircle className="w-5 h-5" /> ✅ AUTORIZAR COMPRA</>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border p-4 shadow-sm">
-                <RequisicaoLista
-                  lista={[...aprovadas, ...reprovadas]}
-                  isLoading={isLoading}
-                  onSelect={setSelectedReq}
-                  empty="Nenhuma compra concluída encontrada."
-                  exibirSolicitante={true}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal Simples de Recusa */}
-        <Dialog open={!!modalReprovar} onOpenChange={() => setModalReprovar(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-red-700 flex items-center gap-2">
-                <XCircle className="w-5 h-5" /> Recusar / Devolver Compra
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <p className="text-sm text-slate-700">
-                Você está recusando o item <strong>{modalReprovar?.item}</strong> solicitado por <strong>{modalReprovar?.colaborador_nome}</strong>.
-              </p>
-              <div>
-                <Label className="text-xs font-bold text-slate-700">
-                  Motivo ou Orientação para a Equipe <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  rows={3}
-                  className="mt-1.5 text-sm"
-                  placeholder="Ex: Pesquisar outra marca, verificar se temos no estoque, valor muito alto..."
-                  value={motivoReprovacao}
-                  onChange={e => setMotivoReprovacao(e.target.value)}
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  O colaborador receberá esta justificativa para poder consertar se necessário.
-                </p>
-              </div>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0 mt-4">
-              <Button variant="outline" onClick={() => setModalReprovar(null)}>Cancelar</Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white font-bold"
-                disabled={!motivoReprovacao.trim() || reprovarDiretorMutation.isPending}
-                onClick={() => {
-                  if (!modalReprovar || !motivoReprovacao.trim()) return;
-                  reprovarDiretorMutation.mutate({
-                    reqId: modalReprovar.id,
-                    token: modalReprovar.token_aprovacao,
-                    motivo: motivoReprovacao.trim()
-                  });
-                }}
-              >
-                {reprovarDiretorMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Recusa"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal de Detalhes da Requisição */}
-        <Dialog open={!!selectedReq} onOpenChange={() => setSelectedReq(null)}>
-          <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Requisição {selectedReq?.numero_requisicao}</DialogTitle>
-            </DialogHeader>
-            {selectedReq && (
-              <RequisicaoDetalhes
-                requisicao={selectedReq}
-                colaboradorAtual={colaboradorFull}
-                isAdmin={true}
-                onAcao={() => {
-                  queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
-                  setSelectedReq(null);
-                }}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-      </PortalLayout>
-    );
-  }
-
-  // FLUXO NORMAL PARA COLABORADORES COMUNS:
   return (
     <PortalLayout colaborador={colaborador} onLogout={logout} permissoesComunicados={colaborador.permissoes_comunicados || []}>
       <div className="p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
+          {/* Cabeçalho Corporativo Elegante */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
@@ -641,16 +217,18 @@ export default function PortalRequisicoes() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Requisições de Compra</h1>
-                <p className="text-muted-foreground mt-1">Solicite, acompanhe e gerencie as requisições da empresa</p>
+                <p className="text-muted-foreground text-sm mt-0.5">
+                  Solicite, acompanhe o histórico e gerencie as autorizações de compras da empresa
+                </p>
               </div>
             </div>
-            <Button onClick={() => setView("nova")} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+            <Button onClick={() => setView("nova")} className="bg-emerald-600 hover:bg-emerald-700 gap-2 font-medium">
               <Plus className="w-4 h-4" />
               Nova Requisição
             </Button>
           </div>
 
-          {/* Indicadores pessoais */}
+          {/* Indicadores / KPIs Corporativos */}
           <IndicadoresRequisicao
             requisicoes={minhasRequisicoes}
             pendentesAprovador={isAprovador ? requisicoesPendentesAprovador : []}
@@ -658,39 +236,34 @@ export default function PortalRequisicoes() {
             todasRequisicoes={isAprovador ? requisicoes.filter(r => r.aprovador_id === colaboradorFull?.id) : []}
           />
 
-          {/* Aviso para aprovador */}
-          {isAprovador && requisicoesPendentesAprovador.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center gap-3">
-              <Clock className="w-5 h-5 text-amber-600 shrink-0" />
-              <div>
-                <p className="font-semibold text-amber-900">Você tem {requisicoesPendentesAprovador.length} requisição(ões) aguardando sua aprovação</p>
-                <p className="text-sm text-amber-700">Acesse a aba "Aprovador" abaixo para analisar.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Aviso / Acesso Rápido para Diretor */}
-          {isDiretor && (
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          {/* Aviso Corporativo para o Diretor (Sem botões que desviam de tela) */}
+          {isDiretor && requisicoesPendentesDiretor.length > 0 && (
+            <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-4 mb-5 flex items-center justify-between gap-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 text-white rounded-lg flex items-center justify-center shrink-0 shadow">
+                <div className="w-10 h-10 bg-blue-600 text-white rounded-lg flex items-center justify-center shrink-0 shadow-sm">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-bold text-purple-950 text-base">Painel Executivo da Diretoria</p>
-                  <p className="text-xs text-purple-800">
-                    {requisicoesPendentesDiretor.length > 0
-                      ? `Você tem ${requisicoesPendentesDiretor.length} compra(s) aguardando sua autorização.`
-                      : "Todas as requisições da Diretoria estão em dia."}
+                  <p className="font-semibold text-blue-950 text-sm">Painel da Diretoria</p>
+                  <p className="text-xs text-blue-800">
+                    Você possui <strong>{requisicoesPendentesDiretor.length} compra(s)</strong> aguardando sua decisão na aba abaixo. Clique em qualquer item para ver os detalhes, cotações e autorizar.
                   </p>
                 </div>
               </div>
-              <a
-                href="/painel-diretor"
-                className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow flex items-center gap-1.5 transition shrink-0"
-              >
-                Abrir Modo Simples da Diretoria <ArrowRight className="w-4 h-4" />
-              </a>
+              <Badge className="bg-blue-600 text-white font-mono text-xs px-2.5 py-1">
+                {requisicoesPendentesDiretor.length} pendente(s)
+              </Badge>
+            </div>
+          )}
+
+          {/* Aviso para gestor comum (não diretor) */}
+          {!isDiretor && isAprovador && requisicoesPendentesAprovador.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900 text-sm">Você tem {requisicoesPendentesAprovador.length} requisição(ões) aguardando sua aprovação</p>
+                <p className="text-xs text-amber-700">Acesse a aba "Painel Aprovador" para analisar.</p>
+              </div>
             </div>
           )}
 
@@ -699,27 +272,43 @@ export default function PortalRequisicoes() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
               <ShoppingBag className="w-5 h-5 text-blue-600 shrink-0" />
               <div>
-                <p className="font-semibold text-blue-900">Há {requisicoesPendentesCotacao.length} requisição(ões) liberada(s) para cotação</p>
-                <p className="text-sm text-blue-700">Acesse a aba "Cotações Pendentes" para cadastrar os orçamentos.</p>
+                <p className="font-semibold text-blue-900 text-sm">Há {requisicoesPendentesCotacao.length} requisição(ões) liberada(s) para cotação</p>
+                <p className="text-xs text-blue-700">Acesse a aba "Cotações Pendentes" para cadastrar os orçamentos.</p>
               </div>
             </div>
           )}
 
-          <Tabs defaultValue={isDiretor && requisicoesPendentesDiretor.length > 0 ? "diretoria" : (isAprovador && requisicoesPendentesAprovador.length > 0 ? "aprovador" : "minhas")}>
+          {/* Abas Corporativas do TechControl */}
+          <Tabs defaultValue={tabPadrao}>
             <div className="overflow-x-auto mb-4">
               <TabsList className="flex w-max min-w-full gap-1 p-1 bg-muted rounded-lg">
-                <TabsTrigger value="minhas" className="text-xs px-3 py-1.5">Minhas ({minhasRequisicoes.length})</TabsTrigger>
-                <TabsTrigger value="pendentes" className="text-xs px-3 py-1.5">Em Andamento ({pendentes.length})</TabsTrigger>
-                <TabsTrigger value="historico" className="text-xs px-3 py-1.5">Histórico ({aprovadas.length + reprovadas.length})</TabsTrigger>
+                {/* Se for Diretor, a aba de aprovações da diretoria vem em 1º lugar com badge */}
                 {isDiretor && (
-                  <TabsTrigger value="diretoria" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-blue-700">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />Aprovações da Diretoria
+                  <TabsTrigger value="diretoria" className="text-xs px-3.5 py-1.5 relative flex items-center gap-1.5 font-semibold text-blue-700 data-[state=active]:bg-white data-[state=active]:text-blue-900">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    Aprovações da Diretoria
                     {requisicoesPendentesDiretor.length > 0 && (
-                      <span className="ml-1 bg-blue-600 text-white text-xs rounded-full px-1.5 py-0.5 animate-pulse">{requisicoesPendentesDiretor.length}</span>
+                      <span className="ml-1 bg-blue-600 text-white text-[11px] font-bold rounded-full px-2 py-0.2">
+                        {requisicoesPendentesDiretor.length}
+                      </span>
                     )}
                   </TabsTrigger>
                 )}
-                {isAprovador && (
+
+                <TabsTrigger value="pendentes" className="text-xs px-3 py-1.5">
+                  Em Andamento ({pendentes.length})
+                </TabsTrigger>
+
+                <TabsTrigger value="historico" className="text-xs px-3 py-1.5">
+                  Histórico ({aprovadas.length + reprovadas.length})
+                </TabsTrigger>
+
+                <TabsTrigger value="minhas" className="text-xs px-3 py-1.5">
+                  Minhas ({minhasRequisicoes.length})
+                </TabsTrigger>
+
+                {/* Exibe "Painel Aprovador" apenas para gestores comuns que não são o diretor */}
+                {!isDiretor && isAprovador && (
                   <TabsTrigger value="aprovador" className="text-xs px-3 py-1.5 relative flex items-center gap-1">
                     <UserCheck className="w-3.5 h-3.5" />Painel Aprovador
                     {requisicoesPendentesAprovador.length > 0 && (
@@ -727,6 +316,7 @@ export default function PortalRequisicoes() {
                     )}
                   </TabsTrigger>
                 )}
+
                 {isComprador && (
                   <TabsTrigger value="cotacoes" className="text-xs px-3 py-1.5 relative flex items-center gap-1">
                     <ShoppingBag className="w-3.5 h-3.5 text-blue-600" />Cotações Pendentes
@@ -735,6 +325,7 @@ export default function PortalRequisicoes() {
                     )}
                   </TabsTrigger>
                 )}
+
                 {isComprador && (
                   <TabsTrigger value="todas_comprador" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-emerald-700">
                     <ShoppingCart className="w-3.5 h-3.5" />Todas as Requisições ({requisicoes.length})
@@ -743,40 +334,90 @@ export default function PortalRequisicoes() {
               </TabsList>
             </div>
 
+            {/* ABA: MINHAS */}
             <TabsContent value="minhas">
-              <RequisicaoLista lista={minhasRequisicoes} isLoading={isLoading} onSelect={setSelectedReq} empty="Você ainda não abriu requisições." />
+              <RequisicaoLista 
+                lista={minhasRequisicoes} 
+                isLoading={isLoading} 
+                onSelect={setSelectedReq} 
+                empty="Você ainda não abriu nenhuma requisição de compra." 
+              />
             </TabsContent>
+
+            {/* ABA: EM ANDAMENTO */}
             <TabsContent value="pendentes">
-              <RequisicaoLista lista={pendentes} isLoading={isLoading} onSelect={setSelectedReq} empty="Nenhuma requisição em andamento." />
+              <RequisicaoLista 
+                lista={pendentes} 
+                isLoading={isLoading} 
+                onSelect={setSelectedReq} 
+                empty="Nenhuma requisição em andamento no momento."
+                exibirSolicitante={isDiretor || isAprovador || isComprador}
+              />
             </TabsContent>
+
+            {/* ABA: HISTÓRICO COM BUSCA */}
             <TabsContent value="historico">
-              <RequisicaoLista lista={[...aprovadas, ...reprovadas]} isLoading={isLoading} onSelect={setSelectedReq} empty="Nenhuma requisição concluída." />
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 bg-card border rounded-lg p-2.5">
+                  <Search className="w-4 h-4 text-muted-foreground ml-2" />
+                  <Input
+                    placeholder="Buscar no histórico por item, código, solicitante ou fornecedor..."
+                    className="border-0 shadow-none focus-visible:ring-0 text-xs md:text-sm h-8"
+                    value={buscaHistorico}
+                    onChange={e => setBuscaHistorico(e.target.value)}
+                  />
+                  {buscaHistorico && (
+                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => setBuscaHistorico("")}>
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+
+                <RequisicaoLista 
+                  lista={listaHistoricoFiltrada} 
+                  isLoading={isLoading} 
+                  onSelect={setSelectedReq} 
+                  empty="Nenhuma requisição concluída encontrada no histórico."
+                  exibirSolicitante={true}
+                />
+              </div>
             </TabsContent>
+
+            {/* ABA: APROVAÇÕES DA DIRETORIA */}
             {isDiretor && (
               <TabsContent value="diretoria">
-                <div className="space-y-4">
-                  <div className="bg-slate-50 p-4 rounded-lg border flex items-center justify-between">
+                <div className="space-y-3">
+                  <div className="bg-slate-50/80 p-3.5 rounded-lg border flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-slate-800 text-sm">Painel de Decisões da Diretoria</h3>
-                      <p className="text-xs text-slate-500">Requisições que aguardam sua 1ª aprovação (liberação para cotação) ou aprovação final (valores cotados).</p>
+                      <h3 className="font-semibold text-slate-800 text-sm">Decisões Pendentes da Diretoria</h3>
+                      <p className="text-xs text-slate-500">
+                        Clique em qualquer requisição para analisar os valores, orçamentos e emitir a sua autorização ou recusa.
+                      </p>
                     </div>
-                    <Badge variant="outline" className="font-mono text-xs">{requisicoesPendentesDiretor.length} pendente(s)</Badge>
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {requisicoesPendentesDiretor.length} aguardando
+                    </Badge>
                   </div>
+
                   <RequisicaoLista
                     lista={requisicoesPendentesDiretor}
                     isLoading={isLoading}
                     onSelect={setSelectedReq}
-                    empty="Nenhuma requisição aguardando decisão da Diretoria no momento."
+                    empty="Tudo em dia! Nenhuma requisição aguardando decisão da Diretoria no momento."
                     exibirSolicitante={true}
                   />
                 </div>
               </TabsContent>
             )}
-            {isAprovador && (
+
+            {/* ABA: PAINEL APROVADOR (apenas gestores comuns) */}
+            {!isDiretor && isAprovador && (
               <TabsContent value="aprovador">
                 <PainelAprovador colaboradorFull={colaboradorFull} />
               </TabsContent>
             )}
+
+            {/* ABA: COTAÇÕES (Comprador) */}
             {isComprador && (
               <TabsContent value="cotacoes">
                 <RequisicaoLista
@@ -784,9 +425,12 @@ export default function PortalRequisicoes() {
                   isLoading={isLoading}
                   onSelect={setSelectedReq}
                   empty="Nenhuma requisição aguardando cotação no momento."
+                  exibirSolicitante={true}
                 />
               </TabsContent>
             )}
+
+            {/* ABA: TODAS AS REQUISIÇÕES (Comprador) */}
             {isComprador && (
               <TabsContent value="todas_comprador">
                 <div className="space-y-4">
@@ -833,10 +477,13 @@ export default function PortalRequisicoes() {
         </div>
       </div>
 
+      {/* Modal Corporativo Completo de Detalhes da Requisição */}
       <Dialog open={!!selectedReq} onOpenChange={() => setSelectedReq(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Requisição {selectedReq?.numero_requisicao}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <span>Requisição {selectedReq?.numero_requisicao}</span>
+            </DialogTitle>
           </DialogHeader>
           {selectedReq && (
             <RequisicaoDetalhes
@@ -856,35 +503,93 @@ export default function PortalRequisicoes() {
   );
 }
 
+// Componente Corporativo de Lista de Requisições
 function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante = false }) {
-  if (isLoading) return <p className="text-center py-8 text-muted-foreground">Carregando...</p>;
-  if (!lista.length) return <p className="text-center py-8 text-muted-foreground">{empty}</p>;
+  if (isLoading) return <p className="text-center py-8 text-muted-foreground text-sm">Carregando requisições...</p>;
+  if (!lista.length) return <p className="text-center py-8 text-muted-foreground text-sm">{empty}</p>;
 
   return (
     <div className="space-y-2">
-      {lista.map(r => (
-        <div key={r.id} className="flex items-center justify-between p-4 bg-card border rounded-lg hover:shadow-sm cursor-pointer transition-all" onClick={() => onSelect(r)}>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="font-mono text-xs text-muted-foreground">{r.numero_requisicao}</span>
-              <Badge className={`${statusColors[r.status] || "bg-gray-100 text-gray-800"} flex items-center gap-1`}>
-                {statusIcon[r.status]} {r.status}
-              </Badge>
-              <Badge variant="outline" className="text-xs">{r.urgencia}</Badge>
+      {lista.map(r => {
+        const totalAnexos = ((r.anexos || []).length) + ((r.cotacao_anexos || []).length);
+        const reenvio = (r.historico || []).slice().reverse().find(h => h.tipo === 'reenvio_apos_ajuste');
+
+        return (
+          <div 
+            key={r.id} 
+            className="flex items-center justify-between p-4 bg-card border rounded-lg hover:border-slate-300 hover:shadow-sm cursor-pointer transition-all"
+            onClick={() => onSelect(r)}
+          >
+            <div className="flex-1 min-w-0 pr-3">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded font-medium">
+                  {r.numero_requisicao}
+                </span>
+
+                <Badge className={`${statusColors[r.status] || "bg-gray-100 text-gray-800"} flex items-center gap-1 text-xs border font-medium`}>
+                  {statusIcon[r.status]} {r.status}
+                </Badge>
+
+                {r.urgencia && (
+                  <Badge variant="outline" className="text-[11px] font-normal">
+                    {r.urgencia}
+                  </Badge>
+                )}
+
+                {reenvio && (
+                  <Badge variant="outline" className="text-[11px] bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1 font-medium">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" /> Reenviado
+                  </Badge>
+                )}
+
+                {totalAnexos > 0 && (
+                  <span className="text-[11px] text-slate-500 flex items-center gap-0.5 bg-slate-100 px-1.5 py-0.5 rounded">
+                    <Paperclip className="w-3 h-3 text-slate-400" /> {totalAnexos} anexo(s)
+                  </span>
+                )}
+              </div>
+
+              <p className="font-semibold text-foreground text-sm md:text-base truncate">
+                {r.item}
+              </p>
+
+              <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                {exibirSolicitante && (
+                  <span>
+                    Solicitante: <strong className="text-slate-700">{r.colaborador_nome}</strong> ({r.colaborador_area || 'Geral'})
+                  </span>
+                )}
+                <span>· Qtd: <strong>{r.quantidade} {r.unidade_medida || 'un'}</strong></span>
+
+                {r.data_necessidade && (
+                  <span>· Data Limite: {new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                )}
+
+                {r.cotacao_valor ? (
+                  <span className="text-emerald-700 font-semibold">
+                    · Cotado: R$ {Number(r.cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {r.cotacao_fornecedor ? ` (${r.cotacao_fornecedor})` : ''}
+                  </span>
+                ) : r.valor_maximo ? (
+                  <span>
+                    · Estimativa: R$ {Number(r.valor_maximo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                ) : r.valor_unitario_maximo ? (
+                  <span>
+                    · Estimativa Unit.: R$ {Number(r.valor_unitario_maximo).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <p className="font-medium text-foreground truncate">{r.item}</p>
-            <p className="text-xs text-muted-foreground">
-              {exibirSolicitante ? `${r.colaborador_nome} (${r.colaborador_area}) · ` : ""}
-              Qtd: {r.quantidade} {r.unidade_medida || 'un'}
-              {r.data_necessidade ? ` · Necessidade: ${new Date(r.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}` : ""}
-              {r.material ? ` · Material: ${r.material}` : ""}
-              {r.cor ? ` · Cor: ${r.cor}` : ""}
-              {r.centro_custo_nome ? ` · CC: ${r.centro_custo_codigo}` : ""}
-              {r.cotacao_valor ? ` · Cotação: R$ ${Number(r.cotacao_valor).toLocaleString('pt-BR')}` : (r.valor_minimo && r.valor_maximo ? ` · Est.: R$ ${Number(r.valor_minimo).toLocaleString('pt-BR')} – R$ ${Number(r.valor_maximo).toLocaleString('pt-BR')}` : ' · Valor não informado')}
-            </p>
+
+            <div className="shrink-0 flex items-center gap-2">
+              <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground">
+                Ver detalhes →
+              </Button>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
