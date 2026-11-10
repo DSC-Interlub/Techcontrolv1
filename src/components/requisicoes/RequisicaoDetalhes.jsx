@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Clock, Loader2, Pencil, ShoppingBag, Paperclip, X } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Pencil, ShoppingBag, Paperclip, X, AlertTriangle } from "lucide-react";
 import EditarRequisicaoForm from "./EditarRequisicaoForm";
 
 const statusColors = {
@@ -155,6 +155,24 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
           </Button>
         )}
       </div>
+
+      {/* Alerta de Item Reenviado após recusa */}
+      {(() => {
+        const reenvio = (requisicao.historico || []).slice().reverse().find(h => h.tipo === 'reenvio_apos_ajuste');
+        if (!reenvio) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 text-amber-900 text-xs">
+            <p className="font-bold flex items-center gap-1.5 text-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" /> Item Reenviado pelo Solicitante após Ajustes
+            </p>
+            {reenvio.motivo_anterior && (
+              <p className="mt-1 text-slate-700">
+                <strong>Motivo da recusa anterior:</strong> <em>"{reenvio.motivo_anterior}"</em>
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-2 gap-3">
         <div><p className="text-muted-foreground">Solicitante</p><p className="font-medium">{requisicao.colaborador_nome}</p></div>

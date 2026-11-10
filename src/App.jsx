@@ -45,6 +45,7 @@ const PUBLIC_PAGES = [
   'reserva-publica',
   'reserva-sala-publica',
   'aprovacao-diretor',
+  'painel-diretor',
 ];
 
 function App() {

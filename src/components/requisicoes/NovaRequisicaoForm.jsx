@@ -33,15 +33,14 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
   const [uploadingAnexo, setUploadingAnexo] = useState(false);
   const [submitted, setSubmitted] = useState(null);
 
-  // Busca o aprovador vinculado ao colaborador
-  const { data: aprovador } = useQuery({
-    queryKey: ['aprovador_data', colaborador?.responsavel_id],
+  // Busca o e-mail do Diretor Geral configurado no sistema
+  const { data: diretorEmail = 'vtorres@interlub.com' } = useQuery({
+    queryKey: ['config_diretor_email'],
     queryFn: async () => {
-      if (!colaborador?.responsavel_id) return null;
-      const results = await base44.entities.Colaboradores.filter({ id: colaborador.responsavel_id });
-      return results?.[0] || null;
+      const { data } = await supabase.from('configuracoes').select('valor').eq('chave', 'diretor_email').maybeSingle();
+      return data?.valor?.trim() || 'vtorres@interlub.com';
     },
-    enabled: !!colaborador?.responsavel_id,
+    staleTime: 1000 * 60 * 10,
   });
 
   const { data: centrosCusto = [] } = useQuery({
@@ -65,18 +64,14 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
         numeroRequisicao = `REQ-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
       }
 
-      if (!colaborador?.responsavel_id) {
-        throw new Error('Você não possui um responsável/aprovador vinculado. Solicite ao administrador que configure seu cadastro.');
-      }
-
-      const finalAprovadorEmail = aprovador?.email || colaborador.responsavel_email || '';
-      const finalAprovadorNome = aprovador?.nome_completo || colaborador.responsavel_nome || '';
-
       const parseNullableNumber = (val) => {
         if (val === "" || val === null || val === undefined) return null;
         const num = Number(val);
         return isNaN(num) ? null : num;
       };
+
+      const tokenDiretor = crypto.randomUUID().replace(/-/g, '');
+      const finalDiretorEmail = diretorEmail || 'vtorres@interlub.com';
 
       const requisicaoPayload = {
         ...data,
@@ -95,28 +90,30 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
         colaborador_nome: colaborador.nome_completo,
         colaborador_email: colaborador.email,
         colaborador_area: colaborador.area,
-        aprovador_id: colaborador.responsavel_id,
-        aprovador_nome: finalAprovadorNome,
-        aprovador_email: finalAprovadorEmail,
-        status: 'Aguardando Aprovador',
+        aprovador_id: colaborador.responsavel_id || null,
+        aprovador_nome: 'Diretoria Geral (Valter Alves Torres)',
+        aprovador_email: finalDiretorEmail,
+        status: 'Aguardando Diretor',
+        token_aprovacao: tokenDiretor,
         anexos: anexos,
         historico: [{
           data_hora: new Date().toISOString(),
           tipo: 'abertura',
-          descricao: 'Requisição aberta pelo colaborador.',
+          descricao: 'Requisição aberta pelo colaborador. Enviada diretamente para autorização da Diretoria.',
           usuario: colaborador.nome_completo,
           numero_requisicao: numeroRequisicao,
-          anexos: anexos || []
+          anexos: anexos || [],
+          token_gerado: tokenDiretor
         }],
       };
 
       const requisicao = await base44.entities.RequisicaoCompras.create(requisicaoPayload);
 
-      // Notifica aprovador por e-mail
-      if (finalAprovadorEmail) {
+      // Notifica Diretor Geral por e-mail com link direto para liberação
+      if (finalDiretorEmail) {
         base44.functions.invoke('notificarAprovadorRequisicao', {
-          aprovador_email: finalAprovadorEmail,
-          aprovador_nome: finalAprovadorNome,
+          aprovador_email: finalDiretorEmail,
+          aprovador_nome: 'Valter Alves Torres',
           requisicao_id: requisicao.id,
           numero_requisicao: numeroRequisicao,
           numero: numeroRequisicao,
@@ -133,7 +130,8 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
           valor_unitario_minimo: requisicaoPayload.valor_unitario_minimo,
           valor_unitario_maximo: requisicaoPayload.valor_unitario_maximo,
           centro_custo_nome: requisicaoPayload.centro_custo_nome,
-        }).catch((err) => { console.error('Erro ao notificar aprovador:', err); });
+          token_aprovacao: tokenDiretor
+        }).catch((err) => { console.error('Erro ao notificar diretor:', err); });
       }
 
       return numeroRequisicao;
@@ -467,7 +465,7 @@ export default function NovaRequisicaoForm({ colaborador, onSuccess, onCancel })
             <Button
               type="submit"
               className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={createMutation.isPending || !colaborador?.responsavel_id}
+              disabled={createMutation.isPending}
             >
               {createMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</> : "Enviar Requisição"}
             </Button>

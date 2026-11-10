@@ -206,16 +206,28 @@ export default function PortalRequisicoes() {
             </div>
           )}
 
-          {/* Aviso para Diretor */}
-          {isDiretor && requisicoesPendentesDiretor.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center justify-between gap-3 shadow-sm">
+          {/* Aviso / Acesso Rápido para Diretor */}
+          {isDiretor && (
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0" />
+                <div className="w-10 h-10 bg-purple-600 text-white rounded-lg flex items-center justify-center shrink-0 shadow">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
                 <div>
-                  <p className="font-semibold text-blue-900">Há {requisicoesPendentesDiretor.length} requisição(ões) aguardando sua autorização como Diretor</p>
-                  <p className="text-sm text-blue-700">Acesse a aba "Aprovações da Diretoria" para liberar cotações ou autorizar compras finais.</p>
+                  <p className="font-bold text-purple-950 text-base">Painel Executivo da Diretoria</p>
+                  <p className="text-xs text-purple-800">
+                    {requisicoesPendentesDiretor.length > 0
+                      ? `Você tem ${requisicoesPendentesDiretor.length} compra(s) aguardando sua autorização.`
+                      : "Todas as requisições da Diretoria estão em dia."}
+                  </p>
                 </div>
               </div>
+              <a
+                href="/painel-diretor"
+                className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2.5 rounded-lg shadow flex items-center gap-1.5 transition shrink-0"
+              >
+                Abrir Modo Simples da Diretoria <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
           )}
 

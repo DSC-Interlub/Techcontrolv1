@@ -282,15 +282,110 @@ export default async function handler(req, res) {
         });
       }
 
-      // Novo token para a 2ª aprovação do diretor
-      const token_dir = crypto.randomUUID().replace(/-/g, '');
+      // 1. Calcula o teto estimado aprovado previamente
+      const qtdReq = Number(req_data.quantidade) || 1;
+      const valorMaximoEstimado = Number(req_data.valor_maximo) || 0;
+      const valorUnitarioMaxEstimado = Number(req_data.valor_unitario_maximo) || 0;
+      const valorEstimadoTeto = valorMaximoEstimado > 0 ? valorMaximoEstimado : (valorUnitarioMaxEstimado > 0 ? valorUnitarioMaxEstimado * qtdReq : 0);
+
+      const valorCotadoNum = Number(cotacao_valor) || 0;
       const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, cotacao_anexos);
+
+      // REGRA DO TETO APROVADO:
+      // Se a cotação achou um valor igual ou menor que o valor estimado previamente aprovado pelo Diretor:
+      // A compra é APROVADA AUTOMATICAMENTE! O Diretor NÃO precisa aprovar de novo!
+      const aprovadoAutomaticoPorTeto = (valorEstimadoTeto > 0 && valorCotadoNum <= valorEstimadoTeto);
+
+      if (aprovadoAutomaticoPorTeto) {
+        const { error: updAutoError } = await supabase
+          .from('requisicao_compras')
+          .update({
+            status: 'Aprovada',
+            cotacao_valor: valorCotadoNum,
+            cotacao_fornecedor,
+            cotacao_anexos: cotacao_anexos || [],
+            cotacao_comentario: cotacao_comentario || '',
+            cotacao_data: new Date().toISOString(),
+            cotacao_comprador_id: comprador_id || null,
+            cotacao_comprador_nome: comprador_nome || 'Comprador',
+            token_aprovacao: '',
+            anexos: todosAnexosConsolidados,
+            historico: [...(req_data.historico || []), {
+              data_hora: new Date().toISOString(),
+              tipo: 'aprovacao_automatica_teto',
+              descricao: `Cotação concluída pelo comprador (${comprador_nome || 'Comprador'}). Valor final de R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ficou DENTRO do teto estimado autorizado pelo Diretor (R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}). Compra APROVADA AUTOMATICAMENTE pelo sistema sem necessidade de nova intervenção da Diretoria.`,
+              usuario: 'TechControl (Automático)',
+              numero_requisicao: req_data.numero_requisicao,
+              anexos: cotacao_anexos || []
+            }]
+          })
+          .eq('id', requisicao_id);
+
+        if (updAutoError) throw updAutoError;
+
+        // Notifica compradores confirmando liberação imediata
+        const { data: compradores } = await supabase
+          .from('colaboradores')
+          .select('email, nome_completo')
+          .eq('eh_comprador', true);
+        const emailsCompradores = (compradores || []).map(c => c.email).filter(Boolean);
+
+        for (const buyerEmail of emailsCompradores) {
+          await sendEmail(
+            buyerEmail,
+            `✅ COMPRA APROVADA AUTOMATICAMENTE — ${req_data.numero_requisicao} (Dentro do Teto)`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">✅ Compra Aprovada para Emissão</h2>
+              </div>
+              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi finalizada e <strong>aprovada automaticamente</strong> pois o valor cotado (R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) atendeu ao teto pré-autorizado pelo Diretor (R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Item:</strong> ${req_data.item}</p>
+                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                <p><strong>Fornecedor Escolhido:</strong> ${cotacao_fornecedor}</p>
+                <p><strong>Valor Final:</strong> R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+              </div>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Documentos e Propostas Anexadas:')}
+              <p style="color:#16a34a;font-weight:bold;margin-top:20px;">Você já pode emitir o pedido de compra e prosseguir com o faturamento.</p>
+            </div>`
+          );
+        }
+
+        // Notifica solicitante
+        if (req_data.colaborador_email) {
+          await sendEmail(
+            req_data.colaborador_email,
+            `🎉 Requisição ${req_data.numero_requisicao} Aprovada para Compra!`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">🎉 Compra Aprovada!</h2>
+              </div>
+              <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+              <p>Sua requisição <strong>${req_data.numero_requisicao}</strong> (${req_data.item}) teve a cotação concluída e a compra foi <strong>aprovada</strong>.</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Fornecedor:</strong> ${cotacao_fornecedor}</p>
+                <p><strong>Valor Final:</strong> R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p><strong>Comprador Responsável:</strong> ${comprador_nome || 'Setor de Compras'}</p>
+              </div>
+              <p style="color:#64748b;font-size:14px;margin-top:20px;">O setor de compras já está processando o pedido.</p>
+            </div>`
+          );
+        }
+
+        return res.status(200).json({ success: true, action: 'aprovado_automatico', numero_requisicao: req_data.numero_requisicao });
+      }
+
+      // SE O VALOR COTADO SUPEROU O ESTIMADO (OU SEM ESTIMATIVA):
+      // Aciona o Diretor para a 2ª aprovação com destaque claro do excedente
+      const token_dir = crypto.randomUUID().replace(/-/g, '');
+      const diferencaExcedente = valorEstimadoTeto > 0 ? (valorCotadoNum - valorEstimadoTeto) : 0;
 
       const { error: updError } = await supabase
         .from('requisicao_compras')
         .update({
           status: 'Aguardando Aprovação Final',
-          cotacao_valor: Number(cotacao_valor),
+          cotacao_valor: valorCotadoNum,
           cotacao_fornecedor,
           cotacao_anexos: cotacao_anexos || [],
           cotacao_comentario: cotacao_comentario || '',
@@ -302,7 +397,7 @@ export default async function handler(req, res) {
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
             tipo: 'cotacao_enviada',
-            descricao: `Cotação finalizada pelo comprador (${comprador_nome || 'Comprador'}). Valor: R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — Fornecedor: ${cotacao_fornecedor}. Aguardando aprovação final do diretor.`,
+            descricao: `Cotação finalizada pelo comprador (${comprador_nome || 'Comprador'}). Valor: R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} — Fornecedor: ${cotacao_fornecedor}. ${diferencaExcedente > 0 ? `Valor superou a estimativa inicial em +R$ ${diferencaExcedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.` : ''} Aguardando aprovação final do diretor.`,
             usuario: comprador_nome || 'Comprador',
             numero_requisicao: req_data.numero_requisicao,
             anexos: cotacao_anexos || [],
@@ -318,27 +413,28 @@ export default async function handler(req, res) {
 
       await sendEmail(
         diretorEmail,
-        `Ação necessária: Requisição ${req_data.numero_requisicao} aguardando sua aprovação final (Cotação Concluída)`,
+        `${diferencaExcedente > 0 ? '⚠️ Cotação Excedeu Estimativa' : '💰 Aprovação Final'}: Requisição ${req_data.numero_requisicao}`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-          <div style="background:#047857;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
-            <h2 style="margin:0;font-size:20px;">💰 Cotação Concluída — Aprovação Final do Diretor</h2>
-            <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Etapa final de autorização de compra</p>
+          <div style="background:${diferencaExcedente > 0 ? '#b45309' : '#047857'};color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:20px;">${diferencaExcedente > 0 ? '⚠️ Cotação Superou a Estimativa' : '💰 Aprovação Final da Compra'}</h2>
+            <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Etapa de autorização financeira da Diretoria</p>
           </div>
 
-          <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:16px;margin-bottom:24px;color:#065f46;line-height:1.6;">
-            <p style="margin:0 0 8px 0;"><strong>O que aconteceu até agora:</strong> O comprador <strong>${comprador_nome || 'responsável'}</strong> finalizou a cotação de preços e cadastrou o orçamento para a requisição <strong>${req_data.numero_requisicao}</strong> (Solicitante: <strong>${req_data.colaborador_nome}</strong>).</p>
-            <p style="margin:0 0 8px 0;"><strong>O que se pede agora:</strong> Esta é a <strong>ÚLTIMA ETAPA</strong> do processo. Solicitamos sua aprovação final do valor e fornecedor selecionado para autorizar a compra.</p>
-            <p style="margin:0;"><strong>O que acontecerá depois:</strong> Ao aprovar, a compra fica <strong>definitivamente autorizada</strong> e o setor de compras prosseguirá com o pedido e faturamento.</p>
-          </div>
+          ${diferencaExcedente > 0 ? `
+          <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:16px;margin-bottom:20px;color:#92400e;">
+            <p style="margin:0 0 6px 0;font-weight:bold;font-size:15px;">⚠️ Atenção: O preço cotado ficou acima da estimativa inicial</p>
+            <p style="margin:0;font-size:13px;">Estimativa inicial aprovada: <strong>R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong><br/>
+            Valor cotado no mercado: <strong>R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (+R$ ${diferencaExcedente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</p>
+          </div>` : ''}
 
-          <!-- CARD 1: DADOS DA COTAÇÃO EM DESTAQUE (VERDE) -->
+          <!-- CARD 1: DADOS DA COTAÇÃO EM DESTAQUE -->
           <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:10px;padding:20px;margin-bottom:24px;box-shadow:0 2px 4px rgba(0,0,0,0.04);">
             <div style="border-bottom:2px solid #bbf7d0;padding-bottom:10px;margin-bottom:12px;">
-              <span style="background:#16a34a;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">💵 Dados da Cotação Realizada</span>
+              <span style="background:#16a34a;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;">💵 Valor da Cotação Realizada</span>
             </div>
             <div style="background:white;border:1px solid #bbf7d0;border-radius:8px;padding:14px;margin-bottom:12px;">
               <p style="margin:0 0 2px 0;font-size:12px;color:#15803d;font-weight:bold;text-transform:uppercase;">Valor Final da Cotação</p>
-              <p style="margin:0;font-size:26px;font-weight:800;color:#15803d;font-family:monospace;">R$ ${Number(cotacao_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <p style="margin:0;font-size:26px;font-weight:800;color:#15803d;font-family:monospace;">R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
             </div>
             <p style="margin:6px 0;font-size:15px;color:#111827;"><strong>Fornecedor Cotado:</strong> <span style="color:#15803d;font-weight:bold;">${cotacao_fornecedor}</span></p>
             <p style="margin:6px 0;font-size:14px;color:#374151;"><strong>Comprador Responsável:</strong> ${comprador_nome || 'Comprador'}</p>
@@ -346,8 +442,20 @@ export default async function handler(req, res) {
             ${buildAnexosHtml(cotacao_anexos, '📄 Orçamentos / Propostas Anexadas pelo Comprador:')}
           </div>
 
-          <!-- CARD 2: DADOS ORIGINAIS DA REQUISIÇÃO & GESTOR (AZUL/SLATE) -->
+          <!-- CARD 2: DADOS ORIGINAIS DA REQUISIÇÃO -->
           <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;padding:20px;margin-bottom:24px;">
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Número da Requisição:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Item / Produto:</strong> ${req_data.item}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+          </div>
+
+          <div style="margin:28px 0 16px 0;text-align:center;">
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ APROVAR COMPRA</a>
+            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ REPROVAR</a>
+          </div>
+        </div>`
+      );
             <div style="border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:12px;">
               <span style="background:#475569;color:white;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:bold;text-transform:uppercase;">📋 Dados Originais da Requisição & Histórico de Aprovação</span>
             </div>
@@ -421,6 +529,16 @@ export default async function handler(req, res) {
 
       const todosAnexosConsolidados = getTodosAnexosConsolidados(req_data, anexos);
 
+      const { data: configRecord } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'diretor_email')
+        .maybeSingle();
+      const diretorEmail = configRecord?.valor?.trim() || 'vtorres@interlub.com';
+
+      const token_dir = crypto.randomUUID().replace(/-/g, '');
+      const motivoAnterior = req_data.diretor_comentario || req_data.aprovador_comentario || 'Sem motivo registrado';
+
       const { error: editError } = await supabase
         .from('requisicao_compras')
         .update({
@@ -440,26 +558,59 @@ export default async function handler(req, res) {
           urgencia: urgencia || 'Média',
           fornecedor_sugerido: fornecedor_sugerido?.trim() || null,
           anexos: todosAnexosConsolidados,
-          status: 'Aguardando Aprovador',
-          aprovador_comentario: '',
-          aprovador_data: null,
-          diretor_comentario: '',
-          diretor_data: null,
-          token_aprovacao: '',
+          status: 'Aguardando Diretor',
+          token_aprovacao: token_dir,
           historico: [...(req_data.historico || []), {
             data_hora: new Date().toISOString(),
-            tipo: 'edicao_reenvio',
-            descricao: 'Requisição editada e reenviada para aprovação do responsável.',
+            tipo: 'reenvio_apos_ajuste',
+            descricao: `Requisição reajustada e reenviada pelo colaborador para nova análise da Diretoria.`,
+            motivo_anterior: motivoAnterior,
             usuario: req_data.colaborador_nome,
             numero_requisicao: req_data.numero_requisicao,
-            anexos: anexos || []
+            anexos: anexos || [],
+            token_gerado: token_dir
           }],
         })
         .eq('id', requisicao_id);
 
       if (editError) throw editError;
 
-      return res.status(200).json({ success: true, action: 'editada', numero_requisicao: req_data.numero_requisicao });
+      const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
+      const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
+
+      await sendEmail(
+        diretorEmail,
+        `⚠️ Requisição Reenviada após Ajustes: ${req_data.numero_requisicao} (${item?.trim()})`,
+        `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+          <div style="background:#d97706;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:20px;">⚠️ Requisição Reenviada após Ajustes</h2>
+            <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">O solicitante revisou as informações e reenviou para sua avaliação</p>
+          </div>
+
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:16px;margin-bottom:20px;color:#92400e;line-height:1.5;">
+            <p style="margin:0 0 6px 0;font-weight:bold;">Motivo da sua reprovação anterior:</p>
+            <p style="margin:0;font-style:italic;background:#ffffff;padding:8px 12px;border-radius:6px;border:1px solid #fef3c7;">"${motivoAnterior}"</p>
+          </div>
+
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Item Atualizado:</strong> ${item?.trim()}</p>
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Quantidade:</strong> ${Number(quantidade) || 1} ${unidade_medida || 'un'}</p>
+            ${data_necessidade ? `<p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Data da Necessidade:</strong> 📅 ${new Date(data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+            <p style="margin:4px 0;font-size:13px;color:#334155;"><strong>Nova Justificativa:</strong> ${justificativa?.trim() || 'Sem alteração'}</p>
+          </div>
+
+          ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
+
+          <div style="margin:28px 0 16px 0;text-align:center;">
+            <a href="${linkAprovar}" style="display:inline-block;background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;margin-right:12px;">✅ AUTORIZAR COTAÇÃO</a>
+            <a href="${linkReprovar}" style="display:inline-block;background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">❌ RECUSAR</a>
+          </div>
+        </div>`
+      );
+
+      return res.status(200).json({ success: true, action: 'reenviada_diretor', numero_requisicao: req_data.numero_requisicao });
     }
 
     // ── AÇÃO DO DIRETOR VIA TOKEN OU PORTAL (Fase 1 ou Fase 2) ─────────────────────
