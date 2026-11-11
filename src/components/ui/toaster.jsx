@@ -11,36 +11,40 @@ import {
 export function Toaster() {
   const { toasts, dismiss } = useToast();
 
+  const toastsVisiveis = toasts.filter((t) => t.open !== false);
+
   return (
-    <ToastProvider swipeDirection="right" duration={5000}>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast
-            key={id}
-            {...props}
-            duration={props.duration || 5000}
-            onOpenChange={(open) => {
-              if (!open) dismiss(id);
-              props.onOpenChange?.(open);
-            }}
-          >
-            <div className="grid gap-1 flex-1 pr-5">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose
-              onClick={(e) => {
-                e.stopPropagation();
-                dismiss(id);
-              }}
-            />
-          </Toast>
-        );
-      })}
-      <ToastViewport />
+    <ToastProvider>
+      <ToastViewport>
+        {toastsVisiveis.map(function ({
+          id,
+          title,
+          description,
+          action,
+          open,
+          duration,
+          onOpenChange,
+          ...props
+        }) {
+          return (
+            <Toast key={id} {...props}>
+              <div className="grid gap-1 flex-1 pr-6">
+                {title && <ToastTitle>{title}</ToastTitle>}
+                {description && (
+                  <ToastDescription>{description}</ToastDescription>
+                )}
+              </div>
+              {action}
+              <ToastClose
+                onClick={(e) => {
+                  e?.stopPropagation?.();
+                  dismiss(id);
+                }}
+              />
+            </Toast>
+          );
+        })}
+      </ToastViewport>
     </ToastProvider>
   );
 }

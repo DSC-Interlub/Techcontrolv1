@@ -9,5 +9,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'techcontrol_supabase_auth_v1'
+  },
+  global: {
+    fetch: (url, options = {}) => fetch(url, { ...options, cache: 'no-store' })
   }
 });

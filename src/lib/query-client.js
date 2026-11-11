@@ -34,7 +34,8 @@ export const queryClientInstance = new QueryClient({
     },
   },
   mutationCache: new MutationCache({
-    onError: (error) => {
+    onError: (error, _variables, _context, mutation) => {
+      if (mutation?.meta?.skipGlobalErrorToast) return;
       const description = getMutationErrorMessage(error);
       toast({
         title: 'Erro ao salvar',

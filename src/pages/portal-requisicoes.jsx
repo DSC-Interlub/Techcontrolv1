@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -66,68 +66,81 @@ export default function PortalRequisicoes() {
   // Estado para travar somente o card em processamento
   const [pendingReqId, setPendingReqId] = useState(null);
 
+  // Estado para atualização otimista instantânea das decisões da diretoria
+  const [decisoesLocais, setDecisoesLocais] = useState({});
+
   // Mutations da Diretoria
   const aprovarDiretorMutation = useMutation({
-    mutationFn: async ({ reqId, token, fase }) => {
+    meta: { skipGlobalErrorToast: true },
+    onMutate: async ({ reqId, fase }) => {
       setPendingReqId(reqId);
+      await queryClient.cancelQueries({ queryKey: ['portal_requisicoes'] });
+      const novoStatus = fase === "Aguardando Diretor" ? "Aguardando Cotação" : "Aprovada";
+      setDecisoesLocais(prev => ({ ...prev, [reqId]: novoStatus }));
+    },
+    mutationFn: async ({ reqId, token }) => {
       const res = await base44.functions.invoke("requisicaoComprasAction", {
         action: "diretor_aprovar",
         requisicao_id: reqId,
         token: token || undefined,
         comentario: "Autorizado pelo Diretor via Portal"
       });
-      return { data: res.data, fase };
+      return res.data;
     },
-    onSuccess: ({ fase }) => {
-      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
-      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
-      setPendingReqId(null);
-      const isFase1 = fase === "Aguardando Diretor";
-      toast({
-        title: isFase1 ? "Cotação autorizada" : "Compra autorizada",
-        description: isFase1
-          ? "O Compras já pode buscar fornecedores."
-          : "O Compras foi avisado."
+    onError: (err, { reqId }) => {
+      setDecisoesLocais(prev => {
+        const novo = { ...prev };
+        delete novo[reqId];
+        return novo;
       });
-    },
-    onError: (err) => {
-      setPendingReqId(null);
       toast({
         variant: "destructive",
         title: "Erro ao autorizar",
         description: err.message || "Não foi possível autorizar a compra."
       });
+    },
+    onSettled: () => {
+      setPendingReqId(null);
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_diretor_requisicoes'] });
     }
   });
 
   const reprovarDiretorMutation = useMutation({
-    mutationFn: async ({ reqId, token, motivo, solicitanteNome }) => {
+    meta: { skipGlobalErrorToast: true },
+    onMutate: async ({ reqId }) => {
       setPendingReqId(reqId);
+      await queryClient.cancelQueries({ queryKey: ['portal_requisicoes'] });
+      const novoStatus = "Reprovada pelo Diretor";
+      setDecisoesLocais(prev => ({ ...prev, [reqId]: novoStatus }));
+    },
+    mutationFn: async ({ reqId, token, motivo }) => {
       const res = await base44.functions.invoke("requisicaoComprasAction", {
         action: "diretor_reprovar",
         requisicao_id: reqId,
         token: token || undefined,
         comentario: motivo
       });
-      return { data: res.data, solicitanteNome };
+      return res.data;
     },
-    onSuccess: ({ solicitanteNome }) => {
-      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
-      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
-      setPendingReqId(null);
-      const primeiroNome = solicitanteNome ? solicitanteNome.split(" ")[0] : "O colaborador";
-      toast({
-        title: "Requisição recusada",
-        description: `${primeiroNome} foi avisado(a) com o seu motivo.`
+    onError: (err, { reqId }) => {
+      setDecisoesLocais(prev => {
+        const novo = { ...prev };
+        delete novo[reqId];
+        return novo;
       });
-    },
-    onError: (err) => {
-      setPendingReqId(null);
       toast({
         variant: "destructive",
         title: "Erro ao recusar",
         description: err.message || "Não foi possível recusar a compra."
       });
+    },
+    onSettled: () => {
+      setPendingReqId(null);
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
+      queryClient.invalidateQueries({ queryKey: ['painel_diretor_requisicoes'] });
     }
   });
 
@@ -146,13 +159,38 @@ export default function PortalRequisicoes() {
   });
 
   // Polling automático a cada 3s para eliminar delay de exibição
-  const { data: requisicoes = [], isLoading } = useQuery({
+  const { data: requisicoesServidor = [], isLoading } = useQuery({
     queryKey: ['portal_requisicoes', colaborador?.id],
     queryFn: () => base44.entities.RequisicaoCompras.list('-created_date'),
     enabled: !!colaborador,
     refetchInterval: 3000,
     staleTime: 0,
   });
+
+  // Aplica decisões locais otimistas por cima dos dados do servidor
+  const requisicoes = useMemo(() => {
+    return requisicoesServidor.map(r => {
+      const statusLocal = decisoesLocais[r.id];
+      return statusLocal ? { ...r, status: statusLocal } : r;
+    });
+  }, [requisicoesServidor, decisoesLocais]);
+
+  // Só remove de decisoesLocais quando o banco devolver a requisição fora das etapas de decisão do diretor
+  useEffect(() => {
+    if (!requisicoesServidor?.length || Object.keys(decisoesLocais).length === 0) return;
+    setDecisoesLocais(prev => {
+      let mudou = false;
+      const novo = { ...prev };
+      for (const [id] of Object.entries(prev)) {
+        const reqBanco = requisicoesServidor.find(r => r.id === id);
+        if (reqBanco && reqBanco.status !== 'Aguardando Diretor' && reqBanco.status !== 'Aguardando Aprovação Final') {
+          delete novo[id];
+          mudou = true;
+        }
+      }
+      return mudou ? novo : prev;
+    });
+  }, [requisicoesServidor]);
 
   const { data: todosColaboradores = [] } = useQuery({
     queryKey: ['portal_todos_colaboradores'],
@@ -286,8 +324,7 @@ export default function PortalRequisicoes() {
             reprovarDiretorMutation.mutate({
               reqId: req.id,
               token: req.token_aprovacao,
-              motivo,
-              solicitanteNome: req.colaborador_nome
+              motivo
             });
           }}
           pendingReqId={pendingReqId}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 const TOAST_LIMIT = 3;
-const DEFAULT_DURATION = 4000;
+const TOAST_REMOVE_DELAY = 300;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -25,6 +25,27 @@ const clearTimers = (toastId) => {
     clearTimeout(autoTimer);
     toastTimeouts.delete(`auto_${toastId}`);
   }
+  const removeTimer = toastTimeouts.get(`remove_${toastId}`);
+  if (removeTimer) {
+    clearTimeout(removeTimer);
+    toastTimeouts.delete(`remove_${toastId}`);
+  }
+};
+
+const addToRemoveQueue = (toastId) => {
+  if (toastTimeouts.has(`remove_${toastId}`)) {
+    return;
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(`remove_${toastId}`);
+    dispatch({
+      type: actionTypes.REMOVE_TOAST,
+      toastId,
+    });
+  }, TOAST_REMOVE_DELAY);
+
+  toastTimeouts.set(`remove_${toastId}`, timeout);
 };
 
 export const reducer = (state, action) => {
@@ -45,18 +66,27 @@ export const reducer = (state, action) => {
 
     case actionTypes.DISMISS_TOAST: {
       const { toastId } = action;
+
       if (toastId) {
         clearTimers(toastId);
-        return {
-          ...state,
-          toasts: state.toasts.filter((t) => t.id !== toastId),
-        };
+        addToRemoveQueue(toastId);
+      } else {
+        state.toasts.forEach((toast) => {
+          clearTimers(toast.id);
+          addToRemoveQueue(toast.id);
+        });
       }
-      toastTimeouts.forEach((timeout) => clearTimeout(timeout));
-      toastTimeouts.clear();
+
       return {
         ...state,
-        toasts: [],
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
+        ),
       };
     }
 
@@ -89,8 +119,14 @@ function dispatch(action) {
   });
 }
 
-function toast({ duration = DEFAULT_DURATION, ...props }) {
+function toast({ duration, ...props }) {
   const id = genId();
+  const effectiveDuration =
+    duration !== undefined
+      ? duration
+      : props.variant === "destructive"
+      ? 8000
+      : 5000;
 
   const update = (newProps) =>
     dispatch({
@@ -101,11 +137,11 @@ function toast({ duration = DEFAULT_DURATION, ...props }) {
   const dismiss = () =>
     dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
 
-  // Auto-dismiss confiável e independente do foco da janela
-  if (duration !== Infinity && duration > 0) {
+  // Auto-dismiss garantido
+  if (effectiveDuration !== Infinity && effectiveDuration > 0) {
     const timer = setTimeout(() => {
       dismiss();
-    }, duration);
+    }, effectiveDuration);
     toastTimeouts.set(`auto_${id}`, timer);
   }
 
@@ -113,7 +149,7 @@ function toast({ duration = DEFAULT_DURATION, ...props }) {
     type: actionTypes.ADD_TOAST,
     toast: {
       ...props,
-      duration,
+      duration: effectiveDuration,
       id,
       open: true,
       onOpenChange: (open) => {
@@ -140,7 +176,7 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, [state]);
+  }, []); // Dependência vazia []
 
   return {
     ...state,
