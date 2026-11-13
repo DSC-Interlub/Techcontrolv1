@@ -52,6 +52,96 @@ function buildAnexosHtml(anexosList, titulo = '📎 Anexos e Documentos Vinculad
   `;
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper para buscar todos os e-mails de compradores ativos (flag eh_comprador ou área de compras, exceto Desligado)
+async function buscarEmailsCompradores(supabase) {
+  try {
+    const { data, error } = await supabase
+      .from('colaboradores')
+      .select('id, email, nome_completo, status')
+      .or('eh_comprador.eq.true,area.ilike.%compras%')
+      .neq('status', 'Desligado');
+
+    if (error) {
+      console.error('[buscarEmailsCompradores] Erro ao buscar colaboradores de compras:', error);
+      return [];
+    }
+
+    const setEmails = new Set();
+    (data || []).forEach(c => {
+      const em = c?.email?.trim()?.toLowerCase();
+      if (em) setEmails.add(em);
+    });
+
+    return Array.from(setEmails);
+  } catch (err) {
+    console.error('[buscarEmailsCompradores] Exceção ao buscar compradores:', err.message);
+    return [];
+  }
+}
+
+// Helper para envio resiliente a múltiplos destinatários, com espaçamento para o Resend (~600ms)
+// e try/catch por destinatário para não interromper os demais nem a ação
+async function enviarParaTodos(destinatarios, assunto, html) {
+  const lista = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
+  const emailsUnicos = Array.from(new Set(
+    lista.map(e => (typeof e === 'string' ? e.trim().toLowerCase() : '')).filter(Boolean)
+  ));
+
+  const enviados = [];
+  const falhas = [];
+
+  for (let i = 0; i < emailsUnicos.length; i++) {
+    const email = emailsUnicos[i];
+    if (i > 0) {
+      await sleep(600);
+    }
+
+    try {
+      await sendEmail(email, assunto, html);
+      console.log(`[email] ok ${email} ${assunto}`);
+      enviados.push(email);
+    } catch (err) {
+      const motivo = err?.message || String(err);
+      console.error(`[email] falha ${email} ${assunto} ${motivo}`);
+      falhas.push({ email, erro: motivo });
+    }
+  }
+
+  return { enviados, falhas };
+}
+
+// Helper para registrar falhas de envio no histórico da requisição
+async function registrarFalhasNoHistorico(supabase, requisicaoId, falhas, numeroRequisicao) {
+  if (!falhas || falhas.length === 0 || !requisicaoId) return;
+
+  try {
+    const { data: current } = await supabase
+      .from('requisicao_compras')
+      .select('historico')
+      .eq('id', requisicaoId)
+      .maybeSingle();
+
+    const novosEventos = falhas.map(f => ({
+      data_hora: new Date().toISOString(),
+      tipo: 'falha_notificacao',
+      descricao: `E-mail não enviado para ${f.email}: ${f.erro}`,
+      usuario: 'TechControl (Sistema)',
+      numero_requisicao: numeroRequisicao
+    }));
+
+    const historicoAtualizado = [...(current?.historico || []), ...novosEventos];
+
+    await supabase
+      .from('requisicao_compras')
+      .update({ historico: historicoAtualizado })
+      .eq('id', requisicaoId);
+  } catch (err) {
+    console.error(`[registrarFalhasNoHistorico] Erro ao registrar falhas no histórico: ${err.message}`);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -110,9 +200,10 @@ export default async function handler(req, res) {
 
         if (updError) throw updError;
 
+        let resEmails = { enviados: [], falhas: [] };
         if (req_data.colaborador_email) {
-          await sendEmail(
-            req_data.colaborador_email,
+          resEmails = await enviarParaTodos(
+            [req_data.colaborador_email],
             `❌ Requisição ${req_data.numero_requisicao} Reprovada`,
             `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
               <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -131,9 +222,10 @@ export default async function handler(req, res) {
               <p style="color:#64748b;font-size:14px;margin-top:20px;">Em caso de dúvidas, entre em contato com seu gestor.</p>
             </div>`
           );
+          await registrarFalhasNoHistorico(supabase, requisicao_id, resEmails.falhas, req_data.numero_requisicao);
         }
 
-        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
+        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao, emails: resEmails });
       }
 
       // Valida que o e-mail do diretor está configurado
@@ -189,8 +281,11 @@ export default async function handler(req, res) {
         : req_data.valor_unitario_minimo ? `A partir de R$ ${Number(req_data.valor_unitario_minimo).toLocaleString('pt-BR')}`
         : req_data.valor_unitario_maximo ? `Até R$ ${Number(req_data.valor_unitario_maximo).toLocaleString('pt-BR')}` : null;
 
-      await sendEmail(
-        diretorEmail,
+      const emailsEnviados = [];
+      const emailsFalhas = [];
+
+      const resDir = await enviarParaTodos(
+        [diretorEmail],
         `Ação necessária: Requisição ${req_data.numero_requisicao} aguardando sua aprovação para liberar cotação`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
           <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
@@ -231,10 +326,12 @@ export default async function handler(req, res) {
           </div>
         </div>`
       );
+      emailsEnviados.push(...resDir.enviados);
+      emailsFalhas.push(...resDir.falhas);
 
       if (req_data.colaborador_email) {
-        await sendEmail(
-          req_data.colaborador_email,
+        const resColab = await enviarParaTodos(
+          [req_data.colaborador_email],
           `⏳ Requisição ${req_data.numero_requisicao} — Aguardando Diretor`,
           `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
             <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -245,9 +342,18 @@ export default async function handler(req, res) {
             ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Anexados no Pedido:')}
           </div>`
         );
+        emailsEnviados.push(...resColab.enviados);
+        emailsFalhas.push(...resColab.falhas);
       }
 
-      return res.status(200).json({ success: true, action: 'enviado_diretor_1', numero_requisicao: req_data.numero_requisicao });
+      await registrarFalhasNoHistorico(supabase, requisicao_id, emailsFalhas, req_data.numero_requisicao);
+
+      return res.status(200).json({
+        success: true,
+        action: 'enviado_diretor_1',
+        numero_requisicao: req_data.numero_requisicao,
+        emails: { enviados: emailsEnviados, falhas: emailsFalhas }
+      });
     }
 
     // ── COTAÇÃO ENVIADA PELO COMPRADOR ───────────────────────────────────────────
@@ -301,6 +407,8 @@ export default async function handler(req, res) {
           .from('requisicao_compras')
           .update({
             status: 'Aprovada',
+            etapa_compra: 'Lançar no SAP',
+            aprovada_em: new Date().toISOString(),
             cotacao_valor: valorCotadoNum,
             cotacao_fornecedor,
             cotacao_anexos: cotacao_anexos || [],
@@ -323,39 +431,41 @@ export default async function handler(req, res) {
 
         if (updAutoError) throw updAutoError;
 
-        // Notifica compradores confirmando liberação imediata
-        const { data: compradores } = await supabase
-          .from('colaboradores')
-          .select('email, nome_completo')
-          .eq('eh_comprador', true);
-        const emailsCompradores = (compradores || []).map(c => c.email).filter(Boolean);
+        const emailsEnviados = [];
+        const emailsFalhas = [];
 
-        for (const buyerEmail of emailsCompradores) {
-          await sendEmail(
-            buyerEmail,
-            `✅ COMPRA APROVADA AUTOMATICAMENTE — ${req_data.numero_requisicao} (Dentro do Teto)`,
-            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-                <h2 style="margin:0;">✅ Compra Aprovada para Emissão</h2>
-              </div>
-              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi finalizada e <strong>aprovada automaticamente</strong> pois o valor cotado (R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) atendeu ao teto pré-autorizado pelo Diretor (R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).</p>
-              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-                <p><strong>Item:</strong> ${req_data.item}</p>
-                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
-                <p><strong>Fornecedor Escolhido:</strong> ${cotacao_fornecedor}</p>
-                <p><strong>Valor Final:</strong> R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-              </div>
-              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Documentos e Propostas Anexadas:')}
-              <p style="color:#16a34a;font-weight:bold;margin-top:20px;">Você já pode emitir o pedido de compra e prosseguir com o faturamento.</p>
-            </div>`
-          );
-        }
+        // Notifica compradores confirmando liberação imediata para lançar no SAP
+        const emailsCompradores = await buscarEmailsCompradores(supabase);
+
+        const resCompradores = await enviarParaTodos(
+          emailsCompradores,
+          `✅ COMPRA APROVADA AUTOMATICAMENTE — ${req_data.numero_requisicao} (Dentro do Teto)`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+            <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+              <h2 style="margin:0;">✅ Compra Aprovada para Emissão</h2>
+            </div>
+            <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi finalizada e <strong>aprovada automaticamente</strong> pois o valor cotado (R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) atendeu ao teto pré-autorizado pelo Diretor (R$ ${valorEstimadoTeto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).</p>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+              <p><strong>Item:</strong> ${req_data.item}</p>
+              <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+              <p><strong>Fornecedor Escolhido:</strong> ${cotacao_fornecedor}</p>
+              <p><strong>Valor Final:</strong> R$ ${valorCotadoNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+            </div>
+            ${buildAnexosHtml(todosAnexosConsolidados, '📎 Documentos e Propostas Anexadas:')}
+            <p style="color:#16a34a;font-weight:bold;margin-top:20px;">Você já pode emitir o pedido de compra no SAP e prosseguir com o faturamento.</p>
+            <div style="text-align:center;margin-top:24px;">
+              <a href="${SITE_URL}/portal-requisicoes?aba=pedidos" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">Abrir pedidos para lançar no SAP</a>
+            </div>
+          </div>`
+        );
+        emailsEnviados.push(...resCompradores.enviados);
+        emailsFalhas.push(...resCompradores.falhas);
 
         // Notifica solicitante
         if (req_data.colaborador_email) {
-          await sendEmail(
-            req_data.colaborador_email,
+          const resColab = await enviarParaTodos(
+            [req_data.colaborador_email],
             `🎉 Requisição ${req_data.numero_requisicao} Aprovada para Compra!`,
             `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
               <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -371,9 +481,18 @@ export default async function handler(req, res) {
               <p style="color:#64748b;font-size:14px;margin-top:20px;">O setor de compras já está processando o pedido.</p>
             </div>`
           );
+          emailsEnviados.push(...resColab.enviados);
+          emailsFalhas.push(...resColab.falhas);
         }
 
-        return res.status(200).json({ success: true, action: 'aprovado_automatico', numero_requisicao: req_data.numero_requisicao });
+        await registrarFalhasNoHistorico(supabase, requisicao_id, emailsFalhas, req_data.numero_requisicao);
+
+        return res.status(200).json({
+          success: true,
+          action: 'aprovado_automatico',
+          numero_requisicao: req_data.numero_requisicao,
+          emails: { enviados: emailsEnviados, falhas: emailsFalhas }
+        });
       }
 
       // SE O VALOR COTADO SUPEROU O ESTIMADO (OU SEM ESTIMATIVA):
@@ -411,8 +530,11 @@ export default async function handler(req, res) {
       const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
       const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
-      await sendEmail(
-        diretorEmail,
+      const emailsEnviados = [];
+      const emailsFalhas = [];
+
+      const resDir = await enviarParaTodos(
+        [diretorEmail],
         `${diferencaExcedente > 0 ? '⚠️ Cotação Excedeu Estimativa' : '💰 Aprovação Final'}: Requisição ${req_data.numero_requisicao}`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
           <div style="background:${diferencaExcedente > 0 ? '#b45309' : '#047857'};color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
@@ -470,10 +592,12 @@ export default async function handler(req, res) {
           </div>
         </div>`
       );
+      emailsEnviados.push(...resDir.enviados);
+      emailsFalhas.push(...resDir.falhas);
 
       if (req_data.colaborador_email) {
-        await sendEmail(
-          req_data.colaborador_email,
+        const resColab = await enviarParaTodos(
+          [req_data.colaborador_email],
           `⏳ Requisição ${req_data.numero_requisicao} — Cotação Concluída`,
           `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
             <div style="background:#059669;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -484,9 +608,18 @@ export default async function handler(req, res) {
             ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos e Orçamentos Vinculados:')}
           </div>`
         );
+        emailsEnviados.push(...resColab.enviados);
+        emailsFalhas.push(...resColab.falhas);
       }
 
-      return res.status(200).json({ success: true, action: 'cotacao_enviada', numero_requisicao: req_data.numero_requisicao });
+      await registrarFalhasNoHistorico(supabase, requisicao_id, emailsFalhas, req_data.numero_requisicao);
+
+      return res.status(200).json({
+        success: true,
+        action: 'cotacao_enviada',
+        numero_requisicao: req_data.numero_requisicao,
+        emails: { enviados: emailsEnviados, falhas: emailsFalhas }
+      });
     }
 
     // ── SOLICITANTE EDITA E REENVIA ────────────────────────────────────────────────
@@ -566,8 +699,8 @@ export default async function handler(req, res) {
       const linkAprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=aprovar`;
       const linkReprovar = `${SITE_URL}/aprovacao-diretor?token=${token_dir}&acao=reprovar`;
 
-      await sendEmail(
-        diretorEmail,
+      const resDir = await enviarParaTodos(
+        [diretorEmail],
         `⚠️ Requisição Reenviada após Ajustes: ${req_data.numero_requisicao} (${item?.trim()})`,
         `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
           <div style="background:#d97706;color:white;padding:20px;border-radius:8px;margin-bottom:20px;">
@@ -598,7 +731,14 @@ export default async function handler(req, res) {
         </div>`
       );
 
-      return res.status(200).json({ success: true, action: 'reenviada_diretor', numero_requisicao: req_data.numero_requisicao });
+      await registrarFalhasNoHistorico(supabase, requisicao_id, resDir.falhas, req_data.numero_requisicao);
+
+      return res.status(200).json({
+        success: true,
+        action: 'reenviada_diretor',
+        numero_requisicao: req_data.numero_requisicao,
+        emails: resDir
+      });
     }
 
     // ── AÇÃO DO DIRETOR VIA TOKEN OU PORTAL (Fase 1 ou Fase 2) ─────────────────────
@@ -677,45 +817,43 @@ export default async function handler(req, res) {
 
           if (f1Error) throw f1Error;
 
-          // Busca compradores
-          const { data: compradores } = await supabase
-            .from('colaboradores')
-            .select('email, nome_completo')
-            .eq('eh_comprador', true);
+          const emailsEnviados = [];
+          const emailsFalhas = [];
 
-          const emailsCompradores = (compradores || []).map(c => c.email).filter(Boolean);
+          // Busca compradores com a regra completa
+          const emailsCompradores = await buscarEmailsCompradores(supabase);
 
-          for (const buyerEmail of emailsCompradores) {
-            await sendEmail(
-              buyerEmail,
-              `🛒 Nova Requisição Liberada para Cotação — ${req_data.numero_requisicao}`,
-              `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
-                <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
-                  <h2 style="margin:0;">🛒 Requisição Liberada para Cotação</h2>
-                </div>
-                <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi autorizada pelo diretor e aguarda elaboração de cotação.</p>
-                <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
-                  <p><strong>Item:</strong> ${req_data.item}</p>
-                  ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
-                  ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
-                  <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
-                  ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
-                  <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
-                  <p><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
-                  ${req_data.aprovador_comentario ? `<p><strong>Obs. Gestor:</strong> ${req_data.aprovador_comentario}</p>` : ''}
-                  ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
-                </div>
-                ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos para Elaboração da Cotação:')}
-                <div style="text-align:center;margin-top:24px;">
-                  <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
-                </div>
-              </div>`
-            );
-          }
+          const resCompradores = await enviarParaTodos(
+            emailsCompradores,
+            `🛒 Nova Requisição Liberada para Cotação — ${req_data.numero_requisicao}`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">🛒 Requisição Liberada para Cotação</h2>
+              </div>
+              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi autorizada pelo diretor e aguarda elaboração de cotação.</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Item:</strong> ${req_data.item}</p>
+                ${req_data.material ? `<p><strong>Material:</strong> ${req_data.material}</p>` : ''}
+                ${req_data.cor ? `<p><strong>Cor:</strong> ${req_data.cor}</p>` : ''}
+                <p><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                ${req_data.data_necessidade ? `<p><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+                <p><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area})</p>
+                <p><strong>Aprovador Responsável:</strong> ${req_data.aprovador_nome}</p>
+                ${req_data.aprovador_comentario ? `<p><strong>Obs. Gestor:</strong> ${req_data.aprovador_comentario}</p>` : ''}
+                ${comentario ? `<p><strong>Obs. Diretor:</strong> ${comentario}</p>` : ''}
+              </div>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos para Elaboração da Cotação:')}
+              <div style="text-align:center;margin-top:24px;">
+                <a href="${SITE_URL}/portal-requisicoes" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Acessar Aba de Cotações</a>
+              </div>
+            </div>`
+          );
+          emailsEnviados.push(...resCompradores.enviados);
+          emailsFalhas.push(...resCompradores.falhas);
 
           if (req_data.colaborador_email) {
-            await sendEmail(
-              req_data.colaborador_email,
+            const resColab = await enviarParaTodos(
+              [req_data.colaborador_email],
               `⏳ Requisição ${req_data.numero_requisicao} — Liberada para Cotação`,
               `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
                 <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -726,9 +864,18 @@ export default async function handler(req, res) {
                 ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
               </div>`
             );
+            emailsEnviados.push(...resColab.enviados);
+            emailsFalhas.push(...resColab.falhas);
           }
 
-          return res.status(200).json({ success: true, action: 'liberado_cotacao', numero_requisicao: req_data.numero_requisicao });
+          await registrarFalhasNoHistorico(supabase, req_data.id, emailsFalhas, req_data.numero_requisicao);
+
+          return res.status(200).json({
+            success: true,
+            action: 'liberado_cotacao',
+            numero_requisicao: req_data.numero_requisicao,
+            emails: { enviados: emailsEnviados, falhas: emailsFalhas }
+          });
         }
 
         // Diretor reprova na 1ª fase
@@ -754,10 +901,13 @@ export default async function handler(req, res) {
 
         if (rejectError) throw rejectError;
 
-        const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
-        for (const targetEmail of emails) {
-          await sendEmail(
-            targetEmail,
+        const emailsEnviadosReprova1 = [];
+        const emailsFalhasReprova1 = [];
+
+        // Notifica apenas o solicitante (aprovador_email removido conforme diretriz)
+        if (req_data.colaborador_email) {
+          const resColab = await enviarParaTodos(
+            [req_data.colaborador_email],
             `❌ Requisição ${req_data.numero_requisicao} Reprovada pelo Diretor`,
             `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
               <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -768,8 +918,18 @@ export default async function handler(req, res) {
               ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
             </div>`
           );
+          emailsEnviadosReprova1.push(...resColab.enviados);
+          emailsFalhasReprova1.push(...resColab.falhas);
         }
-        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
+
+        await registrarFalhasNoHistorico(supabase, req_data.id, emailsFalhasReprova1, req_data.numero_requisicao);
+
+        return res.status(200).json({
+          success: true,
+          action: 'reprovado',
+          numero_requisicao: req_data.numero_requisicao,
+          emails: { enviados: emailsEnviadosReprova1, falhas: emailsFalhasReprova1 }
+        });
       }
 
       // ── FASE 2: DIRETOR APROVA FINAL ──
@@ -779,6 +939,8 @@ export default async function handler(req, res) {
             .from('requisicao_compras')
             .update({
               status: 'Aprovada',
+              etapa_compra: 'Lançar no SAP',
+              aprovada_em: new Date().toISOString(),
               diretor_comentario: comentario || '',
               diretor_data: new Date().toISOString(),
               token_aprovacao: '',
@@ -797,17 +959,48 @@ export default async function handler(req, res) {
 
           if (finishError) throw finishError;
 
-          const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
-          for (const targetEmail of emails) {
-            const nome = targetEmail === req_data.colaborador_email ? req_data.colaborador_nome : req_data.aprovador_nome;
-            await sendEmail(
-              targetEmail,
+          const emailsEnviadosFase2 = [];
+          const emailsFalhasFase2 = [];
+
+          // 1. Notifica compradores com o chamado para lançar no SAP
+          const emailsCompradores = await buscarEmailsCompradores(supabase);
+          const resCompradores = await enviarParaTodos(
+            emailsCompradores,
+            `Compra aprovada pelo Diretor: lançar no SAP · ${req_data.numero_requisicao}`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;font-size:20px;">✅ Compra Aprovada pelo Diretor</h2>
+                <p style="margin:4px 0 0 0;font-size:14px;opacity:0.9;">Pronta para lançamento de pedido no SAP</p>
+              </div>
+              <p>A requisição <strong>${req_data.numero_requisicao}</strong> foi <strong>aprovada em definitivo</strong> pelo Diretor.</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p style="margin:4px 0;"><strong>Item:</strong> ${req_data.item}</p>
+                <p style="margin:4px 0;"><strong>Quantidade:</strong> ${req_data.quantidade || 1} ${req_data.unidade_medida || 'un'}</p>
+                <p style="margin:4px 0;"><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
+                <p style="margin:4px 0;"><strong>Valor Aprovado:</strong> R$ ${Number(req_data.cotacao_valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p style="margin:4px 0;"><strong>Solicitante:</strong> ${req_data.colaborador_nome} (${req_data.colaborador_area || 'Geral'})</p>
+                ${req_data.data_necessidade ? `<p style="margin:4px 0;"><strong>Data da Necessidade:</strong> 📅 ${new Date(req_data.data_necessidade + 'T00:00:00').toLocaleDateString('pt-BR')}</p>` : ''}
+                ${comentario ? `<p style="margin:6px 0;padding:6px 10px;background:#f1f5f9;border-radius:4px;font-size:13px;color:#1e3a8a;"><strong>Obs. Diretor:</strong> "${comentario}"</p>` : ''}
+              </div>
+              ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos e Orçamentos da Requisição:')}
+              <div style="text-align:center;margin-top:24px;">
+                <a href="${SITE_URL}/portal-requisicoes?aba=pedidos" style="display:inline-block;background:#16a34a;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">Abrir pedidos para lançar no SAP</a>
+              </div>
+            </div>`
+          );
+          emailsEnviadosFase2.push(...resCompradores.enviados);
+          emailsFalhasFase2.push(...resCompradores.falhas);
+
+          // 2. Notifica solicitante (aprovador_email removido conforme diretriz)
+          if (req_data.colaborador_email) {
+            const resColab = await enviarParaTodos(
+              [req_data.colaborador_email],
               `✅ Requisição ${req_data.numero_requisicao} Aprovada Definitivamente`,
               `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
                 <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
                   <h2 style="margin:0;">✅ Requisição Totalmente Aprovada!</h2>
                 </div>
-                <p>Olá, <strong>${nome}</strong>!</p>
+                <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
                 <p>A requisição <strong>${req_data.numero_requisicao}</strong> teve a cotação aprovada definitivamente pelo diretor.</p>
                 <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
                   <p><strong>Item:</strong> ${req_data.item}</p>
@@ -821,8 +1014,18 @@ export default async function handler(req, res) {
                 ${buildAnexosHtml(todosAnexosConsolidados, '📎 Todos os Anexos e Orçamentos da Requisição:')}
               </div>`
             );
+            emailsEnviadosFase2.push(...resColab.enviados);
+            emailsFalhasFase2.push(...resColab.falhas);
           }
-          return res.status(200).json({ success: true, action: 'aprovado', numero_requisicao: req_data.numero_requisicao });
+
+          await registrarFalhasNoHistorico(supabase, req_data.id, emailsFalhasFase2, req_data.numero_requisicao);
+
+          return res.status(200).json({
+            success: true,
+            action: 'aprovado',
+            numero_requisicao: req_data.numero_requisicao,
+            emails: { enviados: emailsEnviadosFase2, falhas: emailsFalhasFase2 }
+          });
         }
 
         // Diretor reprova na 2ª fase
@@ -848,10 +1051,13 @@ export default async function handler(req, res) {
 
         if (rejectError) throw rejectError;
 
-        const emails = [req_data.aprovador_email, req_data.colaborador_email].filter(Boolean);
-        for (const targetEmail of emails) {
-          await sendEmail(
-            targetEmail,
+        const emailsEnviadosReprova2 = [];
+        const emailsFalhasReprova2 = [];
+
+        // Notifica apenas solicitante (aprovador_email removido conforme diretriz)
+        if (req_data.colaborador_email) {
+          const resColab = await enviarParaTodos(
+            [req_data.colaborador_email],
             `❌ Requisição ${req_data.numero_requisicao} Reprovada na Fase Final`,
             `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
               <div style="background:#ef4444;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
@@ -867,8 +1073,18 @@ export default async function handler(req, res) {
               ${buildAnexosHtml(todosAnexosConsolidados, '📎 Anexos Vinculados:')}
             </div>`
           );
+          emailsEnviadosReprova2.push(...resColab.enviados);
+          emailsFalhasReprova2.push(...resColab.falhas);
         }
-        return res.status(200).json({ success: true, action: 'reprovado', numero_requisicao: req_data.numero_requisicao });
+
+        await registrarFalhasNoHistorico(supabase, req_data.id, emailsFalhasReprova2, req_data.numero_requisicao);
+
+        return res.status(200).json({
+          success: true,
+          action: 'reprovado',
+          numero_requisicao: req_data.numero_requisicao,
+          emails: { enviados: emailsEnviadosReprova2, falhas: emailsFalhasReprova2 }
+        });
       }
 
       return res.status(400).json({
@@ -876,6 +1092,348 @@ export default async function handler(req, res) {
         numero_requisicao: req_data.numero_requisicao,
         status_atual: req_data.status
       });
+    }
+
+    // ── GESTÃO PÓS-APROVAÇÃO: COMPRADOR (SAP, PREVISÃO, ENTREGA, CANCELAMENTO) ────
+    const ACOES_POS_APROVACAO = [
+      'comprador_lancar_sap',
+      'comprador_atualizar_previsao',
+      'comprador_registrar_entrega',
+      'comprador_cancelar_compra',
+      'comprador_desfazer_etapa',
+      'solicitante_confirmar_recebimento'
+    ];
+
+    if (ACOES_POS_APROVACAO.includes(action)) {
+      if (!requisicao_id) return res.status(400).json({ error: 'requisicao_id obrigatório' });
+
+      const { data: req_data, error: getError } = await supabase
+        .from('requisicao_compras')
+        .select('*')
+        .eq('id', requisicao_id)
+        .maybeSingle();
+
+      if (getError || !req_data) return res.status(404).json({ error: 'Requisição não encontrada' });
+
+      if (req_data.status !== 'Aprovada') {
+        return res.status(400).json({ error: 'Esta requisição não está no status Aprovada' });
+      }
+
+      // Validação de permissão: Comprador ou Solicitante (para confirmar entrega)
+      let compradorColab = null;
+
+      if (action === 'solicitante_confirmar_recebimento') {
+        const usuario_id = body.solicitante_id || body.comprador_id;
+        if (!usuario_id) return res.status(400).json({ error: 'Identificação do solicitante obrigatória' });
+        if (req_data.colaborador_id && req_data.colaborador_id !== usuario_id) {
+          return res.status(403).json({ error: 'Apenas o solicitante desta requisição pode confirmar o recebimento direto' });
+        }
+      } else {
+        if (!comprador_id) return res.status(400).json({ error: 'comprador_id obrigatório' });
+
+        const { data: colabData, error: colabErr } = await supabase
+          .from('colaboradores')
+          .select('id, nome_completo, email, area, eh_comprador, status')
+          .eq('id', comprador_id)
+          .maybeSingle();
+
+        if (colabErr || !colabData) {
+          return res.status(404).json({ error: 'Colaborador não encontrado' });
+        }
+
+        const isCompradorValido = colabData.status !== 'Desligado' && (
+          colabData.eh_comprador === true ||
+          (colabData.area && colabData.area.toLowerCase().includes('compras'))
+        );
+
+        if (!isCompradorValido) {
+          return res.status(403).json({ error: 'Não autorizado: usuário não possui perfil de comprador' });
+        }
+
+        compradorColab = colabData;
+      }
+
+      const nomeOperador = compradorColab?.nome_completo || comprador_nome || req_data.colaborador_nome || 'Comprador';
+
+      // 1. Lançar no SAP
+      if (action === 'comprador_lancar_sap') {
+        const { sap_pedido_numero, previsao_entrega, observacao } = body;
+        if (!sap_pedido_numero || !sap_pedido_numero.trim()) {
+          return res.status(400).json({ error: 'Número do pedido SAP é obrigatório' });
+        }
+
+        const sapNumeroLimpo = sap_pedido_numero.trim();
+
+        // Checar duplicidade (sem bloquear)
+        let aviso_duplicado = null;
+        const { data: duplicadas } = await supabase
+          .from('requisicao_compras')
+          .select('id, numero_requisicao')
+          .eq('sap_pedido_numero', sapNumeroLimpo)
+          .neq('id', requisicao_id)
+          .limit(1);
+
+        if (duplicadas && duplicadas.length > 0) {
+          aviso_duplicado = `O pedido SAP nº ${sapNumeroLimpo} já está registrado na requisição ${duplicadas[0].numero_requisicao}.`;
+        }
+
+        const dataPrevisaoFormatada = previsao_entrega
+          ? new Date(previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR')
+          : null;
+
+        const novoEvento = {
+          data_hora: new Date().toISOString(),
+          tipo: 'pedido_sap_lancado',
+          descricao: `Pedido lançado no SAP nº ${sapNumeroLimpo}. ${dataPrevisaoFormatada ? 'Previsão de entrega: ' + dataPrevisaoFormatada + '.' : 'Sem previsão informada.'}${observacao ? ' Obs: ' + observacao : ''}`,
+          usuario: nomeOperador,
+          numero_requisicao: req_data.numero_requisicao,
+          sap_pedido_numero: sapNumeroLimpo,
+          previsao_entrega: previsao_entrega || null
+        };
+
+        const { error: updErr } = await supabase
+          .from('requisicao_compras')
+          .update({
+            etapa_compra: 'Aguardando entrega',
+            sap_pedido_numero: sapNumeroLimpo,
+            sap_lancado_em: new Date().toISOString(),
+            sap_lancado_por_id: compradorColab?.id || null,
+            sap_lancado_por_nome: nomeOperador,
+            previsao_entrega: previsao_entrega || null,
+            historico: [...(req_data.historico || []), novoEvento]
+          })
+          .eq('id', requisicao_id);
+
+        if (updErr) throw updErr;
+
+        // Notifica solicitante por e-mail com a previsão
+        let emailsResultado = { enviados: [], falhas: [] };
+        if (req_data.colaborador_email) {
+          emailsResultado = await enviarParaTodos(
+            [req_data.colaborador_email],
+            `📦 Pedido SAP Gerado: Requisição ${req_data.numero_requisicao} (${req_data.item})`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#2563eb;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">📦 Pedido Lançado no SAP</h2>
+              </div>
+              <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+              <p>O setor de compras efetuou o lançamento do pedido da sua requisição no sistema SAP.</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
+                <p><strong>Item:</strong> ${req_data.item}</p>
+                <p><strong>Nº do Pedido SAP:</strong> <code style="font-size:16px;font-weight:bold;color:#2563eb;">${sapNumeroLimpo}</code></p>
+                <p><strong>Previsão de Entrega:</strong> ${dataPrevisaoFormatada ? `📅 ${dataPrevisaoFormatada}` : 'A definir'}</p>
+                <p><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
+                <p><strong>Comprador Responsável:</strong> ${nomeOperador}</p>
+                ${observacao ? `<p><strong>Observações:</strong> ${observacao}</p>` : ''}
+              </div>
+              <p style="color:#64748b;font-size:14px;margin-top:20px;">Você será notificado assim que a entrega for confirmada.</p>
+            </div>`
+          );
+          await registrarFalhasNoHistorico(supabase, requisicao_id, emailsResultado.falhas, req_data.numero_requisicao);
+        }
+
+        return res.status(200).json({
+          success: true,
+          action: 'pedido_sap_lancado',
+          numero_requisicao: req_data.numero_requisicao,
+          aviso_duplicado,
+          emails: emailsResultado
+        });
+      }
+
+      // 2. Atualizar previsão de entrega
+      if (action === 'comprador_atualizar_previsao') {
+        const { previsao_entrega, observacao } = body;
+        const dataPrevisaoFormatada = previsao_entrega
+          ? new Date(previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR')
+          : 'a definir';
+
+        const novoEvento = {
+          data_hora: new Date().toISOString(),
+          tipo: 'previsao_entrega_atualizada',
+          descricao: `Previsão de entrega alterada para ${dataPrevisaoFormatada}.${observacao ? ' Motivo: ' + observacao : ''}`,
+          usuario: nomeOperador,
+          numero_requisicao: req_data.numero_requisicao,
+          previsao_entrega: previsao_entrega || null
+        };
+
+        const { error: updErr } = await supabase
+          .from('requisicao_compras')
+          .update({
+            previsao_entrega: previsao_entrega || null,
+            historico: [...(req_data.historico || []), novoEvento]
+          })
+          .eq('id', requisicao_id);
+
+        if (updErr) throw updErr;
+
+        return res.status(200).json({
+          success: true,
+          action: 'previsao_entrega_atualizada',
+          numero_requisicao: req_data.numero_requisicao
+        });
+      }
+
+      // 3. Registrar Entrega
+      if (action === 'comprador_registrar_entrega' || action === 'solicitante_confirmar_recebimento') {
+        const { entrega_data, entrega_nf, entrega_observacao } = body;
+        const dataEfetiva = entrega_data || new Date().toISOString().split('T')[0];
+        const dataFormatada = new Date(dataEfetiva + 'T00:00:00').toLocaleDateString('pt-BR');
+
+        const novoEvento = {
+          data_hora: new Date().toISOString(),
+          tipo: 'entrega_registrada',
+          descricao: `Entrega confirmada em ${dataFormatada}.${entrega_nf ? ' NF: ' + entrega_nf + '.' : ''}${entrega_observacao ? ' Obs: ' + entrega_observacao : ''}`,
+          usuario: nomeOperador,
+          numero_requisicao: req_data.numero_requisicao,
+          entrega_data: dataEfetiva,
+          entrega_nf: entrega_nf || null
+        };
+
+        const { error: updErr } = await supabase
+          .from('requisicao_compras')
+          .update({
+            etapa_compra: 'Entregue',
+            entrega_data: dataEfetiva,
+            entrega_nf: entrega_nf || null,
+            entrega_registrada_por_nome: nomeOperador,
+            entrega_observacao: entrega_observacao || null,
+            historico: [...(req_data.historico || []), novoEvento]
+          })
+          .eq('id', requisicao_id);
+
+        if (updErr) throw updErr;
+
+        // Notifica solicitante confirmando a entrega (se registrado pelo comprador)
+        let emailsResultado = { enviados: [], falhas: [] };
+        if (action === 'comprador_registrar_entrega' && req_data.colaborador_email) {
+          emailsResultado = await enviarParaTodos(
+            [req_data.colaborador_email],
+            `🎉 Pedido Entregue: Requisição ${req_data.numero_requisicao} (${req_data.item})`,
+            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:24px;border-radius:12px;">
+              <div style="background:#16a34a;color:white;padding:20px;border-radius:8px;margin-bottom:24px;">
+                <h2 style="margin:0;">🎉 Material / Serviço Entregue!</h2>
+              </div>
+              <p>Olá, <strong>${req_data.colaborador_nome}</strong>!</p>
+              <p>A entrega referente à sua requisição de compra foi confirmada pelo setor de compras.</p>
+              <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p><strong>Requisição:</strong> ${req_data.numero_requisicao}</p>
+                <p><strong>Item:</strong> ${req_data.item}</p>
+                <p><strong>Data da Entrega:</strong> 📅 ${dataFormatada}</p>
+                ${entrega_nf ? `<p><strong>Nota Fiscal (NF):</strong> ${entrega_nf}</p>` : ''}
+                <p><strong>Fornecedor:</strong> ${req_data.cotacao_fornecedor || '-'}</p>
+                <p><strong>Confirmado por:</strong> ${nomeOperador}</p>
+                ${entrega_observacao ? `<p><strong>Observações:</strong> ${entrega_observacao}</p>` : ''}
+              </div>
+              <p style="color:#64748b;font-size:14px;margin-top:20px;">O processo da compra foi 100% concluído no TechControl.</p>
+            </div>`
+          );
+          await registrarFalhasNoHistorico(supabase, requisicao_id, emailsResultado.falhas, req_data.numero_requisicao);
+        }
+
+        return res.status(200).json({
+          success: true,
+          action: 'entrega_registrada',
+          numero_requisicao: req_data.numero_requisicao,
+          emails: emailsResultado
+        });
+      }
+
+      // 4. Cancelar compra
+      if (action === 'comprador_cancelar_compra') {
+        const { motivo } = body;
+        if (!motivo || !motivo.trim()) {
+          return res.status(400).json({ error: 'Motivo do cancelamento é obrigatório' });
+        }
+
+        const novoEvento = {
+          data_hora: new Date().toISOString(),
+          tipo: 'compra_cancelada',
+          descricao: `Compra cancelada pelo comprador. Motivo: ${motivo.trim()}`,
+          usuario: nomeOperador,
+          numero_requisicao: req_data.numero_requisicao,
+          motivo: motivo.trim()
+        };
+
+        const { error: updErr } = await supabase
+          .from('requisicao_compras')
+          .update({
+            etapa_compra: 'Cancelada',
+            compra_cancelada_motivo: motivo.trim(),
+            historico: [...(req_data.historico || []), novoEvento]
+          })
+          .eq('id', requisicao_id);
+
+        if (updErr) throw updErr;
+
+        return res.status(200).json({
+          success: true,
+          action: 'compra_cancelada',
+          numero_requisicao: req_data.numero_requisicao
+        });
+      }
+
+      // 5. Desfazer etapa
+      if (action === 'comprador_desfazer_etapa') {
+        const etapaAtual = req_data.etapa_compra || 'Lançar no SAP';
+        let updateFields = {};
+        let etapaDestino = 'Lançar no SAP';
+
+        if (etapaAtual === 'Entregue') {
+          etapaDestino = 'Aguardando entrega';
+          updateFields = {
+            etapa_compra: 'Aguardando entrega',
+            entrega_data: null,
+            entrega_nf: null,
+            entrega_registrada_por_nome: null,
+            entrega_observacao: null
+          };
+        } else if (etapaAtual === 'Aguardando entrega') {
+          etapaDestino = 'Lançar no SAP';
+          updateFields = {
+            etapa_compra: 'Lançar no SAP',
+            sap_pedido_numero: null,
+            sap_lancado_em: null,
+            sap_lancado_por_id: null,
+            sap_lancado_por_nome: null,
+            previsao_entrega: null
+          };
+        } else if (etapaAtual === 'Cancelada') {
+          etapaDestino = req_data.sap_pedido_numero ? 'Aguardando entrega' : 'Lançar no SAP';
+          updateFields = {
+            etapa_compra: etapaDestino,
+            compra_cancelada_motivo: null
+          };
+        } else {
+          return res.status(400).json({ error: 'A requisição já está na etapa inicial de lançamento' });
+        }
+
+        const novoEvento = {
+          data_hora: new Date().toISOString(),
+          tipo: 'etapa_desfeita',
+          descricao: `Etapa da compra revertida de "${etapaAtual}" para "${etapaDestino}" para correção de dados.`,
+          usuario: nomeOperador,
+          numero_requisicao: req_data.numero_requisicao
+        };
+
+        const { error: updErr } = await supabase
+          .from('requisicao_compras')
+          .update({
+            ...updateFields,
+            historico: [...(req_data.historico || []), novoEvento]
+          })
+          .eq('id', requisicao_id);
+
+        if (updErr) throw updErr;
+
+        return res.status(200).json({
+          success: true,
+          action: 'etapa_desfeita',
+          etapa_destino: etapaDestino,
+          numero_requisicao: req_data.numero_requisicao
+        });
+      }
     }
 
     return res.status(400).json({ error: 'Ação inválida' });

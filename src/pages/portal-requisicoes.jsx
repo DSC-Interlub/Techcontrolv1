@@ -21,7 +21,8 @@ import {
   Search, 
   ShieldCheck,
   Paperclip,
-  AlertTriangle
+  AlertTriangle,
+  PackageCheck
 } from "lucide-react";
 import PortalLayout from "../components/portal/PortalLayout";
 import { usePortalAuth } from "../components/portal/usePortalAuth";
@@ -30,6 +31,7 @@ import RequisicaoDetalhes from "../components/requisicoes/RequisicaoDetalhes";
 import IndicadoresRequisicao from "../components/requisicoes/IndicadoresRequisicao";
 import PainelAprovador from "../components/requisicoes/PainelAprovador";
 import PainelDiretoria from "../components/requisicoes/diretoria/PainelDiretoria";
+import PainelPedidosComprador from "../components/requisicoes/compras/PainelPedidosComprador";
 import { toast } from "@/components/ui/use-toast";
 
 const statusColors = {
@@ -62,6 +64,16 @@ export default function PortalRequisicoes() {
   const [buscaHistorico, setBuscaHistorico] = useState("");
   const [buscaComprador, setBuscaComprador] = useState("");
   const [filtroStatusComprador, setFiltroStatusComprador] = useState("todos");
+
+  // Sincronização inteligente com query param (?aba=pedidos ou ?aba=cotacoes)
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const aba = p.get("aba");
+      if (aba) return aba;
+    } catch {}
+    return null;
+  });
 
   // Estado para travar somente o card em processamento
   const [pendingReqId, setPendingReqId] = useState(null);
@@ -104,6 +116,34 @@ export default function PortalRequisicoes() {
       queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
       queryClient.invalidateQueries({ queryKey: ['painel_aprovador_reqs'] });
       queryClient.invalidateQueries({ queryKey: ['painel_diretor_requisicoes'] });
+    }
+  });
+
+  // Mutation para o solicitante confirmar recebimento direto da requisição
+  const confirmarRecebimentoSolicitanteMutation = useMutation({
+    mutationFn: async ({ reqId, observacao }) => {
+      const res = await base44.functions.invoke("requisicaoComprasAction", {
+        action: "solicitante_confirmar_recebimento",
+        requisicao_id: reqId,
+        solicitante_id: colaboradorFull?.id,
+        entrega_data: new Date().toISOString().split('T')[0],
+        entrega_observacao: observacao || "Confirmado pelo solicitante via Portal"
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portal_requisicoes'] });
+      toast({
+        title: "Recebimento confirmado!",
+        description: "A requisição foi marcada como Entregue."
+      });
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao confirmar recebimento",
+        description: err.message || "Não foi possível confirmar o recebimento."
+      });
     }
   });
 
@@ -198,6 +238,24 @@ export default function PortalRequisicoes() {
     enabled: !!colaborador,
   });
 
+  // isComprador: lê do campo eh_comprador do colaborador ou área/cargo de compras (com fallback para sessão inicial)
+  const isComprador = !!(
+    colaboradorFull?.eh_comprador || 
+    colaboradorFull?.area?.toLowerCase().includes('compras') ||
+    colaborador?.eh_comprador ||
+    colaborador?.area?.toLowerCase().includes('compras')
+  );
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const aba = p.get("aba");
+      if (aba && isComprador && (aba === "pedidos" || aba === "cotacoes")) {
+        setActiveTab(aba);
+      }
+    } catch {}
+  }, [isComprador]);
+
   if (loading || !colaborador) {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
   }
@@ -234,9 +292,6 @@ export default function PortalRequisicoes() {
     new Map([...minhasRequisicoes, ...reqsAprovador, ...(isDiretor ? requisicoes : [])].map(r => [r.id, r])).values()
   );
 
-  // isComprador: lê do campo eh_comprador do colaborador ou área/cargo de compras
-  const isComprador = !!(colaboradorFull?.eh_comprador || colaboradorFull?.area?.toLowerCase().includes('compras'));
-
   // Requisições pendentes de aprovação atribuídas a este usuário (como gestor direto)
   const requisicoesPendentesAprovador = requisicoes.filter(r =>
     r.aprovador_id === colaboradorFull?.id && r.status === 'Aguardando Aprovador'
@@ -246,6 +301,15 @@ export default function PortalRequisicoes() {
   const requisicoesPendentesCotacao = isComprador
     ? requisicoes.filter(r => r.status === 'Aguardando Cotação')
     : [];
+
+  // Pedidos pós-aprovação para o Comprador (Lançar no SAP e Aguardando entrega)
+  const pedidosParaLancarSap = isComprador
+    ? requisicoes.filter(r => r.status === 'Aprovada' && (!r.etapa_compra || r.etapa_compra === 'Lançar no SAP')).length
+    : 0;
+
+  const pedidosAguardandoEntrega = isComprador
+    ? requisicoes.filter(r => r.status === 'Aprovada' && r.etapa_compra === 'Aguardando entrega').length
+    : 0;
 
   const pendentes = todasRelacionadas.filter(r =>
     ['Aguardando Aprovador', 'Aguardando Diretor', 'Aguardando Cotação', 'Aguardando Aprovação Final'].includes(r.status)
@@ -334,10 +398,14 @@ export default function PortalRequisicoes() {
   }
 
   // Aba padrão inicial inteligente
-  const tabPadrao = isDiretor && requisicoesPendentesDiretor.length > 0
+  const tabPadrao = activeTab
+    ? activeTab
+    : (isDiretor && requisicoesPendentesDiretor.length > 0)
     ? "diretoria"
     : (isAprovador && !isDiretor && requisicoesPendentesAprovador.length > 0)
     ? "aprovador"
+    : (isComprador && pedidosParaLancarSap > 0)
+    ? "pedidos"
     : isDiretor
     ? "diretoria"
     : "minhas";
@@ -404,19 +472,42 @@ export default function PortalRequisicoes() {
             </div>
           )}
 
-          {/* Aviso para comprador */}
-          {isComprador && requisicoesPendentesCotacao.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-              <ShoppingBag className="w-5 h-5 text-blue-600 shrink-0" />
-              <div>
-                <p className="font-semibold text-blue-900 text-sm">Há {requisicoesPendentesCotacao.length} requisição(ões) liberada(s) para cotação</p>
-                <p className="text-xs text-blue-700">Acesse a aba "Cotações Pendentes" para cadastrar os orçamentos.</p>
-              </div>
+          {/* Avisos para Comprador: Cotações Pendentes e Pedidos para Lançar no SAP */}
+          {isComprador && (requisicoesPendentesCotacao.length > 0 || pedidosParaLancarSap > 0) && (
+            <div className="space-y-2 mb-6">
+              {requisicoesPendentesCotacao.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <ShoppingBag className="w-5 h-5 text-blue-600 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-blue-900 text-sm">Há {requisicoesPendentesCotacao.length} requisição(ões) liberada(s) para cotação</p>
+                      <p className="text-xs text-blue-700">Acesse a aba "Cotações Pendentes" para cadastrar os orçamentos.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 text-xs shrink-0" onClick={() => setActiveTab("cotacoes")}>
+                    Ver cotações
+                  </Button>
+                </div>
+              )}
+              {pedidosParaLancarSap > 0 && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <PackageCheck className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-indigo-950 text-sm">Há {pedidosParaLancarSap} pedido(s) aprovado(s) para lançar no SAP</p>
+                      <p className="text-xs text-indigo-700">Acesse a aba "Pedidos SAP" para registrar o número do pedido e previsão de entrega.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0" onClick={() => setActiveTab("pedidos")}>
+                    Lançar no SAP
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Abas Corporativas do TechControl */}
-          <Tabs defaultValue={tabPadrao}>
+          <Tabs value={activeTab || tabPadrao} onValueChange={setActiveTab}>
             <div className="overflow-x-auto mb-4">
               <TabsList className="flex w-max min-w-full gap-1 p-1 bg-muted rounded-lg">
                 {/* Se for Diretor, a aba de aprovações da diretoria vem em 1º lugar com badge */}
@@ -464,6 +555,22 @@ export default function PortalRequisicoes() {
                 )}
 
                 {isComprador && (
+                  <TabsTrigger value="pedidos" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-indigo-700 data-[state=active]:bg-white data-[state=active]:text-indigo-950">
+                    <PackageCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    Pedidos SAP
+                    {pedidosParaLancarSap > 0 ? (
+                      <span className="ml-1 bg-indigo-600 text-white text-[11px] font-mono rounded-full px-1.5 py-0.2">
+                        {pedidosParaLancarSap}
+                      </span>
+                    ) : (pedidosParaLancarSap + pedidosAguardandoEntrega) > 0 ? (
+                      <span className="ml-1 bg-slate-200 text-slate-700 text-[11px] font-mono rounded-full px-1.5 py-0.2">
+                        {pedidosParaLancarSap + pedidosAguardandoEntrega}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                )}
+
+                {isComprador && (
                   <TabsTrigger value="todas_comprador" className="text-xs px-3 py-1.5 relative flex items-center gap-1 font-semibold text-emerald-700">
                     <ShoppingCart className="w-3.5 h-3.5" />Todas as Requisições ({requisicoes.length})
                   </TabsTrigger>
@@ -478,6 +585,8 @@ export default function PortalRequisicoes() {
                 isLoading={isLoading} 
                 onSelect={setSelectedReq} 
                 empty="Você ainda não abriu nenhuma requisição de compra." 
+                colaboradorAtual={colaboradorFull}
+                onConfirmarRecebimento={(r) => confirmarRecebimentoSolicitanteMutation.mutate({ reqId: r.id })}
               />
             </TabsContent>
 
@@ -567,6 +676,17 @@ export default function PortalRequisicoes() {
               </TabsContent>
             )}
 
+            {/* ABA: PEDIDOS SAP (Comprador - Controle Pós-Aprovação) */}
+            {isComprador && (
+              <TabsContent value="pedidos">
+                <PainelPedidosComprador
+                  requisicoes={requisicoes}
+                  isLoading={isLoading}
+                  colaboradorFull={colaboradorFull}
+                />
+              </TabsContent>
+            )}
+
             {/* ABA: TODAS AS REQUISIÇÕES (Comprador) */}
             {isComprador && (
               <TabsContent value="todas_comprador">
@@ -641,7 +761,15 @@ export default function PortalRequisicoes() {
 }
 
 // Componente Corporativo de Lista de Requisições
-function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante = false }) {
+function RequisicaoLista({ 
+  lista, 
+  isLoading, 
+  onSelect, 
+  empty, 
+  exibirSolicitante = false,
+  colaboradorAtual = null,
+  onConfirmarRecebimento = null
+}) {
   if (isLoading) return <p className="text-center py-8 text-muted-foreground text-sm">Carregando requisições...</p>;
   if (!lista.length) return <p className="text-center py-8 text-muted-foreground text-sm">{empty}</p>;
 
@@ -650,14 +778,15 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante 
       {lista.map(r => {
         const totalAnexos = ((r.anexos || []).length) + ((r.cotacao_anexos || []).length);
         const reenvio = (r.historico || []).slice().reverse().find(h => h.tipo === 'reenvio_apos_ajuste');
+        const isMeuPedido = colaboradorAtual && (r.colaborador_id === colaboradorAtual.id || r.colaborador_email === colaboradorAtual.email);
 
         return (
           <div 
             key={r.id} 
-            className="flex items-center justify-between p-4 bg-card border rounded-lg hover:border-slate-300 hover:shadow-sm cursor-pointer transition-all"
+            className="flex items-center justify-between p-4 bg-card border rounded-lg hover:border-slate-300 hover:shadow-sm cursor-pointer transition-all gap-3"
             onClick={() => onSelect(r)}
           >
-            <div className="flex-1 min-w-0 pr-3">
+            <div className="flex-1 min-w-0 pr-1">
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded font-medium">
                   {r.numero_requisicao}
@@ -690,6 +819,40 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante 
                 {r.item}
               </p>
 
+              {/* Informações da etapa pós-aprovação (SAP e Entrega) */}
+              {r.status === 'Aprovada' && (
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                  {(!r.etapa_compra || r.etapa_compra === 'Lançar no SAP') && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">
+                      <Clock className="w-3 h-3 text-amber-600" /> Aguardando lançamento no SAP pelo Comprador
+                    </span>
+                  )}
+                  {r.etapa_compra === 'Aguardando entrega' && (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded">
+                      <PackageCheck className="w-3 h-3 text-blue-600" />
+                      <strong className="font-mono">SAP: {r.pedido_sap || r.sap_pedido_numero}</strong>
+                      {r.previsao_entrega && (
+                        <span className="text-slate-600 font-sans">
+                          · Previsão: {new Date(r.previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {r.etapa_compra === 'Entregue' && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                      Entregue {r.entrega_data ? `em ${new Date(r.entrega_data + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
+                      {(r.pedido_sap || r.sap_pedido_numero) ? ` · SAP ${r.pedido_sap || r.sap_pedido_numero}` : ''}
+                    </span>
+                  )}
+                  {r.etapa_compra === 'Cancelada' && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200 px-2 py-0.5 rounded">
+                      <XCircle className="w-3 h-3 text-rose-600" /> Compra cancelada pelo Comprador
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 {exibirSolicitante && (
                   <span>
@@ -720,6 +883,20 @@ function RequisicaoLista({ lista, isLoading, onSelect, empty, exibirSolicitante 
             </div>
 
             <div className="shrink-0 flex items-center gap-2">
+              {onConfirmarRecebimento && r.status === 'Aprovada' && r.etapa_compra === 'Aguardando entrega' && isMeuPedido && (
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold h-8 px-3 shadow-sm gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConfirmarRecebimento(r);
+                  }}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Recebi
+                </Button>
+              )}
+
               <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground">
                 Ver detalhes →
               </Button>

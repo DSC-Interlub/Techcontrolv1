@@ -157,21 +157,35 @@ export default function TabelaHistorico({ lista = [], onOpenFicha }) {
                     </TableCell>
 
                     <TableCell className="py-3">
-                      {isAprovada ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-medium"
-                        >
-                          {isAuto ? "Aprovada automaticamente" : "Aprovada por você"}
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-red-50 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 text-xs font-medium"
-                        >
-                          Recusada
-                        </Badge>
-                      )}
+                      <div>
+                        {isAprovada ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-medium"
+                          >
+                            {isAuto ? "Aprovada automaticamente" : "Aprovada por você"}
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="bg-red-50 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 text-xs font-medium"
+                          >
+                            Recusada
+                          </Badge>
+                        )}
+                        {/* Texto secundário com a etapa pós-aprovação */}
+                        {isAprovada && (
+                          <div className="text-[11px] text-muted-foreground mt-1 font-mono truncate max-w-[180px]">
+                            {r.etapa_compra === "Entregue"
+                              ? `Entregue ${r.entrega_data ? formatarDataHora(r.entrega_data, true) : ""}`
+                              : r.sap_pedido_numero
+                              ? `Pedido SAP ${r.sap_pedido_numero}`
+                              : r.etapa_compra === "Cancelada"
+                              ? "Compra cancelada"
+                              : "Pendente SAP"}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
 
                     <TableCell className="py-3 text-right text-xs text-muted-foreground font-mono">

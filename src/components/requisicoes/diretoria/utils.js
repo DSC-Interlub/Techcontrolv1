@@ -147,5 +147,15 @@ export const mapaEventos = {
   reprovacao_diretor_final: { titulo: "Recusada pelo Diretor", cor: "bad" },
   recusa: { titulo: "Recusada", cor: "bad" },
   reenvio_apos_ajuste: { titulo: "Corrigida e reenviada", cor: "info" },
-  reenvio: { titulo: "Corrigida e reenviada", cor: "info" }
+  reenvio: { titulo: "Corrigida e reenviada", cor: "info" },
+  pedido_sap_lancado: { titulo: "Pedido lançado no SAP", cor: "info" },
+  previsao_entrega_atualizada: { titulo: "Previsão de entrega alterada", cor: "warn" },
+  entrega_registrada: { titulo: "Entregue", cor: "ok" },
+  compra_cancelada: { titulo: "Compra cancelada", cor: "bad" },
+  etapa_desfeita: { titulo: "Etapa corrigida", cor: "neutral" },
+  falha_notificacao: { titulo: "Falha de notificação", cor: "bad" }
 };
+
+export function rotuloEvento(tipo) {
+  return mapaEventos[tipo]?.titulo || tipo || "Evento registrado";
+}

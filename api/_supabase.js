@@ -19,6 +19,7 @@ function getEnv(key) {
 }
 
 export function createSupabaseAdmin() {
+  if (globalThis.__mockSupabase) return globalThis.__mockSupabase;
   const url = getEnv('SUPABASE_URL') || getEnv('VITE_SUPABASE_URL');
   const serviceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
   return createClient(url, serviceKey);

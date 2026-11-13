@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Clock, Loader2, Pencil, ShoppingBag, Paperclip, X, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, Pencil, ShoppingBag, Paperclip, X, AlertTriangle, PackageCheck, Truck } from "lucide-react";
 import EditarRequisicaoForm from "./EditarRequisicaoForm";
+import { toast } from "@/components/ui/use-toast";
 
 const statusColors = {
   "Aguardando Aprovador": "bg-yellow-100 text-yellow-800",
@@ -99,6 +100,33 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
     onSuccess: () => {
       onAcao();
     },
+  });
+
+  const confirmarRecebimentoMutation = useMutation({
+    mutationFn: async () => {
+      const res = await base44.functions.invoke('requisicaoComprasAction', {
+        action: 'solicitante_confirmar_recebimento',
+        requisicao_id: requisicao.id,
+        solicitante_id: colaboradorAtual?.id,
+        entrega_data: new Date().toISOString().split('T')[0],
+        entrega_observacao: 'Confirmado pelo solicitante na ficha da requisição'
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Recebimento confirmado!",
+        description: "A requisição foi marcada como Entregue com sucesso."
+      });
+      onAcao();
+    },
+    onError: (err) => {
+      toast({
+        variant: "destructive",
+        title: "Erro ao confirmar",
+        description: err.message || "Não foi possível confirmar o recebimento."
+      });
+    }
   });
 
   const cotacaoMutation = useMutation({
@@ -288,6 +316,100 @@ export default function RequisicaoDetalhes({ requisicao, colaboradorAtual, isAdm
         <div>
           <p className="text-muted-foreground font-semibold mb-1">Comentário do Diretor</p>
           <p className={`rounded p-3 ${requisicao.status === 'Aprovada' ? 'bg-green-50 text-green-900' : 'bg-red-50 text-red-900'}`}>{requisicao.diretor_comentario}</p>
+        </div>
+      )}
+
+      {/* BLOCO DE PÓS-APROVAÇÃO: PEDIDO SAP & ENTREGA */}
+      {requisicao.status === 'Aprovada' && (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <div className="flex items-center gap-2">
+              <PackageCheck className="w-4 h-4 text-blue-700" />
+              <span className="font-semibold text-slate-900 text-sm">Controle Pós-Aprovação (SAP & Entrega)</span>
+            </div>
+            {(() => {
+              const etapa = requisicao.etapa_compra || 'Lançar no SAP';
+              if (etapa === 'Entregue') {
+                return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Entregue</Badge>;
+              }
+              if (etapa === 'Cancelada') {
+                return <Badge className="bg-rose-100 text-rose-800 border-rose-300">Cancelada</Badge>;
+              }
+              if (etapa === 'Aguardando entrega') {
+                return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Aguardando entrega</Badge>;
+              }
+              return <Badge className="bg-amber-100 text-amber-800 border-amber-300">Lançar no SAP</Badge>;
+            })()}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="text-slate-500">Número do Pedido SAP</p>
+              <p className="font-mono font-bold text-slate-800 text-sm mt-0.5">
+                {requisicao.pedido_sap || <span className="font-sans font-normal text-slate-400 italic">Pendente de lançamento</span>}
+              </p>
+              {requisicao.pedido_sap_data && (
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Lançado em {new Date(requisicao.pedido_sap_data).toLocaleDateString('pt-BR')} por {requisicao.pedido_sap_comprador_nome || 'Comprador'}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-slate-500">Previsão de Entrega</p>
+              <p className="font-medium text-slate-800 mt-0.5 flex items-center gap-1.5">
+                {requisicao.previsao_entrega ? (
+                  <>
+                    <span>📅 {new Date(requisicao.previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                    {(() => {
+                      if (requisicao.etapa_compra === 'Entregue' || requisicao.etapa_compra === 'Cancelada') return null;
+                      const hoje = new Date().toISOString().split('T')[0];
+                      if (requisicao.previsao_entrega < hoje) {
+                        return <span className="text-[10px] bg-rose-100 text-rose-800 border border-rose-200 px-1.5 py-0.2 rounded font-semibold">Atrasada</span>;
+                      }
+                      return null;
+                    })()}
+                  </>
+                ) : (
+                  <span className="text-slate-400 italic">Não informada</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {requisicao.etapa_compra === 'Entregue' && (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded p-2.5 text-xs text-emerald-950 space-y-1">
+              <p className="font-semibold flex items-center gap-1 text-emerald-800">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                Entrega confirmada {requisicao.entrega_data ? `em ${new Date(requisicao.entrega_data + 'T00:00:00').toLocaleDateString('pt-BR')}` : ''}
+              </p>
+              {requisicao.entrega_nf && <p className="text-slate-600">Nota Fiscal: <strong className="font-mono">{requisicao.entrega_nf}</strong></p>}
+              {requisicao.entrega_registrada_por_nome && <p className="text-slate-500 text-[11px]">Registrado por: {requisicao.entrega_registrada_por_nome}</p>}
+              {requisicao.entrega_observacao && <p className="text-slate-600 italic">Obs: {requisicao.entrega_observacao}</p>}
+            </div>
+          )}
+
+          {/* Botão de confirmação de recebimento para o solicitante */}
+          {isSolicitante && requisicao.etapa_compra === 'Aguardando entrega' && (
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-600">
+                O produto ou serviço já chegou? Confirme o recebimento para encerrar a requisição.
+              </p>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs font-semibold shrink-0"
+                disabled={confirmarRecebimentoMutation.isPending}
+                onClick={() => confirmarRecebimentoMutation.mutate()}
+              >
+                {confirmarRecebimentoMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Truck className="w-3.5 h-3.5" />
+                )}
+                Recebi o Pedido
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
