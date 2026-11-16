@@ -9,6 +9,7 @@ import CartaoDecisao from "./CartaoDecisao";
 import ListaEmAndamento from "./ListaEmAndamento";
 import TabelaHistorico from "./TabelaHistorico";
 import FichaRequisicao from "./FichaRequisicao";
+import ModalAprovacao from "./ModalAprovacao";
 import ModalRecusa from "./ModalRecusa";
 import VisualizadorAnexo from "./VisualizadorAnexo";
 
@@ -33,6 +34,7 @@ export default function PainelDiretoria({
 
   // Estados dos modais e ficha lateral
   const [sheetReq, setSheetReq] = useState(null);
+  const [modalAprovacaoReq, setModalAprovacaoReq] = useState(null);
   const [modalRecusaReq, setModalRecusaReq] = useState(null);
   const [modalAnexo, setModalAnexo] = useState(null);
   const [anexoReqPai, setAnexoReqPai] = useState(null);
@@ -202,7 +204,7 @@ export default function PainelDiretoria({
                     key={req.id}
                     requisicao={req}
                     onOpenFicha={(r) => setSheetReq(r)}
-                    onAprovar={(r) => onAprovar(r)}
+                    onAprovar={(r) => setModalAprovacaoReq(r)}
                     onRecusar={(r) => setModalRecusaReq(r)}
                     onSelectAnexo={(arq) => handleOpenAnexo(arq, req)}
                     isPending={pendingReqId === req.id}
@@ -240,8 +242,7 @@ export default function PainelDiretoria({
         open={!!sheetReq}
         onClose={() => setSheetReq(null)}
         onAprovar={(r) => {
-          onAprovar(r);
-          setSheetReq(null);
+          setModalAprovacaoReq(r);
         }}
         onRecusar={(r) => {
           setModalRecusaReq(r);
@@ -250,7 +251,20 @@ export default function PainelDiretoria({
         isPending={pendingReqId === sheetReq?.id}
       />
 
-      {/* 5. Modal de Recusa */}
+      {/* 5. Modal de Aprovação com Observação da Diretoria */}
+      <ModalAprovacao
+        requisicao={modalAprovacaoReq}
+        open={!!modalAprovacaoReq}
+        onClose={() => setModalAprovacaoReq(null)}
+        onConfirmar={(r, observacao) => {
+          onAprovar(r, observacao);
+          setModalAprovacaoReq(null);
+          setSheetReq(null);
+        }}
+        isPending={pendingReqId === modalAprovacaoReq?.id}
+      />
+
+      {/* 6. Modal de Recusa com Observação / Motivo */}
       <ModalRecusa
         requisicao={modalRecusaReq}
         open={!!modalRecusaReq}

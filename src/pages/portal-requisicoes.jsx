@@ -90,12 +90,12 @@ export default function PortalRequisicoes() {
       const novoStatus = fase === "Aguardando Diretor" ? "Aguardando Cotação" : "Aprovada";
       setDecisoesLocais(prev => ({ ...prev, [reqId]: novoStatus }));
     },
-    mutationFn: async ({ reqId, token }) => {
+    mutationFn: async ({ reqId, token, comentario }) => {
       const res = await base44.functions.invoke("requisicaoComprasAction", {
         action: "diretor_aprovar",
         requisicao_id: reqId,
         token: token || undefined,
-        comentario: "Autorizado pelo Diretor via Portal"
+        comentario: comentario?.trim() || "Autorizado pelo Diretor via Portal"
       });
       return res.data;
     },
@@ -377,11 +377,12 @@ export default function PortalRequisicoes() {
           isLoading={isLoading}
           colaboradorFull={colaboradorFull}
           onNovaRequisicao={() => setView("nova")}
-          onAprovar={(req) => {
+          onAprovar={(req, observacao) => {
             aprovarDiretorMutation.mutate({
               reqId: req.id,
               token: req.token_aprovacao,
-              fase: req.status
+              fase: req.status,
+              comentario: observacao
             });
           }}
           onRecusar={(req, motivo) => {
